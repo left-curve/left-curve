@@ -1,9 +1,9 @@
 use {
-    dango_testing::{TestAccounts, constants::MOCK_CHAIN_ID, setup_test_naive},
-    dango_types::{account::QuerySeenNoncesRequest, constants::dango},
-    grug::{
+    dango_primitives::{
         Addressable, Coins, Duration, JsonSerExt, Message, NonEmpty, QuerierExt, ResultExt, Tx,
     },
+    dango_testing::{MOCK_CHAIN_ID, TestAccounts, setup_test_naive},
+    dango_types::{account::QuerySeenNoncesRequest, constants::dango},
     std::vec,
 };
 

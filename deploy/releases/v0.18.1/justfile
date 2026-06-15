@@ -1,0 +1,86 @@
+set positional-arguments
+
+# Use bash so `pipefail` propagates ansible's exit code through `| tee ...`
+# (the default `sh -cu` would silently swallow ansible failures behind tee).
+set shell := ["bash", "-uo", "pipefail", "-c"]
+
+# Always load deploy/ansible.cfg, regardless of cwd or a stray ~/.ansible.cfg.
+export ANSIBLE_CONFIG := justfile_directory() + "/../../ansible.cfg"
+
+# Tailscale IPs. Mirrors the constants in deploy/justfile.
+hetzner1 := "100.126.8.2"
+hetzner2 := "100.90.163.19"
+hetzner3 := "100.76.197.30"
+hetzner4 := "100.109.200.70"
+hetzner5 := "100.72.62.100"
+hetzner6 := "100.66.152.68"
+
+# Dango docker image tag. The build pipeline tags images with the git commit
+# SHA, so this is the commit hash for tag v0.18.1.
+dango_image_tag := "a6f535dd7fcef720c9cf8eaa50ddcc3bbd162cc4"
+
+# Bot images (faucet-bot, dex-bot, perps-bot, perp-liquidator, points-bot) need
+# to be pinned separately from dango, since they are built from a different
+# commit that is compatible with the v0.18.1 dango API. `latest` would track
+# main and break against v0.18.1.
+bots_image_tag := "eea39865829467aa34db3f72773ef8de088253fb"
+
+# List available recipes
+default:
+  @just --list
+
+deploy-testnet-hetzner2:
+  cd ../.. \
+    && mkdir -p logs \
+    && uv run ansible-playbook full-app.yml \
+      -e '{"traefik_enabled": true, "cometbft_generate_keys": true, "dex_bot_enabled": false, "perps_bot_enabled": true, "github_deployments_enabled": false, "expose_ports": false, "delete_postgres_database_at_merge": false, "delete_clickhouse_database_at_merge": false, "deploy_includes_postgres": false, "deploy_includes_clickhouse": false, "chain_id": "dango-testnet-1", "dango_network": "testnet", "system_wide_directories": true, "deploy_env": "production", "dango_image_tag": "{{dango_image_tag}}", "frontend_image_tag": "latest", "faucet_bot_tag": "{{bots_image_tag}}", "dex_bot_tag": "{{bots_image_tag}}", "perps_bot_tag": "{{bots_image_tag}}", "perp_liquidator_tag": "{{bots_image_tag}}"}' \
+      -e frontend_enabled_features='points' \
+      -e cometbft_peers={{hetzner4}} \
+      --limit {{hetzner2}} \
+      2>&1 | tee logs/$(date -u +%Y%m%d%H%M%S)-deploy-testnet-hetzner2.log
+
+deploy-testnet-hetzner4:
+  cd ../.. \
+    && mkdir -p logs \
+    && uv run ansible-playbook full-app.yml \
+      -e '{"traefik_enabled": true, "cometbft_generate_keys": true, "dex_bot_enabled": false, "perps_bot_enabled": true, "github_deployments_enabled": false, "expose_ports": false, "delete_postgres_database_at_merge": false, "delete_clickhouse_database_at_merge": false, "deploy_includes_postgres": false, "deploy_includes_clickhouse": false, "chain_id": "dango-testnet-1", "dango_network": "testnet", "system_wide_directories": true, "deploy_env": "production", "dango_image_tag": "{{dango_image_tag}}", "frontend_image_tag": "latest", "faucet_bot_tag": "{{bots_image_tag}}", "dex_bot_tag": "{{bots_image_tag}}", "perps_bot_tag": "{{bots_image_tag}}", "perp_liquidator_tag": "{{bots_image_tag}}"}' \
+      -e frontend_enabled_features='points' \
+      -e cometbft_peers={{hetzner2}} \
+      --limit {{hetzner4}} \
+      2>&1 | tee logs/$(date -u +%Y%m%d%H%M%S)-deploy-testnet-hetzner4.log
+
+deploy-mainnet-hetzner1:
+  cd ../.. \
+    && mkdir -p logs \
+    && uv run ansible-playbook full-app.yml \
+      -e '{"traefik_enabled": true, "cometbft_generate_keys": true, "dex_bot_enabled": false, "github_deployments_enabled": false, "expose_ports": false, "delete_postgres_database_at_merge": false, "delete_clickhouse_database_at_merge": false, "deploy_includes_postgres": false, "deploy_includes_clickhouse": false, "chain_id": "dango-1", "dango_network": "mainnet", "system_wide_directories": true, "deploy_env": "production", "dango_image_tag": "{{dango_image_tag}}", "frontend_image_tag": "latest", "faucet_bot_tag": "{{bots_image_tag}}", "dex_bot_tag": "{{bots_image_tag}}", "perps_bot_tag": "{{bots_image_tag}}", "perp_liquidator_tag": "{{bots_image_tag}}"}' \
+      -e cometbft_peers={{hetzner3}},{{hetzner5}},{{hetzner6}} \
+      --limit {{hetzner1}} \
+      2>&1 | tee logs/$(date -u +%Y%m%d%H%M%S)-deploy-mainnet-hetzner1.log
+
+deploy-mainnet-hetzner3:
+  cd ../.. \
+    && mkdir -p logs \
+    && uv run ansible-playbook full-app.yml \
+      -e '{"traefik_enabled": true, "cometbft_generate_keys": true, "dex_bot_enabled": false, "github_deployments_enabled": false, "expose_ports": false, "delete_postgres_database_at_merge": false, "delete_clickhouse_database_at_merge": false, "deploy_includes_postgres": false, "deploy_includes_clickhouse": false, "chain_id": "dango-1", "dango_network": "mainnet", "system_wide_directories": true, "deploy_env": "production", "dango_image_tag": "{{dango_image_tag}}", "frontend_image_tag": "latest", "faucet_bot_tag": "{{bots_image_tag}}", "dex_bot_tag": "{{bots_image_tag}}", "perps_bot_tag": "{{bots_image_tag}}", "perp_liquidator_tag": "{{bots_image_tag}}"}' \
+      -e cometbft_peers={{hetzner1}},{{hetzner5}},{{hetzner6}} \
+      --limit {{hetzner3}} \
+      2>&1 | tee logs/$(date -u +%Y%m%d%H%M%S)-deploy-mainnet-hetzner3.log
+
+deploy-mainnet-hetzner5:
+  cd ../.. \
+    && mkdir -p logs \
+    && uv run ansible-playbook full-app.yml \
+      -e '{"traefik_enabled": true, "cometbft_generate_keys": true, "dex_bot_enabled": false, "github_deployments_enabled": false, "expose_ports": false, "delete_postgres_database_at_merge": false, "delete_clickhouse_database_at_merge": false, "deploy_includes_postgres": false, "deploy_includes_clickhouse": false, "chain_id": "dango-1", "dango_network": "mainnet", "system_wide_directories": true, "deploy_env": "production", "dango_image_tag": "{{dango_image_tag}}", "frontend_image_tag": "latest", "faucet_bot_tag": "{{bots_image_tag}}", "dex_bot_tag": "{{bots_image_tag}}", "perps_bot_tag": "{{bots_image_tag}}", "perp_liquidator_tag": "{{bots_image_tag}}"}' \
+      -e cometbft_peers={{hetzner1}},{{hetzner3}},{{hetzner6}} \
+      --limit {{hetzner5}} \
+      2>&1 | tee logs/$(date -u +%Y%m%d%H%M%S)-deploy-mainnet-hetzner5.log
+
+deploy-mainnet-hetzner6:
+  cd ../.. \
+    && mkdir -p logs \
+    && uv run ansible-playbook full-app.yml \
+      -e '{"traefik_enabled": true, "cometbft_generate_keys": true, "dex_bot_enabled": false, "github_deployments_enabled": false, "expose_ports": false, "delete_postgres_database_at_merge": false, "delete_clickhouse_database_at_merge": false, "deploy_includes_postgres": false, "deploy_includes_clickhouse": false, "chain_id": "dango-1", "dango_network": "mainnet", "system_wide_directories": true, "deploy_env": "production", "dango_image_tag": "{{dango_image_tag}}", "frontend_image_tag": "latest", "faucet_bot_tag": "{{bots_image_tag}}", "dex_bot_tag": "{{bots_image_tag}}", "perps_bot_tag": "{{bots_image_tag}}", "perp_liquidator_tag": "{{bots_image_tag}}"}' \
+      -e cometbft_peers={{hetzner1}},{{hetzner3}},{{hetzner5}} \
+      --limit {{hetzner6}} \
+      2>&1 | tee logs/$(date -u +%Y%m%d%H%M%S)-deploy-mainnet-hetzner6.log

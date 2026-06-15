@@ -1,0 +1,178 @@
+import { Step, Steps } from 'vocs/components'
+
+# Transactions
+
+**What this teaches:** the full path from `Message` to confirmed transaction, using only `dango-sdk` primitives.
+
+:::warning[DEX currently disabled]
+The Dango DEX is currently disabled. Calls described on this page will not execute on the live network until the DEX is enabled.
+:::
+
+## Mental model
+
+The Rust SDK does not ship Dango action helpers — there is no `client.transfer(...)` or `client.submit_order(...)`. Transactions are built by hand:
+
+<Steps>
+  <Step title="Compose">
+    Build a `NonEmpty<Vec<Message>>`. This is where the Dango contract knowledge lives — encode the contract message yourself (`Message::execute`, `Message::transfer`, …).
+  </Step>
+  <Step title="Sign">
+    Call [`SingleSigner::sign_transaction`](../api/clients/SingleSigner) to produce a `Tx`.
+  </Step>
+  <Step title="Broadcast">
+    Submit via `BroadcastClient::broadcast_tx` on `HttpClient`.
+  </Step>
+  <Step title="Poll">
+    Wait for inclusion with `SearchTxClient::search_tx`.
+  </Step>
+</Steps>
+
+## Compose
+
+Most flows use `Message::transfer` (bank send) or `Message::execute` (smart contract call).
+
+```rust
+use {
+    dango_primitives::{Addr, Coins, Message, NonEmpty},
+    std::str::FromStr,
+};
+
+let recipient = Addr::from_str("0x1111111111111111111111111111111111111111")?;
+let coins     = Coins::one("bridge/usdc", 100_000_000_u128)?; // 100 USDC in base units
+
+let messages = NonEmpty::new(vec![
+    Message::transfer(recipient, coins)?,
+])?;
+// Ok::<(), anyhow::Error>(())
+```
+
+For a smart-contract call, encode the contract's typed `ExecuteMsg`:
+
+```rust
+use {
+    dango_types::dex,
+    dango_primitives::{Coins, Message},
+};
+
+let msg = Message::execute(
+    /* contract: */ Addr::from_str("0x...")?,
+    /* payload:  */ &dex::ExecuteMsg::SubmitOrders { /* ... */ },
+    /* funds:    */ Coins::new(),
+)?;
+// Ok::<(), anyhow::Error>(())
+```
+
+## Estimate gas
+
+`HttpClient` implements `QueryClient::simulate`, which runs the transaction against the latest committed state and reports gas used:
+
+```rust
+use {
+    dango_sdk::{HttpClient, SingleSigner},
+    dango_primitives::{QueryClient, Signer},
+};
+
+let unsigned = signer.unsigned_transaction(messages.clone(), "dango-1")?;
+let outcome  = http.simulate(unsigned).await?;
+let gas_limit = (outcome.gas_used as f64 * 1.5) as u64; // 50% buffer
+// Ok::<(), anyhow::Error>(())
+```
+
+Apply your own buffer — `simulate` reports actual usage, not a recommended limit.
+
+## Sign
+
+```rust
+use dango_primitives::Signer;
+
+let tx = signer.sign_transaction(messages, "dango-1", gas_limit)?;
+// Ok::<(), anyhow::Error>(())
+```
+
+`sign_transaction` consumes the current nonce and increments the in-memory value, so successive calls produce successive transactions without an extra round-trip.
+
+:::warning
+the nonce is incremented even when broadcast eventually fails. After a broadcast failure, call `SequencedSigner::update_nonce` to resync against the chain.
+:::
+
+## Broadcast
+
+```rust
+use dango_primitives::BroadcastClient;
+
+let result = http.broadcast_tx(tx).await?;
+println!("hash={}", result.tx_hash);
+// Ok::<(), anyhow::Error>(())
+```
+
+Broadcast is `tx-sync`: the node accepts or rejects the transaction (mempool decision) but does not wait for inclusion. Poll for the receipt next.
+
+## Wait for inclusion
+
+```rust
+use {
+    dango_primitives::SearchTxClient,
+    std::time::Duration,
+    tokio::time::sleep,
+};
+
+let outcome = loop {
+    match http.search_tx(result.tx_hash).await {
+        Ok(o) => break o,
+        Err(_) => sleep(Duration::from_millis(500)).await,
+    }
+};
+
+println!("included at height {}, gas {}", outcome.height, outcome.outcome.gas_used);
+// Ok::<(), anyhow::Error>(())
+```
+
+Wrap this loop in a bounded retry helper (`tokio-retry`, `backon`, …) — the SDK does not ship one.
+
+## Putting it together
+
+```rust
+use {
+    anyhow::Result,
+    dango_sdk::{HttpClient, Secp256k1, Secret, SingleSigner},
+    dango_primitives::{Addr, BroadcastClient, Coins, Message, NonEmpty, QueryClient, SearchTxClient, Signer},
+    std::{str::FromStr, time::Duration},
+    tokio::time::sleep,
+};
+
+#[tokio::main]
+async fn main() -> Result<()> {
+    let http   = HttpClient::new("https://api-mainnet.dango.zone")?;
+    let secret = Secp256k1::from_bytes([0u8; 32])?;
+    let addr   = Addr::from_str("0x0000000000000000000000000000000000000000")?;
+
+    let mut signer = SingleSigner::new(addr, secret)
+        .with_query_user_index(&http).await?
+        .with_query_nonce(&http).await?;
+
+    let recipient = Addr::from_str("0x1111111111111111111111111111111111111111")?;
+    let messages  = NonEmpty::new(vec![
+        Message::transfer(recipient, Coins::one("bridge/usdc", 100_000_000_u128)?)?,
+    ])?;
+
+    let unsigned  = signer.unsigned_transaction(messages.clone(), "dango-1")?;
+    let estimated = http.simulate(unsigned).await?.gas_used as u64;
+
+    let tx     = signer.sign_transaction(messages, "dango-1", estimated * 3 / 2)?;
+    let result = http.broadcast_tx(tx).await?;
+
+    loop {
+        match http.search_tx(result.tx_hash).await {
+            Ok(o) => { println!("included at {}", o.height); break; }
+            Err(_) => sleep(Duration::from_millis(500)).await,
+        }
+    }
+
+    Ok(())
+}
+```
+
+## Next
+
+- [Subscriptions](./subscriptions) — react to chain events instead of polling.
+- [Error handling](./error-handling) — distinguish broadcast-rejection, execution failure, and transport error.

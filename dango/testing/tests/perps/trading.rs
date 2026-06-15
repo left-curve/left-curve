@@ -1,17 +1,18 @@
 use {
     crate::{default_pair_param, default_param, register_oracle_prices},
+    dango_math::Uint128,
     dango_order_book::{
         ChildOrder, Dimensionless, LiquidityDepthResponse, OrderId, OrderKind, Quantity,
         QueryOrdersByUserResponseItem, TimeInForce, UsdPrice, UsdValue,
     },
-    dango_testing::{TestOption, perps::pair_id, setup_test_naive},
+    dango_primitives::{
+        Addressable, CheckedContractEvent, Coins, Inner, JsonDeExt, QuerierExt, ResultExt,
+        SearchEvent, btree_map, btree_set,
+    },
+    dango_testing::{TestOption, TestSuiteNaive, pair_id, setup_test_naive},
     dango_types::{
         constants::usdc,
         perps::{self, OrderFilled, PairParam, Param, RateSchedule, UserState},
-    },
-    grug::{
-        Addressable, CheckedContractEvent, Coins, Inner, JsonDeExt, QuerierExt, ResultExt,
-        SearchEvent, Uint128, btree_map, btree_set,
     },
     std::collections::BTreeMap,
 };
@@ -30,7 +31,7 @@ async fn trading_lifecycle() {
     let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(TestOption::default());
 
     // Register oracle prices: ETH = $2,000, USDC = $1.
-    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000).await;
+    register_oracle_prices(&mut suite, &mut accounts, 2_000).await;
 
     let pair = pair_id();
 
@@ -217,7 +218,7 @@ async fn limit_order_partial_fill_and_cancel() {
     let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(TestOption::default());
 
     // Register oracle prices: ETH = $2,000, USDC = $1.
-    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000).await;
+    register_oracle_prices(&mut suite, &mut accounts, 2_000).await;
 
     let pair = pair_id();
 
@@ -395,7 +396,7 @@ async fn limit_order_partial_fill_and_cancel() {
 async fn liquidity_depth_tracking() {
     let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(TestOption::default());
 
-    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000).await;
+    register_oracle_prices(&mut suite, &mut accounts, 2_000).await;
 
     let pair = pair_id();
 
@@ -439,7 +440,7 @@ async fn liquidity_depth_tracking() {
         .await
         .should_succeed();
 
-    let query_depth = |suite: &dango_testing::TestSuite<_>| -> LiquidityDepthResponse {
+    let query_depth = |suite: &TestSuiteNaive| -> LiquidityDepthResponse {
         suite
             .query_wasm_smart(contracts.perps, perps::QueryLiquidityDepthRequest {
                 pair_id: pair.clone(),
@@ -632,7 +633,7 @@ async fn liquidity_depth_tracking() {
 async fn protocol_fee_accumulates_across_fills() {
     let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(TestOption::default());
 
-    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000).await;
+    register_oracle_prices(&mut suite, &mut accounts, 2_000).await;
 
     let pair = pair_id();
 
@@ -797,7 +798,7 @@ async fn protocol_fee_accumulates_across_fills() {
 async fn negative_maker_fee_rebate_lifecycle() {
     let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(TestOption::default());
 
-    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000).await;
+    register_oracle_prices(&mut suite, &mut accounts, 2_000).await;
 
     let pair = pair_id();
 
@@ -970,7 +971,7 @@ async fn negative_maker_fee_rebate_lifecycle() {
 async fn ioc_limit_order_partial_fill() {
     let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(TestOption::default());
 
-    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000).await;
+    register_oracle_prices(&mut suite, &mut accounts, 2_000).await;
 
     let pair = pair_id();
 
@@ -1102,7 +1103,7 @@ async fn ioc_limit_order_partial_fill() {
 async fn ioc_limit_order_no_fill_rejected() {
     let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(TestOption::default());
 
-    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000).await;
+    register_oracle_prices(&mut suite, &mut accounts, 2_000).await;
 
     let pair = pair_id();
 
@@ -1150,10 +1151,10 @@ async fn ioc_limit_order_no_fill_rejected() {
 /// `max_market_slippage`. user1 is funded with $10,000.
 macro_rules! setup_slippage_cap_suite {
     () => {{
-        let (mut suite, mut accounts, _, contracts, _) =
-            setup_test_naive(TestOption::default());
-        register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000).await;
+        let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(TestOption::default());
         let pair = pair_id();
+
+        register_oracle_prices(&mut suite, &mut accounts, 2_000).await;
 
         suite
             .execute(
@@ -1316,7 +1317,7 @@ async fn slippage_cap_does_not_affect_limit_orders() {
 async fn fill_id_is_shared_across_match_sides_and_increments_per_match() {
     let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(TestOption::default());
 
-    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000).await;
+    register_oracle_prices(&mut suite, &mut accounts, 2_000).await;
 
     let pair = pair_id();
 
@@ -1462,7 +1463,7 @@ async fn fill_id_is_shared_across_match_sides_and_increments_per_match() {
 async fn sell_side_market_order_partial_fill() {
     let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(TestOption::default());
 
-    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000).await;
+    register_oracle_prices(&mut suite, &mut accounts, 2_000).await;
 
     let pair = pair_id();
 
@@ -1585,7 +1586,7 @@ async fn sell_side_market_order_partial_fill() {
 async fn buy_side_market_order_partial_fill() {
     let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(TestOption::default());
 
-    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000).await;
+    register_oracle_prices(&mut suite, &mut accounts, 2_000).await;
 
     let pair = pair_id();
 

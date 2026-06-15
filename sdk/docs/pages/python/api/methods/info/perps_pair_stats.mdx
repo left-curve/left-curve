@@ -1,0 +1,37 @@
+# perps_pair_stats
+
+24-hour price/volume stats for one pair.
+
+## Signature
+
+```python
+def perps_pair_stats(self, pair_id: PairId) -> PerpsPairStats
+```
+
+## Example
+
+```python
+from dango.info import Info
+from dango.utils.constants import MAINNET_API_URL
+from dango.utils.types import PairId
+
+info = Info(MAINNET_API_URL, skip_ws=True)
+stats = info.perps_pair_stats(PairId("perp/ethusd"))
+print("mid:", stats["currentPrice"], "24h vol:", stats["volume24H"])
+```
+
+## Parameters
+
+**`pair_id`** — `PairId`.
+
+## Returns
+
+**`PerpsPairStats`** — TypedDict with `pairId`, `currentPrice`, `price24HAgo`, `volume24H`, `priceChange24H`. Keys are camelCase (indexer wire shape). See [`PerpsPairStats`](../../types/PerpsPairStats).
+
+## Notes
+
+- Some fields (`currentPrice`, `price24HAgo`, `priceChange24H`) can be `None` when the pair has no recorded trades in the lookback window.
+
+## See also
+
+- [`all_perps_pair_stats`](./all_perps_pair_stats) — every pair in one call

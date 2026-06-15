@@ -1,19 +1,23 @@
 use {
-    dango_proposal_preparer::{ProposalPreparer, QueryPythId},
-    dango_testing::{TestSuite, setup_test},
-    dango_types::{
-        constants::btc,
-        oracle::{ExecuteMsg, PriceSource, QueryPriceRequest, QueryPriceSourcesRequest},
-    },
-    grug::{
-        Addr, Binary, Coins, Denom, Duration as GrugDuration, NonEmpty, QuerierExt, ResultExt,
+    dango_db_memory::MemDb,
+    dango_primitives::{
+        Addr, Binary, Coins, Denom, Duration as CoreDuration, NonEmpty, QuerierExt, ResultExt,
         btree_map,
     },
-    pyth_client::{PythClientCache, PythClientTrait},
-    pyth_types::{
+    dango_proposal_preparer::{ProposalPreparer, QueryPythId},
+    dango_pyth_client::{PythClientCache, PythClientTrait},
+    dango_pyth_types::{
         Channel, FixedRate, PythLazerSubscriptionDetails,
         constants::{BTC_USD_ID, LAZER_ENDPOINTS_TEST, LAZER_TRUSTED_SIGNER},
     },
+    dango_testing::{TestSuite, setup_test},
+    dango_types::{
+        constants::perp_btc,
+        oracle::{
+            ExecuteMsg, PriceConfig, PriceSource, QueryPriceRequest, QueryPriceSourcesRequest,
+        },
+    },
+    dango_vm_rust::RustVm,
     std::{
         str::FromStr,
         thread::{self, sleep},
@@ -44,12 +48,7 @@ async fn proposal_pyth() {
             })
             .should_succeed()
             .into_values()
-            .filter_map(|price_source| match price_source {
-                PriceSource::Pyth { id, channel, .. } => {
-                    Some(PythLazerSubscriptionDetails { id, channel })
-                },
-                _ => None,
-            })
+            .flat_map(|config| config.feeds())
             .collect::<Vec<_>>();
 
         // Create cache for ids if not present.
@@ -68,7 +67,7 @@ async fn proposal_pyth() {
     let oracle = contracts.oracle;
 
     let price_source = btree_map!(
-        btc::DENOM.clone() => PriceSource::Pyth { id: BTC_USD_ID.id, channel: BTC_USD_ID.channel, precision: 8 }
+        perp_btc::DENOM.clone() => PriceConfig::Single(PriceSource { id: BTC_USD_ID.id, channel: BTC_USD_ID.channel })
     );
 
     let pubkey = Binary::from_str(LAZER_TRUSTED_SIGNER).unwrap();
@@ -79,7 +78,7 @@ async fn proposal_pyth() {
             oracle,
             &ExecuteMsg::RegisterTrustedSigner {
                 public_key: pubkey,
-                expires_at: current_time + GrugDuration::from_minutes(10),
+                expires_at: current_time + CoreDuration::from_minutes(10),
             },
             Coins::new(),
         )
@@ -96,14 +95,14 @@ async fn proposal_pyth() {
         .await
         .should_succeed();
 
-    // Assert the price of btc exists.
+    // Assert the price of perp_btc exists.
     sleep(Duration::from_secs(2));
-    assert_price_exists(&mut suite, contracts.oracle, btc::DENOM.clone()).await;
+    assert_price_exists(&mut suite, contracts.oracle, perp_btc::DENOM.clone()).await;
 
     // Retrieve the prices and sequences.
     let prices1 = suite
         .query_wasm_smart(oracle, QueryPriceRequest {
-            denom: btc::DENOM.clone(),
+            denom: perp_btc::DENOM.clone(),
         })
         .should_succeed();
 
@@ -114,7 +113,7 @@ async fn proposal_pyth() {
 
     let prices2 = suite
         .query_wasm_smart(oracle, QueryPriceRequest {
-            denom: btc::DENOM.clone(),
+            denom: perp_btc::DENOM.clone(),
         })
         .should_succeed();
 
@@ -140,29 +139,31 @@ async fn proposal_pyth() {
             .should_fail_with_error("data not found");
 
         // Verify the NOT_USED_ID is not in the oracle.
-        let _ = suite
+        suite
             .query_wasm_smart(contracts.oracle, QueryPriceSourcesRequest {
                 start_after: None,
                 limit: Some(u32::MAX),
             })
             .should_succeed()
             .values()
-            .map(|price_source| {
-                if let PriceSource::Pyth { id, .. } = price_source {
-                    assert_ne!(id, &NOT_USED_ID_LAZER.id);
-                }
+            .flat_map(|config| config.feeds())
+            .for_each(|source| {
+                assert_ne!(source.id, NOT_USED_ID_LAZER.id);
             });
 
         // Push NOT_USED_ID to the oracle.
-        let msg =
-            ExecuteMsg::RegisterPriceSources(btree_map!( test_denom.clone() => PriceSource::Pyth {
-                id: NOT_USED_ID_LAZER.id,
-                precision: 6,
-                channel: NOT_USED_ID_LAZER.channel,
-            }));
-
         suite
-            .execute(&mut accounts.owner, contracts.oracle, &msg, Coins::new())
+            .execute(
+                &mut accounts.owner,
+                contracts.oracle,
+                &ExecuteMsg::RegisterPriceSources(btree_map! {
+                    test_denom.clone() => PriceConfig::Single(PriceSource {
+                        id: NOT_USED_ID_LAZER.id,
+                        channel: NOT_USED_ID_LAZER.channel,
+                    }),
+                }),
+                Coins::new(),
+            )
             .await
             .should_succeed();
 
@@ -173,7 +174,7 @@ async fn proposal_pyth() {
 }
 
 async fn assert_price_exists<P>(
-    suite: &mut TestSuite<ProposalPreparer<P>>,
+    suite: &mut TestSuite<MemDb, RustVm, ProposalPreparer<P>>,
     oracle: Addr,
     denom: Denom,
 ) where

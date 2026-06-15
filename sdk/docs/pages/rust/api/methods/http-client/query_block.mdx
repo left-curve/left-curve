@@ -1,0 +1,47 @@
+# query_block
+
+Fetch a block by height. Hits the REST endpoint `GET /block/info[/{height}]`.
+
+## Signature
+
+```rust
+async fn query_block(&self, height: Option<u64>) -> Result<dango_primitives::Block, anyhow::Error>;
+```
+
+From `impl BlockClient for HttpClient`.
+
+## Example
+
+```rust
+use {
+    anyhow::Result,
+    dango_sdk::HttpClient,
+    dango_primitives::BlockClient,
+};
+
+#[tokio::main]
+async fn main() -> Result<()> {
+    let client = HttpClient::new("https://api-mainnet.dango.zone")?;
+    let block  = client.query_block(None).await?;
+    println!("height: {}", block.info.height);
+    println!("chain:  {}", block.info.chain_id);
+    Ok(())
+}
+```
+
+## Parameters
+
+**`height`** — `Option<u64>`. Block height to fetch, or `None` for the latest.
+
+## Returns
+
+**`Block`** — block info plus the list of transactions included at that height.
+
+## Notes
+
+- REST, not GraphQL — the request goes to `<url>/block/info` directly. Errors include the HTTP status and response body in the `anyhow::Error` message.
+
+## See also
+
+- [`query_block_outcome`](./query_block_outcome) — the block's execution result.
+- [`paginate_blocks`](./paginate_blocks) — bulk block fetch with filters.

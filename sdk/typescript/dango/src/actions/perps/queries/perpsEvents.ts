@@ -1,8 +1,6 @@
-import { queryIndexer } from "../../indexer/queryIndexer.js";
+import { queryIndexer } from "#actions/indexer/queryIndexer.js";
 
-import type { Client, Transport } from "@left-curve/sdk/types";
-import type { PerpsEvent } from "../../../types/indexer.js";
-import type { GraphqlQueryResult } from "../../../types/graphql.js";
+import type { Client, GraphqlQueryResult, PerpsEvent } from "@left-curve/types";
 
 export type QueryPerpsEventsParameters = {
   after?: string;
@@ -14,12 +12,16 @@ export type QueryPerpsEventsParameters = {
   eventType?: string;
   pairId?: string;
   blockHeight?: number;
+  /** ISO 8601 timestamp — only return events created at or before this date. */
+  earlierThan?: string;
+  /** ISO 8601 timestamp — only return events created at or after this date. */
+  laterThan?: string;
 };
 
 export type QueryPerpsEventsReturnType = Promise<GraphqlQueryResult<PerpsEvent>>;
 
-export async function queryPerpsEvents<transport extends Transport>(
-  client: Client<transport>,
+export async function queryPerpsEvents(
+  client: Client,
   parameters: QueryPerpsEventsParameters,
 ): QueryPerpsEventsReturnType {
   const document = /* GraphQL */ `
@@ -33,6 +35,8 @@ export async function queryPerpsEvents<transport extends Transport>(
       $eventType: String
       $pairId: String
       $blockHeight: Int
+      $earlierThan: DateTime
+      $laterThan: DateTime
     ) {
       perpsEvents(
         after: $after
@@ -44,6 +48,8 @@ export async function queryPerpsEvents<transport extends Transport>(
         eventType: $eventType
         pairId: $pairId
         blockHeight: $blockHeight
+        earlierThan: $earlierThan
+        laterThan: $laterThan
       ) {
         pageInfo {
           hasNextPage

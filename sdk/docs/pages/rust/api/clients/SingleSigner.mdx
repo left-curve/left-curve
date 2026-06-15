@@ -1,0 +1,152 @@
+# SingleSigner
+
+A typestate builder for signing transactions against Dango's single-signature accounts.
+
+## Setup
+
+```rust
+use {
+    anyhow::Result,
+    dango_sdk::{HttpClient, Secp256k1, Secret, SingleSigner},
+    dango_primitives::Addr,
+    std::str::FromStr,
+};
+
+#[tokio::main]
+async fn main() -> Result<()> {
+    let http   = HttpClient::new("https://api-mainnet.dango.zone")?;
+    let secret = Secp256k1::new_random();
+    let addr   = Addr::from_str("0x0000000000000000000000000000000000000000")?;
+
+    let signer = SingleSigner::new(addr, secret)
+        .with_query_user_index(&http).await?
+        .with_query_nonce(&http).await?;
+
+    let _ = signer;
+    Ok(())
+}
+```
+
+```rust
+pub struct SingleSigner<S, I = Defined<UserIndex>, N = Defined<Nonce>>
+where
+    S: Secret,
+    I: MaybeDefined<UserIndex>,
+    N: MaybeDefined<Nonce>,
+{
+    pub address:    Addr,
+    pub secret:     S,
+    pub user_index: I,
+    pub nonce:      N,
+}
+
+pub const DEFAULT_DERIVATION_PATH: &str = "m/44'/60'/0'/0/0";
+```
+
+## The typestate
+
+`SingleSigner` carries phantom-typed flags for whether `user_index` and `nonce` have been filled in:
+
+| State | `I` | `N` | Capabilities |
+|-------|-----|-----|--------------|
+| Bare | `Undefined<UserIndex>` | `Undefined<Nonce>` | `new`, `with_user_index`, `with_query_user_index`, `with_nonce`, `with_query_nonce`. |
+| Index-only | `Defined<UserIndex>` | `Undefined<Nonce>` | `new_first_address_available`, `user_index()`, `with_nonce`, `with_query_nonce`. |
+| Nonce-only | `Undefined<UserIndex>` | `Defined<Nonce>` | `nonce()`, `with_user_index`, `with_query_user_index`. |
+| Ready | `Defined<UserIndex>` | `Defined<Nonce>` | `Signer`, `SequencedSigner`, `user_index()`, `nonce()`. |
+
+`Defined<T>` and `Undefined<T>` are typestate helpers. The compiler enforces both fields are `Defined` before `sign_transaction` is callable.
+
+This is a common Rust idiom for builders that must reach a complete state before being usable, but it is unusual in TypeScript/Python where missing fields would be a runtime check.
+
+## Configuration
+
+`SingleSigner` has no static configuration. The signing scheme is dictated by the `Secret` implementation (`Secp256k1` for raw secp256k1+SHA-256, `Eip712` for Ethereum typed-data).
+
+## Methods
+
+### Constructors
+
+| Method | Description |
+|--------|-------------|
+| [`new`](../methods/single-signer/new)                                                     | Bare constructor — both phantom slots `Undefined`. |
+| [`new_first_address_available`](../methods/single-signer/new_first_address_available)     | Discover the first account associated with `secret.key_hash()` via the account factory. |
+
+### State transitions
+
+| Method | Description |
+|--------|-------------|
+| [`with_user_index`](../methods/single-signer/with_user_index)             | Set `user_index` from a value. |
+| [`with_query_user_index`](../methods/single-signer/with_query_user_index) | Set `user_index` by querying the account factory. |
+| [`with_nonce`](../methods/single-signer/with_nonce)                       | Set `nonce` from a value. |
+| [`with_query_nonce`](../methods/single-signer/with_query_nonce)           | Set `nonce` by querying the account. |
+
+### Queries (all states)
+
+| Method | Description |
+|--------|-------------|
+| [`query_user_index`](../methods/single-signer/query_user_index) | Fetch this address's `UserIndex` from the account factory. |
+| [`query_next_nonce`](../methods/single-signer/query_next_nonce) | Fetch the next unused `Nonce`. |
+
+### Accessors
+
+| Method | Description |
+|--------|-------------|
+| `user_index() -> UserIndex` | Only on `I = Defined<UserIndex>`. |
+| `nonce() -> Nonce`          | Only on `N = Defined<Nonce>`. |
+
+### Trait impls
+
+| Trait | Where | Methods |
+|-------|-------|---------|
+| `Addressable`  | all states | `address()` |
+| `Signer`  | `Defined<UserIndex> + Defined<Nonce>` | [`unsigned_transaction`](../methods/single-signer/unsigned_transaction), [`sign_transaction`](../methods/single-signer/sign_transaction) |
+| `SequencedSigner` (`dango_types::signer`) | `Defined<Nonce>` | [`query_nonce`](../methods/single-signer/query_nonce), [`update_nonce`](../methods/single-signer/update_nonce) |
+
+## End-to-end example
+
+```rust
+use {
+    anyhow::Result,
+    dango_sdk::{HttpClient, Secp256k1, Secret, SingleSigner},
+    dango_primitives::{Addr, BroadcastClient, Coins, Message, NonEmpty, QueryClient, Signer},
+    std::str::FromStr,
+};
+
+#[tokio::main]
+async fn main() -> Result<()> {
+    let http   = HttpClient::new("https://api-mainnet.dango.zone")?;
+    let secret = Secp256k1::from_bytes([0u8; 32])?;
+    let addr   = Addr::from_str("0x0000000000000000000000000000000000000000")?;
+
+    let mut signer = SingleSigner::new(addr, secret)
+        .with_query_user_index(&http).await?
+        .with_query_nonce(&http).await?;
+
+    let messages = NonEmpty::new(vec![
+        Message::transfer(
+            Addr::from_str("0x1111111111111111111111111111111111111111")?,
+            Coins::one("bridge/usdc", 100_000_000_u128)?,
+        )?,
+    ])?;
+
+    let unsigned = signer.unsigned_transaction(messages.clone(), "dango-1")?;
+    let gas      = http.simulate(unsigned).await?.gas_used as u64;
+
+    let tx = signer.sign_transaction(messages, "dango-1", gas * 3 / 2)?;
+    let outcome = http.broadcast_tx(tx).await?;
+    println!("hash: {}", outcome.tx_hash);
+    Ok(())
+}
+```
+
+## Notes
+
+- `sign_transaction` mutates `self.nonce` (`*self.nonce.inner_mut() += 1`) on every success. A single signer instance can produce a stream of consecutive transactions without re-querying. After a broadcast failure, call `SequencedSigner::update_nonce` to resync.
+- `new_first_address_available` calls `QueryForgotUsernameRequest` with `limit: Some(1)`. It returns the first user-index associated with `secret.key_hash()`, regardless of forgotten-username state. Errors with `"no user index found for key hash …"` when nothing matches.
+- `DEFAULT_DERIVATION_PATH` is `m/44'/60'/0'/0/0` (Ethereum coin type). Use it when constructing `Secret::from_mnemonic` with `coin_type = 60`.
+
+## See also
+
+- [`Secret`](../traits/Secret) — the trait that supplies private keys.
+- [Concepts: Signers and authentication](../../concepts/signers-and-authentication) — the full mental model.
+- [Concepts: Transactions](../../concepts/transactions) — end-to-end signing and broadcast.

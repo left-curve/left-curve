@@ -1,10 +1,8 @@
 use {
-    dango_testing::setup_test_naive,
+    dango_math::{MultiplyFraction, Udec128, Uint128},
+    dango_primitives::{Addressable, Coins, Inner, ResultExt, btree_map},
+    dango_testing::{BalanceChange, setup_test_naive},
     dango_types::{constants::usdc, taxman},
-    grug::{
-        Addressable, BalanceChange, Coins, Inner, MultiplyFraction, ResultExt, Udec128, Uint128,
-        btree_map,
-    },
 };
 
 const OLD_FEE_RATE: Udec128 = Udec128::new_percent(1); // 0.01 uusdc per gas unit

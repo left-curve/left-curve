@@ -1,5 +1,11 @@
 use {
     crate::{TestSuite, create_signature},
+    dango_app::{AppError, Db, Indexer, ProposalPreparer, Vm},
+    dango_primitives::{
+        Addr, Addressable, Coins, Defined, Duration, Hash256, HashExt, Json, JsonSerExt,
+        MaybeDefined, Message, NonEmpty, QuerierExt, QuerierWrapper, QueryClient, QueryClientExt,
+        ResultExt, SignData, Signer, StdError, StdResult, Tx, Undefined, UnsignedTx, btree_map,
+    },
     dango_types::{
         DangoQuerier, account,
         account_factory::{
@@ -9,12 +15,6 @@ use {
         auth::{Credential, Key, Metadata, Nonce, SignDoc, Signature, StandardCredential},
         signer::SequencedSigner,
     },
-    grug::{
-        Addr, Addressable, Coins, Defined, Duration, Hash256, HashExt, Json, JsonSerExt,
-        MaybeDefined, Message, NonEmpty, QuerierExt, QuerierWrapper, QueryClient, QueryClientExt,
-        ResultExt, SignData, Signer, StdError, StdResult, Tx, Undefined, UnsignedTx, btree_map,
-    },
-    grug_app::{AppError, Db, Indexer, ProposalPreparer, Vm},
     k256::{ecdsa::SigningKey, elliptic_curve::rand_core::OsRng},
     sha2::Sha256,
     std::{array, collections::BTreeMap},
@@ -303,9 +303,9 @@ where
     A: MaybeDefined<Addr>,
 {
     /// Register the user
-    pub async fn register_user<PP, DB, VM, ID>(
+    pub async fn register_user<DB, VM, PP, ID>(
         &self,
-        test_suite: &mut TestSuite<PP, DB, VM, ID>,
+        test_suite: &mut TestSuite<DB, VM, PP, ID>,
         factory: Addr,
         funds: Coins,
     ) where
@@ -350,9 +350,9 @@ where
 {
     /// Register a new account with the user index and key of this account and returns a new
     /// `TestAccount` with the new account's address.
-    pub async fn register_new_account<PP, DB, VM, ID>(
+    pub async fn register_new_account<DB, VM, PP, ID>(
         &mut self,
-        test_suite: &mut TestSuite<PP, DB, VM, ID>,
+        test_suite: &mut TestSuite<DB, VM, PP, ID>,
         factory: Addr,
         funds: Coins,
     ) -> StdResult<TestAccount>

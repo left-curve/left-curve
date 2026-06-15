@@ -2,7 +2,7 @@ import { useQueries, useQuery } from "@tanstack/react-query";
 import { usePublicClient } from "../usePublicClient.js";
 import { usePrices } from "../usePrices.js";
 
-import type { Address, Coins, User, UserStatus } from "@left-curve/dango/types";
+import type { Address, Coins, PublicKey, User, UserStatus } from "@left-curve/types";
 
 export type AccountWithDetails = {
   address: Address;
@@ -18,6 +18,7 @@ export type ExplorerUserData = {
   aggregatedBalances: Coins;
   totalValue: string;
   totalAccounts: number;
+  keys: PublicKey[];
 };
 
 export function useExplorerUser(username: string) {
@@ -34,6 +35,12 @@ export function useExplorerUser(username: string) {
       }
     },
     enabled: !!username,
+  });
+
+  const keysQuery = useQuery<PublicKey[]>({
+    queryKey: ["explorer_user_keys", userQuery.data?.index],
+    queryFn: () => client.getUserKeys({ userIndex: userQuery.data!.index }),
+    enabled: !!userQuery.data,
   });
 
   const accountAddresses = userQuery.data ? Object.values(userQuery.data.accounts) : [];
@@ -83,9 +90,10 @@ export function useExplorerUser(username: string) {
           aggregatedBalances,
           totalValue,
           totalAccounts: accountAddresses.length,
+          keys: keysQuery.data ?? [],
         } satisfies ExplorerUserData)
       : null,
-    isLoading: userQuery.isLoading || isAccountsLoading,
+    isLoading: userQuery.isLoading || isAccountsLoading || keysQuery.isLoading,
     isNotFound: !userQuery.isLoading && !userQuery.data,
     error: userQuery.error,
   };

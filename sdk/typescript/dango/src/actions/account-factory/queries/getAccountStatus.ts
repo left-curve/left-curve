@@ -1,7 +1,6 @@
-import { queryWasmSmart } from "@left-curve/sdk";
+import { queryWasmSmart } from "#actions/app/queries/queryWasmSmart.js";
 
-import type { Address, Chain, Client, Signer, Transport } from "@left-curve/sdk/types";
-import type { UserStatus } from "../../../types/account.js";
+import type { Address, Client, UserStatus } from "@left-curve/types";
 
 export type GetAccountStatusParameters = {
   address: Address;
@@ -10,11 +9,8 @@ export type GetAccountStatusParameters = {
 
 export type GetAccountStatusReturnType = Promise<UserStatus>;
 
-export async function getAccountStatus<
-  chain extends Chain | undefined,
-  signer extends Signer | undefined,
->(
-  client: Client<Transport, chain, signer>,
+export async function getAccountStatus(
+  client: Client,
   parameters: GetAccountStatusParameters,
 ): GetAccountStatusReturnType {
   const { address, height = 0 } = parameters;

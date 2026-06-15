@@ -1,0 +1,63 @@
+# HttpRequestError
+
+Thrown when a GraphQL HTTP request fails — non-2xx response, network failure, or GraphQL errors.
+
+## Definition
+
+```ts
+class HttpRequestError extends BaseError {
+  override name: string            // "HttpRequestError"
+  body?: object | object[]
+  headers?: Headers
+  status?: number
+  url: string
+
+  constructor(args: {
+    body?: object | object[]
+    cause?: Error
+    details?: string
+    headers?: Headers
+    status?: number
+    url: string
+  })
+}
+```
+
+## Fields
+
+**`url`** — `string`. The URL that failed.
+
+**`status`** — `number | undefined`. HTTP status code, when available.
+
+**`headers`** — `Headers | undefined`. Response headers, when available.
+
+**`body`** — `object | object[] | undefined`. The GraphQL operation body sent.
+
+Inherits `shortMessage`, `details`, `metaMessages`, `name` from [`BaseError`](./BaseError).
+
+## Construction
+
+The transport throws this internally — typically you only catch it:
+
+```ts
+try {
+  await client.queryStatus()
+} catch (err) {
+  if (err instanceof Error && err.name === "HttpRequestError") {
+    const e = err as Error & { url: string; status?: number }
+    console.error(`HTTP ${e.status ?? "?"} at ${e.url}`)
+  } else {
+    throw err
+  }
+}
+```
+
+## Notes
+
+- Thrown by the `createTransport` request handler when `errors[]` is non-empty in the GraphQL response, or when the underlying HTTP request fails outright.
+
+## See also
+
+- [`TimeoutError`](./TimeoutError)
+- [`BaseError`](./BaseError)
+- [Concepts: Error Handling](../concepts/error-handling)

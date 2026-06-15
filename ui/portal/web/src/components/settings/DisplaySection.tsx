@@ -19,7 +19,7 @@ import { getLocale, locales, setLocale } from "@left-curve/foundation/paraglide/
 
 import { SettingSelect } from "./SettingSelect";
 
-import type { FormatNumberOptions } from "@left-curve/dango/utils";
+import type { FormatNumberOptions } from "@left-curve/utils";
 import type { PropsWithChildren } from "react";
 import type React from "react";
 import type { AppState } from "@left-curve/applets-kit";

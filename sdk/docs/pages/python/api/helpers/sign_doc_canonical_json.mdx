@@ -1,0 +1,36 @@
+# sign_doc_canonical_json
+
+Encode a `SignDoc` as canonical JSON: recursive `sort_keys`, no whitespace, drops `None` from `data`.
+
+## Signature
+
+```python
+def sign_doc_canonical_json(sign_doc: SignDoc) -> bytes
+```
+
+## Example
+
+```python
+from dango.utils.signing import sign_doc_canonical_json
+from dango.utils.types import SignDoc
+
+raw = sign_doc_canonical_json(sign_doc)
+print(raw.decode("utf-8"))
+```
+
+## Parameters
+
+**`sign_doc`** — `SignDoc`. The TypedDict with `sender`, `gas_limit`, `messages`, `data`.
+
+## Returns
+
+**`bytes`** — UTF-8 encoded JSON with sorted keys (recursively) and no whitespace. `None` values in `data` are dropped to match the chain's canonical form (the chain's `Metadata` struct uses `skip_serializing_none`).
+
+## Notes
+
+- Mirrors `dango_primitives::SignData::to_prehash_sign_data` exactly. Hand to [`sign_doc_sha256`](./sign_doc_sha256) for the 32-byte digest.
+
+## See also
+
+- [`sign_doc_sha256`](./sign_doc_sha256) — the SHA-256 digest of this output
+- [Concepts: Signers & Authentication](../../concepts/signers) — what gets signed

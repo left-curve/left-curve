@@ -2,11 +2,8 @@ import {
   useAccount,
   useActivities,
   useBalances,
-  useOrdersByUser,
   usePerpsUserState,
-  perpsUserStateStore,
   usePerpsUserStateExtended,
-  perpsUserStateExtendedStore,
   usePerpsVaultUserShares,
   usePrices,
   useSessionKey,
@@ -46,11 +43,9 @@ import { CountBadge } from "./CountBadge";
 import { EmptyPlaceholder } from "./EmptyPlaceholder";
 import { Activities } from "../activities/Activities";
 
-import { Direction } from "@left-curve/dango/types";
-
 import type React from "react";
-import type { Coins } from "@left-curve/dango/types";
-import { Decimal, formatNumber } from "@left-curve/dango/utils";
+import type { Coins } from "@left-curve/types";
+import { Decimal, formatNumber } from "@left-curve/utils";
 
 const [AccountMenuProvider, useAccountMenu] = createContext<{
   balances: Coins;
@@ -58,45 +53,25 @@ const [AccountMenuProvider, useAccountMenu] = createContext<{
 }>();
 
 const Container: React.FC = () => {
-  const { settings } = useApp();
+  const { settings, isSidebarVisible } = useApp();
   const { isLg } = useMediaQuery();
   const { account } = useAccount();
   const { calculateBalance } = usePrices();
-  usePerpsUserState();
-  usePerpsUserStateExtended();
-  const perpsEquity = perpsUserStateExtendedStore((s) => s.equity) ?? "0";
-  const { userSharesValue } = usePerpsVaultUserShares();
+  const perpsEquity = usePerpsUserStateExtended((s) => s.equity ?? "0", {
+    accountAddress: account?.address,
+    enabled: isSidebarVisible && !!account,
+  });
+  const { userSharesValue } = usePerpsVaultUserShares({
+    accountAddress: account?.address,
+    enabled: isSidebarVisible && !!account,
+  });
 
   const { formatNumberOptions } = settings;
 
   const { data: balances = {} } = useBalances({ address: account?.address });
 
-  const { data: orders = [] } = useOrdersByUser();
-
-  const allBalances = useMemo(() => {
-    if (!orders.length) return balances;
-    return orders.reduce(
-      (acc, order) => {
-        const { baseDenom, quoteDenom, price, direction, remaining } = order;
-        if (direction === Direction.Buy) {
-          // remaining is in base units; convert to quote units using the order's price
-          const quoteAmount = Decimal(remaining).mul(price).toFixed();
-          acc[quoteDenom] = Decimal(acc[quoteDenom] || "0")
-            .plus(quoteAmount)
-            .toFixed();
-        } else {
-          acc[baseDenom] = Decimal(acc[baseDenom] || "0")
-            .plus(remaining)
-            .toFixed();
-        }
-        return acc;
-      },
-      { ...balances },
-    );
-  }, [balances, orders]);
-
   const totalBalance = useMemo(() => {
-    const spotValue = calculateBalance(allBalances, { format: false });
+    const spotValue = calculateBalance(balances, { format: false });
     const totalValue = Decimal(spotValue)
       .plus(perpsEquity || "0")
       .plus(userSharesValue || "0")
@@ -105,10 +80,10 @@ const Container: React.FC = () => {
       ...formatNumberOptions,
       currency: "USD",
     });
-  }, [allBalances, perpsEquity, userSharesValue]);
+  }, [balances, perpsEquity, userSharesValue]);
 
   return (
-    <AccountMenuProvider value={{ balances: allBalances, totalBalance }}>
+    <AccountMenuProvider value={{ balances, totalBalance }}>
       <AnimatePresence>{isLg ? <Desktop /> : <Mobile />}</AnimatePresence>
     </AccountMenuProvider>
   );
@@ -342,10 +317,19 @@ const SectionHeader: React.FC<{ title: string }> = ({ title }) => (
 
 export const WalletTab: React.FC = () => {
   const context = useAccountMenu();
+  const { isSidebarVisible } = useApp();
+  const { account } = useAccount();
   const balances = Object.entries(context.balances);
   const { calculateBalance } = usePrices();
-  const perpsState = perpsUserStateStore((s) => s.userState);
-  const { userVaultShares, userSharesValue } = usePerpsVaultUserShares();
+  const isLiveAccountEnabled = isSidebarVisible && !!account;
+  const perpsState = usePerpsUserState((s) => s.userState, {
+    accountAddress: account?.address,
+    enabled: isLiveAccountEnabled,
+  });
+  const { userVaultShares, userSharesValue } = usePerpsVaultUserShares({
+    accountAddress: account?.address,
+    enabled: isLiveAccountEnabled,
+  });
 
   const sortedBalances = useMemo(() => {
     return balances.sort(([denomA, amountA], [denomB, amountB]) => {

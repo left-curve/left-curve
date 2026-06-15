@@ -1,0 +1,59 @@
+# SingleSigner::with_query_nonce
+
+Fetch the next unused nonce from the account and return a `SingleSigner` with `nonce` defined.
+
+## Signature
+
+```rust
+impl<S: Secret, I: MaybeDefined<UserIndex>> SingleSigner<S, I, Undefined<Nonce>> {
+    pub async fn with_query_nonce<C>(
+        self,
+        client: &C,
+    ) -> anyhow::Result<SingleSigner<S, I, Defined<Nonce>>>
+    where
+        C: QueryClient,
+        anyhow::Error: From<C::Error>;
+}
+```
+
+## Example
+
+```rust
+use {
+    anyhow::Result,
+    dango_sdk::{HttpClient, Secp256k1, SingleSigner},
+    dango_primitives::Addr,
+    std::str::FromStr,
+};
+
+#[tokio::main]
+async fn main() -> Result<()> {
+    let http = HttpClient::new("https://api-mainnet.dango.zone")?;
+    let signer = SingleSigner::new(
+        Addr::from_str("0x0000000000000000000000000000000000000000")?,
+        Secp256k1::new_random(),
+    )
+    .with_query_user_index(&http).await?
+    .with_query_nonce(&http).await?;
+    let _ = signer;
+    Ok(())
+}
+```
+
+## Parameters
+
+**`client`** — `&C` implementing `QueryClient`.
+
+## Returns
+
+**`SingleSigner<S, I, Defined<Nonce>>`** — the same signer with the nonce populated from the chain.
+
+## Notes
+
+- Reads `QuerySeenNoncesRequest` on the account contract; returns `last_seen + 1`, or `0` if the account has never signed.
+- Errors propagate from `QueryClient::Error` via `anyhow::Error: From<C::Error>`.
+
+## See also
+
+- [`with_nonce`](./with_nonce) — synchronous variant.
+- [`query_next_nonce`](./query_next_nonce) — same query without consuming `self`.

@@ -1,0 +1,44 @@
+# Info.user_fills_by_time (HL-compat)
+
+HL `userFillsByTime` — fills in a time range.
+
+## Signature
+
+```python
+def user_fills_by_time(
+    self,
+    addr: str,
+    start: int,
+    end: int | None = None,
+) -> list[Fill]
+```
+
+## Example
+
+```python
+from dango.hyperliquid_compatibility.info import Info
+
+info = Info(base_url="https://...")
+fills = info.user_fills_by_time("0x...", start=1700000000000, end=1700001000000)
+```
+
+## Parameters
+
+**`addr`** — `str`. The user's account address.
+
+**`start`** — `int`. Lower bound, milliseconds since Unix epoch.
+
+**`end`** — `int | None`, optional. Upper bound. Default: `None` (no upper bound).
+
+## Returns
+
+**`list[Fill]`** — flat list of fills in the time range.
+
+## Notes
+
+- The wrapper iterates `perps_events_all` newest-first (`BLOCK_HEIGHT_DESC`) and breaks as soon as an event's `createdAt < start`. On a high-volume user this avoids paginating the entire history.
+
+## See also
+
+- [`user_fills`](./user_fills) — no time filter
+- [Native `perps_events_all`](../../../api/methods/info/perps_events_all)

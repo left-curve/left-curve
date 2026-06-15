@@ -1,7 +1,8 @@
 import type { Page } from "@playwright/test";
 
 /**
- * Get a value from IndexedDB storage used by Zustand persist
+ * Get a value from persisted storage used by Zustand persist.
+ * Web uses IndexedDB via idb-keyval; some tests may still seed localStorage directly.
  * The app uses "leftcurve" as the database name and "dango" as the store name
  * Keys are prefixed with "dango." (e.g., "app.settings" -> "dango.app.settings")
  * Data is stored as JSON string in format: { state: { value: T, ... }, version: number }
@@ -9,6 +10,20 @@ import type { Page } from "@playwright/test";
 export async function getIndexedDBValue<T>(page: Page, key: string): Promise<T | null> {
   // Add the "dango." prefix that createAsyncStorage uses
   const prefixedKey = `dango.${key}`;
+
+  const localStorageValue = await page.evaluate((storageKey) => {
+    const result = window.localStorage.getItem(storageKey);
+    if (!result) return null;
+
+    try {
+      const parsed = JSON.parse(result);
+      return (parsed?.json ?? parsed)?.state?.value ?? null;
+    } catch {
+      return null;
+    }
+  }, prefixedKey);
+
+  if (localStorageValue !== null) return localStorageValue as T;
 
   return await page.evaluate(async (storageKey) => {
     return new Promise((resolve) => {
@@ -40,7 +55,8 @@ export async function getIndexedDBValue<T>(page: Page, key: string): Promise<T |
             }
 
             // Zustand persist stores: { state: { value: T, ... }, version: number }
-            resolve(parsed?.state?.value ?? null);
+            const decoded = parsed?.json ?? parsed;
+            resolve(decoded?.state?.value ?? null);
           };
 
           getRequest.onerror = () => resolve(null);
@@ -67,18 +83,16 @@ export async function getAppliedTheme(page: Page): Promise<string> {
 }
 
 /**
- * Get stored favorites from IndexedDB
+ * Get stored favorites from persisted storage.
  */
 export async function getStoredFavorites(page: Page): Promise<string[]> {
   return (await getIndexedDBValue<string[]>(page, "app.applets")) ?? [];
 }
 
 /**
- * Get stored settings from IndexedDB
+ * Get stored settings from persisted storage.
  */
-export async function getStoredSettings(
-  page: Page,
-): Promise<Record<string, unknown> | null> {
+export async function getStoredSettings(page: Page): Promise<Record<string, unknown> | null> {
   return await getIndexedDBValue(page, "app.settings");
 }
 

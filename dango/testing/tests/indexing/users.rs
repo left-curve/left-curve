@@ -1,17 +1,17 @@
 use {
     assertor::*,
+    dango_app::Indexer,
+    dango_indexer_sql::entity,
     dango_testing::{
         HyperlaneTestSuite, TestOption, add_user_public_key, create_user_and_account,
         setup_test_with_indexer,
     },
-    grug_app::Indexer,
-    indexer_sql::entity,
     sea_orm::EntityTrait,
 };
 
 #[tokio::test(flavor = "multi_thread")]
 async fn index_single_user_multiple_public_keys() -> anyhow::Result<()> {
-    let (suite, mut accounts, codes, contracts, validator_sets, _, dango_context, _, _db_guard) =
+    let (suite, mut accounts, codes, contracts, validator_sets, dango_context, _, _, _db_guard) =
         setup_test_with_indexer(TestOption::default()).await;
     let mut suite = HyperlaneTestSuite::new(suite, validator_sets, &contracts);
 
@@ -23,8 +23,8 @@ async fn index_single_user_multiple_public_keys() -> anyhow::Result<()> {
     suite.app.indexer.wait_for_finish().await?;
 
     let users_and_public_keys: Vec<(entity::users::Model, Vec<entity::public_keys::Model>)> =
-        indexer_sql::entity::users::Entity::find()
-            .find_with_related(indexer_sql::entity::public_keys::Entity)
+        dango_indexer_sql::entity::users::Entity::find()
+            .find_with_related(dango_indexer_sql::entity::public_keys::Entity)
             .all(&dango_context.db)
             .await?;
 

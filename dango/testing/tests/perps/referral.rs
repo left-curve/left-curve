@@ -1,23 +1,25 @@
 use {
     crate::{default_pair_param, default_param},
+    dango_math::Uint128,
     dango_order_book::{Dimensionless, OrderKind, Quantity, TimeInForce, UsdPrice, UsdValue},
-    dango_testing::{Factory, Preset, TestAccount, TestOption, perps::pair_id, setup_test_naive},
+    dango_primitives::{
+        Addr, Addressable, CheckedContractEvent, Coins, Duration, HashExt, JsonDeExt, Op,
+        Order as IterationOrder, QuerierExt, ResultExt, SearchEvent, Signer, Timestamp, TxEvents,
+        TxOutcome, btree_map,
+    },
+    dango_testing::{
+        Factory, OracleTestEntry, Preset, TestAccount, TestOption, TestSuiteNaive, pair_id,
+        setup_test_naive,
+    },
     dango_types::{
         account_factory::{self, RegisterUserData},
         constants::usdc,
-        oracle::{self, PriceSource},
         perps::{
             self, CommissionRate, FeeDistributed, FeeShareRatio, QueryParamRequest, RateSchedule,
             Referee, ReferrerSettings, ReferrerStatsOrderBy, ReferrerStatsOrderIndex,
             UserReferralData,
         },
     },
-    grug::{
-        Addr, Addressable, CheckedContractEvent, Coins, HashExt, JsonDeExt, NumberConst, Op,
-        Order as IterationOrder, QuerierExt, ResultExt, SearchEvent, Signer, Timestamp, TxOutcome,
-        Udec128, Uint128, btree_map,
-    },
-    grug_app::NaiveProposalPreparer,
 };
 
 // ---------------------------------------------------------------------------
@@ -470,7 +472,7 @@ async fn set_share_ratio_aggregates_volume_across_accounts() {
         .should_succeed();
 
     // Register oracle prices: ETH = $1,000.
-    register_oracle_prices(&mut suite, &mut accounts, &contracts, 1_000).await;
+    register_oracle_prices(&mut suite, &mut accounts, 1_000).await;
 
     // Create a second account for user1 (same user_index, different address).
     let mut user1_account2 = accounts
@@ -536,7 +538,7 @@ async fn set_share_ratio_aggregates_volume_across_accounts() {
 async fn referral_active_flag() {
     let (mut suite, mut accounts, _, contracts, ..) = setup_test_naive(TestOption::preset_test());
 
-    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000).await;
+    register_oracle_prices(&mut suite, &mut accounts, 2_000).await;
     deposit_margin(&mut suite, contracts.perps, &mut accounts.user1, 100_000).await;
     deposit_margin(&mut suite, contracts.perps, &mut accounts.user2, 100_000).await;
     deposit_margin(&mut suite, contracts.perps, &mut accounts.user8, 100_000).await;
@@ -699,7 +701,7 @@ async fn commission_rate_override() {
         .await
         .should_succeed();
 
-    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000).await;
+    register_oracle_prices(&mut suite, &mut accounts, 2_000).await;
     deposit_margin(&mut suite, contracts.perps, &mut accounts.user1, 100_000).await;
     deposit_margin(&mut suite, contracts.perps, &mut accounts.user2, 100_000).await;
 
@@ -793,7 +795,7 @@ async fn commission_rate_override() {
 async fn referrer_stats() {
     let (mut suite, mut accounts, _, contracts, ..) = setup_test_naive(TestOption::preset_test());
 
-    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000).await;
+    register_oracle_prices(&mut suite, &mut accounts, 2_000).await;
     deposit_margin(&mut suite, contracts.perps, &mut accounts.user1, 100_000).await;
     deposit_margin(&mut suite, contracts.perps, &mut accounts.user2, 100_000).await;
     deposit_margin(&mut suite, contracts.perps, &mut accounts.user3, 100_000).await;
@@ -943,7 +945,7 @@ async fn commission_rate_margins() {
         .query_wasm_smart(contracts.perps, QueryParamRequest {})
         .unwrap();
 
-    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000).await;
+    register_oracle_prices(&mut suite, &mut accounts, 2_000).await;
 
     // Deposit margin for user8 (maker) and all referee/referrer users.
     deposit_margin(&mut suite, contracts.perps, &mut accounts.user1, 100_000).await;
@@ -1308,7 +1310,7 @@ async fn referee_count() {
 async fn active_referral() {
     let (mut suite, mut accounts, _, contracts, ..) = setup_test_naive(TestOption::preset_test());
 
-    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000).await;
+    register_oracle_prices(&mut suite, &mut accounts, 2_000).await;
     deposit_margin(&mut suite, contracts.perps, &mut accounts.user1, 100_000).await;
     deposit_margin(&mut suite, contracts.perps, &mut accounts.user2, 100_000).await;
     deposit_margin(&mut suite, contracts.perps, &mut accounts.user3, 100_000).await;
@@ -1381,7 +1383,7 @@ async fn active_referral() {
 
     // Next day, User2 trades — cumulative_daily_active_referees should be 3 (cumulative),
     // but cumulative_global_active_referees stays at 2 (User2 already traded before).
-    suite.block_time = grug::Duration::from_days(1);
+    suite.block_time = Duration::from_days(1);
     suite.make_empty_block().await;
 
     create_perps_fill(&mut suite, &mut accounts, contracts.perps, 2_000, 1).await;
@@ -1399,7 +1401,7 @@ async fn active_referral() {
 async fn negative_maker_fee_does_not_debit_referrers() {
     let (mut suite, mut accounts, _, contracts, ..) = setup_test_naive(TestOption::preset_test());
 
-    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000).await;
+    register_oracle_prices(&mut suite, &mut accounts, 2_000).await;
 
     let pair = pair_id();
 
@@ -1426,7 +1428,7 @@ async fn negative_maker_fee_does_not_debit_referrers() {
                     referral_active: true,
                     ..default_param()
                 },
-                pair_params: grug::btree_map! {
+                pair_params: btree_map! {
                     pair.clone() => default_pair_param(),
                 },
             }),
@@ -1607,7 +1609,7 @@ async fn fee_distributed_event_without_referrer() {
         .await
         .should_succeed();
 
-    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000).await;
+    register_oracle_prices(&mut suite, &mut accounts, 2_000).await;
     deposit_margin(&mut suite, contracts.perps, &mut accounts.user1, 100_000).await;
     deposit_margin(&mut suite, contracts.perps, &mut accounts.user2, 100_000).await;
 
@@ -1689,7 +1691,7 @@ async fn fee_distributed_event_with_referrer() {
         .await
         .should_succeed();
 
-    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000).await;
+    register_oracle_prices(&mut suite, &mut accounts, 2_000).await;
     deposit_margin(&mut suite, contracts.perps, &mut accounts.user1, 100_000).await;
     deposit_margin(&mut suite, contracts.perps, &mut accounts.user2, 100_000).await;
     deposit_margin(&mut suite, contracts.perps, &mut accounts.user8, 100_000).await;
@@ -1818,7 +1820,7 @@ async fn fee_distributed_event_with_referrer_without_share_ratio() {
         .await
         .should_succeed();
 
-    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000).await;
+    register_oracle_prices(&mut suite, &mut accounts, 2_000).await;
     deposit_margin(&mut suite, contracts.perps, &mut accounts.user1, 100_000).await;
     deposit_margin(&mut suite, contracts.perps, &mut accounts.user2, 100_000).await;
     deposit_margin(&mut suite, contracts.perps, &mut accounts.user8, 100_000).await;
@@ -1933,7 +1935,7 @@ async fn cr_100_direct_referrer_taker() {
         .query_wasm_smart(contracts.perps, QueryParamRequest {})
         .unwrap();
 
-    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000).await;
+    register_oracle_prices(&mut suite, &mut accounts, 2_000).await;
     deposit_margin(&mut suite, contracts.perps, &mut accounts.user1, 100_000).await;
     deposit_margin(&mut suite, contracts.perps, &mut accounts.user3, 100_000).await;
     deposit_margin(&mut suite, contracts.perps, &mut accounts.user4, 100_000).await;
@@ -2021,7 +2023,7 @@ async fn cr_100_indirect_referrer_taker() {
         .query_wasm_smart(contracts.perps, QueryParamRequest {})
         .unwrap();
 
-    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000).await;
+    register_oracle_prices(&mut suite, &mut accounts, 2_000).await;
     deposit_margin(&mut suite, contracts.perps, &mut accounts.user1, 100_000).await;
     deposit_margin(&mut suite, contracts.perps, &mut accounts.user2, 100_000).await;
     deposit_margin(&mut suite, contracts.perps, &mut accounts.user3, 100_000).await;
@@ -2202,7 +2204,7 @@ async fn cr_100_direct_referrer_maker_positive_fee() {
         .await
         .should_succeed();
 
-    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000).await;
+    register_oracle_prices(&mut suite, &mut accounts, 2_000).await;
     deposit_margin(&mut suite, contracts.perps, &mut accounts.user1, 100_000).await;
     deposit_margin(&mut suite, contracts.perps, &mut accounts.user3, 100_000).await;
     deposit_margin(&mut suite, contracts.perps, &mut accounts.user4, 100_000).await;
@@ -2312,7 +2314,7 @@ async fn cr_100_indirect_referrer_maker_positive_fee() {
         .await
         .should_succeed();
 
-    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000).await;
+    register_oracle_prices(&mut suite, &mut accounts, 2_000).await;
     deposit_margin(&mut suite, contracts.perps, &mut accounts.user1, 100_000).await;
     deposit_margin(&mut suite, contracts.perps, &mut accounts.user2, 100_000).await;
     deposit_margin(&mut suite, contracts.perps, &mut accounts.user3, 100_000).await;
@@ -2451,7 +2453,7 @@ async fn cr_100_direct_referrer_maker_rebate() {
         .await
         .should_succeed();
 
-    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000).await;
+    register_oracle_prices(&mut suite, &mut accounts, 2_000).await;
     deposit_margin(&mut suite, contracts.perps, &mut accounts.user1, 100_000).await;
     deposit_margin(&mut suite, contracts.perps, &mut accounts.user3, 100_000).await;
     deposit_margin(&mut suite, contracts.perps, &mut accounts.user4, 100_000).await;
@@ -2549,7 +2551,7 @@ async fn cr_100_indirect_referrer_maker_rebate() {
         .await
         .should_succeed();
 
-    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000).await;
+    register_oracle_prices(&mut suite, &mut accounts, 2_000).await;
     deposit_margin(&mut suite, contracts.perps, &mut accounts.user1, 100_000).await;
     deposit_margin(&mut suite, contracts.perps, &mut accounts.user2, 100_000).await;
     deposit_margin(&mut suite, contracts.perps, &mut accounts.user3, 100_000).await;
@@ -2645,7 +2647,7 @@ async fn cr_100_indirect_referrer_maker_rebate() {
 // ---------------------------------------------------------------------------
 
 async fn set_fee_share_ratio(
-    suite: &mut dango_testing::TestSuite<NaiveProposalPreparer>,
+    suite: &mut TestSuiteNaive,
     perps: Addr,
     user: &mut (dyn Signer + Send + Sync),
     ratio: FeeShareRatio,
@@ -2663,7 +2665,7 @@ async fn set_fee_share_ratio(
 }
 
 async fn set_commission_rate_override(
-    suite: &mut dango_testing::TestSuite<NaiveProposalPreparer>,
+    suite: &mut TestSuiteNaive,
     perps: Addr,
     owner: &mut (dyn Signer + Send + Sync),
     user: u32,
@@ -2682,11 +2684,7 @@ async fn set_commission_rate_override(
         .await
 }
 
-fn snapshot_margins(
-    suite: &dango_testing::TestSuite<NaiveProposalPreparer>,
-    perps: Addr,
-    addrs: &[Addr],
-) -> Vec<UsdValue> {
+fn snapshot_margins(suite: &TestSuiteNaive, perps: Addr, addrs: &[Addr]) -> Vec<UsdValue> {
     addrs
         .iter()
         .map(|addr| {
@@ -2700,35 +2698,26 @@ fn snapshot_margins(
 }
 
 async fn register_oracle_prices(
-    suite: &mut dango_testing::TestSuite<NaiveProposalPreparer>,
+    suite: &mut TestSuiteNaive,
     accounts: &mut dango_testing::TestAccounts,
-    contracts: &dango_genesis::Contracts,
     eth_price: u128,
 ) {
     suite
-        .execute(
-            &mut accounts.owner,
-            contracts.oracle,
-            &oracle::ExecuteMsg::RegisterPriceSources(btree_map! {
-                usdc::DENOM.clone() => PriceSource::Fixed {
-                    humanized_price: Udec128::ONE,
-                    precision: usdc::DECIMAL as u8,
-                    timestamp: Timestamp::from_nanos(u128::MAX),
-                },
-                dango_testing::perps::pair_id() => PriceSource::Fixed {
-                    humanized_price: Udec128::new(eth_price),
-                    precision: 0,
-                    timestamp: Timestamp::from_nanos(u128::MAX),
-                },
-            }),
-            Coins::new(),
-        )
-        .await
-        .should_succeed();
+        .seed_oracle_prices(&mut accounts.owner, btree_map! {
+            usdc::DENOM.clone() => OracleTestEntry {
+                pyth_id: 1,
+                humanized_price: UsdPrice::new_int(1),
+            },
+            pair_id() => OracleTestEntry {
+                pyth_id: 2,
+                humanized_price: UsdPrice::new_int(eth_price as i128),
+            },
+        })
+        .await;
 }
 
 async fn deposit_margin(
-    suite: &mut dango_testing::TestSuite<NaiveProposalPreparer>,
+    suite: &mut TestSuiteNaive,
     perps: Addr,
     user: &mut (dyn Signer + Send + Sync),
     usd_amount: u128,
@@ -2746,7 +2735,7 @@ async fn deposit_margin(
 }
 
 async fn place_ask_order(
-    suite: &mut dango_testing::TestSuite<NaiveProposalPreparer>,
+    suite: &mut TestSuiteNaive,
     perps: Addr,
     user: &mut (dyn Signer + Send + Sync),
     price: UsdPrice,
@@ -2757,7 +2746,7 @@ async fn place_ask_order(
             user,
             perps,
             &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
-                pair_id: dango_testing::perps::pair_id(),
+                pair_id: pair_id(),
                 size: Quantity::new_int(-(size as i128)),
                 kind: OrderKind::Limit {
                     limit_price: price,
@@ -2775,7 +2764,7 @@ async fn place_ask_order(
 }
 
 async fn place_market_buy(
-    suite: &mut dango_testing::TestSuite<NaiveProposalPreparer>,
+    suite: &mut TestSuiteNaive,
     perps: Addr,
     user: &mut (dyn Signer + Send + Sync),
     size: u128,
@@ -2785,7 +2774,7 @@ async fn place_market_buy(
             user,
             perps,
             &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
-                pair_id: dango_testing::perps::pair_id(),
+                pair_id: pair_id(),
                 size: Quantity::new_int(size as i128),
                 kind: OrderKind::Market {
                     max_slippage: Dimensionless::new_percent(50),
@@ -2802,7 +2791,7 @@ async fn place_market_buy(
 
 /// Place a limit ask (user1) then a market buy (user2) to produce a fill.
 async fn create_perps_fill(
-    suite: &mut dango_testing::TestSuite<NaiveProposalPreparer>,
+    suite: &mut TestSuiteNaive,
     accounts: &mut dango_testing::TestAccounts,
     perps: Addr,
     price: u128,
@@ -2820,17 +2809,17 @@ async fn create_perps_fill(
 }
 
 async fn place_market_buy_with_events(
-    suite: &mut dango_testing::TestSuite<NaiveProposalPreparer>,
+    suite: &mut TestSuiteNaive,
     perps: Addr,
     user: &mut (dyn Signer + Send + Sync),
     size: u128,
-) -> grug::TxEvents {
+) -> TxEvents {
     suite
         .execute(
             user,
             perps,
             &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
-                pair_id: dango_testing::perps::pair_id(),
+                pair_id: pair_id(),
                 size: Quantity::new_int(size as i128),
                 kind: OrderKind::Market {
                     max_slippage: Dimensionless::new_percent(50),
@@ -2847,7 +2836,7 @@ async fn place_market_buy_with_events(
 }
 
 fn query_referral_settings(
-    suite: &dango_testing::TestSuite<NaiveProposalPreparer>,
+    suite: &TestSuiteNaive,
     perps: Addr,
     user: u32,
 ) -> Option<ReferrerSettings> {
@@ -2857,7 +2846,7 @@ fn query_referral_settings(
 }
 
 fn query_referral_data(
-    suite: &dango_testing::TestSuite<NaiveProposalPreparer>,
+    suite: &TestSuiteNaive,
     perps: Addr,
     user: u32,
     since: Option<Timestamp>,

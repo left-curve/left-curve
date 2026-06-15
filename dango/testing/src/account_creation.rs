@@ -1,14 +1,13 @@
 use {
-    super::HyperlaneTestSuite,
-    crate::{TestAccount, TestAccounts, constants::mock_solana},
+    crate::{ContractWrapper, HyperlaneTestSuite, TestAccount, TestAccounts, mock_ethereum},
+    dango_db_memory::MemDb,
     dango_genesis::{Codes, Contracts},
+    dango_indexer_hooked::HookedIndexer,
+    dango_primitives::{Coins, Hash256, HashExt, JsonSerExt, Op, ResultExt},
     dango_proposal_preparer::ProposalPreparer,
+    dango_pyth_client::PythClientCache,
     dango_types::{account_factory, auth::Key, constants::usdc},
-    grug::{Coins, ContractWrapper, Hash256, HashExt, JsonSerExt, Op, ResultExt},
-    grug_db_memory::MemDb,
-    grug_vm_rust::RustVm,
-    indexer_hooked::HookedIndexer,
-    pyth_client::PythClientCache,
+    dango_vm_rust::RustVm,
     std::ops::DerefMut,
 };
 
@@ -71,8 +70,8 @@ pub async fn create_user_and_account(
     suite
         .receive_warp_transfer(
             &mut accounts.owner,
-            mock_solana::DOMAIN,
-            mock_solana::USDC_WARP,
+            mock_ethereum::DOMAIN,
+            mock_ethereum::USDC_WARP,
             &user,
             150_000_000, // Make sure this is bigger than the minimum deposit.
         )

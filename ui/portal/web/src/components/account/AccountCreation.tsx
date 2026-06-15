@@ -16,8 +16,9 @@ import {
 import { useNavigate, useRouter } from "@tanstack/react-router";
 import { useEffect } from "react";
 
-import { Decimal, formatUnits, parseUnits } from "@left-curve/dango/utils";
+import { Decimal, formatUnits, parseUnits } from "@left-curve/utils";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
+import { Image } from "~/components/foundation/Image";
 
 import {
   Button,
@@ -69,7 +70,7 @@ export const Deposit: React.FC = () => {
 
   const { toast, showModal, subscriptions } = useApp();
   const { coins } = useConfig();
-  const { username, userIndex, account, isConnected } = useAccount();
+  const { userIndex, account, isConnected } = useAccount();
   const { data: signingClient } = useSigningClient();
 
   const { data: balances = {} } = useBalances({
@@ -91,7 +92,6 @@ export const Deposit: React.FC = () => {
       success: m["accountCreation.accountCreated"](),
     },
     mutation: {
-      invalidateKeys: [["quests", userIndex]],
       mutationFn: async () => {
         if (!signingClient) throw new Error("error: no signing client");
         const funds = fundsAmount || "0";
@@ -123,7 +123,7 @@ export const Deposit: React.FC = () => {
         });
       },
     });
-  }, [subscriptions, username, fundsAmount, coinInfo]);
+  }, [subscriptions, userIndex, fundsAmount, coinInfo]);
 
   return (
     <form
@@ -151,7 +151,7 @@ export const Deposit: React.FC = () => {
         })}
         endContent={
           <div className="flex flex-row items-center gap-1 justify-center">
-            <img src={coinInfo.logoURI} className="w-5 h-5" alt={coinInfo.symbol} />
+            <Image src={coinInfo.logoURI} className="w-5 h-5" alt={coinInfo.symbol} />
             <span className="diatype-m-regular text-ink-tertiary-500 pt-1">{coinInfo.symbol}</span>
           </div>
         }

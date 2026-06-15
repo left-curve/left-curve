@@ -1,16 +1,15 @@
 use {
-    dango_testing::{generate_random_key, setup_test},
-    dango_types::constants::{dango, usdc},
-    grug::{
-        Addr, Addressable, CheckedContractEvent, Coins, HexByteArray, Inner, JsonDeExt, QuerierExt,
-        ResultExt, SearchEvent, UniqueVec, btree_set, coins,
-    },
-    hyperlane_testing::constants::MOCK_HYPERLANE_LOCAL_DOMAIN,
-    hyperlane_types::{
+    dango_hyperlane_types::{
         announcement_hash, domain_hash, eip191_hash,
         mailbox::Domain,
         va::{self, Announce, VA_DOMAIN_KEY},
     },
+    dango_primitives::{
+        Addr, Addressable, CheckedContractEvent, Coins, HexByteArray, Inner, JsonDeExt, QuerierExt,
+        ResultExt, SearchEvent, UniqueVec, btree_set, coins,
+    },
+    dango_testing::{MOCK_HYPERLANE_LOCAL_DOMAIN, generate_random_key, setup_test},
+    dango_types::constants::{dango, usdc},
     k256::ecdsa::SigningKey,
     std::collections::{BTreeMap, BTreeSet},
 };
@@ -38,7 +37,7 @@ impl MockAnnouncement {
         storage_location: &str,
     ) -> Self {
         // Derive the validator's Ethereum address.
-        let validator_address = eth_utils::derive_address(sk.verifying_key());
+        let validator_address = dango_eth_utils::derive_address(sk.verifying_key());
 
         // Create message to sign.
         let message_hash = eip191_hash(announcement_hash(
@@ -47,7 +46,7 @@ impl MockAnnouncement {
         ));
 
         // Sign the message.
-        let signature = eth_utils::sign_digest(message_hash.into_inner(), &sk);
+        let signature = dango_eth_utils::sign_digest(message_hash.into_inner(), &sk);
 
         Self {
             sk,

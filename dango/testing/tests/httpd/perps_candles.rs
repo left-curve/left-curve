@@ -1,20 +1,16 @@
 use {
-    crate::{build_actix_app, call_graphql_query},
     assertor::*,
-    dango_testing::{
-        TestOption,
-        perps::{create_perps_fill, pair_id, setup_perps_env},
-        setup_test_with_indexer,
-    },
-    graphql_client::GraphQLQuery,
-    grug_app::Indexer,
-    indexer_clickhouse::indexer::perps_candles::cache::PerpsCandleCache,
-    indexer_graphql_types::{
+    dango_app::Indexer,
+    dango_indexer_clickhouse::indexer::perps_candles::cache::PerpsCandleCache,
+    dango_indexer_graphql_types::{
         PerpsCandles, SubscribePerpsCandles, perps_candles, subscribe_perps_candles,
     },
-    indexer_testing::{
-        GraphQLCustomRequest, call_ws_graphql_stream, parse_graphql_subscription_response,
+    dango_testing::{
+        GraphQLCustomRequest, TestOption, build_app_service, call_graphql_query_with_context,
+        call_ws_graphql_stream, create_perps_fill, pair_id, parse_graphql_subscription_response,
+        setup_perps_env, setup_test_naive_with_indexer,
     },
+    graphql_client::GraphQLQuery,
     std::{collections::HashMap, sync::Arc},
     tokio::sync::{Mutex, mpsc},
 };
@@ -25,8 +21,8 @@ use {
 
 #[tokio::test(flavor = "multi_thread")]
 async fn query_perps_candles() -> anyhow::Result<()> {
-    let (mut suite, mut accounts, _, contracts, _, _, dango_httpd_context, _, _db_guard) =
-        setup_test_with_indexer(TestOption::default()).await;
+    let (mut suite, mut accounts, _, contracts, _, dango_httpd_context, _, _, _db_guard) =
+        setup_test_naive_with_indexer(TestOption::default()).await;
 
     setup_perps_env(&mut suite, &mut accounts, &contracts, 2_000, 100_000).await;
 
@@ -45,7 +41,7 @@ async fn query_perps_candles() -> anyhow::Result<()> {
                     ..Default::default()
                 };
 
-                let response = call_graphql_query::<_, perps_candles::ResponseData>(
+                let response = call_graphql_query_with_context::<_, perps_candles::ResponseData>(
                     dango_httpd_context.clone(),
                     PerpsCandles::build_query(variables),
                 )
@@ -74,8 +70,8 @@ async fn query_perps_candles() -> anyhow::Result<()> {
 
 #[tokio::test(flavor = "multi_thread")]
 async fn graphql_subscribe_to_perps_candles() -> anyhow::Result<()> {
-    let (mut suite, mut accounts, _, contracts, _, _, dango_httpd_context, _, _db_guard) =
-        setup_test_with_indexer(TestOption::default()).await;
+    let (mut suite, mut accounts, _, contracts, _, dango_httpd_context, _, _, _db_guard) =
+        setup_test_naive_with_indexer(TestOption::default()).await;
 
     setup_perps_env(&mut suite, &mut accounts, &contracts, 2_000, 100_000).await;
 
@@ -122,7 +118,7 @@ async fn graphql_subscribe_to_perps_candles() -> anyhow::Result<()> {
             tokio::task::spawn_local(async move {
                 let name = request_body.name;
                 let (_srv, _ws, mut framed) =
-                    call_ws_graphql_stream(dango_httpd_context, build_actix_app, request_body)
+                    call_ws_graphql_stream(dango_httpd_context, build_app_service, request_body)
                         .await?;
 
                 // 1st response: existing last candle
@@ -176,10 +172,11 @@ async fn graphql_subscribe_to_perps_candles() -> anyhow::Result<()> {
 
     // Verify cache consistency after subscription
     let mut fresh_cache = PerpsCandleCache::default();
-    let pair_ids = indexer_clickhouse::entities::perps_pair_price::PerpsPairPrice::all_pair_ids(
-        context.clickhouse_context.clickhouse_client(),
-    )
-    .await?;
+    let pair_ids =
+        dango_indexer_clickhouse::entities::perps_pair_price::PerpsPairPrice::all_pair_ids(
+            context.clickhouse_context.clickhouse_client(),
+        )
+        .await?;
 
     fresh_cache
         .preload_pairs(&pair_ids, context.clickhouse_context.clickhouse_client())

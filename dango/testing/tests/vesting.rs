@@ -1,14 +1,13 @@
 use {
-    dango_testing::{TestAccounts, TestSuite, setup_test_naive},
+    dango_math::{MultiplyFraction, Udec128, Uint128},
+    dango_primitives::{
+        Addr, Addressable, Coin, Coins, Duration, Inner, QuerierExt, ResultExt, StdError, Timestamp,
+    },
+    dango_testing::{TestAccounts, TestSuiteNaive, setup_test_naive},
     dango_types::{
         constants::{dango, usdc},
         vesting::{self, QueryPositionRequest, Schedule, VestingStatus},
     },
-    grug::{
-        Addr, Addressable, Coin, Coins, Duration, Inner, MultiplyFraction, QuerierExt, ResultExt,
-        StdError, Timestamp, Udec128, Uint128,
-    },
-    grug_app::NaiveProposalPreparer,
     std::sync::LazyLock,
 };
 
@@ -20,7 +19,7 @@ static TEST_AMOUNT: LazyLock<Coin> = LazyLock::new(|| Coin {
 const ONE_MONTH: Duration = Duration::from_weeks(4);
 const ONE_DAY: Duration = Duration::from_days(1);
 
-fn setup_test() -> (TestSuite<NaiveProposalPreparer>, TestAccounts, Addr) {
+fn setup_test() -> (TestSuiteNaive, TestAccounts, Addr) {
     let (suite, accounts, _codes, contracts, _) = setup_test_naive(Default::default());
 
     (suite, accounts, contracts.vesting)

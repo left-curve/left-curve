@@ -1,0 +1,75 @@
+---
+layout: landing
+showLogo: true
+---
+
+import { HomePage } from 'vocs/components'
+import { PackageCard, PackageCardGrid } from '../components/PackageCard'
+import { InstallTabs } from '../components/InstallTabs'
+
+<HomePage.Root>
+  <HomePage.Tagline>SDKs for the Dango perpetual futures exchange</HomePage.Tagline>
+  <HomePage.Description>
+    Build trading bots, market makers, and integrations against Dango — sign and broadcast transactions, query state, and stream live order books from TypeScript, Python, or Rust.
+  </HomePage.Description>
+  <HomePage.Buttons>
+    <HomePage.Button href="/typescript/">TypeScript</HomePage.Button>
+    <HomePage.Button href="/python/">Python</HomePage.Button>
+    <HomePage.Button href="/rust/">Rust</HomePage.Button>
+  </HomePage.Buttons>
+</HomePage.Root>
+
+<PackageCardGrid>
+  <PackageCard
+    title="TypeScript"
+    packageName="@left-curve/sdk"
+    summary="viem-style client. Public and signer clients, action functions, WebSocket subscriptions, tree-shakable imports."
+    bestFor="browser dApps, Node.js services, indexers, automated traders."
+    install={<HomePage.InstallPackage name="@left-curve/sdk" />}
+    href="/typescript/getting-started/installation"
+  />
+  <PackageCard
+    title="Python"
+    packageName="dango"
+    summary="Exchange + Info classes, plus a Hyperliquid-compatibility layer that re-uses your existing hyperliquid-python-sdk code."
+    bestFor="quantitative research, backtests, scripts migrated from Hyperliquid."
+    install={
+      <InstallTabs
+        commands={[
+          { label: "uv", command: "uv add dango" },
+          { label: "pip", command: "pip install dango" },
+          { label: "poetry", command: "poetry add dango" },
+        ]}
+      />
+    }
+    href="/python/getting-started/installation"
+  />
+  <PackageCard
+    title="Rust"
+    packageName="dango-sdk"
+    summary="async GraphQL client, WebSocket subscriptions, key management, transaction signing."
+    bestFor="low-latency market makers, on-chain services, async Tokio workloads."
+    href="/rust/getting-started/installation"
+  >
+
+```toml
+[dependencies]
+dango-sdk = "0"
+```
+
+  </PackageCard>
+</PackageCardGrid>
+
+## What every SDK gives you
+
+- Account model — create users, manage keys, mint signing sessions
+- Transactions — compose, sign, simulate, broadcast, poll for inclusion
+- State queries — balances, contract state, DEX pairs, perps positions
+- Subscriptions — live block, trade, candle, and event streams
+- Rate-limit awareness — documented patterns for 167 req/10s and 30 sub/WS
+
+## Where to go next
+
+- New to Dango? Each language section opens with a five-minute "First call" guide.
+- Migrating from Hyperliquid? Start with the [Python migration guide](/python/migration/hyperliquid).
+- Building production infrastructure? Read [Rate Limits & Quotas](/typescript/concepts/rate-limits) for your language.

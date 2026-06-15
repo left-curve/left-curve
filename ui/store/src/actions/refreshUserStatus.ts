@@ -1,7 +1,7 @@
 import { getConnector } from "./getConnector.js";
 import { getConnectorClient } from "./getConnectorClient.js";
 
-import type { Address, UID, UserStatus } from "@left-curve/dango/types";
+import type { Address, UID, UserStatus } from "@left-curve/types";
 
 import type { Config } from "../types/store.js";
 

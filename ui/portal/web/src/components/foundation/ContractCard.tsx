@@ -1,7 +1,8 @@
-import { AddressVisualizer, Badge, TextCopy, TruncateText, twMerge } from "@left-curve/applets-kit";
+import { AddressVisualizer, Badge, TextCopy, TruncateText } from "@left-curve/applets-kit";
 
-import type { Address } from "@left-curve/dango/types";
+import type { Address } from "@left-curve/types";
 import type React from "react";
+import { Image } from "~/components/foundation/Image";
 
 type ContractCardProps = {
   address: Address;
@@ -11,10 +12,10 @@ type ContractCardProps = {
   onTriggerAction?: () => void;
 };
 
-export const ContractCard: React.FC<ContractCardProps> = ({ address, balance, balanceChange }) => {
+export const ContractCard: React.FC<ContractCardProps> = ({ address, balance }) => {
   return (
     <div className="shadow-account-card w-full max-w-[22.5rem] md:max-w-[20.5rem] lg:min-w-[20.5rem] h-[10rem] relative overflow-hidden rounded-xl flex flex-col justify-between p-4 bg-account-card-contract text-ink-secondary-700">
-      <img
+      <Image
         src="/images/emojis/detailed/factory.svg"
         alt="factory"
         className="absolute right-0 bottom-2 select-none drag-none h-[141px] opacity-50"

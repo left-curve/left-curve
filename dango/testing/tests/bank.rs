@@ -1,5 +1,9 @@
 use {
-    dango_testing::setup_test_naive,
+    dango_primitives::{
+        Addressable, CheckedContractEvent, Coins, Denom, JsonDeExt, LengthBounded, Part,
+        QuerierExt, ResultExt, SearchEvent, addr, btree_map, coins,
+    },
+    dango_testing::{BalanceChange, setup_test_naive},
     dango_types::{
         bank::{
             self, OrphanedTransferResponseItem, QueryOrphanedTransfersByRecipientRequest,
@@ -7,10 +11,6 @@ use {
             TransferOrphaned,
         },
         constants::{dango, eth, usdc},
-    },
-    grug::{
-        Addressable, BalanceChange, CheckedContractEvent, Coins, Denom, JsonDeExt, LengthBounded,
-        Part, QuerierExt, ResultExt, SearchEvent, addr, btree_map, coins,
     },
     std::collections::BTreeSet,
 };
@@ -396,7 +396,7 @@ async fn set_namespace_owner_works() {
             namespace: Part::new_unchecked("testing"),
         })
         .should_fail_with_error(
-            "msg: data not found! type: grug_types::encoded_bytes::EncodedBytes",
+            "msg: data not found! type: dango_primitives::encoded_bytes::EncodedBytes",
         );
 
     // Set user1 as namespace owner of testing
@@ -432,28 +432,16 @@ fn query_namespace_owners_works() {
             limit: None,
         })
         .should_succeed_and_equal(btree_map! {
-            Part::new_unchecked("dex") => contracts.dex,
             Part::new_unchecked("bridge") => contracts.gateway,
-        });
-
-    // Query namespace owners with start_after. Should succeed.
-    suite
-        .query_wasm_smart(contracts.bank, bank::QueryNamespaceOwnersRequest {
-            start_after: Some(Part::new_unchecked("bridge")),
-            limit: None,
-        })
-        .should_succeed_and_equal(btree_map! {
-            Part::new_unchecked("dex") => contracts.dex,
         });
 
     // Query namespace owners with limit. Should succeed.
     suite
         .query_wasm_smart(contracts.bank, bank::QueryNamespaceOwnersRequest {
             start_after: None,
-            limit: Some(2),
+            limit: Some(1),
         })
         .should_succeed_and_equal(btree_map! {
-            Part::new_unchecked("dex") => contracts.dex,
             Part::new_unchecked("bridge") => contracts.gateway,
         });
 }
@@ -470,51 +458,37 @@ fn query_metadatas_works() {
         .should_succeed_and(|metadatas| {
             metadatas.keys().collect::<BTreeSet<_>>()
                 == BTreeSet::from([
-                    &Denom::new_unchecked(["bridge", "atom"]),
-                    &Denom::new_unchecked(["bridge", "bch"]),
-                    &Denom::new_unchecked(["bridge", "bnb"]),
-                    &Denom::new_unchecked(["bridge", "btc"]),
-                    &Denom::new_unchecked(["bridge", "doge"]),
                     &Denom::new_unchecked(["bridge", "eth"]),
-                    &Denom::new_unchecked(["bridge", "ltc"]),
-                    &Denom::new_unchecked(["bridge", "sol"]),
                     &Denom::new_unchecked(["bridge", "usdc"]),
-                    &Denom::new_unchecked(["bridge", "xrp"]),
                     &Denom::new_unchecked(["dango"]),
                 ])
         });
 
-    // Start after btc
+    // Start after eth
     suite
         .query_wasm_smart(contracts.bank, bank::QueryMetadatasRequest {
-            start_after: Some(Denom::new_unchecked(["bridge", "btc"])),
+            start_after: Some(Denom::new_unchecked(["bridge", "eth"])),
             limit: None,
         })
         .should_succeed_and(|metadatas| {
             metadatas.keys().collect::<BTreeSet<_>>()
                 == BTreeSet::from([
-                    &Denom::new_unchecked(["bridge", "doge"]),
-                    &Denom::new_unchecked(["bridge", "eth"]),
-                    &Denom::new_unchecked(["bridge", "ltc"]),
-                    &Denom::new_unchecked(["bridge", "sol"]),
                     &Denom::new_unchecked(["bridge", "usdc"]),
-                    &Denom::new_unchecked(["bridge", "xrp"]),
                     &Denom::new_unchecked(["dango"]),
                 ])
         });
 
-    // Limit 3
+    // Limit 2
     suite
         .query_wasm_smart(contracts.bank, bank::QueryMetadatasRequest {
             start_after: None,
-            limit: Some(3),
+            limit: Some(2),
         })
         .should_succeed_and(|metadatas| {
             metadatas.keys().collect::<BTreeSet<_>>()
                 == BTreeSet::from([
-                    &Denom::new_unchecked(["bridge", "atom"]),
-                    &Denom::new_unchecked(["bridge", "bch"]),
-                    &Denom::new_unchecked(["bridge", "bnb"]),
+                    &Denom::new_unchecked(["bridge", "eth"]),
+                    &Denom::new_unchecked(["bridge", "usdc"]),
                 ])
         });
 }

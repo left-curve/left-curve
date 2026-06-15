@@ -1,6 +1,6 @@
 import { useConfig, useFavPairs, usePrices } from "@left-curve/store";
 
-import { capitalize, formatUnits } from "@left-curve/dango/utils";
+import { capitalize, formatUnits } from "@left-curve/utils";
 import { FormattedNumber } from "./FormattedNumber";
 import { formatDistanceToNow } from "date-fns/formatDistanceToNow";
 import { twMerge } from "@left-curve/foundation";
@@ -17,18 +17,17 @@ import type {
   OneRequired,
   PairId,
   Prettify,
-} from "@left-curve/dango/types";
+} from "@left-curve/types";
 import { format } from "date-fns";
 
-import type { FormatNumberOptions } from "@left-curve/dango/utils";
+import type { FormatNumberOptions } from "@left-curve/utils";
 import type { AnyCoin } from "@left-curve/store/types";
 import { memo } from "react";
 import type React from "react";
 import type { PropsWithChildren } from "react";
 import { Button } from "./Button";
 import { PairAssets } from "./PairAssets";
-import { IconStar } from "./icons/IconStar";
-import { IconEmptyStar } from "./icons/IconEmptyStar";
+import { StarToggleButton } from "./StarToggleButton";
 
 const TokenImage = memo(({ src, alt }: { src?: string; alt: string }) => (
   <img src={src} alt={alt} className="w-5 h-5 flex-shrink-0" />
@@ -48,9 +47,9 @@ type CellAssetProps = Prettify<
 const Asset: React.FC<CellAssetProps> = ({ asset, noImage, denom }) => {
   const { coins } = useConfig();
 
-  const coin = asset || coins.getCoinInfo(denom as string);
+  const coin = asset ?? (denom ? coins.getCoinInfo(denom as string) : null);
 
-  if (!coin) return <div className="flex h-full items-center diatype-sm-medium ">-</div>;
+  if (!coin) return <div className="flex h-full items-center diatype-sm-medium">-</div>;
 
   return (
     <div className="flex h-full gap-2 diatype-sm-medium justify-start items-center my-auto">
@@ -367,14 +366,12 @@ type CellPairNameWithFavProps = {
 
 const PairNameWithFav: React.FC<CellPairNameWithFavProps> = memo(({ pairId, type, className }) => {
   const { coins } = useConfig();
+  const { toggleFavPair, hasFavPair } = useFavPairs();
   const { baseDenom, quoteDenom } = pairId;
   const baseCoin = coins.byDenom[baseDenom];
   const quoteCoin = coins.byDenom[quoteDenom];
-  const { toggleFavPair, hasFavPair } = useFavPairs();
 
   const pairSymbols = `${baseCoin.symbol}-${quoteCoin.symbol}`;
-
-  const isFav = hasFavPair(pairSymbols);
 
   return (
     <div
@@ -383,22 +380,12 @@ const PairNameWithFav: React.FC<CellPairNameWithFavProps> = memo(({ pairId, type
         className,
       )}
     >
-      <button
-        type="button"
-        onClick={(e) => {
-          e.stopPropagation();
-          toggleFavPair(pairSymbols);
-        }}
-        className="focus:outline-none flex-shrink-0"
-      >
-        {isFav ? (
-          <IconStar className="w-4 h-4 text-fg-primary-700" />
-        ) : (
-          <IconEmptyStar className="w-4 h-4 text-fg-primary-700" />
-        )}
-      </button>
+      <StarToggleButton
+        isActive={hasFavPair(pairSymbols)}
+        onToggle={() => toggleFavPair(pairSymbols)}
+      />
       <TokenImage src={baseCoin.logoURI} alt={baseCoin.symbol} />
-      <p className="whitespace-nowrap">{`${baseCoin.symbol}-${quoteCoin.symbol}`}</p>
+      <p className="whitespace-nowrap">{pairSymbols}</p>
       {type ? <Badge text={type} color="blue" size="s" /> : null}
     </div>
   );

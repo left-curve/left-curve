@@ -3,6 +3,7 @@ import { Children, cloneElement, useRef, useState, useEffect, useCallback } from
 import { tv } from "tailwind-variants";
 import { useControlledState } from "@left-curve/foundation";
 import { twMerge } from "@left-curve/foundation";
+import { roundMeasuredLayoutValue } from "../utils/measurement.js";
 
 import type React from "react";
 import type { PropsWithChildren, ReactElement } from "react";
@@ -29,6 +30,24 @@ export interface TabsProps extends VariantProps<typeof tabsVariants> {
   };
 }
 
+const equalTabLayouts = (previous: Map<string, TabLayout>, next: Map<string, TabLayout>) => {
+  if (previous.size !== next.size) return false;
+
+  for (const [key, nextLayout] of next) {
+    const previousLayout = previous.get(key);
+    if (!previousLayout) return false;
+    if (
+      previousLayout.left !== nextLayout.left ||
+      previousLayout.width !== nextLayout.width ||
+      previousLayout.height !== nextLayout.height
+    ) {
+      return false;
+    }
+  }
+
+  return true;
+};
+
 export const Tabs: React.FC<PropsWithChildren<TabsProps>> = ({
   onTabChange,
   children,
@@ -43,6 +62,8 @@ export const Tabs: React.FC<PropsWithChildren<TabsProps>> = ({
   const hasMounted = useHasMounted();
   const containerRef = useRef<HTMLDivElement>(null);
   const tabRefs = useRef<Map<string, HTMLButtonElement>>(new Map());
+  const resizeObserverRef = useRef<ResizeObserver | null>(null);
+  const measureFrameRef = useRef<number | null>(null);
   const [tabLayouts, setTabLayouts] = useState<Map<string, TabLayout>>(new Map());
 
   const tabs = keys ? keys : Children.toArray(children);
@@ -66,29 +87,59 @@ export const Tabs: React.FC<PropsWithChildren<TabsProps>> = ({
       if (button) {
         const rect = button.getBoundingClientRect();
         newLayouts.set(key, {
-          left: rect.left - containerRect.left,
-          width: rect.width,
-          height: rect.height,
+          left: roundMeasuredLayoutValue(rect.left - containerRect.left),
+          width: roundMeasuredLayoutValue(rect.width),
+          height: roundMeasuredLayoutValue(rect.height),
         });
       }
     });
 
-    setTabLayouts(newLayouts);
+    setTabLayouts((previous) => (equalTabLayouts(previous, newLayouts) ? previous : newLayouts));
   }, []);
+
+  const scheduleMeasureTabs = useCallback(() => {
+    if (measureFrameRef.current !== null) return;
+
+    measureFrameRef.current = window.requestAnimationFrame(() => {
+      measureFrameRef.current = null;
+      measureTabs();
+    });
+  }, [measureTabs]);
 
   useEffect(() => {
-    measureTabs();
-    window.addEventListener("resize", measureTabs);
-    return () => window.removeEventListener("resize", measureTabs);
-  }, [measureTabs, tabs.length]);
+    scheduleMeasureTabs();
+    window.addEventListener("resize", scheduleMeasureTabs);
 
-  const setTabRef = useCallback((key: string, el: HTMLButtonElement | null) => {
-    if (el) {
-      tabRefs.current.set(key, el);
-    } else {
-      tabRefs.current.delete(key);
-    }
-  }, []);
+    const observer = new ResizeObserver(scheduleMeasureTabs);
+    resizeObserverRef.current = observer;
+    if (containerRef.current) observer.observe(containerRef.current);
+    tabRefs.current.forEach((button) => observer.observe(button));
+
+    return () => {
+      window.removeEventListener("resize", scheduleMeasureTabs);
+      if (measureFrameRef.current !== null) {
+        window.cancelAnimationFrame(measureFrameRef.current);
+        measureFrameRef.current = null;
+      }
+      observer.disconnect();
+      resizeObserverRef.current = null;
+    };
+  }, [scheduleMeasureTabs, tabs.length]);
+
+  const setTabRef = useCallback(
+    (key: string, el: HTMLButtonElement | null) => {
+      if (el) {
+        tabRefs.current.set(key, el);
+        resizeObserverRef.current?.observe(el);
+        scheduleMeasureTabs();
+      } else {
+        const existing = tabRefs.current.get(key);
+        if (existing) resizeObserverRef.current?.unobserve(existing);
+        tabRefs.current.delete(key);
+      }
+    },
+    [scheduleMeasureTabs],
+  );
 
   const styles = tabsVariants({
     fullWidth,

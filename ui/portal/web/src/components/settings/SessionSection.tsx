@@ -168,7 +168,7 @@ const NetworkSection: React.FC = () => {
               {m["settings.session.network.endpoint"]()}
             </p>
             <p className="break-all whitespace-normal">
-              {chain.urls.indexer.replace(/\/graphql$/, "")}
+              {chain.url.replace(/\/graphql$/, "")}
             </p>
           </div>
 
@@ -238,7 +238,7 @@ const StatusRow: React.FC<{ label: string; status: "success" | "error" | "warnin
 );
 
 const StatusSection: React.FC = () => {
-  const { wsStatus, chainStatus, dexStatus } = useServiceStatus({ upUrl: window.dango.urls.upUrl });
+  const { wsStatus, chainStatus } = useServiceStatus({ upUrl: window.dango.urls.upUrl });
 
   return (
     <div className="flex items-start justify-between rounded-md gap-8 w-full px-2">

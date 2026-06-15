@@ -1,0 +1,47 @@
+# SubmitAction
+
+User-facing form of a submit request. Pass to [`batch_update_orders`](../methods/exchange/batch_update_orders).
+
+## Definition
+
+```python
+@dataclass(frozen=True)
+class SubmitAction:
+    pair_id: PairId
+    size: float | int | str | Decimal
+    kind: OrderKind
+    reduce_only: bool = False
+    tp: ChildOrder | None = None
+    sl: ChildOrder | None = None
+```
+
+## Fields
+
+**`pair_id`** — `PairId`.
+
+**`size`** — `float | int | str | Decimal`. Signed quantity. Positive = buy, negative = sell.
+
+**`kind`** — `OrderKind`. The wire-shape `{"market": ...}` or `{"limit": ...}` payload.
+
+**`reduce_only`** — `bool`. Default: `False`.
+
+**`tp`** — `ChildOrder | None`. Take-profit child order. Default: `None`.
+
+**`sl`** — `ChildOrder | None`. Stop-loss child order. Default: `None`.
+
+## Construction
+
+```python
+from typing import cast
+
+from dango.utils.types import OrderKind, PairId, SubmitAction
+
+kind = cast(OrderKind, {"limit": {"limit_price": "1500.000000", "time_in_force": "GTC", "client_order_id": None}})
+
+action = SubmitAction(pair_id=PairId("perp/ethusd"), size="0.5", kind=kind)
+```
+
+## See also
+
+- [`CancelAction`](./CancelAction) — counterpart for cancels
+- [`batch_update_orders`](../methods/exchange/batch_update_orders) — consumer

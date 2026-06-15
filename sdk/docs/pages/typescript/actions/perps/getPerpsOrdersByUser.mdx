@@ -1,0 +1,46 @@
+# getPerpsOrdersByUser
+
+List a user's active perps orders.
+
+Returns only resting limit orders that have not been fully filled or
+cancelled; the count matches the user's `open_order_count` and the sum of
+`reserved_margin` across these orders equals `user_state.reservedMargin`.
+
+## Signature
+
+```ts
+function getPerpsOrdersByUser(
+  client: Client,
+  parameters: {
+    user: Address
+    height?: number
+  },
+): Promise<PerpsOrdersByUserResponse>
+```
+
+## Example
+
+```ts
+import { createPublicClient, createTransport, testnet } from "@left-curve/sdk"
+import type { Address } from "@left-curve/sdk"
+
+const client = createPublicClient({ chain: testnet, transport: createTransport() })
+const user: Address = "0x1234567890abcdef1234567890abcdef12345678"
+
+const orders = await client.getPerpsOrdersByUser({ user })
+```
+
+## Parameters
+
+**`user`** — `Address`. The trader.
+
+**`height`** — `number`, optional. Block height. Default `0` (latest).
+
+## Returns
+
+**`PerpsOrdersByUserResponse`** — `Record<string, PerpsOrderByUserItem>` keyed by order id.
+
+## See also
+
+- [`submitPerpsOrder`](./submitPerpsOrder)
+- [`cancelPerpsOrder`](./cancelPerpsOrder)

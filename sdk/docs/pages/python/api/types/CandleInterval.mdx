@@ -1,0 +1,35 @@
+# CandleInterval
+
+OHLCV candle interval enum. Wire form is the bare uppercase name.
+
+## Definition
+
+```python
+class CandleInterval(StrEnum):
+    ONE_SECOND = "ONE_SECOND"
+    ONE_MINUTE = "ONE_MINUTE"
+    FIVE_MINUTES = "FIVE_MINUTES"
+    FIFTEEN_MINUTES = "FIFTEEN_MINUTES"
+    ONE_HOUR = "ONE_HOUR"
+    FOUR_HOURS = "FOUR_HOURS"
+    ONE_DAY = "ONE_DAY"
+    ONE_WEEK = "ONE_WEEK"
+```
+
+## Construction
+
+```python
+from dango.utils.types import CandleInterval
+
+interval = CandleInterval.ONE_MINUTE
+print(interval.value)   # "ONE_MINUTE"
+```
+
+## Notes
+
+- The contract uses a `strum::Display` form (`1s`/`1m`/`1h`/...). This enum is the GraphQL indexer's wire form. The two are not interchangeable.
+
+## See also
+
+- [`perps_candles`](../methods/info/perps_candles) — historical candles
+- [`subscribe_perps_candles`](../methods/info/subscribe_perps_candles) — live candle stream

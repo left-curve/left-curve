@@ -53,11 +53,7 @@
       }
     ],
     "devnet": { "advice": "you are using devnet" },
-    "testnet": {
-      "advice": "you are using testnet",
-      "title": "Message from the founder",
-      "description": "Thank you for trying out Dango’s first ever testnet!\t\tThe purpose of testnet-1 <b>is</b> for testing the basic infrastructure of Dango chain, including consensus, smart contract engine, and indexer. As such, user-facing features are very limited. The coming testnet-2 (expected in June/July) will add our flagship product, the Dango DEX. Then, testnet-3 (August/September) will add margin trading.\n\nFor now, you can register, open subaccounts, and transfer tokens, that’s it. Upon your first login, you will receive some fake tokens (fake BTC, fake ETH, ...) to play with.\n\nMake sure to complete the Galxe quests[ADD LINK] and mint your limited time NFT!\n\ng🍡"
-    },
+    "testnet": { "advice": "you are using testnet" },
     "accountMenu": {
       "assets": {
         "dex": "DEX",
@@ -87,7 +83,9 @@
     "welcomeToDango": "Welcome to Dango",
     "connectWithPasskey": "Connect with Passkey",
     "connectWallet": "Connect Wallet",
-    "createNewUser": "Create New User"
+    "createNewUser": "Create New User",
+    "starToggle.add": "Add to favorites",
+    "starToggle.remove": "Remove from favorites"
   },
   "footer": {
     "terms": "Terms of Use",
@@ -366,8 +364,10 @@
     },
     "user": {
       "title": "User Profile",
+      "dangoTrader": "Dango Trader",
       "stats": {
-        "totalAssets": "Total Assets",
+        "userIndex": "User Index",
+        "totalValue": "Total Value",
         "totalAccounts": "Total Accounts"
       },
       "accounts": "Accounts",
@@ -376,7 +376,8 @@
       "inactive": "Inactive",
       "tabs": {
         "assets": "Assets",
-        "transactions": "Transactions"
+        "transactions": "Transactions",
+        "keys": "Keys"
       },
       "notFound": {
         "title": "User Not Found",
@@ -487,7 +488,8 @@
       "entryPrice": "Entry Price",
       "markPrice": "Mark Price",
       "copyLink": "Copy Link",
-      "shareOnX": "Share on X"
+      "shareOnX": "Share on X",
+      "closedAt": "Closed {date}"
     },
     "pointsShare": {
       "weekLabel": "Week",
@@ -635,6 +637,12 @@
   "maintenance": {
     "title": "Website Under Maintenance",
     "description": "We are currently undergoing maintenance. We apologize for any inconvenience this may cause and appreciate your patience."
+  },
+  "geoblock": {
+    "bannerLead": "Your IP address indicates that you are in a country or region outside of Dango's service zone. We do not provide services to your location.",
+    "bannerEmphasis": "You may only place reduce-only orders.",
+    "bannerTail": "For help, open a support ticket on Discord.",
+    "accessRestricted": "Access Restricted"
   },
   "notFound": {
     "title": "Page not found!",
@@ -791,19 +799,6 @@
     "sending": "You’re sending",
     "sendSuccessfully": "Sent Successfully",
     "inputPlaceholder": "Wallet address or username"
-  },
-  "quests": {
-    "galxeQuest": {
-      "title": "Galxe Quest",
-      "quest": {
-        "connectEthereumWallet": "Connect your Ethereum wallet",
-        "completeTxsInEthereum": "(For anti-sybil purpose) have 10 or more outgoing transaction on Ethereum mainnet (current: {number} Txs)",
-        "completeLimitOrder": "Complete a limit order",
-        "completeMarketOrder": "Complete a market order",
-        "swapAtLeastInPairs": "Trade in 3 different token pairs ({number} remaining)",
-        "swapAtLeastForUSD": "Trade $6.9M in volume (current: {number})"
-      }
-    }
   },
   "transfer": {
     "error": {
@@ -1001,7 +996,7 @@
     "exchangeWarning": "Exchange deposit addresses are not supported. Please use a self-custody wallet address.",
     "confirm": "Confirm",
     "connectedTo": "Connected to",
-    "rateLimitWarning": "As a security measure, a rate limit exists to throttle token outflows. Each rolling 24h window, up to 10% of total bridged volume may be bridged out.",
+    "rateLimitWarning": "As a security measure, a rate limit exists to throttle token outflows. Each rolling 24h window, up to 5% of total bridged volume may be bridged out.",
     "withdrawTransferHint": "Use this page to withdraw funds from Dango to Ethereum or other chains. To transfer funds between Dango accounts, use the {app} app."
   },
   "settings": {
@@ -1089,19 +1084,20 @@
     "connectToMobile": "Connect to Mobile",
     "keyManagement": {
       "title": "Security",
-      "description": "Easily add or delete passkeys to manage access to your account. Each passkey is vital for secure logins, ensuring only you can access your account.",
+      "description": "Add or delete keys to manage access to your account. Each key can authorize account activity, so keep only the keys you trust.",
       "add": "Add",
+      "advanced": "Advanced",
       "management": {
         "add": {
-          "title": "Add new credential",
-          "description": "Choose a credential. You can add or remove credentials later.",
+          "title": "Add a new key",
+          "description": "Choose how you want to add a key.",
           "success": {
-            "title": "Credential added",
-            "description": "Your new credential has been successfully linked to your account."
+            "title": "Key added",
+            "description": "Your new key has been linked to your account."
           },
           "error": {
-            "title": "Failed to add credential",
-            "alreadyExists": "This credential is already linked to your account."
+            "title": "Failed to add key",
+            "alreadyExists": "Key already exists."
           }
         },
         "delete": {
@@ -1114,6 +1110,40 @@
         "title": "Link Email",
         "description": "We'll send a verification code to your email",
         "alreadyLinked": "This email is already linked to your account"
+      },
+      "wallets": {
+        "title": "Connect a wallet",
+        "description": "Choose a wallet to add as a key."
+      },
+      "publicKey": {
+        "option": "Secp256k1 Public Key",
+        "warning": {
+          "title": "Warning",
+          "description": "Anyone who owns this key can send transactions on your behalf. Only proceed if you generated this key yourself and have not shared it.",
+          "scam": "If someone gave you this key and told you to add it, STOP. This is a scam.",
+          "confirmations": {
+            "generated": "I generated this key myself",
+            "privateKey": "I have not shared the private key with anyone",
+            "authority": "I understand this key can sign transactions on my behalf"
+          }
+        },
+        "input": {
+          "title": "Add a Public Key",
+          "description": "Paste a secp256k1 public key in hex or base64. You'll keep the private key; we never see it.",
+          "label": "Public Key",
+          "placeholder": "Paste hex or base64...",
+          "valid": "Secp256k1 - hex - 33 bytes (compressed)",
+          "error": "This doesn't look like a valid secp256k1 key. Please check and try again.",
+          "submit": "Add key"
+        },
+        "summary": {
+          "title": "Review Before Signing",
+          "description": "Verify these details before your passkey signs the transaction.",
+          "key": "Key",
+          "type": "Type",
+          "typeValue": "Secp256k1 Public Key",
+          "confirm": "Confirm & Sign"
+        }
       }
     }
   },
@@ -1210,7 +1240,19 @@
         "taker": "Taker",
         "makerTakerNotAvailable": "Maker/Taker data is not available for trades before April 22, 2025.",
         "time": "Time",
-        "dateAndTime": "Date & Time"
+        "dateAndTime": "Date & Time",
+        "exportCsv": "Export CSV",
+        "customDate": "Custom date",
+        "totalLoaded": "Showing {count} trades",
+        "preset.1d": "1 Day",
+        "preset.1w": "1 Week",
+        "preset.1m": "1 Month",
+        "preset.3m": "3 Months",
+        "eventType.trade": "Trade",
+        "eventType.liquidation": "Liquidation",
+        "eventType.adl": "ADL",
+        "side.buy": "Buy",
+        "side.sell": "Sell"
       },
       "history": {
         "id": "ID",
@@ -1269,7 +1311,14 @@
         "name": "Name",
         "price": "Price",
         "24hChange": "24h Change",
-        "volume": "Volume"
+        "volume": "Volume",
+        "tabs": {
+          "all": "All",
+          "favorites": "Favorites",
+          "crypto": "Crypto",
+          "commodities": "Commodities"
+        },
+        "emptyFavorites": "You haven't added any favorites yet. Tap the star next to a pair to add it."
       },
       "perps": {
         "availableToTrade": "Available to Trade",
@@ -1532,7 +1581,23 @@
         "oneMonth": "1M"
       },
       "you": "(You)",
-      "userFallback": "User #{index}"
+      "recentDrops": {
+        "title": "Recent Hunt Drops",
+        "live": "Live",
+        "columns": {
+          "user": "User",
+          "rewardType": "Reward Type",
+          "boost": "Boost",
+          "dropped": "Dropped"
+        },
+        "rewards": {
+          "pearl_dango": "Pearl Dango",
+          "silver_shell": "Silver Shell",
+          "bronze_shell": "Bronze Shell",
+          "golden_shell": "Golden Shell"
+        },
+        "empty": "No recent drops yet"
+      }
     },
     "profile": {
       "pointHistory": "Point History",
@@ -1613,25 +1678,25 @@
     },
     "boosters": {
       "title": "Boosters",
-      "description": "A limited-time points multiplier to reward early testnet users.",
-      "linkEvmWallet": "Link EVM Wallet",
-      "pointsBoost": "+{pointsBoost}% Points",
-      "toast": {
-        "successTitle": "Wallet Linked",
-        "successDescription": "Your EVM wallet has been linked successfully.",
-        "errorTitle": "Linking Failed",
-        "errorDescription": "Failed to link your EVM wallet. Please try again.",
-        "rateLimitTitle": "Address Already Linked",
-        "rateLimitDescription": "This address was linked recently. You can relink it in {seconds} seconds.",
-        "noOatsTitle": "No OATs Found",
-        "noOatsDescription": "This address doesn't have any Dango OATs. Make sure you've minted your OATs on Galxe."
-      },
-      "oats": {
-        "hurrah": "The Last Hurrah",
-        "trader": "Testnet Trader",
-        "wizard": "Testnet Wizard",
-        "supporter": "Early Supporter"
-      }
+      "description": "Rare Boosters found in Silver Boxes that multiply your points for the current epoch.",
+      "multiplierLabel": "{multiplier}x Boost",
+      "locked": "--"
+    },
+    "chestOpening": {
+      "summaryTitle": "Your Loot",
+      "nftCardTitle": "NFT Card",
+      "boosterTitle": "Booster",
+      "spinToWin": "Spin to win",
+      "spinNow": "Spin Now!",
+      "spinning": "Spinning...",
+      "back": "← Back",
+      "done": "Done",
+      "next": "Next",
+      "shareToX": "Share to X",
+      "closeLabel": "Close",
+      "shareBoostText": "I just won a {multiplier}x points booster on Dango!",
+      "shareNftText": "I just won {article} {label} NFT on Dango!",
+      "shareBulkText": "I just opened {count} chests on Dango!"
     },
     "leagues": {
       "title": "Leagues",

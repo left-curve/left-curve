@@ -5,7 +5,7 @@ import { useConnectors } from "@left-curve/store";
 import { useMutation, useQuery } from "@tanstack/react-query";
 
 import { m } from "@left-curve/foundation/paraglide/messages.js";
-import { wait } from "@left-curve/dango/utils";
+import { wait } from "@left-curve/utils";
 
 import type React from "react";
 import type { Connector } from "@left-curve/store/types";

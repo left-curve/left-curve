@@ -1,0 +1,107 @@
+# Rate limits and quotas
+
+**What this teaches:** the server-side limits on Dango HTTP and WebSocket endpoints, and how to shape Rust client code around them.
+
+## The limits
+
+| Surface | Limit | Notes |
+|---------|-------|-------|
+| HTTP (GraphQL + REST) | 167 requests per 10 seconds, per source IP | Bursts above this return HTTP 429. |
+| WebSocket subscriptions | 30 concurrent subscriptions per connection | Each [`Session`](../api/clients/Session) counts as one connection. |
+
+These are server-enforced. The SDK has no built-in retry, queueing, or rate-limit awareness.
+
+## Handling 429 on HTTP
+
+The standard call shape is `Result<T, anyhow::Error>`. A 429 surfaces as `error_for_status` text inside the `anyhow::Error`. Wrap calls with an exponential backoff helper:
+
+```rust
+use {
+    anyhow::Result,
+    dango_sdk::HttpClient,
+    dango_primitives::BlockClient,
+    std::time::Duration,
+    tokio::time::sleep,
+};
+
+async fn with_backoff<F, Fut, T>(mut op: F) -> Result<T>
+where
+    F:   FnMut() -> Fut,
+    Fut: std::future::Future<Output = Result<T>>,
+{
+    let mut delay = Duration::from_millis(100);
+    for _ in 0..8 {
+        match op().await {
+            Ok(v)  => return Ok(v),
+            Err(e) if e.to_string().contains("429") => {
+                sleep(delay).await;
+                delay = (delay * 2).min(Duration::from_secs(10));
+            }
+            Err(e) => return Err(e),
+        }
+    }
+    op().await
+}
+
+async fn run(http: &HttpClient) -> Result<()> {
+    let block = with_backoff(|| async { http.query_block(None).await }).await?;
+    println!("height: {}", block.info.height);
+    Ok(())
+}
+```
+
+For richer policies (jitter, retry-after parsing) reach for `backon` or `tokio-retry` — both are async-aware and `Result`-friendly.
+
+## Sharding subscriptions
+
+The 30-per-connection cap is hard. Open multiple `Session`s when more streams are needed:
+
+```rust
+use {
+    anyhow::Result,
+    dango_sdk::{Session, WsClient},
+    futures::future::try_join_all,
+};
+
+async fn open_shards(url: &str, count: usize) -> Result<Vec<Session>> {
+    let client = WsClient::new(url)?;
+    try_join_all((0..count).map(|_| client.connect())).await
+}
+```
+
+Each `Session` is independent: a server-side reset on one connection does not affect the others. Route subscriptions to shards by content (e.g. `SubscribeTrades` by pair) so a single shard reset only disrupts part of the stream set.
+
+## Avoiding hot-poll loops
+
+The `tx-sync` broadcast flow polls `search_tx` until the transaction is included. Tight loops eat the HTTP budget — sleep between attempts:
+
+```rust
+use {
+    anyhow::Result,
+    dango_sdk::HttpClient,
+    dango_primitives::{Hash256, SearchTxClient},
+    std::time::Duration,
+    tokio::time::sleep,
+};
+
+async fn wait(http: &HttpClient, hash: Hash256) -> Result<()> {
+    for _ in 0..40 {
+        if http.search_tx(hash).await.is_ok() {
+            return Ok(());
+        }
+        sleep(Duration::from_millis(500)).await;
+    }
+    anyhow::bail!("tx {hash} not included within 20 s");
+}
+```
+
+Prefer a subscription (`SubscribeTransactions`) when watching many transactions at once.
+
+## Reusing `HttpClient`
+
+`HttpClient` wraps a `reqwest::Client` which holds a connection pool. Cloning shares the pool. Avoid `HttpClient::new` per request — it spins up a fresh `reqwest::Client` each time and skips connection reuse.
+
+## Next
+
+- [Error handling](./error-handling) — what kinds of failures the SDK surfaces.
+- [Subscriptions](./subscriptions) — when to migrate off polling.

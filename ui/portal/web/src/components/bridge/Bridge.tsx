@@ -25,7 +25,8 @@ import {
 
 import { Link } from "@tanstack/react-router";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
-import { Decimal, formatUnits, parseUnits } from "@left-curve/dango/utils";
+import { Decimal, formatUnits, parseUnits } from "@left-curve/utils";
+import { Image } from "~/components/foundation/Image";
 
 import {
   Button,
@@ -42,7 +43,7 @@ import { useState } from "react";
 import type React from "react";
 import type { PropsWithChildren } from "react";
 import type { AnyCoin } from "@left-curve/store/types";
-import type { NonNullablePropertiesBy } from "@left-curve/dango/types";
+import type { NonNullablePropertiesBy } from "@left-curve/types";
 
 const [BridgeProvider, useBridge] = createContext<{
   state: ReturnType<typeof useBridgeState>;
@@ -85,9 +86,12 @@ const BridgeContainer: React.FC<PropsWithChildren<BridgeProps>> = ({
 
 const BridgeDeposit: React.FC = () => {
   const { state } = useBridge();
-  const { action, network } = state;
+  const { action, network, coin, config } = state;
 
   if (action !== "deposit") return null;
+
+  const isEvmNetwork = !!network && !["bitcoin", "solana"].includes(network);
+  const showUnsupportedFallback = isEvmNetwork && !!coin && !config?.router;
 
   return (
     <>
@@ -95,7 +99,11 @@ const BridgeDeposit: React.FC = () => {
 
       {network === "bitcoin" && <BitcoinDeposit />}
 
-      {network && !["bitcoin", "solana"].includes(network) && <EvmDeposit />}
+      {isEvmNetwork && config?.router && <EvmDeposit />}
+
+      {showUnsupportedFallback && (
+        <WarningContainer description="This network does not support this asset." />
+      )}
 
       <WarningContainer description={m["bridge.rateLimitWarning"]()} />
     </>
@@ -226,7 +234,7 @@ const EvmDeposit: React.FC = () => {
               </p>
 
               <div className="flex gap-2 items-center">
-                <img src={connector.icon} alt={connector.name} className="w-4 h-4 inline-block" />
+                <Image src={connector.icon} alt={connector.name} className="w-4 h-4 inline-block" />
                 <TruncateText
                   start={4}
                   end={4}
@@ -261,7 +269,7 @@ const EvmDeposit: React.FC = () => {
           startContent={
             <div className="inline-flex flex-row items-center gap-3 diatype-m-regular h-[46px] rounded-md min-w-14 p-3 bg-transparent justify-start">
               <div className="flex gap-2 items-center font-semibold">
-                <img src={coin.logoURI} alt={coin.symbol} className="w-8 h-8" />
+                <Image src={coin.logoURI} alt={coin.symbol} className="w-8 h-8" />
                 <p>{coin.symbol}</p>
               </div>
             </div>
@@ -396,7 +404,7 @@ const BridgeWithdraw: React.FC = () => {
                     {destinationAddress.walletName && (
                       <>
                         {destinationAddress.walletIcon && (
-                          <img
+                          <Image
                             src={destinationAddress.walletIcon}
                             alt={destinationAddress.walletName}
                             className="w-4 h-4 inline-block"
@@ -460,7 +468,7 @@ const BridgeWithdraw: React.FC = () => {
                 startContent={
                   <div className="inline-flex flex-row items-center gap-3 diatype-m-regular h-[46px] rounded-md min-w-14 p-3 bg-transparent justify-start">
                     <div className="flex gap-2 items-center font-semibold">
-                      <img src={coin.logoURI} alt={coin.symbol} className="w-8 h-8" />
+                      <Image src={coin.logoURI} alt={coin.symbol} className="w-8 h-8" />
                       <p>{coin.symbol}</p>
                     </div>
                   </div>

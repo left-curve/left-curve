@@ -1,14 +1,6 @@
-import { createSubscription } from "../../../utils/createSubscription.js";
-import { getAllPerpsPairStats } from "../../perps/queries/getAllPerpsPairStats.js";
-
-import type {
-  Chain,
-  Client,
-  PerpsPairStats,
-  Signer,
-  SubscriptionCallbacks,
-  Transport,
-} from "../../../types/index.js";
+import type { Client, PerpsPairStats, SubscriptionCallbacks } from "@left-curve/types";
+import { createSubscription } from "@left-curve/utils";
+import { getAllPerpsPairStats } from "#actions/perps/queries/getAllPerpsPairStats.js";
 
 export type AllPerpsPairStatsSubscriptionParameters = SubscriptionCallbacks<{
   allPerpsPairStats: PerpsPairStats[];
@@ -26,18 +18,14 @@ export type AllPerpsPairStatsSubscriptionReturnType = () => void;
  * @param parameters The parameters for the subscription.
  * @returns A function to unsubscribe from the all perps pair stats events.
  */
-export function allPerpsPairStatsSubscription<
-  chain extends Chain | undefined = Chain,
-  signer extends Signer | undefined = undefined,
->(
-  client: Client<Transport, chain, signer>,
+export function allPerpsPairStatsSubscription(
+  client: Client,
   parameters: AllPerpsPairStatsSubscriptionParameters,
 ): AllPerpsPairStatsSubscriptionReturnType {
   if (!client.subscribe) throw new Error("error: client does not support subscriptions");
 
   const { httpInterval = 5_000, ...callbacks } = parameters;
   const { subscribe } = client;
-  const { polling, batch } = client.transport;
 
   const query = /* GraphQL */ `
     subscription AllPerpsPairStatsSubscription {
@@ -63,15 +51,13 @@ export function allPerpsPairStatsSubscription<
           },
         ),
       httpQuery: async () => {
-        const allPerpsPairStats = await getAllPerpsPairStats(client as Client<Transport>);
+        const allPerpsPairStats = await getAllPerpsPairStats(client as Client);
         return { allPerpsPairStats };
       },
       httpInterval,
       emitter: subscribe.emitter!,
       getStatus: subscribe.getClientStatus!,
       onError: callbacks.error,
-      polling,
-      batch,
     },
     (data) => callbacks.next(data),
   );

@@ -1,0 +1,54 @@
+# storeCode
+
+Upload a Wasm code blob to the chain.
+
+## Signature
+
+```ts
+function storeCode(
+  client: Client<Signer>,
+  parameters: {
+    sender: Address
+    code: Base64
+  },
+): Promise<{ hash: Uint8Array } & TxData>
+```
+
+## Example
+
+```ts
+import { createSignerClient, createTransport, testnet, PrivateKeySigner } from "@left-curve/sdk"
+import { encodeBase64 } from "@left-curve/encoding"
+import { readFileSync } from "node:fs"
+import type { Address } from "@left-curve/sdk"
+
+const client = createSignerClient({
+  chain: testnet,
+  transport: createTransport(),
+  signer: PrivateKeySigner.fromMnemonic(process.env.DANGO_MNEMONIC!),
+})
+const sender: Address = "0x1234567890abcdef1234567890abcdef12345678"
+
+const wasm = readFileSync("./contract.wasm")
+await client.storeCode({ sender, code: encodeBase64(wasm) })
+```
+
+## Parameters
+
+**`sender`** — `Address`. The uploader. Subject to the chain's `upload` permission (`everybody`, `nobody`, or `somebodies`).
+
+**`code`** — `Base64`. Base64-encoded Wasm bytecode.
+
+## Returns
+
+**`{ hash: Uint8Array } & TxData`** — see [`broadcastTxSync`](./broadcastTxSync).
+
+## Notes
+
+- The code hash for later [`instantiate`](./instantiate) calls is SHA-256 of the raw bytes (the typed-data builder hashes the base64-decoded content).
+
+## See also
+
+- [`storeCodeAndInstantiate`](./storeCodeAndInstantiate) — combined variant
+- [`instantiate`](./instantiate)
+- [`getCode`](./getCode)

@@ -12,10 +12,11 @@ import { useConfig, usePrices } from "@left-curve/store";
 
 import { forwardRef } from "react";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
-import { formatUnits } from "@left-curve/dango/utils";
+import { formatUnits } from "@left-curve/utils";
+import { Image } from "~/components/foundation/Image";
 
 import type { useNavigate } from "@tanstack/react-router";
-import type { Address, Coins } from "@left-curve/dango/types";
+import type { Address, Coins } from "@left-curve/types";
 
 type ActivityTransferModalProps = {
   action?: "received" | "sent";
@@ -29,7 +30,10 @@ type ActivityTransferModalProps = {
 };
 
 export const ActivityTransferModal = forwardRef<undefined, ActivityTransferModalProps>(
-  ({ action = "received", from, to, time, txHash, coins, blockHeight, navigate: _navigate_ }) => {
+  (
+    { action = "received", from, to, time, txHash, coins, blockHeight, navigate: _navigate_ },
+    _ref,
+  ) => {
     const { hideModal, setSidebarVisibility, settings } = useApp();
     const config = useConfig();
     const { getPrice } = usePrices();
@@ -66,7 +70,7 @@ export const ActivityTransferModal = forwardRef<undefined, ActivityTransferModal
                     <p>
                       {humanAmount} {coin.symbol}
                     </p>
-                    <img src={coin.logoURI} alt={`${coin.symbol} logo`} className="h-8 w-8" />
+                    <Image src={coin.logoURI} alt={`${coin.symbol} logo`} className="h-8 w-8" />
                   </div>
                   <FormattedNumber
                     number={getPrice(humanAmount, denom)}

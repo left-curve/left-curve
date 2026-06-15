@@ -1,19 +1,17 @@
 use {
     assertor::*,
+    dango_app::Indexer,
+    dango_indexer_sql::entity,
     dango_testing::{
-        TestOption,
-        perps::{create_perps_fill, pair_id, setup_perps_env},
-        setup_test_with_indexer,
+        TestOption, create_perps_fill, pair_id, setup_perps_env, setup_test_naive_with_indexer,
     },
-    grug_app::Indexer,
-    indexer_sql::entity,
     sea_orm::EntityTrait,
 };
 
 #[tokio::test(flavor = "multi_thread")]
 async fn index_perps_events() -> anyhow::Result<()> {
-    let (mut suite, mut accounts, _, contracts, _, _, dango_context, _, _db_guard) =
-        setup_test_with_indexer(TestOption::default()).await;
+    let (mut suite, mut accounts, _, contracts, _, dango_context, _, _, _db_guard) =
+        setup_test_naive_with_indexer(TestOption::default()).await;
 
     setup_perps_env(&mut suite, &mut accounts, &contracts, 2_000, 100_000).await;
 

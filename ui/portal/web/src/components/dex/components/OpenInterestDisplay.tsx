@@ -1,23 +1,20 @@
 import type React from "react";
 import { useMemo } from "react";
-import { Decimal } from "@left-curve/dango/utils";
+import { Decimal } from "@left-curve/utils";
 import { FormattedNumber, IconToastInfo, Tooltip, twMerge } from "@left-curve/applets-kit";
-import {
-  useCurrentPrice,
-  perpsPairStateStore,
-  usePerpsPairParam,
-  TradePairStore,
-} from "@left-curve/store";
+import { useCurrentPrice, usePerpsPairState, usePerpsPairParam } from "@left-curve/store";
+import { useProTrade } from "./ProTrade";
 
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 
 export const OpenInterestDisplay: React.FC = () => {
-  const getPerpsPairId = TradePairStore((s) => s.getPerpsPairId);
-  const pairState = perpsPairStateStore((s) => s.pairState);
+  const { pair } = useProTrade();
+  const pairId = pair.id;
+  const pairState = usePerpsPairState((s) => s.pairState, { pairId });
 
-  const { currentPrice } = useCurrentPrice();
+  const { currentPrice } = useCurrentPrice({ pairId });
 
-  const { data: pairParam } = usePerpsPairParam({ pairId: getPerpsPairId() });
+  const { data: pairParam } = usePerpsPairParam({ pairId: pairId });
 
   const { totalOiUsd, isAtLimit } = useMemo(() => {
     if (!pairState || !currentPrice) {

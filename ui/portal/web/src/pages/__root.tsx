@@ -60,7 +60,8 @@ export const Route = createRootRouteWithContext<RouterContext>()({
           isConnected &&
           settings.useSessionKey &&
           connector &&
-          connector.type !== "session"
+          connector.type !== "session" &&
+          connector.type !== "debug"
         ) {
           if (modal.modal !== Modals.RenewSession) {
             showModal(Modals.RenewSession);

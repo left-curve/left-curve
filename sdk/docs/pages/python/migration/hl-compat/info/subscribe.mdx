@@ -1,0 +1,58 @@
+# Info.subscribe (HL-compat)
+
+Dispatch an HL-shaped `Subscription` dict to the right native subscriber.
+
+## Signature
+
+```python
+def subscribe(
+    self,
+    subscription: Subscription,
+    callback: Callable[[Any], None],
+) -> int
+```
+
+## Example
+
+```python
+from dango.hyperliquid_compatibility.info import Info
+
+info = Info(base_url="https://...")
+
+sid = info.subscribe({"type": "trades", "coin": "ETH"}, print)
+sid_user = info.subscribe({"type": "userFills", "user": "0x..."}, print)
+```
+
+## Parameters
+
+**`subscription`** — `Subscription`. One of the HL-shaped `*Subscription` TypedDicts. Dispatch is by the `type` field.
+
+**`callback`** — `Callable[[Any], None]`. Invoked with HL-shaped envelopes (`{channel, data}` for `user` / `userFills`, etc.).
+
+## Returns
+
+**`int`** — the subscription id.
+
+## Dispatch table
+
+| `type` | Native handler | Notes |
+|--------|----------------|-------|
+| `"trades"` | `subscribe_perps_trades` | Drops maker side; dedupes by `fill_id` |
+| `"candle"` | `subscribe_perps_candles` | Translates HL interval string |
+| `"userEvents"` | `subscribe_user_events(event_types=["order_filled"])` | |
+| `"userFills"` | `subscribe_user_events(event_types=["order_filled"])` | Different envelope; always `isSnapshot=False` |
+| `"orderUpdates"` | `subscribe_user_events(event_types=["order_persisted", "order_removed"])` | Always emits a list of one |
+| `"l2Book"` | `subscribe_query_app(block_interval=1)` | Polling-backed; picks smallest bucket |
+| `"bbo"` | `subscribe_query_app(block_interval=1)` | Polling-backed, `limit=1` |
+| `"activeAssetCtx"` | `subscribe_query_app(block_interval=1)` | `markPx`/`oraclePx` report `"0"` (gap) |
+| `"activeAssetData"` | `subscribe_query_app(block_interval=1)` | Uses `multi` to bundle user + pair state |
+| `"allMids"` | — | Raises `NotImplementedError` |
+| `"userFundings"` | — | Raises (no separate funding stream) |
+| `"webData2"` | — | Raises (UI-specific aggregation; no analog) |
+| `"userNonFundingLedgerUpdates"` | — | Raises (Phase 16 deferred) |
+
+## See also
+
+- [`unsubscribe`](./unsubscribe) — drop a subscription
+- [`disconnect_websocket`](./disconnect_websocket) — close the connection
+- [Concepts: Subscriptions](../../../concepts/subscriptions) — the WebSocket model

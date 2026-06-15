@@ -1,4 +1,4 @@
-import { deserializeJson, serializeJson } from "@left-curve/dango/encoding";
+import { deserializeJson, serializeJson } from "@left-curve/encoding";
 
 import { createMemoryStorage } from "./memoryStorage.js";
 
@@ -29,6 +29,13 @@ export function createStorage<inner extends Record<string, unknown> = Record<str
     },
     removeItem(key) {
       storage.removeItem(`${prefix}.${key as string}`);
+    },
+    subscribe(key, listener) {
+      return (
+        storage.subscribe?.(`${prefix}.${key as string}`, (value) => {
+          listener(value === null ? (null as any) : (deserialize(value) as any));
+        }) ?? (() => {})
+      );
     },
   };
 }
@@ -64,6 +71,13 @@ export function createAsyncStorage<inner extends Record<string, unknown> = Recor
     },
     async removeItem(key) {
       await unwrap(storage.removeItem(`${prefix}.${key as string}`));
+    },
+    subscribe(key, listener) {
+      return (
+        storage.subscribe?.(`${prefix}.${key as string}`, (value) => {
+          listener(value === null ? (null as any) : (deserialize(value) as any));
+        }) ?? (() => {})
+      );
     },
   };
 }

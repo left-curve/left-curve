@@ -1,0 +1,48 @@
+# PerpsUserState
+
+A user's perps state — margin, positions, vault shares.
+
+## Definition
+
+```ts
+type PerpsUserState = {
+  margin: string
+  vaultShares: string
+  positions: Record<string, PerpsPosition>
+  unlocks: PerpsUnlock[]
+  reservedMargin: string
+  openOrderCount: number
+}
+
+type PerpsPosition = {
+  size: string
+  entryPrice: string
+  entryFundingPerUnit: string
+  conditionalOrderAbove?: ConditionalOrder
+  conditionalOrderBelow?: ConditionalOrder
+}
+
+type PerpsUnlock = {
+  endTime: string
+  amountToRelease: string
+}
+```
+
+## Fields
+
+**`margin`** — total collateral.
+
+**`vaultShares`** — vault shares held.
+
+**`positions`** — `Record<pairId, PerpsPosition>`.
+
+**`unlocks`** — pending vault withdrawals waiting on cooldown.
+
+**`reservedMargin`** — margin reserved for open orders.
+
+**`openOrderCount`** — active perps orders.
+
+## See also
+
+- [`PerpsUserStateExtended`](./PerpsUserStateExtended) — adds PnL, equity, liquidation prices
+- [`getPerpsUserState`](../actions/perps/getPerpsUserState)

@@ -1,24 +1,20 @@
 import type {
   Address,
-  Candle,
   CandleIntervals,
-  Denom,
   EventFilter,
   IndexedAccountEvent,
   IndexedBlock,
   IndexedEvent,
   IndexedTransferEvent,
-  PairStats,
   PerpsCandle,
   PerpsPairStats,
   PerpsTrade,
-  PublicClient,
   QueryRequest,
   QueryResponse,
   SubscriptionEvent as DangoSubscriptionEvent,
-  Trade,
   Username,
-} from "@left-curve/dango/types";
+} from "@left-curve/types";
+import type { PublicClient } from "@left-curve/sdk";
 
 export type SubscriptionSchema = [
   {
@@ -47,31 +43,12 @@ export type SubscriptionSchema = [
     listener: (events: IndexedEvent[]) => void;
   },
   {
-    key: "candles";
-    params: {
-      baseDenom: Denom;
-      quoteDenom: Denom;
-      interval: CandleIntervals;
-      laterThan?: Date;
-      limit?: number;
-    };
-    listener: (event: { candles: Candle[] }) => void;
-  },
-  {
     key: "perpsCandles";
     params: {
       pairId: string;
       interval: CandleIntervals;
     };
     listener: (event: { perpsCandles: PerpsCandle[] }) => void;
-  },
-  {
-    key: "trades";
-    params: {
-      baseDenom: Denom;
-      quoteDenom: Denom;
-    };
-    listener: (event: { trades: Trade }) => void;
   },
   {
     key: "perpsTrades";
@@ -100,13 +77,10 @@ export type SubscriptionSchema = [
     listener: (event: { response: QueryResponse; blockHeight: number }) => void;
   },
   {
-    key: "allPairStats";
-    params?: undefined;
-    listener: (event: { allPairStats: PairStats[] }) => void;
-  },
-  {
     key: "allPerpsPairStats";
-    params?: undefined;
+    params: {
+      httpInterval?: number;
+    };
     listener: (event: { allPerpsPairStats: PerpsPairStats[] }) => void;
   },
 ];
@@ -127,8 +101,16 @@ export type SubscriptionExecutor<K extends SubscriptionKey> = (context: {
 
 export type SubscribeArguments<K extends SubscriptionKey> =
   GetSubscriptionDef<K>["params"] extends undefined
-    ? { listener: GetSubscriptionDef<K>["listener"]; params?: undefined }
-    : { listener: GetSubscriptionDef<K>["listener"]; params: GetSubscriptionDef<K>["params"] };
+    ? {
+        listener: GetSubscriptionDef<K>["listener"];
+        params?: undefined;
+        onError?: (error: unknown) => void;
+      }
+    : {
+        listener: GetSubscriptionDef<K>["listener"];
+        params: GetSubscriptionDef<K>["params"];
+        onError?: (error: unknown) => void;
+      };
 
 export type SubscriptionEvent<K extends SubscriptionKey> = Parameters<
   GetSubscriptionDef<K>["listener"]

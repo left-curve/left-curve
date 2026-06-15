@@ -1,46 +1,60 @@
-import { useEffect } from "react";
 import { useAppConfig } from "./useAppConfig.js";
 import { useConfig } from "./useConfig.js";
-import { createBlockStore } from "./createBlockStore.js";
+import { createLiveResource } from "../live/createLiveResource.js";
+import { equalLiveResourcePayload } from "../live/equality.js";
+import { useLiveResource } from "../live/useLiveResource.js";
 
-import {
-  camelCaseJsonDeserialization,
-  snakeCaseJsonSerialization,
-} from "@left-curve/dango/encoding";
+import { camelCaseJsonDeserialization, snakeCaseJsonSerialization } from "@left-curve/encoding";
 
-import type { PerpsPairState, QueryRequest } from "@left-curve/dango/types";
-import { TradePairStore } from "../stores/tradePairStore.js";
+import type { PerpsPairState, QueryRequest } from "@left-curve/types";
+import type { Config } from "../types/store.js";
+import type { LiveResourceSnapshot } from "../live/types.js";
 
-export const perpsPairStateStore = createBlockStore({
-  initialState: { pairState: null as PerpsPairState | null, pairId: null as string | null },
-});
+const PERPS_PAIR_STATE_INTERVAL = 5;
+const PERPS_PAIR_STATE_HTTP_INTERVAL = 5_000;
 
-type UsePerpsPairStateParameters = {
-  subscribe?: boolean;
+export type PerpsPairStateSnapshot = LiveResourceSnapshot & {
+  pairState: PerpsPairState | null;
+  pairId: string | null;
+  lastUpdatedBlockHeight: number;
 };
 
-export function usePerpsPairState(parameters: UsePerpsPairStateParameters) {
-  const { subscribe = true } = parameters;
-  const { subscriptions } = useConfig();
-  const { data: appConfig } = useAppConfig();
+export type UsePerpsPairStateParameters = {
+  pairId: string;
+  enabled?: boolean;
+};
 
-  const pairId = TradePairStore((s) => s.pairId);
-  const getPerpsPairId = TradePairStore((s) => s.getPerpsPairId);
+type PerpsPairStateResourceParams = {
+  pairId: string;
+  perpsContract: string;
+  subscriptions: Config["subscriptions"];
+};
 
-  const { setState } = perpsPairStateStore();
+const initialPerpsPairStateSnapshot: PerpsPairStateSnapshot = {
+  status: "idle",
+  error: null,
+  pairState: null,
+  pairId: null,
+  lastUpdatedBlockHeight: 0,
+};
 
-  useEffect(() => {
-    if (!subscribe || !pairId) return;
-    const { addresses } = appConfig;
-
-    const unsubscribe = subscriptions.subscribe("queryApp", {
+const perpsPairStateResource = createLiveResource<
+  PerpsPairStateResourceParams,
+  PerpsPairStateSnapshot
+>({
+  name: "perpsPairState",
+  getKey: ({ perpsContract, pairId }) => `perpsPairState:${perpsContract}:${pairId}`,
+  getInitialSnapshot: () => initialPerpsPairStateSnapshot,
+  equal: (previous, next) => equalLiveResourcePayload(previous, next, ["pairState", "pairId"]),
+  start: ({ pairId, perpsContract, subscriptions }, { emit, error }) =>
+    subscriptions.subscribe("queryApp", {
       params: {
-        interval: 5,
-        httpInterval: 5_000,
+        interval: PERPS_PAIR_STATE_INTERVAL,
+        httpInterval: PERPS_PAIR_STATE_HTTP_INTERVAL,
         request: snakeCaseJsonSerialization<QueryRequest>({
           wasmSmart: {
-            contract: addresses.perps,
-            msg: { pairState: { pairId: getPerpsPairId() } },
+            contract: perpsContract,
+            msg: { pairState: { pairId } },
           },
         }),
       },
@@ -50,12 +64,40 @@ export function usePerpsPairState(parameters: UsePerpsPairStateParameters) {
           blockHeight: number;
         };
         const { response, blockHeight } = camelCaseJsonDeserialization<Event>(event);
-        setState({ pairState: response.wasmSmart, pairId: getPerpsPairId(), blockHeight });
+        emit(
+          {
+            status: "ready",
+            error: null,
+            pairState: response.wasmSmart,
+            pairId,
+            lastUpdatedBlockHeight: blockHeight,
+          },
+          { version: blockHeight },
+        );
       },
-    });
+      onError: error,
+    }),
+});
 
-    return () => unsubscribe();
-  }, [appConfig.addresses, subscribe, pairId]);
+export function usePerpsPairState<Selection>(
+  selector: (snapshot: PerpsPairStateSnapshot) => Selection,
+  parameters: UsePerpsPairStateParameters,
+  equalityFn?: (previous: Selection, next: Selection) => boolean,
+): Selection {
+  const { pairId, enabled = true } = parameters;
+  const config = useConfig();
+  const { data: appConfig } = useAppConfig();
 
-  return { perpsPairStateStore };
+  return useLiveResource({
+    resource: perpsPairStateResource,
+    params: {
+      pairId,
+      perpsContract: appConfig.addresses.perps,
+      subscriptions: config.subscriptions,
+    },
+    enabled,
+    selector,
+    equalityFn,
+    restartToken: config.subscriptions,
+  });
 }

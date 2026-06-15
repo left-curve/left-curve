@@ -2,6 +2,7 @@ import { forwardRef, useImperativeHandle } from "react";
 import { twMerge } from "@left-curve/foundation";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 import { FormattedNumber } from "@left-curve/applets-kit";
+import { MarketPair } from "@left-curve/foundation/market-pair";
 
 import { OrderActivity } from "./OrderActivity";
 
@@ -14,12 +15,11 @@ type ActivityPerpOrderFilledProps = {
 
 export const ActivityPerpOrderFilled = forwardRef<ActivityRef, ActivityPerpOrderFilledProps>(
   ({ activity }, ref) => {
-    const { pair_id, fill_price, fill_size, realized_pnl, fee, is_maker } = activity.data;
+    const { pair_id, fill_price, fill_size, realized_pnl, is_maker } = activity.data;
 
     const isBuy = !fill_size.startsWith("-");
     const absSize = fill_size.startsWith("-") ? fill_size.slice(1) : fill_size;
-    const baseSymbol = pair_id.replace("perp/", "").replace("usd", "").toUpperCase();
-    const pairLabel = `${baseSymbol}/USD`;
+    const pair = MarketPair.fromPairId(pair_id);
 
     useImperativeHandle(ref, () => ({
       onClick: () => {},
@@ -34,7 +34,7 @@ export const ActivityPerpOrderFilled = forwardRef<ActivityRef, ActivityPerpOrder
         <div className="flex flex-col items-start">
           <div className="flex flex-col gap-1 text-ink-tertiary-500">
             <div className="flex w-full gap-1">
-              <span>{pairLabel}</span>
+              <span>{pair.ticker}</span>
               <span
                 className={twMerge(
                   "uppercase diatype-m-bold",
@@ -44,7 +44,7 @@ export const ActivityPerpOrderFilled = forwardRef<ActivityRef, ActivityPerpOrder
                 {isBuy ? "Long" : "Short"}
               </span>
               <span className="diatype-m-bold">
-                <FormattedNumber number={absSize} as="span" /> {baseSymbol}
+                <FormattedNumber number={absSize} as="span" /> {pair.base.symbol}
               </span>
               {is_maker != null && (
                 <span className="uppercase diatype-m-bold text-ink-tertiary-500">
@@ -56,7 +56,11 @@ export const ActivityPerpOrderFilled = forwardRef<ActivityRef, ActivityPerpOrder
             <div className="flex w-full gap-1">
               <span>{m["activities.activity.perpOrderFilled.atPrice"]()}</span>
               <span className="diatype-m-bold">
-                <FormattedNumber number={fill_price} formatOptions={{ currency: "USD" }} as="span" />
+                <FormattedNumber
+                  number={fill_price}
+                  formatOptions={{ currency: "USD" }}
+                  as="span"
+                />
               </span>
             </div>
 

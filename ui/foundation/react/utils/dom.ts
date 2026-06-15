@@ -1,4 +1,4 @@
-import { toPng } from "html-to-image";
+import { getFontEmbedCSS, toPng } from "html-to-image";
 
 const waitForImages = (root: HTMLElement) => {
   const images = root.querySelectorAll("img");
@@ -19,6 +19,7 @@ type SaveCardAsImageOptions = {
   prepareClone?: (clone: HTMLElement) => void;
   filename: string;
   width?: number;
+  fontEmbedCSS?: string;
 };
 
 export async function saveCardAsImage({
@@ -26,6 +27,7 @@ export async function saveCardAsImage({
   prepareClone,
   filename,
   width = 500,
+  fontEmbedCSS,
 }: SaveCardAsImageOptions): Promise<void> {
   const clone = source.cloneNode(true) as HTMLElement;
   clone.dataset.export = "true";
@@ -38,8 +40,9 @@ export async function saveCardAsImage({
   document.body.appendChild(container);
 
   try {
-    await waitForImages(clone);
-    const dataUrl = await toPng(clone, { cacheBust: true });
+    await Promise.all([waitForImages(clone), document.fonts.ready]);
+    const resolvedFontEmbedCSS = fontEmbedCSS ?? (await getFontEmbedCSS(source));
+    const dataUrl = await toPng(clone, { cacheBust: true, fontEmbedCSS: resolvedFontEmbedCSS });
     const link = document.createElement("a");
     link.download = filename;
     link.href = dataUrl;

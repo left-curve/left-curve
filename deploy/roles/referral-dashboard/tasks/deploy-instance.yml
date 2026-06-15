@@ -1,0 +1,79 @@
+---
+- name: "{{ network }} - Validate required variables"
+  assert:
+    that:
+      - referral_dashboard_db_password is defined
+      - referral_dashboard_db_password | length > 0
+      - postgres_user is defined
+      - postgres_password is defined
+      - ghcr_user is defined
+      - ghcr_token is defined
+    fail_msg: "referral-dashboard requires referral_dashboard_db_password, postgres_user, postgres_password, ghcr_user, ghcr_token"
+
+- name: "{{ network }} - Create instance directory"
+  file:
+    path: "{{ referral_dashboard_dir }}/{{ network }}"
+    state: directory
+    mode: "0755"
+
+- name: "{{ network }} - Ensure postgres docker network exists"
+  community.docker.docker_network:
+    name: postgres
+    state: present
+
+- name: "{{ network }} - Create postgres user"
+  community.postgresql.postgresql_user:
+    name: "{{ referral_dashboard_db_user }}"
+    password: "{{ referral_dashboard_db_password }}"
+    login_user: "{{ postgres_user }}"
+    login_password: "{{ postgres_password }}"
+    login_host: "{{ postgres_external_host }}"
+    login_port: "{{ postgres_port }}"
+    state: present
+
+- name: "{{ network }} - Create postgres database"
+  community.postgresql.postgresql_db:
+    name: "{{ referral_dashboard_db_name }}"
+    owner: "{{ referral_dashboard_db_user }}"
+    login_user: "{{ postgres_user }}"
+    login_password: "{{ postgres_password }}"
+    login_host: "{{ postgres_external_host }}"
+    login_port: "{{ postgres_port }}"
+    state: present
+
+- name: "{{ network }} - Grant privileges on database"
+  community.postgresql.postgresql_privs:
+    type: database
+    privs: ALL
+    roles: "{{ referral_dashboard_db_user }}"
+    login_db: "{{ referral_dashboard_db_name }}"
+    login_user: "{{ postgres_user }}"
+    login_password: "{{ postgres_password }}"
+    login_host: "{{ postgres_external_host }}"
+    login_port: "{{ postgres_port }}"
+    state: present
+
+- name: "{{ network }} - Template docker-compose.yml"
+  template:
+    src: docker-compose.yml.j2
+    dest: "{{ referral_dashboard_dir }}/{{ network }}/docker-compose.yml"
+    mode: "0644"
+
+- name: "{{ network }} - Login to GHCR"
+  community.docker.docker_login:
+    registry: ghcr.io
+    username: "{{ ghcr_user }}"
+    password: "{{ ghcr_token }}"
+  no_log: true
+
+- name: "{{ network }} - Launch stack"
+  community.docker.docker_compose_v2:
+    project_src: "{{ referral_dashboard_dir }}/{{ network }}"
+    pull: always
+    state: present
+    recreate: always
+
+- name: "{{ network }} - Logout from GHCR"
+  community.docker.docker_login:
+    registry: ghcr.io
+    state: absent

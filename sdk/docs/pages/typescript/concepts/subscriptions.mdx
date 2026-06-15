@@ -1,0 +1,81 @@
+# Subscriptions
+
+**What this teaches:** the WebSocket subscription model, the WS-only vs HTTP-fallback split, and the connection lifecycle.
+
+## Mental model
+
+Every `*Subscription` action on the client opens a long-lived stream over WebSocket and invokes a `next` callback for each new payload. The unsubscribe function the call returns is the only way to close the stream from the client side.
+
+```ts
+import { createPublicClient, createTransport, testnet } from "@left-curve/sdk"
+
+const client = createPublicClient({
+  chain: testnet,
+  transport: createTransport(),
+})
+
+const unsubscribe = client.blockSubscription({
+  next: ({ block }) => console.log("new block", block.blockHeight),
+  error: (err) => console.error(err),
+})
+
+// later
+unsubscribe()
+```
+
+## WS-only vs HTTP-fallback
+
+Most subscriptions are WS-only — they throw if the transport has `disableWs: true` or the WS client failed to connect:
+
+- `blockSubscription`
+- `accountSubscription`
+- `candlesSubscription`
+- `eventsSubscription`
+- `eventsByAddressesSubscription`
+- `perpsCandlesSubscription`
+- `transferSubscription`
+
+Four subscriptions fall back to HTTP polling when WS is unavailable:
+
+- `tradesSubscription`
+- `perpsTradesSubscription`
+- `allPairStatsSubscription`
+- `allPerpsPairStatsSubscription`
+- `queryAppSubscription`
+
+For these, pass `httpInterval` (default 3-5 seconds depending on the subscription) to control the poll rate.
+
+## Connection lifecycle
+
+The transport opens one WebSocket per client, shared by every subscription. It auto-reconnects with exponential backoff (1s → 30s, 10 retries by default; tune via `wsRetry` on `createTransport`). On `document.visibilitychange` to visible or `window.online`, the transport eagerly reconnects.
+
+Inspect connection state from the client's transport:
+
+```ts
+const status = client.subscribe.getClientStatus?.()
+console.log(status?.isConnected)
+```
+
+## Subscription limits
+
+A single WS connection accepts at most 30 concurrent subscriptions. Beyond that the server rejects new subscribe calls. See [Rate Limits & Quotas](./rate-limits) for the workaround.
+
+## Cleanup
+
+Always call the returned unsubscribe function. Without it, the WS subscription stays open until the connection closes:
+
+```ts
+const unsubscribe = client.candlesSubscription({
+  baseDenom: "dango",
+  quoteDenom: "bridge/usdc",
+  interval: "ONE_MINUTE",
+  next: (data) => updateChart(data.candles),
+})
+
+// in your component teardown
+unsubscribe()
+```
+
+## Next
+
+- [Rate Limits & Quotas](./rate-limits) — the 30-sub cap and how to shard across clients

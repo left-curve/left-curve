@@ -1,0 +1,342 @@
+name: Cloudflare Pages domain
+description: Bind or unbind a Cloudflare Pages custom domain and DNS CNAME.
+
+inputs:
+  api-token:
+    description: Cloudflare API token.
+    required: true
+  account-id:
+    description: Cloudflare account ID.
+    required: true
+  zone:
+    description: Cloudflare zone name, for example dango.zone.
+    required: true
+  zone-id:
+    description: Cloudflare zone ID. Required unless the API token can look up the zone by name.
+    required: false
+  project-name:
+    description: Cloudflare Pages project name.
+    required: true
+  hostname:
+    description: Custom hostname to bind or unbind.
+    required: true
+  target:
+    description: CNAME target for bind operations.
+    required: false
+  action:
+    description: Either bind or unbind.
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Manage Pages domain
+      shell: bash
+      env:
+        CF_API_TOKEN: ${{ inputs.api-token }}
+        CF_ACCOUNT_ID: ${{ inputs.account-id }}
+        CF_ZONE: ${{ inputs.zone }}
+        CF_ZONE_ID: ${{ inputs.zone-id }}
+        CF_PROJECT_NAME: ${{ inputs.project-name }}
+        CF_HOSTNAME: ${{ inputs.hostname }}
+        CF_TARGET: ${{ inputs.target }}
+        CF_ACTION: ${{ inputs.action }}
+      run: |
+        set -euo pipefail
+
+        api_base="https://api.cloudflare.com/client/v4"
+
+        cf_api() {
+          curl -sS \
+            -H "Authorization: Bearer ${CF_API_TOKEN}" \
+            -H "Content-Type: application/json" \
+            "$@"
+        }
+
+        require_success() {
+          local response="$1"
+          local context="$2"
+          if ! response_success "$response"; then
+            echo "::error::Cloudflare API request failed: ${context}"
+            print_errors "$response"
+            exit 1
+          fi
+        }
+
+        response_success() {
+          local response="$1"
+          [ -n "$response" ] && jq -e '.success == true' <<< "$response" >/dev/null
+        }
+
+        has_error_code() {
+          local response="$1"
+          shift
+          local code
+          [ -n "$response" ] || return 1
+          for code in "$@"; do
+            if jq -e --arg code "$code" 'any(.errors[]?; (.code | tostring) == $code)' <<< "$response" >/dev/null; then
+              return 0
+            fi
+          done
+          return 1
+        }
+
+        is_not_found_response() {
+          local response="$1"
+          has_error_code "$response" 7003 81044
+        }
+
+        is_already_bound_response() {
+          local response="$1"
+          has_error_code "$response" 8000007
+        }
+
+        print_errors() {
+          local response="$1"
+          if [ -n "$response" ]; then
+            jq -r '.errors[]?.message // empty' <<< "$response" || true
+          fi
+        }
+
+        delete_dns_record() {
+          if [ -z "${zone_id:-}" ]; then
+            echo "Cloudflare zone ${CF_ZONE} is absent; skipping DNS cleanup"
+            return 0
+          fi
+
+          if [ -n "${dns_record_id:-}" ]; then
+            delete_dns_response="$(cf_api -X DELETE "${api_base}/zones/${zone_id}/dns_records/${dns_record_id}" || true)"
+            if response_success "$delete_dns_response"; then
+              echo "Deleted DNS record ${CF_HOSTNAME}"
+              dns_record_id=""
+            elif is_not_found_response "$delete_dns_response"; then
+              echo "DNS record ${CF_HOSTNAME} is already absent"
+              dns_record_id=""
+            else
+              echo "::error::Cloudflare API request failed: delete DNS record ${CF_HOSTNAME}"
+              print_errors "$delete_dns_response"
+              return 1
+            fi
+          else
+            echo "DNS record ${CF_HOSTNAME} is already absent"
+          fi
+        }
+
+        rollback_dns_record() {
+          if [ -z "${zone_id:-}" ]; then
+            return 0
+          fi
+
+          if [ "${dns_change:-}" = "updated" ]; then
+            if [ -z "${previous_dns_body:-}" ] || [ -z "${dns_record_id:-}" ]; then
+              echo "::warning::Cannot restore DNS record ${CF_HOSTNAME}; previous record details are missing"
+              return 1
+            fi
+            rollback_response="$(cf_api -X PUT "${api_base}/zones/${zone_id}/dns_records/${dns_record_id}" --data "$previous_dns_body" || true)"
+            if response_success "$rollback_response"; then
+              echo "Restored DNS record ${CF_HOSTNAME}"
+              return 0
+            fi
+            echo "::warning::Failed to restore DNS record ${CF_HOSTNAME}"
+            print_errors "$rollback_response"
+            return 1
+          fi
+
+          if [ "${dns_change:-}" = "created" ]; then
+            if [ -z "${created_dns_record_id:-}" ]; then
+              rollback_lookup_response="$(cf_api "${api_base}/zones/${zone_id}/dns_records?type=CNAME&name=${CF_HOSTNAME}" || true)"
+              if response_success "$rollback_lookup_response"; then
+                created_dns_record_id="$(jq -r '.result[0].id // empty' <<< "$rollback_lookup_response")"
+              fi
+            fi
+
+            if [ -z "${created_dns_record_id:-}" ]; then
+              echo "::warning::Cannot remove DNS record ${CF_HOSTNAME}; created record id is missing"
+              return 1
+            fi
+
+            rollback_response="$(cf_api -X DELETE "${api_base}/zones/${zone_id}/dns_records/${created_dns_record_id}" || true)"
+            if response_success "$rollback_response" || is_not_found_response "$rollback_response"; then
+              echo "Removed DNS record ${CF_HOSTNAME}"
+              dns_record_id=""
+              return 0
+            fi
+            echo "::warning::Failed to remove DNS record ${CF_HOSTNAME}"
+            print_errors "$rollback_response"
+            return 1
+          fi
+
+          return 0
+        }
+
+        if [ "$CF_ACTION" != "bind" ] && [ "$CF_ACTION" != "unbind" ]; then
+          echo "::error::action must be bind or unbind"
+          exit 1
+        fi
+
+        if [ "$CF_ACTION" = "bind" ] && [ -z "$CF_TARGET" ]; then
+          echo "::error::target is required when action=bind"
+          exit 1
+        fi
+
+        zone_id="$CF_ZONE_ID"
+        zone_lookup_failed=0
+        dns_record_id=""
+        dns_lookup_failed=0
+        previous_dns_body=""
+        created_dns_record_id=""
+        dns_change=""
+
+        if [ -n "$zone_id" ]; then
+          echo "Using configured Cloudflare zone ID for ${CF_ZONE}"
+        else
+          zone_response="$(cf_api "${api_base}/zones?name=${CF_ZONE}" || true)"
+          if response_success "$zone_response"; then
+            zone_id="$(jq -r '.result[0].id // empty' <<< "$zone_response")"
+          elif [ "$CF_ACTION" = "unbind" ] && is_not_found_response "$zone_response"; then
+            echo "Cloudflare zone ${CF_ZONE} is already absent"
+          else
+            echo "::error::Cloudflare API request failed: lookup zone ${CF_ZONE}"
+            print_errors "$zone_response"
+            zone_lookup_failed=1
+          fi
+        fi
+
+        if [ -z "$zone_id" ]; then
+          if [ "$zone_lookup_failed" -ne 0 ]; then
+            echo "::error::Unable to determine Cloudflare zone ID for ${CF_ZONE}; set the CF_ZONE_ID GitHub variable or grant the token zone lookup access"
+          else
+            echo "::error::Cloudflare zone ${CF_ZONE} was not found; set the CF_ZONE_ID GitHub variable or verify the zone name"
+          fi
+          exit 1
+        fi
+
+        dns_response="$(cf_api "${api_base}/zones/${zone_id}/dns_records?type=CNAME&name=${CF_HOSTNAME}" || true)"
+        if response_success "$dns_response"; then
+          dns_record_id="$(jq -r '.result[0].id // empty' <<< "$dns_response")"
+          if [ -n "$dns_record_id" ]; then
+            previous_dns_body="$(jq -c '
+              .result[0]
+              | {type, name, content, ttl}
+              + (if has("proxied") then {proxied} else {} end)
+              + (if has("comment") then {comment} else {} end)
+              + (if has("tags") then {tags} else {} end)
+              + (if has("settings") then {settings} else {} end)
+            ' <<< "$dns_response")"
+          fi
+        elif [ "$CF_ACTION" = "bind" ]; then
+          require_success "$dns_response" "lookup DNS record ${CF_HOSTNAME}"
+        else
+          echo "::error::Cloudflare API request failed: lookup DNS record ${CF_HOSTNAME}"
+          print_errors "$dns_response"
+          dns_lookup_failed=1
+        fi
+
+        if [ "$CF_ACTION" = "bind" ]; then
+          # Pages branch custom domains require a proxied CNAME; DNS-only records
+          # are routed to the production branch instead of the preview alias.
+          dns_body="$(jq -n \
+            --arg type "CNAME" \
+            --arg name "$CF_HOSTNAME" \
+            --arg content "$CF_TARGET" \
+            '{type: $type, name: $name, content: $content, ttl: 1, proxied: true}')"
+
+          if [ -n "$dns_record_id" ]; then
+            dns_change="updated"
+            update_response="$(cf_api -X PUT "${api_base}/zones/${zone_id}/dns_records/${dns_record_id}" --data "$dns_body" || true)"
+            if ! response_success "$update_response"; then
+              echo "::error::Cloudflare API request failed: update DNS record ${CF_HOSTNAME}"
+              print_errors "$update_response"
+              echo "Rolling back DNS record ${CF_HOSTNAME}"
+              if ! rollback_dns_record; then
+                echo "::error::DNS rollback failed for ${CF_HOSTNAME}"
+              fi
+              exit 1
+            fi
+            echo "Updated CNAME ${CF_HOSTNAME} -> ${CF_TARGET}"
+          else
+            create_response="$(cf_api -X POST "${api_base}/zones/${zone_id}/dns_records" --data "$dns_body" || true)"
+            require_success "$create_response" "create DNS record ${CF_HOSTNAME}"
+            dns_change="created"
+            dns_record_id="$(jq -r '.result.id // empty' <<< "$create_response")"
+            if [ -z "$dns_record_id" ]; then
+              echo "::warning::Cloudflare API response did not include created DNS record id for ${CF_HOSTNAME}; looking it up"
+              created_dns_lookup_response="$(cf_api "${api_base}/zones/${zone_id}/dns_records?type=CNAME&name=${CF_HOSTNAME}" || true)"
+              if response_success "$created_dns_lookup_response"; then
+                dns_record_id="$(jq -r '.result[0].id // empty' <<< "$created_dns_lookup_response")"
+              fi
+            fi
+            created_dns_record_id="$dns_record_id"
+            if [ -z "$created_dns_record_id" ]; then
+              echo "::error::Unable to determine created DNS record id for ${CF_HOSTNAME}"
+              if ! rollback_dns_record; then
+                echo "::error::DNS rollback failed for ${CF_HOSTNAME}"
+              fi
+              exit 1
+            fi
+            echo "Created CNAME ${CF_HOSTNAME} -> ${CF_TARGET}"
+          fi
+
+          domain_response="$(cf_api "${api_base}/accounts/${CF_ACCOUNT_ID}/pages/projects/${CF_PROJECT_NAME}/domains/${CF_HOSTNAME}" || true)"
+          if response_success "$domain_response"; then
+            echo "Pages domain ${CF_HOSTNAME} is already bound"
+            exit 0
+          fi
+
+          pages_body="$(jq -n --arg name "$CF_HOSTNAME" '{name: $name}')"
+          create_domain_response="$(cf_api -X POST "${api_base}/accounts/${CF_ACCOUNT_ID}/pages/projects/${CF_PROJECT_NAME}/domains" --data "$pages_body" || true)"
+          if response_success "$create_domain_response"; then
+            echo "Bound Pages domain ${CF_HOSTNAME}"
+          else
+            retry_domain_response="$(cf_api "${api_base}/accounts/${CF_ACCOUNT_ID}/pages/projects/${CF_PROJECT_NAME}/domains/${CF_HOSTNAME}" || true)"
+            if response_success "$retry_domain_response"; then
+              echo "Pages domain ${CF_HOSTNAME} was already bound"
+              exit 0
+            fi
+
+            if is_already_bound_response "$create_domain_response"; then
+              echo "::error::Pages domain ${CF_HOSTNAME} is already bound outside ${CF_PROJECT_NAME}"
+            else
+              echo "::error::Failed to add Pages domain ${CF_HOSTNAME}"
+            fi
+            print_errors "$create_domain_response"
+            echo "Rolling back DNS record ${CF_HOSTNAME}"
+            if ! rollback_dns_record; then
+              echo "::error::DNS rollback failed for ${CF_HOSTNAME}"
+            fi
+            exit 1
+          fi
+        else
+          cleanup_failed="$zone_lookup_failed"
+          domain_response="$(cf_api "${api_base}/accounts/${CF_ACCOUNT_ID}/pages/projects/${CF_PROJECT_NAME}/domains/${CF_HOSTNAME}" || true)"
+          if response_success "$domain_response"; then
+            delete_domain_response="$(cf_api -X DELETE "${api_base}/accounts/${CF_ACCOUNT_ID}/pages/projects/${CF_PROJECT_NAME}/domains/${CF_HOSTNAME}" || true)"
+            if response_success "$delete_domain_response"; then
+              echo "Deleted Pages domain ${CF_HOSTNAME}"
+            elif is_not_found_response "$delete_domain_response"; then
+              echo "Pages domain ${CF_HOSTNAME} is already absent"
+            else
+              echo "::error::Failed to delete Pages domain ${CF_HOSTNAME}"
+              print_errors "$delete_domain_response"
+              cleanup_failed=1
+            fi
+          elif is_not_found_response "$domain_response"; then
+            echo "Pages domain ${CF_HOSTNAME} is already absent"
+          else
+            echo "::error::Failed to look up Pages domain ${CF_HOSTNAME}"
+            print_errors "$domain_response"
+            echo "Continuing to DNS cleanup"
+            cleanup_failed=1
+          fi
+
+          if [ "$dns_lookup_failed" -ne 0 ]; then
+            echo "Skipping DNS cleanup because DNS record lookup failed"
+            cleanup_failed=1
+          elif ! delete_dns_record; then
+            cleanup_failed=1
+          fi
+
+          if [ "$cleanup_failed" -ne 0 ]; then
+            exit 1
+          fi
+        fi

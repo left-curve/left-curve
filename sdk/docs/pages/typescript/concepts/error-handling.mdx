@@ -1,0 +1,80 @@
+# Error Handling
+
+**What this teaches:** the `BaseError` hierarchy, what each error means, and the current limitation around importing them.
+
+## Hierarchy
+
+Every SDK error extends `BaseError`:
+
+```
+BaseError
+├── HttpRequestError    // GraphQL HTTP failure (status, url, body)
+├── TimeoutError        // request exceeded its timeout
+└── UrlRequiredError    // transport invoked without a URL
+```
+
+`BaseError` carries structured metadata: `shortMessage`, `details`, `metaMessages`, `name`. The full error message is composed from those parts at construction.
+
+## Current limitation
+
+`BaseError`, `HttpRequestError`, `TimeoutError`, and `UrlRequiredError` are not re-exported from the `@left-curve/sdk` entry point today. To narrow with `instanceof`, import them from the type package's internal paths or fall back to `name` checks:
+
+```ts
+// Today: import directly from the sub-paths or check by name
+try {
+  await client.queryStatus()
+} catch (err) {
+  if (err instanceof Error && err.name === "HttpRequestError") {
+    // handle HTTP failures
+  } else if (err instanceof Error && err.name === "TimeoutError") {
+    // handle timeouts
+  } else {
+    throw err
+  }
+}
+```
+
+If you need the actual classes for `instanceof`, you must import them from the type package directly — they are not exposed on the main entry barrel. This will be revisited in a future release.
+
+## Triaging a thrown error
+
+`BaseError` instances always have:
+
+- `name` — discriminator, safe to switch on
+- `shortMessage` — single-line summary
+- `details` — derived from `cause.details` or `cause.message`
+- `metaMessages` — array of contextual lines (status code, URL, request body)
+
+```ts
+function logFailure(err: unknown) {
+  if (err instanceof Error && "shortMessage" in err) {
+    const e = err as Error & { shortMessage: string; metaMessages?: string[] }
+    console.error(e.name, e.shortMessage)
+    e.metaMessages?.forEach((m) => console.error("  ", m))
+    return
+  }
+  console.error(err)
+}
+```
+
+## Errors that are not `BaseError`
+
+Several actions still throw plain `Error` for assertion-style failures. Examples:
+
+- [`broadcastTxSync`](../actions/app/broadcastTxSync) throws `Error("failed to broadcast tx! code: 1, log: ...")` on `checkTx` failure.
+- [`signAndBroadcastTx`](../actions/app/signAndBroadcastTx) throws `Error("account not found")` when the sender has no on-chain account.
+- [`queryApp`](../actions/app/queryApp) and friends throw `Error("expecting ... response, got ...")` when the response shape does not match the requested variant.
+- [`submitConditionalOrders`](../actions/perps/submitConditionalOrders) throws `Error("submitConditionalOrders requires at least one order")` on empty input.
+
+For these, narrow by message string or by the surrounding action you called.
+
+## Pages
+
+- [`BaseError`](../errors/BaseError)
+- [`HttpRequestError`](../errors/HttpRequestError)
+- [`TimeoutError`](../errors/TimeoutError)
+- [`UrlRequiredError`](../errors/UrlRequiredError)
+
+## Next
+
+- [Rate Limits & Quotas](./rate-limits) — what the chain enforces server-side

@@ -1,0 +1,31 @@
+[package]
+authors       = { workspace = true }
+categories    = { workspace = true }
+documentation = { workspace = true }
+edition       = { workspace = true }
+license       = { workspace = true }
+name          = "dango-proposal-preparer"
+repository    = { workspace = true }
+rust-version  = { workspace = true }
+version       = { workspace = true }
+
+[features]
+metrics = ["dango-pyth-client/metrics", "dep:metrics"]
+
+[dependencies]
+dango-app         = { workspace = true }
+dango-math        = { workspace = true }
+dango-order-book  = { workspace = true }
+dango-primitives  = { workspace = true }
+dango-pyth-client = { workspace = true }
+dango-pyth-types  = { workspace = true }
+dango-types       = { workspace = true }
+metrics           = { workspace = true, optional = true }
+prost             = { workspace = true }
+reqwest           = { workspace = true }
+tokio             = { workspace = true }
+tokio-stream      = { workspace = true }
+tracing           = { workspace = true }
+
+[dev-dependencies]
+test-case = { workspace = true }

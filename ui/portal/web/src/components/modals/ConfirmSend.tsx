@@ -8,13 +8,14 @@ import {
   useApp,
 } from "@left-curve/applets-kit";
 
-import type { Address } from "@left-curve/dango/types";
-import { formatUnits } from "@left-curve/dango/utils";
+import type { Address } from "@left-curve/types";
+import { formatUnits } from "@left-curve/utils";
 import { useConfig, usePrices, usePublicClient } from "@left-curve/store";
 import { useQuery } from "@tanstack/react-query";
 
 import { forwardRef, useImperativeHandle } from "react";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
+import { Image } from "~/components/foundation/Image";
 
 type ConfirmSendProps = {
   amount: string;
@@ -62,7 +63,7 @@ export const ConfirmSend = forwardRef(
               <p>
                 {humanAmount} {coin.symbol}
               </p>
-              <img src={coin.logoURI} alt={coin.denom} className="w-8 h-8" />
+              <Image src={coin.logoURI} alt={coin.denom} className="w-8 h-8" />
             </div>
             <FormattedNumber
               number={getPrice(humanAmount, denom)}

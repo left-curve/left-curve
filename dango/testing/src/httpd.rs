@@ -1,0 +1,211 @@
+use {
+    crate::{
+        BlockCreation, HttpdError, MockClient, MockValidatorSets, TestAccounts, TestOption,
+        setup_suite_with_db_and_vm,
+    },
+    anyhow::bail,
+    dango_app::SimpleCommitment,
+    dango_db_memory::MemDb,
+    dango_genesis::{Codes, Contracts, GenesisCodes, GenesisOption},
+    dango_indexer_hooked::HookedIndexer,
+    dango_primitives::HttpdConfig,
+    dango_proposal_preparer::ProposalPreparer,
+    dango_vm_rust::{ContractWrapper, RustVm},
+    std::{
+        collections::HashSet,
+        net::TcpListener,
+        sync::{Arc, LazyLock, Mutex as StdMutex, mpsc},
+        time::Duration,
+    },
+    tokio::{net::TcpStream, sync::RwLock},
+};
+
+pub async fn mock_httpd_run(
+    port: u16,
+    block_creation: BlockCreation,
+    cors_allowed_origin: Option<String>,
+    test_opt: TestOption,
+    genesis_opt: GenesisOption,
+    database_url: Option<String>,
+) -> Result<(), HttpdError> {
+    mock_httpd_run_with_callback(
+        port,
+        block_creation,
+        cors_allowed_origin,
+        test_opt,
+        genesis_opt,
+        database_url,
+        None,
+        |_, _, _, _, _| {},
+    )
+    .await
+}
+
+/// Run the mock server with port 0 and send the actual bound port via a channel.
+/// This is useful for tests that need to run in parallel without port conflicts.
+pub async fn mock_httpd_run_with_port_sender(
+    block_creation: BlockCreation,
+    cors_allowed_origin: Option<String>,
+    test_opt: TestOption,
+    genesis_opt: GenesisOption,
+    database_url: Option<String>,
+    port_sender: mpsc::Sender<u16>,
+) -> Result<(), HttpdError> {
+    mock_httpd_run_with_callback(
+        0, // Let the OS allocate an available port
+        block_creation,
+        cors_allowed_origin,
+        test_opt,
+        genesis_opt,
+        database_url,
+        Some(port_sender),
+        |_, _, _, _, _| {},
+    )
+    .await
+}
+
+pub async fn mock_httpd_run_with_callback<C>(
+    port: u16,
+    block_creation: BlockCreation,
+    cors_allowed_origin: Option<String>,
+    test_opt: TestOption,
+    genesis_opt: GenesisOption,
+    database_url: Option<String>,
+    port_sender: Option<mpsc::Sender<u16>>,
+    callback: C,
+) -> Result<(), HttpdError>
+where
+    C: FnOnce(
+            TestAccounts,
+            Codes<ContractWrapper>,
+            Contracts,
+            MockValidatorSets,
+            dango_indexer_sql::context::Context,
+        ) + Send
+        + Sync,
+{
+    let indexer = dango_indexer_sql::IndexerBuilder::default();
+
+    let indexer = if let Some(url) = database_url {
+        indexer.with_database_url(url)
+    } else {
+        indexer
+            .with_memory_database()
+            .with_database_max_connections(1)
+    };
+
+    let indexer = indexer.with_sqlx_pubsub().build().await?;
+
+    let sql_context = indexer.context.clone();
+
+    let indexer_cache = dango_indexer_cache::Cache::new_with_tempdir();
+    let indexer_cache_context = indexer_cache.context.clone();
+
+    let indexer_context_callback = indexer.context.clone();
+
+    // The mock httpd doesn't talk to a real Clickhouse — wire up a mocked
+    // context so `HookedIndexer` can hold a real `ClickhouseIndexer` value.
+    let indexer_clickhouse_context = dango_indexer_clickhouse::context::Context::new(
+        "http://localhost:8123".to_string(),
+        "default".to_string(),
+        "default".to_string(),
+        "default".to_string(),
+    )
+    .with_mock();
+    let clickhouse_indexer =
+        dango_indexer_clickhouse::indexer::Indexer::new(indexer_clickhouse_context.clone());
+
+    let hooked_indexer = HookedIndexer::new(indexer_cache, indexer, clickhouse_indexer);
+
+    let (suite, test, codes, contracts, mock_validator_sets) = setup_suite_with_db_and_vm(
+        MemDb::<SimpleCommitment>::new(),
+        RustVm::new(),
+        ProposalPreparer::new([""], ""), // FIXME: endpoints and access token
+        hooked_indexer,
+        RustVm::genesis_codes(),
+        test_opt,
+        genesis_opt,
+    );
+
+    callback(
+        test,
+        codes,
+        contracts,
+        mock_validator_sets,
+        indexer_context_callback,
+    );
+
+    let suite = Arc::new(RwLock::new(suite));
+
+    let mock_client = MockClient::new_shared(suite.clone(), block_creation);
+
+    let app = suite.read().await.app.clone_without_indexer();
+
+    let dango_httpd_context = dango_indexer_httpd::context::FullContext::new(
+        indexer_cache_context,
+        sql_context,
+        indexer_clickhouse_context,
+        Arc::new(app),
+        Arc::new(mock_client),
+        None,
+    );
+
+    let httpd_config = HttpdConfig {
+        ip: "127.0.0.1".to_string(),
+        port,
+        cors_allowed_origin,
+        ..Default::default()
+    };
+
+    let shutdown_flag = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
+    dango_indexer_httpd::server::run_server(
+        &httpd_config,
+        dango_httpd_context,
+        shutdown_flag,
+        port_sender,
+    )
+    .await
+}
+
+/// Tracks ports already allocated to avoid collisions within this process.
+static USED_PORTS: LazyLock<StdMutex<HashSet<u16>>> =
+    LazyLock::new(|| StdMutex::new(HashSet::new()));
+
+/// Get an available port for the mock server.
+///
+/// Uses OS-assigned port allocation (binding to port 0) and tracks used ports
+/// to avoid collisions when multiple tests request ports in the same process.
+pub fn mock_httpd_get_socket_addr() -> u16 {
+    let mut used = USED_PORTS.lock().unwrap();
+
+    loop {
+        let port = TcpListener::bind("127.0.0.1:0")
+            .expect("failed to bind to random port")
+            .local_addr()
+            .expect("failed to get local address")
+            .port();
+
+        if used.insert(port) {
+            return port;
+        }
+    }
+}
+
+/// Wait for the server to be ready to accept connections.
+/// CI measurements showed server starts in ~50ms (2 attempts).
+/// Using 30 attempts * 100ms = 3s max timeout for safety margin.
+pub async fn mock_httpd_wait_for_server_ready(port: u16) -> anyhow::Result<()> {
+    for attempt in 1..=30 {
+        match TcpStream::connect(format!("127.0.0.1:{port}")).await {
+            Ok(_) => {
+                tracing::info!("Server ready on port {port} after {attempt} attempts");
+                return Ok(());
+            },
+            Err(_) => {
+                tokio::time::sleep(Duration::from_millis(100)).await;
+            },
+        }
+    }
+
+    bail!("server failed to start on port {port} after 30 attempts (3s)")
+}

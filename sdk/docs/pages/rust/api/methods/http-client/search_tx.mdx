@@ -1,0 +1,53 @@
+# search_tx
+
+Look up a transaction outcome by hash.
+
+## Signature
+
+```rust
+async fn search_tx(&self, hash: dango_primitives::Hash256) -> Result<dango_primitives::SearchTxOutcome, anyhow::Error>;
+```
+
+From `impl SearchTxClient for HttpClient`.
+
+## Example
+
+```rust
+use {
+    anyhow::Result,
+    dango_sdk::HttpClient,
+    dango_primitives::{Hash256, SearchTxClient},
+    std::str::FromStr,
+};
+
+#[tokio::main]
+async fn main() -> Result<()> {
+    let client = HttpClient::new("https://api-mainnet.dango.zone")?;
+    let hash   = Hash256::from_str(
+        "0x0000000000000000000000000000000000000000000000000000000000000000",
+    )?;
+    let outcome = client.search_tx(hash).await?;
+    println!("height: {}", outcome.height);
+    Ok(())
+}
+```
+
+## Parameters
+
+**`hash`** — `Hash256`. The transaction hash returned by [`broadcast_tx`](./broadcast_tx).
+
+## Returns
+
+**`SearchTxOutcome`** — full outcome with `hash`, `height`, transaction body, gas usage, success/failure result, and emitted events.
+
+## Notes
+
+- Returns `Err(anyhow!("tx not found: …"))` when the transaction isn't yet committed. Treat as "keep polling" (subject to a bounded retry).
+- Returns `Err(anyhow!("multiple txs found …"))` if the indexer returns more than one match — a rare consistency window.
+- The outcome reconstructs the `Tx` from indexer-stored fields (`messages`, `data`, `credential`) and re-parses event payloads, so this is heavier than `query_block_outcome`.
+
+## See also
+
+- [`broadcast_tx`](./broadcast_tx) — produces the hash.
+- [`query_block_outcome`](./query_block_outcome) — every outcome at a height.
+- [Concepts: Transactions](../../../concepts/transactions) — submit-and-poll flow.

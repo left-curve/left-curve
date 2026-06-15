@@ -13,7 +13,6 @@
     status_code: [200, 201]
   failed_when: false
   loop:
-    - "dango-frontend"
     - "dango-api"
     - "dango-graphiql"
     - "faucet-bot"
@@ -36,7 +35,6 @@
     status_code: [200, 201]
   register: deployment_results
   loop:
-    - { name: "dango-frontend", description: "Frontend", url: "https://www-{{ dango_network }}-{{ hostname }}.{{ dango_domain }}" }
     - { name: "dango-api", description: "Dango API", url: "https://api-{{ dango_network }}-{{ hostname }}.{{ dango_domain }}/graphql" }
     - { name: "dango-graphiql", description: "GraphiQL", url: "https://graphiql-{{ dango_network }}-{{ hostname }}.{{ dango_domain }}/mint" }
     - { name: "faucet-bot", description: "Faucet", url: "https://faucet-{{ dango_network }}-{{ hostname }}.{{ dango_domain }}/mint" }
@@ -72,7 +70,6 @@
     | Name | Result |
     | ---- | ------ |
     | **Status** | ✅ |
-    | **Dango Frontend** | [https://www-{{ dango_network }}-{{ hostname }}.{{ dango_domain }}](https://www-{{ dango_network }}-{{ hostname }}.{{ dango_domain }}) |
     | **Dango GraphQL** | [https://api-{{ dango_network }}-{{ hostname }}.{{ dango_domain }}/graphql](https://api-{{ dango_network }}-{{ hostname }}.{{ dango_domain }}/graphql) |
     | **Dango GraphiQL** | [https://graphiql-{{ dango_network }}-{{ hostname }}.{{ dango_domain }}](https://graphiql-{{ dango_network }}-{{ hostname }}.{{ dango_domain }}) |
     | **Deployment name** | `{{ deployment_name }}` |

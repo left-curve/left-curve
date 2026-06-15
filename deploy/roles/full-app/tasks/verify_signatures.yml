@@ -31,7 +31,7 @@
 
       To fix this, trigger a rebuild by:
       1. Re-running the CI workflow with changes to the relevant component, OR
-      2. Using the .force_frontend_rebuild or .force_backend_rebuild trigger files
+      2. Using the .force_backend_rebuild trigger file
   when: item.rc != 0
   loop: "{{ image_exists_results.results }}"
   loop_control:

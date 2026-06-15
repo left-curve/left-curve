@@ -1,8 +1,9 @@
 import { IconButton, IconChevronRight } from "@left-curve/applets-kit";
 import { Fragment } from "react";
 
-import type { User } from "@left-curve/dango/types";
+import type { User } from "@left-curve/types";
 import type React from "react";
+import { Image } from "~/components/foundation/Image";
 
 type UsernamesListProps = {
   users: User[];
@@ -20,7 +21,7 @@ export const UsernamesList: React.FC<UsernamesListProps> = ({ users, onUserSelec
               onClick={() => onUserSelection(user.index)}
             >
               <div className="w-12 h-12 bg-surface-primary-red rounded-xxs border border-surface-secondary-red flex items-center justify-center">
-                <img
+                <Image
                   src="/images/emojis/simple/username.svg"
                   alt="username"
                   className="w-10 h-10"

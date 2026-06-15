@@ -5,6 +5,7 @@ import { Button, Carousel } from "@left-curve/applets-kit";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 
 import type React from "react";
+import { Image } from "~/components/foundation/Image";
 
 export const AuthCarousel: React.FC = () => {
   const { settings, changeSettings } = useApp();
@@ -44,7 +45,7 @@ export const AuthCarousel: React.FC = () => {
               className="flex flex-col items-center justify-between gap-4 md:gap-8 text-center px-4 xl:px-0 h-full max-h-full"
             >
               <div className="flex flex-1 w-full overflow-hidden">
-                <img
+                <Image
                   src={`/images/carousel/${img}.svg`}
                   alt={title}
                   className="object-contain w-full h-full"

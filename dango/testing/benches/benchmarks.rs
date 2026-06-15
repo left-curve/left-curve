@@ -2,17 +2,19 @@ use {
     criterion::{
         AxisScale, BatchSize, Criterion, PlotConfiguration, criterion_group, criterion_main,
     },
+    dango_app::{AppError, Db, ProposalPreparer, Vm},
     dango_genesis::{Codes, Contracts},
+    dango_primitives::{
+        Addr, Binary, Coins, HashExt, JsonSerExt, Message, NonEmpty, ResultExt, Tx, coins,
+    },
+    dango_temp_rocksdb::TempDataDir,
     dango_testing::{TestAccounts, TestSuite, setup_benchmark_rust},
     dango_types::{
         account_factory::{self, Salt},
         constants::usdc,
     },
-    grug::{Addr, Binary, Coins, HashExt, JsonSerExt, Message, NonEmpty, ResultExt, Tx, coins},
-    grug_app::{AppError, Db, ProposalPreparer, Vm},
     rand::{Rng, distributions::Alphanumeric},
     std::time::Duration,
-    temp_rocksdb::TempDataDir,
 };
 
 const MEASUREMENT_TIME: Duration = Duration::from_secs(90);
@@ -26,7 +28,7 @@ fn random_string(len: usize) -> String {
 }
 
 async fn do_send<T, PP, DB, VM>(
-    suite: &mut TestSuite<PP, DB, VM>,
+    suite: &mut TestSuite<DB, VM, PP>,
     mut accounts: TestAccounts,
     codes: Codes<T>,
     contracts: Contracts,

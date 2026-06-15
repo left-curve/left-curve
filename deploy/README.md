@@ -14,7 +14,7 @@ exposed to the public internet through Cloudflare tunnels.
 | ovh1     | 100.96.253.40  | 10.99.0.1    | devnet         |
 | ovh2     | 100.107.248.71 | 10.99.0.2    | devnet         |
 | ovh3     | 100.122.37.57  | 10.99.0.3    | monitoring hub |
-| inter2   | 100.66.234.16  | 10.99.0.13   | mainnet        |
+| hetzner6 | 100.66.152.68  | 10.99.0.15   | mainnet        |
 | hetzner1 | 100.126.8.2    | 10.99.0.8    | mainnet        |
 | hetzner2 | 100.90.163.19  | 10.99.0.9    | testnet        |
 | hetzner3 | 100.76.197.30  | 10.99.0.10   | mainnet        |
@@ -34,7 +34,6 @@ exposed to the public internet through Cloudflare tunnels.
 | dango-frontend | Web UI                                                          |                       |
 | graphiql       | GraphQL IDE                                                     |                       |
 | faucet-bot     | Token faucet                                                    | _testnet/devnet only_ |
-| dex-bot        | DEX market maker                                                | _testnet/devnet only_ |
 | points-bot     | Points/achievements tracking                                    | runs on ovh2          |
 
 #### Infrastructure services (per server)
@@ -62,7 +61,7 @@ exposed to the public internet through Cloudflare tunnels.
 
 | Service     | Description                               | Location                   |
 | ----------- | ----------------------------------------- | -------------------------- |
-| hyperlane   | Cross-chain message validators + relayers | inter2, hetzner1-5         |
+| hyperlane   | Cross-chain message validators + relayers | hetzner1-6                 |
 | minio       | S3-compatible object storage              | ovh3                       |
 | uptimekuma  | Service health monitoring                 | ovh3                       |
 | vaultwarden | Password manager                          | ovh3                       |
@@ -88,7 +87,6 @@ flowchart TD
         Frontend[dango-frontend]
         GraphiQL[graphiql]
         FaucetBot[faucet-bot]
-        DexBot[dex-bot]
         PointsBot[points-bot]
         Postgres[(postgres)]
         ClickHouse[(clickhouse)]
@@ -116,7 +114,6 @@ flowchart TD
     Dango <--> CometBFT
     Dango --> Postgres
     Dango --> ClickHouse
-    DexBot --> Dango
     PointsBot --> Dango
 
     %% P2P consensus
@@ -142,7 +139,7 @@ flowchart TD
     classDef monitoring fill:#ede9fe,stroke:#7c3aed
     classDef external fill:#f3f4f6,stroke:#6b7280
 
-    class FaucetBot,DexBot testnetOnly
+    class FaucetBot testnetOnly
     class Dango,CometBFT,Frontend,GraphiQL,PointsBot app
     class Traefik,cloudflared,Postgres,ClickHouse,Promtail,NodeExp infra
     class Grafana,Prometheus,Loki,Tempo,Alertmanager monitoring
@@ -162,9 +159,9 @@ flowchart TD
 
 - Add the username in `group_vars/all/main.yml` in the `ssh_users` section
 
-- Add the public key in `roles/users/files/authorized_keys/<username>.pub`
+- Add the public key(s) in `roles/users/files/authorized_keys/<username>/<key_name>.pub`. The single-file form `roles/users/files/authorized_keys/<name>.pub` is reserved for the keys used by Ansible itself (`deploy.pub`, `debian.pub`)
 
-- Run `ansible-playbook users.yml`
+- Run `just provision-users`
 
 ### Install a new server
 

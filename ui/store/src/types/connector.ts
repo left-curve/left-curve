@@ -7,10 +7,11 @@ import type {
   Transport,
   UID,
   UserStatus,
-} from "@left-curve/dango/types";
+} from "@left-curve/types";
 import type { Emitter, EventData } from "./emitter.js";
 
-import type { Account, Chain, Signer, SignerClient } from "@left-curve/dango/types";
+import type { SignerClient } from "@left-curve/sdk";
+import type { Account, Chain, Signer } from "@left-curve/types";
 import type { Storage } from "./storage.js";
 
 export type ConnectorId = (typeof ConnectorIds)[keyof typeof ConnectorIds] | (string & {});
@@ -21,6 +22,7 @@ export const ConnectorIds = {
   Backpack: "backpack",
   Passkey: "passkey",
   Privy: "privy",
+  Debug: "debug",
 } as const;
 
 export type ConnectorType = (typeof ConnectorTypes)[keyof typeof ConnectorTypes];
@@ -31,6 +33,7 @@ export const ConnectorTypes = {
   Session: "session",
   Remote: "remote",
   Privy: "privy",
+  Debug: "debug",
 } as const;
 
 export type Connection = {
@@ -85,12 +88,11 @@ export type ConnectorEvents = {
 
 export type CreateConnectorFn<
   provider extends Record<string, unknown> | undefined = Record<string, unknown> | undefined,
-  transport extends Transport = Transport,
   properties extends Record<string, unknown> = Record<string, unknown>,
 > = (config: {
   chain: Chain;
   emitter: Emitter<ConnectorEventMap>;
-  transport: transport;
+  transport: Transport;
   storage: Storage;
   getUserIndex: () => number | undefined;
 }) => Prettify<
@@ -118,7 +120,7 @@ export type CreateConnectorFn<
       disconnect(): Promise<void>;
       createNewKey?(challenge?: string): Promise<{ keyHash: KeyHash; key: Key }>;
       getAccounts(): Promise<readonly Account[]>;
-      getClient(): Promise<SignerClient<transport>>;
+      getClient(): Promise<SignerClient>;
       isAuthorized(): Promise<boolean>;
       switchChain?(parameters: { chainId: string }): Promise<void>;
       onAccountsChanged?(accounts: string[]): void;

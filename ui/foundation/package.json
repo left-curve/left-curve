@@ -1,6 +1,7 @@
 {
   "name": "@left-curve/foundation",
-  "version": "0.1.0",
+  "version": "0.1.1",
+  "private": true,
   "main": "./build/index.cjs",
   "module": "./build/index.js",
   "types": "./build/index.d.ts",
@@ -14,7 +15,9 @@
     "./inlang/*": "./project.inlang/*",
     "./paraglide/*": "./paraglide/*",
     "./coins": "./coins.ts",
+    "./market-pair": "./market-pair.ts",
     ".": {
+      "source": "./react/index.ts",
       "types": "./build/index.d.ts",
       "import": "./build/index.js",
       "default": "./build/index.cjs"
@@ -24,27 +27,28 @@
     "inlang": "inlang",
     "machine-translate": "inlang machine translate --project ./project.inlang",
     "ci": "pnpm lint",
-    "lint": "pnpm biome check --write ./react ./tailwind ./coins.ts ./paraglide.ts ./tsup.config.ts",
-    "lint:fix": "pnpm biome ci ./react ./tailwind ./coins.ts ./paraglide.ts ./tsup.config.ts",
+    "lint": "pnpm biome check --write ./react ./tailwind ./coins.ts ./market-pair.ts ./paraglide.ts ./tsup.config.ts",
+    "lint:fix": "pnpm biome ci ./react ./tailwind ./coins.ts ./market-pair.ts ./paraglide.ts ./tsup.config.ts",
     "clean": "rm -rf ./build && rm -rf node_modules && rm -rf tsconfig.tsbuildinfo",
     "clean:build": "rm -rf ./build",
-    "pre-dev": "node paraglide.ts && tsc",
-    "dev": "concurrently \"nodemon\" \"tsc -w\"",
+    "dev": "nodemon",
     "build": "node paraglide.ts && pnpm tsup --clean"
   },
   "dependencies": {
     "@inlang/cli": "^3.0.3",
     "@inlang/paraglide-js": "^2.2.0",
-    "@left-curve/dango": "workspace:^",
     "@left-curve/store": "workspace:^",
-    "concurrently": "^9.2.1",
     "date-fns-tz": "^3.2.0",
     "html-to-image": "^1.11.13",
     "tailwind-scrollbar": "^3.1.0",
     "tailwindcss": "catalog:",
     "tailwindcss-animate": "^1.0.7",
     "clsx": "^2.1.1",
-    "tailwind-variants": "catalog:"
+    "tailwind-variants": "catalog:",
+    "@left-curve/types": "workspace:^",
+    "@left-curve/encoding": "workspace:^",
+    "@left-curve/utils": "workspace:^",
+    "zustand": "catalog:"
   },
   "devDependencies": {
     "react": "catalog:",

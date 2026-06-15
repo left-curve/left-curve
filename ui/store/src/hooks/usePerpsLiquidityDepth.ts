@@ -1,46 +1,63 @@
-import { useEffect } from "react";
 import { useAppConfig } from "./useAppConfig.js";
 import { useConfig } from "./useConfig.js";
-import { createBlockStore } from "./createBlockStore.js";
+import { createLiveResource } from "../live/createLiveResource.js";
+import { equalLiveResourcePayload } from "../live/equality.js";
+import { useLiveResource } from "../live/useLiveResource.js";
 
-import {
-  camelCaseJsonDeserialization,
-  snakeCaseJsonSerialization,
-} from "@left-curve/dango/encoding";
+import { camelCaseJsonDeserialization, snakeCaseJsonSerialization } from "@left-curve/encoding";
 
-import type { PerpsLiquidityDepthResponse, QueryRequest } from "@left-curve/dango/types";
+import type { PerpsLiquidityDepthResponse, QueryRequest } from "@left-curve/types";
+import type { Config } from "../types/store.js";
+import type { LiveResourceSnapshot } from "../live/types.js";
 
-type UsePerpsLiquidityDepthParameters = {
+const PERPS_LIQUIDITY_DEPTH_INTERVAL = 1;
+const PERPS_LIQUIDITY_DEPTH_HTTP_INTERVAL = 2_000;
+
+export type PerpsLiquidityDepthSnapshot = LiveResourceSnapshot & {
+  liquidityDepth: PerpsLiquidityDepthResponse | null;
+  lastUpdatedBlockHeight: number;
+};
+
+export type UsePerpsLiquidityDepthParameters = {
   pairId: string;
   bucketSize: string;
   limit?: number;
-  subscribe?: boolean;
+  enabled?: boolean;
+  notifyIntervalMs?: number;
 };
 
-export const perpsLiquidityDepthStore = createBlockStore({
-  initialState: {
-    liquidityDepth: null as PerpsLiquidityDepthResponse | null,
-  },
-});
+type PerpsLiquidityDepthResourceParams = {
+  pairId: string;
+  bucketSize: string;
+  limit: number;
+  perpsContract: string;
+  subscriptions: Config["subscriptions"];
+};
 
-export function usePerpsLiquidityDepth(parameters: UsePerpsLiquidityDepthParameters) {
-  const { pairId, bucketSize, limit = 20, subscribe } = parameters;
-  const { subscriptions } = useConfig();
-  const { data: appConfig } = useAppConfig();
+const initialPerpsLiquidityDepthSnapshot: PerpsLiquidityDepthSnapshot = {
+  status: "idle",
+  error: null,
+  liquidityDepth: null,
+  lastUpdatedBlockHeight: 0,
+};
 
-  const { setState } = perpsLiquidityDepthStore();
-
-  useEffect(() => {
-    if (!appConfig || !subscribe) return;
-
-    const { addresses } = appConfig;
-    const unsubscribe = subscriptions.subscribe("queryApp", {
+const perpsLiquidityDepthResource = createLiveResource<
+  PerpsLiquidityDepthResourceParams,
+  PerpsLiquidityDepthSnapshot
+>({
+  name: "perpsLiquidityDepth",
+  getKey: ({ perpsContract, pairId, bucketSize, limit }) =>
+    `perpsLiquidityDepth:${perpsContract}:${pairId}:${bucketSize}:${limit}`,
+  getInitialSnapshot: () => initialPerpsLiquidityDepthSnapshot,
+  equal: (previous, next) => equalLiveResourcePayload(previous, next, ["liquidityDepth"]),
+  start: ({ pairId, bucketSize, limit, perpsContract, subscriptions }, { emit, error }) =>
+    subscriptions.subscribe("queryApp", {
       params: {
-        interval: 1,
-        httpInterval: 2_000,
+        interval: PERPS_LIQUIDITY_DEPTH_INTERVAL,
+        httpInterval: PERPS_LIQUIDITY_DEPTH_HTTP_INTERVAL,
         request: snakeCaseJsonSerialization<QueryRequest>({
           wasmSmart: {
-            contract: addresses.perps,
+            contract: perpsContract,
             msg: {
               liquidityDepth: {
                 pairId,
@@ -60,14 +77,42 @@ export function usePerpsLiquidityDepth(parameters: UsePerpsLiquidityDepthParamet
         const { response, blockHeight } = camelCaseJsonDeserialization<Event>(event);
         const { wasmSmart: liquidityDepth } = response;
 
-        setState({ liquidityDepth, blockHeight });
+        emit(
+          {
+            status: "ready",
+            error: null,
+            liquidityDepth,
+            lastUpdatedBlockHeight: blockHeight,
+          },
+          { version: blockHeight },
+        );
       },
-    });
+      onError: error,
+    }),
+});
 
-    return () => {
-      unsubscribe();
-    };
-  }, [pairId, bucketSize, limit, subscribe, appConfig]);
+export function usePerpsLiquidityDepth<Selection>(
+  selector: (snapshot: PerpsLiquidityDepthSnapshot) => Selection,
+  parameters: UsePerpsLiquidityDepthParameters,
+  equalityFn?: (previous: Selection, next: Selection) => boolean,
+): Selection {
+  const { pairId, bucketSize, limit = 20, enabled = true, notifyIntervalMs } = parameters;
+  const config = useConfig();
+  const { data: appConfig } = useAppConfig();
 
-  return { perpsLiquidityDepthStore };
+  return useLiveResource({
+    resource: perpsLiquidityDepthResource,
+    params: {
+      pairId,
+      bucketSize,
+      limit,
+      perpsContract: appConfig.addresses.perps,
+      subscriptions: config.subscriptions,
+    },
+    enabled,
+    selector,
+    equalityFn,
+    notifyIntervalMs,
+    restartToken: config.subscriptions,
+  });
 }

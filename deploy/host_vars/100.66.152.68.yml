@@ -1,0 +1,8 @@
+---
+tailscale_ip: "100.66.152.68"
+hostname: "hetzner6"
+wireguard_ip: "10.99.0.15"
+reboot_time: "13:00"
+dango_networks:
+  - mainnet
+cloudflare_lb_enabled: true

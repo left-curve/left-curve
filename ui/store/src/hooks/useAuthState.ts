@@ -1,8 +1,8 @@
 import { useRef, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 
-import { createKeyHash } from "@left-curve/dango";
-import { registerUser } from "@left-curve/dango/actions";
+import { createKeyHash } from "@left-curve/sdk";
+import { registerUser } from "@left-curve/sdk/actions";
 
 import { useSessionKey } from "./useSessionKey.js";
 import { useConnectors } from "./useConnectors.js";
@@ -10,7 +10,7 @@ import { usePublicClient } from "./usePublicClient.js";
 import { useChainId } from "./useChainId.js";
 import { useConfig } from "./useConfig.js";
 
-import type { Address, Key, KeyHash, SigningSession, User } from "@left-curve/dango/types";
+import type { Address, Key, KeyHash, SigningSession, User } from "@left-curve/types";
 import type { EIP1193Provider } from "../types/eip1193.js";
 import type { Connector } from "../types/connector.js";
 
@@ -297,6 +297,17 @@ export function useAuthState(parameters: UseAuthStateParameters) {
     },
   });
 
+  const authenticateDebug = useMutation({
+    onError,
+    mutationFn: async (userIndex: number) => {
+      const connector = connectors.find((c) => c.id === "debug");
+      if (!connector) throw new Error("debug connector not registered");
+      connectorRef.current = connector;
+      await connector.connect({ userIndex, chainId, challenge: "debug" });
+      onSuccess?.();
+    },
+  });
+
   const createNewWithExistingKey = useMutation({
     onError,
     mutationFn: async () => {
@@ -360,6 +371,7 @@ export function useAuthState(parameters: UseAuthStateParameters) {
 
   const isPending =
     authenticate.isPending ||
+    authenticateDebug.isPending ||
     passkeyCreate.isPending ||
     passkeyLogin.isPending ||
     createAccount.isPending ||
@@ -376,6 +388,7 @@ export function useAuthState(parameters: UseAuthStateParameters) {
     users: authData.users,
     identifier: authData.identifier,
     authenticate,
+    authenticateDebug,
     passkeyCreate,
     passkeyLogin,
     createAccount,

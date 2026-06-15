@@ -7,7 +7,7 @@ import type {
   UID,
   Username,
   UserStatus,
-} from "@left-curve/dango/types";
+} from "@left-curve/types";
 
 import type { NativeCoin } from "./coin.js";
 import type { Connection, Connector, ConnectorEvents, CreateConnectorFn } from "./connector.js";
@@ -40,7 +40,7 @@ export type State = {
   status: ConnectionStatusType;
 };
 
-export type Config<transport extends Transport = Transport> = {
+export type Config = {
   readonly chain: Chain;
   readonly coins: CoinStore;
   readonly connectors: readonly Connector[];
@@ -56,15 +56,15 @@ export type Config<transport extends Transport = Transport> = {
       equalityFn?: (a: state, b: state) => boolean;
     },
   ): () => void;
-  getClient(): Client<transport>;
+  getClient(): Client;
   captureError(error: unknown): void;
-  _internal: Internal<transport>;
+  _internal: Internal;
 };
-export type CreateConfigParameters<transport extends Transport = Transport> = {
+export type CreateConfigParameters = {
   version?: number;
   chain: Chain;
   coins: Record<Denom, NativeCoin>;
-  transport: transport;
+  transport: Transport;
   ssr?: boolean;
   batch?: boolean;
   storage?: Storage;
@@ -88,11 +88,11 @@ export type StoreApi = {
   };
 };
 
-type Internal<transport extends Transport = Transport> = {
+type Internal = {
   readonly ssr: boolean;
   readonly mipd: MipdStore | undefined;
   readonly store: StoreApi;
-  readonly transport: transport;
+  readonly transport: Transport;
   readonly events: ConnectorEvents;
   connectors: {
     setup: (connectorFn: CreateConnectorFn) => Connector;

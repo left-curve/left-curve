@@ -12,10 +12,24 @@ export default defineConfig({
   },
   resolve: {
     alias: {
-      "@left-curve/dango/utils": path.resolve(root, "sdk/typescript/dango/src/utils/index.ts"),
-      "@left-curve/dango/types": path.resolve(root, "sdk/typescript/dango/src/types/index.ts"),
-      "@left-curve/dango": path.resolve(root, "sdk/typescript/dango/src/index.ts"),
-      "@left-curve/sdk/utils": path.resolve(root, "sdk/typescript/grug/src/utils/index.ts"),
+      "@left-curve/crypto": path.resolve(root, "sdk/typescript/crypto/src/index.ts"),
+      "@left-curve/encoding": path.resolve(root, "sdk/typescript/encoding/src/index.ts"),
+      "@left-curve/applets-kit": path.resolve(root, "ui/applets/kit/src/index.ts"),
+      "@left-curve/store/types": path.resolve(root, "ui/store/src/types/index.ts"),
+      "@left-curve/store": path.resolve(root, "ui/store/src/index.ts"),
+      "@left-curve/types": path.resolve(root, "sdk/typescript/types/src/index.ts"),
+      "@left-curve/utils": path.resolve(root, "sdk/typescript/utils/src/index.ts"),
+      "@left-curve/sdk/actions": path.resolve(root, "sdk/typescript/dango/src/actions/index.ts"),
+      "@left-curve/sdk/hyperlane": path.resolve(
+        root,
+        "sdk/typescript/dango/src/hyperlane/index.ts",
+      ),
+      "@left-curve/sdk/utils": path.resolve(root, "sdk/typescript/dango/src/utils/index.ts"),
+      "@left-curve/sdk/types": path.resolve(root, "sdk/typescript/dango/src/types/index.ts"),
+      "@left-curve/sdk": path.resolve(root, "sdk/typescript/dango/src/index.ts"),
+      "~/constants": path.resolve(__dirname, "constants.config.ts"),
+      "~/datafeed": path.resolve(__dirname, "datafeed.config.ts"),
+      "~": path.resolve(__dirname, "src"),
     },
   },
 });

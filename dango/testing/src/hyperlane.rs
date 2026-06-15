@@ -1,13 +1,14 @@
 use {
+    crate::{MockValidatorSets, constants::MOCK_HYPERLANE_LOCAL_DOMAIN, suite::TestSuite},
     anyhow::anyhow,
+    dango_app::{AppError, Db, Indexer, NaiveProposalPreparer, NullIndexer, ProposalPreparer, Vm},
+    dango_db_memory::MemDb,
     dango_genesis::Contracts,
+    dango_hyperlane_types::{Addr32, mailbox},
+    dango_math::Uint128,
+    dango_primitives::{Addr, Addressable, Coins, Hash256, Signer},
     dango_types::{gateway::Domain, warp::TokenMessage},
-    grug::{Addr, Addressable, Coins, Hash256, Signer, TestSuite, Uint128},
-    grug_app::{AppError, Db, Indexer, NaiveProposalPreparer, NullIndexer, ProposalPreparer, Vm},
-    grug_db_memory::MemDb,
-    grug_vm_rust::RustVm,
-    hyperlane_testing::{MockValidatorSets, constants::MOCK_HYPERLANE_LOCAL_DOMAIN},
-    hyperlane_types::{Addr32, mailbox},
+    dango_vm_rust::RustVm,
     std::ops::{Deref, DerefMut},
 };
 

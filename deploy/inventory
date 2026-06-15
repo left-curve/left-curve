@@ -19,32 +19,32 @@ deploy_user="deploy"
 100.64.79.112  # ovh6
 100.112.48.112 # ovh7
 100.72.62.100  # hetzner5
-100.66.234.16  # inter2
 100.126.8.2    # hetzner1
 100.90.163.19  # hetzner2
 100.76.197.30  # hetzner3
 100.109.200.70 # hetzner4
+100.66.152.68  # hetzner6
 
 [clickhouse]
 100.96.253.40  # ovh1
 100.107.248.71 # ovh2
 100.72.62.100  # hetzner5
-100.66.234.16  # inter2
 100.126.8.2    # hetzner1
 100.90.163.19  # hetzner2
 100.76.197.30  # hetzner3
 100.109.200.70 # hetzner4
+100.66.152.68  # hetzner6
 
 [db]
 100.96.253.40  # ovh1
 100.107.248.71 # ovh2
 100.122.37.57  # ovh3
 100.72.62.100  # hetzner5
-100.66.234.16  # inter2
 100.126.8.2    # hetzner1
 100.90.163.19  # hetzner2
 100.76.197.30  # hetzner3
 100.109.200.70 # hetzner4
+100.66.152.68  # hetzner6
 
 [bots]
 100.96.253.40  # ovh1
@@ -53,23 +53,23 @@ deploy_user="deploy"
 [full-app]
 100.96.253.40  # ovh1
 100.107.248.71 # ovh2
-100.66.234.16  # inter2
 100.126.8.2    # hetzner1
 100.90.163.19  # hetzner2
 100.76.197.30  # hetzner3
 100.109.200.70 # hetzner4
 100.72.62.100  # hetzner5
+100.66.152.68  # hetzner6
 
 [traefik]
 100.96.253.40  # ovh1
 100.107.248.71 # ovh2
 100.122.37.57  # ovh3
 100.72.62.100  # hetzner5
-100.66.234.16  # inter2
 100.126.8.2    # hetzner1
 100.90.163.19  # hetzner2
 100.76.197.30  # hetzner3
 100.109.200.70 # hetzner4
+100.66.152.68  # hetzner6
 
 [uptimekuma]
 100.122.37.57  # ovh3
@@ -87,11 +87,11 @@ deploy_user="deploy"
 100.96.253.40  # ovh1
 100.107.248.71 # ovh2
 100.72.62.100  # hetzner5
-100.66.234.16  # inter2
 100.126.8.2    # hetzner1
 100.90.163.19  # hetzner2
 100.76.197.30  # hetzner3
 100.109.200.70 # hetzner4
+100.66.152.68  # hetzner6
 
 [vaultwarden]
 100.122.37.57  # ovh3
@@ -110,6 +110,20 @@ points-bot-devnet
 points-bot-testnet
 points-bot-mainnet
 
+[referral-dashboard-devnet]
+100.107.248.71 # ovh2
+
+[referral-dashboard-testnet]
+100.109.200.70 # hetzner4
+
+[referral-dashboard-mainnet]
+100.76.197.30  # hetzner3
+
+[referral-dashboard:children]
+referral-dashboard-devnet
+referral-dashboard-testnet
+referral-dashboard-mainnet
+
 [perps-bot]
 100.126.8.2    # hetzner1
 
@@ -126,7 +140,7 @@ points-bot-mainnet
 
 [perp-liquidator-mainnet]
 100.72.62.100  # hetzner5
-100.66.234.16  # inter2
+100.66.152.68  # hetzner6
 100.126.8.2    # hetzner1
 100.76.197.30  # hetzner3
 
@@ -137,9 +151,9 @@ perp-liquidator-mainnet
 
 [hyperlane]
 100.72.62.100  # hetzner5
-100.66.234.16  # inter2
 100.126.8.2    # hetzner1
 100.90.163.19  # hetzner2
 100.76.197.30  # hetzner3
 100.109.200.70 # hetzner4
+100.66.152.68  # hetzner6
 

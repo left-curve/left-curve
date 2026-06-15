@@ -48,13 +48,14 @@
 
 use {
     crate::{default_pair_param, default_param, register_oracle_prices},
+    dango_math::Uint128,
     dango_order_book::{Dimensionless, OrderKind, Quantity, TimeInForce, UsdPrice, UsdValue},
-    dango_testing::{TestOption, perps::pair_id, setup_test_naive},
+    dango_primitives::{Addressable, Coins, QuerierExt, ResultExt, btree_map},
+    dango_testing::{TestOption, pair_id, setup_test_naive},
     dango_types::{
         constants::usdc,
         perps::{self, PairParam, UserState},
     },
-    grug::{Addressable, Coins, QuerierExt, ResultExt, Uint128, btree_map},
 };
 
 /// Reproduces the ADL bankruptcy-price bug with an absurd resting ask.
@@ -72,7 +73,7 @@ async fn adl_bug_absurd_book_price() {
     let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(TestOption::default());
 
     // Oracle = $2,000.
-    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000).await;
+    register_oracle_prices(&mut suite, &mut accounts, 2_000).await;
 
     let pair = pair_id();
 
@@ -247,7 +248,7 @@ async fn adl_bug_absurd_book_price() {
     //   → close entire SHORT position
     // -------------------------------------------------------------------------
 
-    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_300).await;
+    register_oracle_prices(&mut suite, &mut accounts, 2_300).await;
 
     // -------------------------------------------------------------------------
     // Step 5: Liquidate user1.

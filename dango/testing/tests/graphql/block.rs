@@ -1,0 +1,297 @@
+use {
+    assertor::*,
+    dango_indexer_graphql_types::{Block, Blocks, SubscribeBlock, block, blocks, subscribe_block},
+    dango_primitives::{Addressable, Coins, Message, NonEmpty, ResultExt},
+    dango_testing::{
+        GraphQLCustomRequest, PaginationDirection, TestOption, blocks_query, build_app_service,
+        call_batch_graphql_query, call_graphql_query, call_ws_graphql_stream, paginate_blocks,
+        parse_graphql_subscription_response, setup_test_naive_with_indexer_and_create_blocks,
+    },
+    dango_types::constants::usdc,
+    graphql_client::GraphQLQuery,
+    tokio::sync::mpsc,
+};
+
+#[tokio::test(flavor = "multi_thread")]
+async fn graphql_returns_blocks() -> anyhow::Result<()> {
+    let (_, _, httpd_context, _db_guard) = setup_test_naive_with_indexer_and_create_blocks(
+        TestOption::default().with_mocked_clickhouse(),
+        1,
+    )
+    .await;
+
+    let local_set = tokio::task::LocalSet::new();
+
+    local_set
+        .run_until(async {
+            tokio::task::spawn_local(async move {
+                let app = build_app_service(httpd_context);
+                let query_body = Blocks::build_query(blocks::Variables::default());
+
+                let response =
+                    call_graphql_query::<_, blocks::ResponseData, _, _, _>(app, query_body).await?;
+
+                assert_that!(response.data).is_some();
+                let data = response.data.unwrap();
+                assert_that!(data.blocks.nodes).is_not_empty();
+
+                Ok::<(), anyhow::Error>(())
+            })
+            .await
+        })
+        .await?
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn graphql_returns_batched_blocks() -> anyhow::Result<()> {
+    let (_, _, httpd_context, _db_guard) = setup_test_naive_with_indexer_and_create_blocks(
+        TestOption::default().with_mocked_clickhouse(),
+        1,
+    )
+    .await;
+
+    let local_set = tokio::task::LocalSet::new();
+
+    local_set
+        .run_until(async {
+            tokio::task::spawn_local(async move {
+                let app = build_app_service(httpd_context);
+                let variables = blocks::Variables::default();
+                let query_bodies = vec![
+                    Blocks::build_query(variables.clone()),
+                    Blocks::build_query(variables),
+                ];
+
+                let responses =
+                    call_batch_graphql_query::<_, blocks::ResponseData, _, _, _>(app, query_bodies)
+                        .await?;
+
+                assert_that!(responses[0].data.as_ref().unwrap().blocks.nodes).is_not_empty();
+                assert_that!(responses[1].data.as_ref().unwrap().blocks.nodes).is_not_empty();
+
+                Ok::<(), anyhow::Error>(())
+            })
+            .await
+        })
+        .await?
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn graphql_returns_block() -> anyhow::Result<()> {
+    let (_, _, httpd_context, _db_guard) = setup_test_naive_with_indexer_and_create_blocks(
+        TestOption::default().with_mocked_clickhouse(),
+        1,
+    )
+    .await;
+
+    let local_set = tokio::task::LocalSet::new();
+
+    local_set
+        .run_until(async {
+            tokio::task::spawn_local(async move {
+                let app = build_app_service(httpd_context);
+                let query_body = Block::build_query(block::Variables { height: Some(1) });
+
+                let response =
+                    call_graphql_query::<_, block::ResponseData, _, _, _>(app, query_body).await?;
+
+                assert_that!(response.data).is_some();
+                let block = response.data.unwrap().block.unwrap();
+                assert_that!(block.block_height).is_equal_to(1);
+
+                Ok::<(), anyhow::Error>(())
+            })
+            .await
+        })
+        .await?
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn graphql_returns_last_block() -> anyhow::Result<()> {
+    let (_, _, httpd_context, _db_guard) = setup_test_naive_with_indexer_and_create_blocks(
+        TestOption::default().with_mocked_clickhouse(),
+        1,
+    )
+    .await;
+
+    let local_set = tokio::task::LocalSet::new();
+
+    local_set
+        .run_until(async {
+            tokio::task::spawn_local(async move {
+                let app = build_app_service(httpd_context);
+                let query_body = Block::build_query(block::Variables::default());
+
+                let response =
+                    call_graphql_query::<_, block::ResponseData, _, _, _>(app, query_body).await?;
+
+                assert_that!(response.data).is_some();
+                let block = response.data.unwrap().block.unwrap();
+                assert_that!(block.block_height).is_equal_to(1);
+
+                Ok::<(), anyhow::Error>(())
+            })
+            .await
+        })
+        .await?
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn graphql_paginate_blocks() -> anyhow::Result<()> {
+    let (_, _, httpd_context, _db_guard) = setup_test_naive_with_indexer_and_create_blocks(
+        TestOption::default().with_mocked_clickhouse(),
+        10,
+    )
+    .await;
+
+    let local_set = tokio::task::LocalSet::new();
+
+    local_set
+        .run_until(async {
+            tokio::task::spawn_local(async move {
+                let page_size = 2;
+
+                // 1. first with descending order
+                let blocks = paginate_blocks(
+                    httpd_context.clone(),
+                    page_size,
+                    blocks_query::Variables {
+                        sort_by: Some(blocks_query::BlockSortBy::BLOCK_HEIGHT_DESC),
+                        ..Default::default()
+                    },
+                    PaginationDirection::Forward,
+                )
+                .await?;
+                let block_heights: Vec<_> = blocks.iter().map(|b| b.block_height).collect();
+                assert_that!(block_heights).is_equal_to((1i64..=10).rev().collect::<Vec<_>>());
+
+                // 2. first with ascending order
+                let blocks = paginate_blocks(
+                    httpd_context.clone(),
+                    page_size,
+                    blocks_query::Variables {
+                        sort_by: Some(blocks_query::BlockSortBy::BLOCK_HEIGHT_ASC),
+                        ..Default::default()
+                    },
+                    PaginationDirection::Forward,
+                )
+                .await?;
+                let block_heights: Vec<_> = blocks.iter().map(|b| b.block_height).collect();
+                assert_that!(block_heights).is_equal_to((1i64..=10).collect::<Vec<_>>());
+
+                // 3. last with descending order
+                let blocks = paginate_blocks(
+                    httpd_context.clone(),
+                    page_size,
+                    blocks_query::Variables {
+                        sort_by: Some(blocks_query::BlockSortBy::BLOCK_HEIGHT_DESC),
+                        ..Default::default()
+                    },
+                    PaginationDirection::Backward,
+                )
+                .await?;
+                let block_heights: Vec<_> = blocks.iter().map(|b| b.block_height).collect();
+                assert_that!(block_heights).is_equal_to((1i64..=10).collect::<Vec<_>>());
+
+                // 4. last with ascending order
+                let blocks = paginate_blocks(
+                    httpd_context.clone(),
+                    page_size,
+                    blocks_query::Variables {
+                        sort_by: Some(blocks_query::BlockSortBy::BLOCK_HEIGHT_ASC),
+                        ..Default::default()
+                    },
+                    PaginationDirection::Backward,
+                )
+                .await?;
+                let block_heights: Vec<_> = blocks.iter().map(|b| b.block_height).collect();
+                assert_that!(block_heights).is_equal_to((1i64..=10).rev().collect::<Vec<_>>());
+
+                Ok::<(), anyhow::Error>(())
+            })
+            .await
+        })
+        .await?
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn graphql_subscribe_to_block() -> anyhow::Result<()> {
+    let (mut suite, mut accounts, httpd_context, _db_guard) =
+        setup_test_naive_with_indexer_and_create_blocks(
+            TestOption::default().with_mocked_clickhouse(),
+            1,
+        )
+        .await;
+
+    // Use typed subscription from indexer-graphql-types
+    let request_body = GraphQLCustomRequest::from_query_body(
+        SubscribeBlock::build_query(subscribe_block::Variables {}),
+        "block",
+    );
+
+    let (crate_block_tx, mut rx) = mpsc::channel::<u32>(1);
+
+    // Can't call this from LocalSet so using channels instead.
+    tokio::spawn(async move {
+        while rx.recv().await.is_some() {
+            suite
+                .send_messages_with_gas(
+                    &mut accounts.user1,
+                    1_000_000,
+                    NonEmpty::new_unchecked(vec![
+                        Message::transfer(
+                            accounts.user2.address(),
+                            Coins::one(usdc::DENOM.clone(), 100).unwrap(),
+                        )
+                        .unwrap(),
+                    ]),
+                )
+                .await
+                .should_succeed();
+        }
+        Ok::<(), anyhow::Error>(())
+    });
+
+    let local_set = tokio::task::LocalSet::new();
+
+    local_set
+        .run_until(async {
+            tokio::task::spawn_local(async move {
+                let name = request_body.name;
+                let (_srv, _ws, mut framed) =
+                    call_ws_graphql_stream(httpd_context, build_app_service, request_body).await?;
+
+                // 1st response is always the existing last block
+                let response = parse_graphql_subscription_response::<
+                    subscribe_block::SubscribeBlockBlock,
+                >(&mut framed, name)
+                .await?;
+
+                assert_that!(response.data.block_height).is_equal_to(1);
+
+                crate_block_tx.send(2).await?;
+
+                // 2nd response
+                let response = parse_graphql_subscription_response::<
+                    subscribe_block::SubscribeBlockBlock,
+                >(&mut framed, name)
+                .await?;
+
+                assert_that!(response.data.block_height).is_equal_to(2);
+
+                crate_block_tx.send(3).await?;
+
+                // 3rd response
+                let response = parse_graphql_subscription_response::<
+                    subscribe_block::SubscribeBlockBlock,
+                >(&mut framed, name)
+                .await?;
+
+                assert_that!(response.data.block_height).is_equal_to(3);
+
+                Ok::<(), anyhow::Error>(())
+            })
+            .await
+        })
+        .await?
+}

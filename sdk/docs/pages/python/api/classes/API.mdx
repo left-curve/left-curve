@@ -1,0 +1,81 @@
+# API
+
+Sync GraphQL POST client. Base class for [`Info`](./Info) and [`Exchange`](./Exchange).
+
+Use `API` directly when you need to post a GraphQL document the SDK does not wrap. Most callers should pick `Info` or `Exchange` instead.
+
+## Setup
+
+```python
+from dango.api import API
+
+api = API("https://api-mainnet.dango.zone")
+```
+
+## Constructor
+
+```python
+API(base_url: str, *, timeout: float | None = None) -> None
+```
+
+## Configuration
+
+**`base_url`** — `str`. GraphQL endpoint URL; the suffix `/graphql` is appended at query time.
+
+**`timeout`** — `float | None`, optional. HTTP timeout in seconds applied to every POST. Default: no timeout.
+
+## Methods
+
+| Method | Description |
+|--------|-------------|
+| [`query`](#query) | POST a GraphQL document and return the `data` field |
+| [`query_typed`](#query_typed) | Same as `query` plus a static cast on the result |
+
+### query
+
+```python
+def query(
+    self,
+    document: str,
+    variables: dict[str, Any] | None = None,
+) -> dict[str, Any]
+```
+
+POSTs `{"query": document, "variables": variables}` to `<base_url>/graphql` and returns the GraphQL `data` envelope. Raises:
+
+- [`ServerError`](../errors/ServerError) on 5xx, network failures, or non-JSON bodies
+- [`ClientError`](../errors/ClientError) on 4xx
+- [`GraphQLError`](../errors/GraphQLError) on a non-empty `errors` array, or when both `data` and `errors` are missing
+
+```python
+data = api.query("""
+query Status { queryStatus { chainId block { blockHeight } } }
+""")
+print(data["queryStatus"]["chainId"])
+```
+
+### query_typed
+
+```python
+def query_typed[T](
+    self,
+    document: str,
+    variables: dict[str, Any] | None = None,
+    *,
+    response_type: type[T],
+) -> T
+```
+
+Same as `query` but `cast(T, ...)`s the result. No runtime validation — the cast is for type checkers only.
+
+## Notes
+
+- The class holds a `requests.Session` for HTTP keep-alive across queries.
+- `Content-Type: application/json` is set on the session at construction; no need to override per call.
+- Both query and mutation documents go through `query()` — the GraphQL operation keyword lives inside the document string.
+
+## See also
+
+- [`Info`](./Info) — the read-side subclass with typed wrappers
+- [`Exchange`](./Exchange) — the write-side subclass
+- [Concepts: Error handling](../../concepts/error-handling) — exception classes raised by `query`

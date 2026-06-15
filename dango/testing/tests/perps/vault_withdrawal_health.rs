@@ -1,16 +1,15 @@
 use {
     crate::{default_pair_param, default_param, register_oracle_prices},
+    dango_math::{MultiplyRatio, NumberConst, Uint128},
     dango_order_book::{
         Dimensionless, OrderId, OrderKind, Quantity, QueryOrdersByUserResponseItem, UsdPrice,
         UsdValue,
     },
-    dango_testing::{TestOption, perps::pair_id, setup_test_naive},
+    dango_primitives::{Addressable, Coins, QuerierExt, ResultExt, btree_map},
+    dango_testing::{TestOption, pair_id, setup_test_naive},
     dango_types::{
         constants::usdc,
         perps::{self, PairParam, Param},
-    },
-    grug::{
-        Addressable, Coins, MultiplyRatio, NumberConst, QuerierExt, ResultExt, Uint128, btree_map,
     },
     std::collections::BTreeMap,
 };
@@ -43,7 +42,7 @@ async fn vault_withdrawal_at_breakeven_makes_vault_liquidatable() {
     let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(TestOption::default());
     let pair = pair_id();
 
-    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000).await;
+    register_oracle_prices(&mut suite, &mut accounts, 2_000).await;
 
     // -------------------------------------------------------------------------
     // Step 1: LP (user1) deposits $5,000 USDC and adds $5,000 as vault liquidity.
@@ -117,7 +116,17 @@ async fn vault_withdrawal_at_breakeven_makes_vault_liquidatable() {
         .execute(
             &mut accounts.owner,
             contracts.perps,
-            &perps::ExecuteMsg::Vault(perps::VaultMsg::Refresh {}),
+            &perps::ExecuteMsg::Maintain(perps::MaintainerMsg::RefreshIndexPrices {}),
+            Coins::new(),
+        )
+        .await
+        .should_succeed();
+
+    suite
+        .execute(
+            &mut accounts.owner,
+            contracts.perps,
+            &perps::ExecuteMsg::Maintain(perps::MaintainerMsg::RefreshVaultOrders {}),
             Coins::new(),
         )
         .await
@@ -203,7 +212,7 @@ async fn vault_withdrawal_at_breakeven_makes_vault_liquidatable() {
     // Vault is healthy: $5,000 > $1,900.
     // -------------------------------------------------------------------------
 
-    register_oracle_prices(&mut suite, &mut accounts, &contracts, 1_900).await;
+    register_oracle_prices(&mut suite, &mut accounts, 1_900).await;
 
     let vault_ext: perps::UserStateExtended = suite
         .query_wasm_smart(contracts.perps, perps::QueryUserStateExtendedRequest {

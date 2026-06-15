@@ -5,16 +5,17 @@
 
 use {
     crate::{default_pair_param, default_param, register_oracle_prices},
+    dango_math::Uint128,
     dango_order_book::{
         Dimensionless, OrderId, OrderKind, Quantity, QueryOrdersByUserResponseItem, TimeInForce,
         UsdPrice,
     },
-    dango_testing::{TestOption, perps::pair_id, setup_test_naive},
+    dango_primitives::{Addressable, Coins, QuerierExt, ResultExt, btree_map},
+    dango_testing::{TestOption, pair_id, setup_test_naive},
     dango_types::{
         constants::usdc,
         perps::{self, PairParam, UserState},
     },
-    grug::{Addressable, Coins, QuerierExt, ResultExt, Uint128, btree_map},
     std::collections::BTreeMap,
 };
 
@@ -23,8 +24,9 @@ use {
 macro_rules! setup_band_suite {
     () => {{
         let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(TestOption::default());
-        register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000).await;
         let pair = pair_id();
+
+        register_oracle_prices(&mut suite, &mut accounts, 2_000).await;
 
         suite
             .execute(
@@ -254,7 +256,7 @@ async fn banding_drift_maker_cancelled_at_match_time() {
     // Oracle moves to $2,500 → new allowed range [$2,250, $2,750].
     //   - user1's $2,199 ask: now below the lower bound ($2,199 < $2,250).
     //     OUT of band.
-    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_500).await;
+    register_oracle_prices(&mut suite, &mut accounts, 2_500).await;
 
     // user3 deposits and (at T2, in the new band) places a PostOnly ask
     // at $2,400 — this one stays in-band.

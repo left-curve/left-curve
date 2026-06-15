@@ -1,0 +1,40 @@
+# getPerpsState
+
+Read global runtime state — last funding time, vault share supply, insurance fund balance, treasury.
+
+The insurance fund collects liquidation fees and absorbs bad debt; it can go
+negative when accumulated bad debt exceeds fees collected, with future fees
+naturally replenishing it. The vault and the insurance fund are isolated —
+external liquidation losses never touch vault margin. See protocol book:
+`perps/4-liquidation-and-adl` §7.
+
+## Signature
+
+```ts
+function getPerpsState(
+  client: Client,
+  parameters?: { height?: number },
+): Promise<PerpsState>
+```
+
+## Example
+
+```ts
+import { createPublicClient, createTransport, testnet } from "@left-curve/sdk"
+
+const client = createPublicClient({ chain: testnet, transport: createTransport() })
+const state = await client.getPerpsState()
+```
+
+## Parameters
+
+**`height`** — `number`, optional. Block height. Default `0` (latest).
+
+## Returns
+
+**`PerpsState`** — `{ lastFundingTime, vaultShareSupply, insuranceFund, treasury }`.
+
+## See also
+
+- [`getPerpsParam`](./getPerpsParam) — configured parameters
+- [`getPerpsVaultState`](./getPerpsVaultState)

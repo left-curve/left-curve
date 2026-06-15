@@ -1,7 +1,22 @@
 {
-  "name": "@left-curve/dango",
-  "version": "0.1.0",
+  "name": "@left-curve/sdk",
+  "version": "1.0.0",
   "type": "module",
+  "publishConfig": {
+    "registry": "https://registry.npmjs.org/",
+    "access": "public"
+  },
+  "imports": {
+    "#actions/*": "./src/actions/*",
+    "#account/*": "./src/account/*",
+    "#chains/*": "./src/chains/*",
+    "#clients/*": "./src/clients/*",
+    "#errors/*": "./src/errors/*",
+    "#http/*": "./src/http/*",
+    "#hyperlane/*": "./src/hyperlane/*",
+    "#signers/*": "./src/signers/*",
+    "#transports/*": "./src/transports/*"
+  },
   "scripts": {
     "bump": "npm version --no-git-tag-version",
     "ci": "pnpm lint",
@@ -11,8 +26,6 @@
     "lint:fix": "pnpm biome ci ./src",
     "test": "pnpm vitest run",
     "test:watch": "pnpm vitest",
-    "pre-dev": "tsc",
-    "dev": "tsc -w",
     "build": "NODE_OPTIONS='--max-old-space-size=8192' pnpm tsup --clean"
   },
   "main": "./build/index.cjs",
@@ -21,64 +34,37 @@
   "typings": "./build/index.d.ts",
   "sideEffects": false,
   "files": [
-    "build"
+    "build",
+    "src/chains/definitions/*.json"
   ],
   "exports": {
     ".": {
+      "source": "./src/index.ts",
       "types": "./build/index.d.ts",
       "import": "./build/index.js",
       "default": "./build/index.cjs"
     },
     "./actions": {
+      "source": "./src/actions/index.ts",
       "types": "./build/actions/index.d.ts",
       "import": "./build/actions/index.js",
       "default": "./build/actions/index.cjs"
     },
-    "./types": {
-      "types": "./build/types/index.d.ts",
-      "import": "./build/types/index.js",
-      "default": "./build/types/index.cjs"
-    },
-    "./crypto": {
-      "types": "./build/crypto.d.ts",
-      "import": "./build/crypto.js",
-      "default": "./build/crypto.cjs"
-    },
-    "./encoding": {
-      "types": "./build/encoding.d.ts",
-      "import": "./build/encoding.js",
-      "default": "./build/encoding.cjs"
-    },
     "./hyperlane": {
+      "source": "./src/hyperlane/index.ts",
       "types": "./build/hyperlane/index.d.ts",
       "import": "./build/hyperlane/index.js",
       "default": "./build/hyperlane/index.cjs"
     },
-    "./utils": {
-      "types": "./build/utils/index.d.ts",
-      "import": "./build/utils/index.js",
-      "default": "./build/utils/index.cjs"
-    }
+    "./chains/*.json": "./src/chains/definitions/*.json"
   },
   "typesVersions": {
     "*": {
-      "types": [
-        "./build/types/index.d.ts"
-      ],
       "actions": [
         "./build/actions/index.d.ts"
       ],
-      "crypto": [
-        "./build/crypto.d.ts"
-      ],
-      "encoding": [
-        "./build/encoding.d.ts"
-      ],
       "hyperlane": [
-        "./build/hyperlane.d.ts"
-      ],
-      "utils": [
-        "./build/utils/index.d.ts"
+        "./build/hyperlane/index.d.ts"
       ]
     }
   },
@@ -87,7 +73,10 @@
     "vitest": "catalog:"
   },
   "dependencies": {
-    "@left-curve/sdk": "workspace:^",
+    "@left-curve/types": "workspace:^",
+    "@left-curve/encoding": "workspace:^",
+    "@left-curve/utils": "workspace:^",
+    "@left-curve/crypto": "workspace:^",
     "eventemitter3": "catalog:",
     "graphql": "^16.10.0"
   },
@@ -95,10 +84,11 @@
     "graphql-ws": ">=6.0.0"
   },
   "license": "TBD",
-  "homepage": "https://grug.build",
+  "homepage": "https://dango.exchange",
   "repository": "left-curve/left-curve",
   "keywords": [
     "grug",
+    "dango",
     "smart-contracts",
     "blockchain",
     "cryptocurrency",

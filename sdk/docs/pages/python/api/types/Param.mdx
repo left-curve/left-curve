@@ -1,0 +1,34 @@
+# Param
+
+Global perps parameters.
+
+## Definition
+
+```python
+class Param(TypedDict):
+    max_unlocks: int
+    max_open_orders: int
+    maker_fee_rates: RateSchedule
+    taker_fee_rates: RateSchedule
+    protocol_fee_rate: Dimensionless
+    liquidation_fee_rate: Dimensionless
+    liquidation_buffer_ratio: Dimensionless
+    funding_period: Duration
+    vault_total_weight: Dimensionless
+    vault_cooldown_period: Duration
+    referral_active: bool
+    min_referrer_volume: UsdValue
+    referrer_commission_rates: RateSchedule
+    vault_deposit_cap: UsdValue | None
+    max_action_batch_size: int
+```
+
+## Fields
+
+The TypedDict covers fee schedules, OI/order caps, the funding period, vault weight and cooldown, referral knobs, deposit cap, and the max batch-update size enforced by the chain.
+
+## See also
+
+- [`perps_param`](../methods/info/perps_param) — fetcher
+- [`State`](./State) — runtime state counterpart
+- [`PairParam`](./PairParam) — per-pair parameters

@@ -1,0 +1,56 @@
+# SingleSigner::query_next_nonce
+
+Fetch the next unused nonce for this signer's account.
+
+## Signature
+
+```rust
+pub async fn query_next_nonce<C>(&self, client: &C) -> anyhow::Result<Nonce>
+where
+    C: QueryClient,
+    anyhow::Error: From<C::Error>;
+```
+
+Available on every state of `SingleSigner`.
+
+## Example
+
+```rust
+use {
+    anyhow::Result,
+    dango_sdk::{HttpClient, Secp256k1, SingleSigner},
+    dango_primitives::Addr,
+    std::str::FromStr,
+};
+
+#[tokio::main]
+async fn main() -> Result<()> {
+    let http   = HttpClient::new("https://api-mainnet.dango.zone")?;
+    let signer = SingleSigner::new(
+        Addr::from_str("0x0000000000000000000000000000000000000000")?,
+        Secp256k1::new_random(),
+    );
+
+    let nonce = signer.query_next_nonce(&http).await?;
+    println!("next nonce: {nonce}");
+    Ok(())
+}
+```
+
+## Parameters
+
+**`client`** — `&C` implementing `QueryClient`.
+
+## Returns
+
+**`Nonce`** — `last_seen_nonce + 1`, or `0` if the account has never signed a transaction.
+
+## Notes
+
+- Reads `QuerySeenNoncesRequest` on the account contract.
+- Borrowing variant. To flip the typestate, use [`with_query_nonce`](./with_query_nonce).
+
+## See also
+
+- [`with_query_nonce`](./with_query_nonce).
+- [`update_nonce`](./update_nonce) — refresh the in-memory nonce after a broadcast failure.

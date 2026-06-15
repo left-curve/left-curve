@@ -1,0 +1,55 @@
+# setReferral
+
+Set a referrer/referee mapping for fee sharing.
+
+Links the referee to a chain of up to five upstream referrers; each fill the
+referee pays goes through the per-level commission split described in
+protocol book: `perps/6-referral` §5. Constraints: a user cannot refer
+themselves, the referrer must already have opted in via
+[`setFeeShareRatio`](./setFeeShareRatio), and the relationship is immutable
+once stored.
+
+## Signature
+
+```ts
+function setReferral(
+  client: Client<Signer>,
+  parameters: {
+    sender: Address
+    referrer: number
+    referee: number
+  },
+): Promise<{ hash: Uint8Array } & TxData>
+```
+
+## Example
+
+```ts
+import { createSignerClient, createTransport, testnet, PrivateKeySigner } from "@left-curve/sdk"
+import type { Address } from "@left-curve/sdk"
+
+const client = createSignerClient({
+  chain: testnet,
+  transport: createTransport(),
+  signer: PrivateKeySigner.fromMnemonic(process.env.DANGO_MNEMONIC!),
+})
+const sender: Address = "0x1234567890abcdef1234567890abcdef12345678"
+
+await client.setReferral({ sender, referrer: 42, referee: 99 })
+```
+
+## Parameters
+
+**`sender`** — `Address`. The submitting account.
+
+**`referrer`** — `number`. Referrer's user index.
+
+**`referee`** — `number`. Referee's user index.
+
+## Returns
+
+**`{ hash: Uint8Array } & TxData`** — see [`broadcastTxSync`](../app/broadcastTxSync).
+
+## See also
+
+- [`setFeeShareRatio`](./setFeeShareRatio)

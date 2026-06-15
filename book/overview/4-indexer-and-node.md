@@ -13,7 +13,7 @@ commitment.
 ### Indexer trait
 
 ```rust
-// grug/app/src/traits/indexer.rs
+// dango/core/app/src/traits/indexer.rs
 #[async_trait]
 pub trait Indexer: Send + Sync {
     async fn start(&mut self, storage: &dyn Storage) -> IndexerResult<()>;
@@ -48,13 +48,13 @@ pub trait Indexer: Send + Sync {
 
 ### HookedIndexer (composition)
 
-`indexer/hooked/` is the single `Indexer` impl that the chain wires into `App`. It owns the three production indexer components by value and orchestrates their per-block work:
+`dango/indexer/hooked/` is the single `Indexer` impl that the chain wires into `App`. It owns the three production indexer components by value and orchestrates their per-block work:
 
 ```rust
 pub struct HookedIndexer {
-    pub file:       indexer_cache::Cache,
-    pub sql:        indexer_sql::Indexer,
-    pub clickhouse: indexer_clickhouse::Indexer,
+    pub file:       dango_indexer_cache::Cache,
+    pub sql:        dango_indexer_sql::Indexer,
+    pub clickhouse: dango_indexer_clickhouse::Indexer,
     // …plus an `is_running` flag and a per-block `post_indexing` task map.
 }
 ```
@@ -63,7 +63,7 @@ The data flow is expressed through typed method arguments: `Cache::post_indexing
 
 The "Hooked" name is historical — earlier revisions held a dynamic `Arc<RwLock<Vec<Box<dyn Indexer>>>>` and passed data between entries through an opaque `http::Extensions`-based context. The current shape is the three concrete fields above, but the crate and struct name are kept so deploy scripts and imports do not need to churn.
 
-## 2. SQL Indexer (`indexer/sql/`)
+## 2. SQL Indexer (`dango/indexer/sql/`)
 
 ### Schema
 
@@ -98,10 +98,10 @@ pub struct HttpRequestDetails {
 
 ### Event cache
 
-An in-memory ring buffer of recent block events (`indexer/sql/src/event_cache.rs`).
+An in-memory ring buffer of recent block events (`dango/indexer/sql/src/event_cache.rs`).
 Configurable window size. Used for fast GraphQL lookups without DB round-trips.
 
-## 3. Cache Indexer (`indexer/cache/`)
+## 3. Cache Indexer (`dango/indexer/cache/`)
 
 Persists complete block + outcome data to disk for recovery:
 
@@ -112,7 +112,7 @@ Persists complete block + outcome data to disk for recovery:
 
 Optional S3 sync with bitmap tracking of uploaded blocks.
 
-## 4. Dango-Specific Writes (`indexer/sql/src/write/`)
+## 4. Dango-Specific Writes (`dango/indexer/sql/src/write/`)
 
 The SQL indexer crate also performs Dango-specific data extraction in the same `post_indexing` pass, after the generic block/tx/message/event rows have been written:
 
@@ -136,7 +136,7 @@ Extracts:
 
 Only processes committed events from successful transactions.
 
-## 5. GraphQL / HTTP Server (`indexer/httpd/`)
+## 5. GraphQL / HTTP Server (`dango/indexer/httpd/`)
 
 Actix-web HTTP server with async-graphql:
 

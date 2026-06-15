@@ -1,0 +1,34 @@
+# order
+
+Fetch a single resting limit order by id. Returns `None` if the order does not exist.
+
+## Signature
+
+```python
+def order(self, order_id: OrderId) -> dict[str, Any] | None
+```
+
+## Example
+
+```python
+from dango.info import Info
+from dango.utils.constants import MAINNET_API_URL
+from dango.utils.types import OrderId
+
+info = Info("https://api-mainnet.dango.zone", skip_ws=True)
+result = info.order(OrderId("12345"))
+if result is not None:
+    print(result["pair_id"], result["size"], result["limit_price"])
+```
+
+## Parameters
+
+**`order_id`** — `OrderId`. The chain-assigned order id.
+
+## Returns
+
+**`dict[str, Any] | None`** — order details, or `None` for unknown ids. Shape matches [`QueryOrderResponse`](../../types/QueryOrderResponse) — cast if you want typed access.
+
+## See also
+
+- [`orders_by_user`](./orders_by_user) — enumerate all of a user's orders

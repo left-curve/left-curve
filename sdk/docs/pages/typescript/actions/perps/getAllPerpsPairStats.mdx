@@ -1,0 +1,27 @@
+# getAllPerpsPairStats
+
+Read 24h stats for every perps pair.
+
+## Signature
+
+```ts
+function getAllPerpsPairStats(client: Client): Promise<PerpsPairStats[]>
+```
+
+## Example
+
+```ts
+import { createPublicClient, createTransport, testnet } from "@left-curve/sdk"
+
+const client = createPublicClient({ chain: testnet, transport: createTransport() })
+const stats = await client.getAllPerpsPairStats()
+```
+
+## Returns
+
+**`PerpsPairStats[]`** — one `{ pairId, currentPrice, price24HAgo, volume24H, priceChange24H }` per pair.
+
+## See also
+
+- [`getPerpsPairStats`](./getPerpsPairStats) — single-pair variant
+- [`allPerpsPairStatsSubscription`](../indexer/allPerpsPairStatsSubscription)

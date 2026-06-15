@@ -1,0 +1,49 @@
+# getWithdrawalFee
+
+Read the withdrawal fee for a denom + remote chain pair.
+
+## Signature
+
+```ts
+function getWithdrawalFee(
+  client: Client,
+  parameters: {
+    denom: Denom
+    remote: Remote
+    height?: number
+  },
+): Promise<string>
+```
+
+## Example
+
+```ts
+import { createPublicClient, createTransport, testnet } from "@left-curve/sdk"
+
+const client = createPublicClient({ chain: testnet, transport: createTransport() })
+const fee = await client.gateway.getWithdrawalFee({
+  denom: "bridge/usdc",
+  remote: { warp: { domain: 1, contract: "0x..." } },
+})
+```
+
+## Parameters
+
+**`denom`** — `Denom`. Token denom.
+
+**`remote`** — `Remote`. `{ warp: { domain, contract: Addr32 } }` or `"bitcoin"`.
+
+**`height`** — `number`, optional. Block height. Default `0` (latest).
+
+## Returns
+
+**`string`** — the withdrawal fee in base units.
+
+## Notes
+
+- Gateway actions are namespaced under `client.gateway.*`. Other domains are flat.
+
+## See also
+
+- [`transferRemote`](./transferRemote)
+- [Concepts: Clients](../../concepts/clients) — gateway namespacing

@@ -1,0 +1,62 @@
+# queryAppSubscription
+
+Subscribe to the live result of a `queryApp` request. Uses WebSocket when available; falls back to HTTP polling.
+
+## Signature
+
+```ts
+function queryAppSubscription(
+  client: Client,
+  parameters: SubscriptionCallbacks<{
+    queryApp: {
+      response: QueryResponse
+      blockHeight: number
+    }
+  }> & {
+    request: QueryRequest
+    interval?: number
+    httpInterval?: number
+  },
+): () => void
+```
+
+## Example
+
+```ts
+import { createPublicClient, createTransport, testnet } from "@left-curve/sdk"
+import type { Address } from "@left-curve/sdk"
+
+const client = createPublicClient({ chain: testnet, transport: createTransport() })
+const address: Address = "0x1234567890abcdef1234567890abcdef12345678"
+
+const unsubscribe = client.queryAppSubscription({
+  request: { balance: { address, denom: "dango" } },
+  next: ({ queryApp }) => {
+    if ("balance" in queryApp.response) {
+      console.log(queryApp.blockHeight, queryApp.response.balance.amount)
+    }
+  },
+})
+```
+
+## Parameters
+
+**`request`** — `QueryRequest`. The query to evaluate on each block.
+
+**`interval`** — `number`, optional. Block interval between WS pushes (default `10`).
+
+**`httpInterval`** — `number`, optional, default `5000`. Poll interval (ms) used when WS is unavailable.
+
+**`next`**, **`error`**, **`complete`** — callbacks.
+
+## Returns
+
+**`() => void`** — unsubscribe.
+
+## Notes
+
+- The HTTP fallback uses [`queryApp`](../app/queryApp) under the hood and emits `blockHeight: 0` (the fallback path does not have block info).
+
+## See also
+
+- [`queryApp`](../app/queryApp)

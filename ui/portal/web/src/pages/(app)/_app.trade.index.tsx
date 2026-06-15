@@ -1,14 +1,11 @@
 import { createFileRoute, redirect } from "@tanstack/react-router";
+import { MarketPair } from "@left-curve/foundation/market-pair";
 
 export const Route = createFileRoute("/(app)/_app/trade/")({
-  beforeLoad: async ({ context }) => {
-    const { config } = context;
-    const isDevnet = config.chain.name === "Devnet";
-
+  beforeLoad: async () => {
     throw redirect({
-      to: "/trade/$pairSymbols",
-      params: { pairSymbols: isDevnet ? "ETH-USD" : "BTC-USD" },
-      search: { type: "perps" },
+      to: "/trade/$ticker",
+      params: { ticker: MarketPair.default.ticker },
     });
   },
 });

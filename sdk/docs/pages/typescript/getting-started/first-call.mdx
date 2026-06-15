@@ -1,0 +1,42 @@
+# First Call
+
+Hit the public testnet with a read-only client. No signer needed.
+
+## Hello, chain
+
+```ts
+import { createPublicClient, createTransport, testnet } from "@left-curve/sdk"
+
+const client = createPublicClient({
+  chain: testnet,
+  transport: createTransport(),
+})
+
+const status = await client.queryStatus()
+console.log(status.chainId, status.block.height)
+```
+
+`createTransport()` reads the URL from the chain config (`testnet.url`). To override, pass a URL: `createTransport("https://api-testnet.dango.zone")`.
+
+## Query a balance
+
+```ts
+import { createPublicClient, createTransport, testnet } from "@left-curve/sdk"
+import type { Address } from "@left-curve/sdk"
+
+const client = createPublicClient({
+  chain: testnet,
+  transport: createTransport(),
+})
+
+const address: Address = "0x1234567890abcdef1234567890abcdef12345678"
+const amount = await client.getBalance({ address, denom: "dango" })
+console.log(amount)
+```
+
+`getBalance` returns a base-unit `string`. Parse with `BigInt` or `Decimal` before doing arithmetic — see [Encoding & Types](../concepts/encoding-and-types).
+
+## Next
+
+- [Project Setup](./project-setup) — add a signer and broadcast transactions
+- [Concepts: Clients](../concepts/clients) — when to reach for `createSignerClient`

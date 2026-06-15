@@ -14,6 +14,16 @@ git-fetch-main:
 git-clear-branches:
   git branch | grep -v "main" | xargs git branch -D
 
+# Create a tag at the given commit and push only that tag to origin
+create-and-push-tag commit-hash tag:
+  git tag {{tag}} {{commit-hash}}
+  git push origin {{tag}}
+
+# Create a branch off the given commit and push only that branch to origin
+create-and-push-branch commit-hash branch:
+  git branch {{branch}} {{commit-hash}}
+  git push origin {{branch}}
+
 # ------------------------------------ Rust ------------------------------------
 
 # Compile and install the Dango node software
@@ -22,29 +32,22 @@ install-node:
 
 # Compile and install the Dango client CLI
 install-client:
-  cargo install --path sdk/rust/cli --locked
+  cargo install --path dango/sdk/cli --locked
 
 # Run all tests
 test:
   RUST_BACKTRACE=1 cargo test --all-features --tests -- --nocapture
 
-# Run grug tests
-test-grug:
-  RUST_BACKTRACE=1 cargo test --all-features --tests -p grug-testing -- --nocapture
-
-# Run dango tests
-test-dango:
-  RUST_BACKTRACE=1 cargo test --all-features --tests -p dango-testing -- --nocapture
-
-# Run dango perp tests
+# Run all perp-related tests specifically
 test-perps:
   RUST_BACKTRACE=1 cargo test --all-features --tests -p dango-types perps::tests -- --nocapture
+  RUST_BACKTRACE=1 cargo test --all-features --tests -p dango-order-book -- --nocapture
   RUST_BACKTRACE=1 cargo test --all-features --tests -p dango-perps -- --nocapture
   RUST_BACKTRACE=1 cargo test --all-features -p dango-testing --test perps -- --nocapture
 
-# Run indexer tests
-test-indexer:
-  RUST_BACKTRACE=1 cargo test --all-features --tests -p indexer-testing -- --nocapture
+# Run all dango-related tests specifically
+test-dango:
+  RUST_BACKTRACE=1 cargo test --all-features -p dango-testing -- --nocapture
 
 # Check whether the code compiles
 check:
@@ -72,8 +75,8 @@ fmt:
 
 # Build schema
 build-graphql-schema:
-  cargo run -p indexer-httpd --bin build_graphql_schema -- \
-    ./indexer/graphql-types/src/schemas/schema.graphql
+  cargo run -p dango-indexer-httpd --bin build_graphql_schema -- \
+    ./dango/indexer/graphql-types/src/schemas/schema.graphql
 
 # Build the Dango Book
 book:
@@ -81,7 +84,7 @@ book:
 
 # Update wasm artifacts used in tests
 update-testdata:
-  cp -v artifacts/grug_{mock_*,tester}.wasm grug/vm/wasm/testdata/
+  cp -v artifacts/dango_tester.wasm dango/testing/testdata/
 
 # ---------------------------------- Frontend ----------------------------------
 

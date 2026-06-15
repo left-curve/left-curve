@@ -6,14 +6,14 @@ import { forwardRef, useState } from "react";
 import { useDOMRef } from "../hooks/useDOMRef.js";
 import { useClickAway } from "../hooks/useClickAway.js";
 
-import { wait } from "@left-curve/dango/utils";
+import { wait } from "@left-curve/utils";
 import { twMerge } from "@left-curve/foundation";
 
 import { Input, type InputProps } from "./Input";
 import { Spinner } from "./Spinner";
 import TruncateText from "./TruncateText";
 
-import type { Prettify } from "@left-curve/dango/types";
+import type { Prettify } from "@left-curve/types";
 
 type AccountSearchInputProps = Prettify<
   InputProps & {

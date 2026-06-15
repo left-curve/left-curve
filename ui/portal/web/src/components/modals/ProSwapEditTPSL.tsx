@@ -11,7 +11,7 @@ import {
   useInputs,
 } from "@left-curve/applets-kit";
 
-import { Decimal } from "@left-curve/dango/utils";
+import { Decimal } from "@left-curve/utils";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 import {
   perpsTradeSettingsStore,
@@ -25,9 +25,10 @@ import { PERPS_DEFAULT_SLIPPAGE } from "~/constants";
 import { useQueryClient } from "@tanstack/react-query";
 import { forwardRef, useEffect, useMemo, useState } from "react";
 
-import type { SubmitConditionalOrderInput } from "@left-curve/dango/actions";
+import type { SubmitConditionalOrderInput } from "@left-curve/sdk/actions";
 
 import { TPSLPositionInfo } from "./TPSLPositionInfo";
+import { perpsTradeHistoryKeys } from "../dex/helpers/perpsTradeHistoryKeys";
 import { useTPSLPriceSync } from "../dex/hooks/useTPSLPriceSync";
 
 type ProSwapEditTPSLProps = {
@@ -39,7 +40,6 @@ type ProSwapEditTPSLProps = {
   conditionalOrderAbove?: { triggerPrice: string; maxSlippage: string };
   conditionalOrderBelow?: { triggerPrice: string; maxSlippage: string };
 };
-
 
 export const ProSwapEditTPSL = forwardRef<void, ProSwapEditTPSLProps>(
   ({
@@ -73,8 +73,8 @@ export const ProSwapEditTPSL = forwardRef<void, ProSwapEditTPSLProps>(
     // nothing is stored. This matches the logic in TradeMenu.tsx and
     // keeps the two TP/SL entry points consistent.
     const maxLeverage = useMemo(() => {
-      const params = appConfig?.perpsPairs?.[pairId];
-      const ratio = Number(params?.initialMarginRatio ?? 0);
+      const params = appConfig.perpsPairs[pairId];
+      const ratio = Number(params.initialMarginRatio);
       return ratio > 0 ? Math.floor(1 / ratio) : 100;
     }, [appConfig, pairId]);
     const storedLeverage = perpsTradeSettingsStore((s) => s.leverageByPair[pairId]);
@@ -93,7 +93,7 @@ export const ProSwapEditTPSL = forwardRef<void, ProSwapEditTPSLProps>(
     const slPrice = inputs.slPrice?.value || "";
 
     const [configureAmount, setConfigureAmount] = useState(false);
-    const [sizePercent, setSizePercent] = useState(100);
+    const [sizeAmount, setSizeAmount] = useState<number>(absSize);
 
     const { onTpPriceChange, onTpPercentChange, onSlPriceChange, onSlPercentChange } =
       useTPSLPriceSync({
@@ -119,8 +119,8 @@ export const ProSwapEditTPSL = forwardRef<void, ProSwapEditTPSLProps>(
 
     const orderSize = useMemo(() => {
       if (!configureAmount) return undefined;
-      return Decimal(absSize).mul(Decimal(sizePercent).div(100)).toFixed(6);
-    }, [configureAmount, sizePercent, absSize]);
+      return Decimal(sizeAmount).toFixed(6);
+    }, [configureAmount, sizeAmount]);
 
     const validationError = useMemo(() => {
       const tp = Number(tpPrice);
@@ -202,7 +202,9 @@ export const ProSwapEditTPSL = forwardRef<void, ProSwapEditTPSLProps>(
         },
         onSuccess: () => {
           queryClient.invalidateQueries({ queryKey: ["prices"] });
-          queryClient.invalidateQueries({ queryKey: ["perpsTradeHistory", account?.address] });
+          queryClient.invalidateQueries({
+            queryKey: perpsTradeHistoryKeys.account(account?.address),
+          });
           hideModal();
         },
       },
@@ -295,11 +297,11 @@ export const ProSwapEditTPSL = forwardRef<void, ProSwapEditTPSLProps>(
           />
           {configureAmount ? (
             <Range
-              minValue={1}
-              maxValue={100}
-              defaultValue={100}
-              value={sizePercent}
-              onChange={(v) => setSizePercent(v)}
+              minValue={0}
+              maxValue={absSize}
+              defaultValue={absSize}
+              value={sizeAmount}
+              onChange={(v) => setSizeAmount(Math.min(absSize, Math.max(0, v)))}
               inputEndContent={symbol}
               withInput
               classNames={{ input: "max-w-[10rem]" }}
@@ -324,7 +326,7 @@ export const ProSwapEditTPSL = forwardRef<void, ProSwapEditTPSLProps>(
         <Button
           fullWidth
           isLoading={isPending}
-          isDisabled={!hasInput || validationError !== null}
+          isDisabled={!hasInput || validationError !== null || (configureAmount && sizeAmount <= 0)}
           onClick={() => submitOrders()}
         >
           {m["modals.tpsl.confirm"]()}

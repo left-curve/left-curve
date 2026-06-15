@@ -1,47 +1,47 @@
 use {
-    crate::{TestAccounts, TestSuiteWithIndexer},
+    crate::{TestAccounts, TestSuiteNaiveWithIndexer},
     dango_genesis::Contracts,
+    dango_math::Uint128,
     dango_order_book::{Dimensionless, OrderKind, Quantity, TimeInForce, UsdPrice},
-    dango_types::{
-        constants::usdc,
-        oracle::{self, PriceSource},
-        perps,
-    },
-    grug::{Coins, Denom, NumberConst, ResultExt, Timestamp, Udec128, Uint128, btree_map},
+    dango_primitives::{Coins, Denom, ResultExt, btree_map},
+    dango_pyth_types::PythId,
+    dango_types::{constants::usdc, perps},
 };
 
 pub fn pair_id() -> Denom {
     "perp/ethusd".parse().unwrap()
 }
 
+/// Specification for a single oracle price entry used in tests.
+///
+/// `pyth_id` is the synthetic Pyth Lazer feed ID under which the price is
+/// stored. Tests can use any `u32`; the value only has to be unique across
+/// entries within the same test environment.
+pub struct OracleTestEntry {
+    pub pyth_id: PythId,
+    pub humanized_price: UsdPrice,
+}
+
 /// Common setup: register oracle prices + deposit margin for user1 and user2.
 pub async fn setup_perps_env(
-    suite: &mut TestSuiteWithIndexer,
+    suite: &mut TestSuiteNaiveWithIndexer,
     accounts: &mut TestAccounts,
     contracts: &Contracts,
     eth_price: u128,
     margin_per_user: u128,
 ) {
     suite
-        .execute(
-            &mut accounts.owner,
-            contracts.oracle,
-            &oracle::ExecuteMsg::RegisterPriceSources(btree_map! {
-                usdc::DENOM.clone() => PriceSource::Fixed {
-                    humanized_price: Udec128::ONE,
-                    precision: usdc::DECIMAL as u8,
-                    timestamp: Timestamp::from_nanos(u128::MAX),
-                },
-                pair_id() => PriceSource::Fixed {
-                    humanized_price: Udec128::new(eth_price),
-                    precision: 0,
-                    timestamp: Timestamp::from_nanos(u128::MAX),
-                },
-            }),
-            Coins::new(),
-        )
-        .await
-        .should_succeed();
+        .seed_oracle_prices(&mut accounts.owner, btree_map! {
+            usdc::DENOM.clone() => OracleTestEntry {
+                pyth_id: 1,
+                humanized_price: UsdPrice::new_int(1),
+            },
+            pair_id() => OracleTestEntry {
+                pyth_id: 2,
+                humanized_price: UsdPrice::new_int(eth_price as i128),
+            },
+        })
+        .await;
 
     for account in [&mut accounts.user1, &mut accounts.user2] {
         let amount = Uint128::new(margin_per_user * 1_000_000);
@@ -60,7 +60,7 @@ pub async fn setup_perps_env(
 /// Place a limit ask (user2) then a market buy (user1) to produce an
 /// `OrderFilled` at the given price and size.
 pub async fn create_perps_fill(
-    suite: &mut TestSuiteWithIndexer,
+    suite: &mut TestSuiteNaiveWithIndexer,
     accounts: &mut TestAccounts,
     contracts: &Contracts,
     pair_id: &Denom,

@@ -1,10 +1,10 @@
 # Dango Contract System
 
-Dango is a suite of smart contracts deployed on Grug that together form a perpetual
-futures exchange, spot DEX, oracle, token ledger, bridge aggregator, and account
-system. All contracts are first-party and execute natively via `RustVm`.
+Dango is a suite of smart contracts that together form a perpetual
+futures exchange, oracle, token ledger, bridge aggregator, and account system. All
+contracts are first-party and execute natively via `RustVm`.
 
-## 1. Shared Types (`dango/types/`)
+## 1. Shared Types (`dango/exchange/types/`)
 
 All contracts reference a central `AppConfig` that stores addresses of every system
 contract:
@@ -23,10 +23,10 @@ pub struct AppAddresses {
 ```
 
 Other shared types include authentication types (`Key`, `Signature`, `Credential`,
-`SignDoc`, `Metadata`), fee types (`FeeType`), and price types
+`SignDoc`, `Metadata`) and price types
 (`PrecisionlessPrice`, `PrecisionedPrice`).
 
-## 2. Bank (`dango/bank/`)
+## 2. Bank (`dango/exchange/bank/`)
 
 The bank contract manages all token balances, transfers, mints, and burns.
 
@@ -53,8 +53,7 @@ The bank contract manages all token balances, transfers, mints, and burns.
 ### Access control
 
 Namespace ownership is assigned once by the chain owner and cannot be overwritten.
-For example, the perps contract owns the `perp/` namespace, the DEX owns the `dex/`
-namespace.
+For example, the perps contract owns the `perp/` namespace.
 
 ### Security considerations
 
@@ -65,7 +64,7 @@ namespace.
   mint/burn/force-transfer. A bug in the perps contract could allow unlimited minting
   of `perp/*` tokens.
 
-## 3. Account Factory (`dango/account-factory/`)
+## 3. Account Factory (`dango/exchange/account-factory/`)
 
 Creates and manages user accounts.
 
@@ -106,7 +105,7 @@ pub struct User {
 - Maximum 5 accounts per user.
 - Nonce jump limited to 100 (prevents DoS on the nonce set).
 
-## 4. Account (`dango/account/`)
+## 4. Account (`dango/exchange/account/`)
 
 Single-signature account contract, one instance per user account.
 
@@ -127,7 +126,7 @@ When the host receives a transaction, it calls the sender account's `authenticat
 4. Verify the signature against the signing key registered in the factory.
 5. Return `Response`.
 
-## 5. Taxman (`dango/taxman/`)
+## 5. Taxman (`dango/exchange/taxman/`)
 
 Handles gas fee collection.
 
@@ -146,9 +145,9 @@ Handles gas fee collection.
    based on `gas_used * fee_rate`, refunds the difference, and transfers the fee
    to the treasury.
 
-## 6. Oracle (`dango/oracle/`)
+## 6. Oracle (`dango/exchange/oracle/`)
 
-Price feed aggregation for spot and derivatives trading.
+Price feed aggregation for derivatives trading.
 
 ### State
 
@@ -156,15 +155,14 @@ Price feed aggregation for spot and derivatives trading.
 | ---------------------- | --------------- | -------------------- |
 | `PRICE_SOURCES`        | `Denom`         | `PriceSource`        |
 | `PYTH_TRUSTED_SIGNERS` | `[u8]` (pubkey) | `Timestamp` (expiry) |
-| `PYTH_PRICES`          | `PythId`        | `PrecisionlessPrice` |
+| `PYTH_PRICES`          | `PythId`        | `Price`              |
 
 ### Price structure
 
 ```rust
-pub struct PrecisionlessPrice {
-    pub humanized_price: Udec128,  // e.g., 50000.0 for $50k BTC
-    pub timestamp: Timestamp,       // Feed age
-    pub precision: u8,              // Decimal places
+pub struct Price {
+    pub humanized_price: UsdPrice, // e.g., 50000.0 for $50k BTC
+    pub timestamp: Timestamp,      // Feed age
 }
 ```
 
@@ -175,47 +173,9 @@ pub struct PrecisionlessPrice {
 - The chain owner (governance) controls which signers are trusted.
 - There is no automated slashing or removal of malicious signers -- governance
   intervention is required.
-- Consuming contracts (DEX, perps) enforce staleness checks before using prices.
+- Consuming contracts (perps) enforce staleness checks before using prices.
 
-## 7. Spot DEX (`dango/dex/`)
-
-AMM + order book hybrid spot trading exchange.
-
-### State
-
-| Storage         | Key              | Value                      |
-| --------------- | ---------------- | -------------------------- |
-| `PAUSED`        | --               | `bool`                     |
-| `PAIRS`         | `(Denom, Denom)` | `PairParams`               |
-| `RESERVES`      | `(Denom, Denom)` | `CoinPair` (pool reserves) |
-| `ORDERS`        | `OrderKey`       | `Order` (IndexedMap)       |
-| `NEXT_ORDER_ID` | --               | `Counter<OrderId>`         |
-| `DEPTHS`        | `DepthKey`       | `(Udec128_6, Udec128_6)`   |
-
-### Pool types
-
-- **Standard (XYK):** `x * y = k` constant-product formula.
-- **Stable swap:** Linear-weighted AMM for pegged assets.
-
-Both types charge a pool fee (to LPs) and a protocol fee (to taxman).
-
-### LP tokens
-
-LP token denom: `dex/pool/{base_denom}/{quote_denom}`. A permanent minimum liquidity
-lock of 1,000 tokens prevents first-depositor manipulation.
-
-### Order types
-
-- Market orders (IOC -- immediate or cancel).
-- Limit orders (GTC, IOC, or Post-Only).
-- Orders matched by price-time priority (best price first, then earliest `OrderId`).
-
-### Oracle integration
-
-The DEX enforces `MAX_ORACLE_STALENESS` (500ms) before using oracle prices for swaps.
-Stale oracle prices cause swaps to be rejected.
-
-## 8. Perpetual Futures DEX (`dango/perps/`)
+## 7. Perpetual Futures Exchange (`dango/exchange/perps/`)
 
 The primary audit target. A leveraged perpetual futures exchange with a vault-based
 counterparty (market maker).
@@ -227,7 +187,7 @@ counterparty (market maker).
 ### Source files
 
 ```text
-dango/perps/src/
+dango/exchange/perps/src/
 ├── lib.rs                  # Entry points (instantiate, execute, query, cron_execute)
 ├── state.rs                # All storage definitions
 ├── query.rs                # Query implementations
@@ -433,7 +393,7 @@ skew = vault_inventory / vault_max_skew_size  [clamped to [-1, 1]]
 | `AddLiquidity`, `RemoveLiquidity`    | Any active account      |
 | `cron_execute`                       | Chain (automatic)       |
 
-## 9. Gateway (`dango/gateway/`)
+## 8. Gateway (`dango/exchange/gateway/`)
 
 Bridge aggregator for cross-chain token transfers.
 
@@ -467,7 +427,7 @@ RateLimit = Bounded<Udec128, ZeroInclusiveOneExclusive>
 Trusts Hyperlane validators/ISM. Governance controls bridge configuration, fees, and
 rate limits.
 
-## 10. Vesting (`dango/vesting/`)
+## 9. Vesting (`dango/exchange/vesting/`)
 
 Token vesting with linear schedules and optional cliffs.
 
@@ -478,12 +438,12 @@ Token vesting with linear schedules and optional cliffs.
 | `UNLOCKING_SCHEDULE` | --     | `Schedule` |
 | `POSITIONS`          | `Addr` | `Position` |
 
-## 11. Upgrade (`dango/upgrade/`)
+## 10. Upgrade (`dango/exchange/upgrade/`)
 
 Handles state migrations during chain upgrades. Example: migrating `PairParam` to add
 new vault skew fields with zero defaults.
 
-## 12. Inter-Contract Interaction Map
+## 11. Inter-Contract Interaction Map
 
 ```text
 ┌──────────────┐  RegisterUser ┌──────────┐  mint   ┌──────┐
@@ -494,7 +454,7 @@ new vault skew fields with zero defaults.
        │                            ▼                  │
        │                      ┌──────────┐             │
        │                      │  Perps   │◄────────────┘ force_transfer
-       │                      │  DEX     │  (PnL settlement)
+       │                      │          │  (PnL settlement)
        │                      └────┬─────┘
        │                           │ query prices
        │                           ▼
@@ -512,11 +472,11 @@ new vault skew fields with zero defaults.
 Key interaction patterns:
 
 - **Perps ↔ Bank:** Force-transfers for margin deposits/withdrawals and PnL settlement.
-- **Perps/DEX → Oracle:** Price queries with staleness checks.
+- **Perps → Oracle:** Price queries with staleness checks.
 - **Account Factory → Perps:** Referral registration on user creation.
 - **Account → Factory:** Key and nonce lookups during authentication.
 
-## 13. Security-Relevant Properties
+## 12. Security-Relevant Properties
 
 ### Invariants to verify
 
@@ -535,7 +495,7 @@ Key interaction patterns:
 | Contract        | Trusts                             | Trusted by                     |
 | --------------- | ---------------------------------- | ------------------------------ |
 | Bank            | Namespace owners (unconditionally) | Everyone (for balance queries) |
-| Oracle          | Pyth signers (governance-managed)  | DEX, Perps (for price feeds)   |
+| Oracle          | Pyth signers (governance-managed)  | Perps (for price feeds)        |
 | Taxman          | --                                 | Accounts (for fee handling)    |
 | Perps           | Oracle (prices), Bank (balances)   | Users (for margin custody)     |
 | Account Factory | --                                 | Accounts (for key lookups)     |

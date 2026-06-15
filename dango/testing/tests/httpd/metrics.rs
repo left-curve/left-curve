@@ -1,7 +1,7 @@
 use {
     assertor::*,
-    dango_mock_httpd::{get_mock_socket_addr, wait_for_server_ready},
-    indexer_metrics::run_metrics_server,
+    dango_indexer_metrics::run_metrics_server,
+    dango_testing::{mock_httpd_get_socket_addr, mock_httpd_wait_for_server_ready},
     metrics_exporter_prometheus::PrometheusBuilder,
     std::thread,
 };
@@ -9,7 +9,7 @@ use {
 #[tokio::test]
 async fn metrics_server_exposes_metrics() -> anyhow::Result<()> {
     let metrics_handler = PrometheusBuilder::new().install_recorder()?;
-    let port = get_mock_socket_addr();
+    let port = mock_httpd_get_socket_addr();
 
     // Start the metrics server in a separate thread
     thread::spawn(move || {
@@ -21,7 +21,7 @@ async fn metrics_server_exposes_metrics() -> anyhow::Result<()> {
         });
     });
 
-    wait_for_server_ready(port).await?;
+    mock_httpd_wait_for_server_ready(port).await?;
 
     let metrics_client = reqwest::Client::new();
     // This create a metric that we can use to test the metrics server

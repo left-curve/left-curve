@@ -10,11 +10,12 @@ import {
   useApp,
 } from "@left-curve/applets-kit";
 
-import { formatUnits, wait } from "@left-curve/dango/utils";
+import { formatUnits, wait } from "@left-curve/utils";
 import { useAccount, useConfig, usePrices } from "@left-curve/store";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
+import { Image } from "~/components/foundation/Image";
 
-import type { Address } from "@left-curve/dango/types";
+import type { Address } from "@left-curve/types";
 import type { useNavigate } from "@tanstack/react-router";
 
 type ConfirmAccountProps = {
@@ -74,7 +75,7 @@ export const ConfirmAccount = forwardRef<undefined, ConfirmAccountProps>(
               <p>
                 {humanAmount} {coin.symbol}
               </p>
-              <img src={coin.logoURI} alt={coin.symbol} className="w-8 h-8" />
+              <Image src={coin.logoURI} alt={coin.symbol} className="w-8 h-8" />
             </div>
             <FormattedNumber
               number={getPrice(humanAmount, denom)}

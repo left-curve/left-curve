@@ -1,11 +1,17 @@
 export { BoxCard, type BoxVariant } from "./BoxCard";
 export { BoxesSection } from "./BoxesSection";
+export { BoosterCard } from "./BoosterCard";
+export { BoostersSection } from "./BoostersSection";
+export { LootResult } from "./LootResult";
+export { LootSummary, type LootBucket } from "./LootSummary";
 export { NFTCard, type NFTRarity } from "./NFTCard";
 export { NFTCarousel } from "./NFTCarousel";
-export { NFTResult } from "./NFTResult";
 export { NFTsSection } from "./NFTsSection";
-export { OATCard, type OATType } from "./OATCard";
-export { OATsSection } from "./OATsSection";
 export { PointsProgressBar } from "./PointsProgressBar";
 export { ChestOpeningOverlay } from "./ChestOpeningOverlay";
-export { ChestOpeningProvider, useChestOpening } from "./useChestOpening";
+export {
+  ChestOpeningProvider,
+  useChestOpening,
+  type LootDisplay,
+  type OpenableSlot,
+} from "./useChestOpening";

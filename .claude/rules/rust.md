@@ -194,4 +194,4 @@ Telemetry details (OTLP + Sentry, graceful shutdown): see `telemetry.md`.
 
 1. Add serde structs/fields in the relevant `config.rs`
 2. Update both templates: `localdango/configs/` and `deploy/roles/`
-3. Parse with `config_parser::parse_config` in the target binary
+3. Parse with `dango_config_parser::parse_config` in the target binary

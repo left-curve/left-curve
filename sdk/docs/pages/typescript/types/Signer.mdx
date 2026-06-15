@@ -1,0 +1,34 @@
+# Signer
+
+The interface all signing implementations satisfy. `signTx` signs a tx; `signArbitrary` signs an off-chain payload.
+
+## Definition
+
+```ts
+type Signer = {
+  getKeyHash(): Promise<KeyHash>
+  signTx(signDoc: SignDoc): Promise<SignatureOutcome>
+  signArbitrary<T extends JsonValue = JsonValue>(
+    payload: ArbitraryDoc<T>,
+  ): Promise<ArbitrarySignatureOutcome>
+}
+```
+
+## Methods
+
+**`getKeyHash()`** — return the `KeyHash` of the key this signer uses.
+
+**`signTx(signDoc)`** — sign an EIP-712-typed transaction document. Returns the credential plus the (possibly re-shaped) signed payload.
+
+**`signArbitrary(payload)`** — sign an arbitrary typed data payload. Used for session creation and off-chain proofs.
+
+## Built-in implementations
+
+- [`PrivateKeySigner`](../concepts/signers-and-authentication) — local secp256k1 key.
+- [`createSessionSigner`](../concepts/signers-and-authentication) — session key + stored authorization. Note: `signArbitrary` signs `payload.message` rather than the full payload.
+
+## See also
+
+- [`Credential`](./Credential)
+- [`SigningSession`](./SigningSession)
+- [Concepts: Signers & Authentication](../concepts/signers-and-authentication)

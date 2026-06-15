@@ -132,19 +132,19 @@ grep "$TARGET_IP" inventory  # should print one line per group
 
 ## Step 3. Set up temporary SSH from source to target
 
-We use `debian` for the rsync (not `deploy`) because we need root on both ends: source's cometbft `config/` and `data/` are 0700 root-owned (cometbft's docker container ran as root), and target's freshly-init'd ones from step 4 are the same. `debian` has passwordless `sudo`; `deploy` doesn't. Generate a one-shot ed25519 keypair on `debian@source` for source→target rsync auth — debian's existing keys don't cross between hosts. The comment `node-migrate-temp` makes it easy to remove from target's `authorized_keys` in step 10.
+We use `debian` for the rsync (not `deploy`) because we need root on both ends: source's cometbft `config/` and `data/` are 0700 root-owned (cometbft's docker container ran as root), and target's freshly-init'd ones from step 4 are the same. `debian` has passwordless `sudo`; `deploy` doesn't. Generate a one-shot ed25519 keypair as root on source (via `sudo` from `debian@source`), placed under `/root/.ssh/migrate_key` — all subsequent transfers run through `sudo rsync`, whose internal `ssh` subprocess runs as root and looks in root's home for both the key and the `known_hosts` entry, so keeping the key there avoids cross-user permission and host-key-verification issues. The comment `node-migrate-temp` makes it easy to remove from target's `authorized_keys` in step 11.
 
 ```bash
-ssh debian@$SOURCE_IP 'ssh-keygen -t ed25519 -N "" -f ~/.ssh/migrate_key -C node-migrate-temp && cat ~/.ssh/migrate_key.pub'
+ssh debian@$SOURCE_IP 'sudo ssh-keygen -t ed25519 -N "" -f /root/.ssh/migrate_key -C node-migrate-temp && sudo cat /root/.ssh/migrate_key.pub'
 
 # copy the printed pubkey, then append it to debian's authorized_keys on target:
 ssh debian@$TARGET_IP 'cat >> ~/.ssh/authorized_keys' <<< '<paste pubkey>'
 ```
 
-**Verify**:
+**Verify** (run as root via `sudo` — this is also what populates `/root/.ssh/known_hosts` with target's host key, so every later `sudo rsync` finds it):
 
 ```bash
-ssh debian@$SOURCE_IP "ssh -i ~/.ssh/migrate_key -o StrictHostKeyChecking=accept-new debian@$TARGET_IP hostname"
+ssh debian@$SOURCE_IP "sudo ssh -i /root/.ssh/migrate_key -o StrictHostKeyChecking=accept-new debian@$TARGET_IP hostname"
 ```
 
 Expected: prints target's hostname.
@@ -207,13 +207,13 @@ Six transfers run via `sudo rsync` on `debian@source`.
 ```bash
 # 1. mainnet.json pointer.
 ssh debian@$SOURCE_IP "sudo rsync -aH --mkpath \
-  -e 'ssh -i /home/debian/.ssh/migrate_key' \
+  -e 'ssh -i /root/.ssh/migrate_key' \
   --rsync-path='sudo rsync' \
   /home/deploy/deployments/mainnet.json debian@$TARGET_IP:/home/deploy/deployments/mainnet.json"
 
 # 2. orchestration dir for the current deployment (compose file + .env).
 ssh debian@$SOURCE_IP "sudo rsync -aHv --mkpath --delete \
-  -e 'ssh -i /home/debian/.ssh/migrate_key' \
+  -e 'ssh -i /root/.ssh/migrate_key' \
   --rsync-path='sudo rsync' \
   /home/deploy/deployments/$DEPLOY/ debian@$TARGET_IP:/home/deploy/deployments/$DEPLOY/"
 
@@ -221,7 +221,7 @@ ssh debian@$SOURCE_IP "sudo rsync -aHv --mkpath --delete \
 # and the validator-identity files.
 ssh debian@$SOURCE_IP "
   nohup sudo rsync -aH --mkpath --info=progress2 --delete \
-    -e 'ssh -i /home/debian/.ssh/migrate_key -o StrictHostKeyChecking=accept-new' \
+    -e 'ssh -i /root/.ssh/migrate_key -o StrictHostKeyChecking=accept-new' \
     --rsync-path='sudo rsync' \
     --exclude=cometbft/config/priv_validator_key.json \
     --exclude=cometbft/data/priv_validator_state.json \
@@ -234,7 +234,7 @@ ssh debian@$SOURCE_IP "
 # rsync overhead. Does not block restarting the chain — can be done at a later time.
 ssh debian@$SOURCE_IP "
   nohup sudo rsync -aH --mkpath --info=progress2 --delete \
-    -e 'ssh -i /home/debian/.ssh/migrate_key' \
+    -e 'ssh -i /root/.ssh/migrate_key' \
     --rsync-path='sudo rsync' \
     $DATA_DIR/dango/indexer/blocks/ debian@$TARGET_IP:$DATA_DIR/dango/indexer/blocks/ \
     > /home/debian/rsync-blocks.log 2>&1 </dev/null &
@@ -244,7 +244,7 @@ ssh debian@$SOURCE_IP "
 # the deploy-managed config/ and compose file alongside the data dir.
 ssh debian@$SOURCE_IP "
   nohup sudo rsync -aH --mkpath --info=progress2 --delete \
-    -e 'ssh -i /home/debian/.ssh/migrate_key' \
+    -e 'ssh -i /root/.ssh/migrate_key' \
     --rsync-path='sudo rsync' \
     /home/deploy/psql/ debian@$TARGET_IP:/home/deploy/psql/ \
     > /home/debian/rsync-psql.log 2>&1 </dev/null &
@@ -253,7 +253,7 @@ ssh debian@$SOURCE_IP "
 # 6. clickhouse: full dir (data/ + config/ + docker-compose.yml). Same reasoning as #5.
 ssh debian@$SOURCE_IP "
   nohup sudo rsync -aH --mkpath --info=progress2 --delete \
-    -e 'ssh -i /home/debian/.ssh/migrate_key' \
+    -e 'ssh -i /root/.ssh/migrate_key' \
     --rsync-path='sudo rsync' \
     /home/deploy/clickhouse/ debian@$TARGET_IP:/home/deploy/clickhouse/ \
     > /home/debian/rsync-clickhouse.log 2>&1 </dev/null &
@@ -318,12 +318,12 @@ If a rsync gets interrupted (network blip, server restart, etc.), re-run the sam
 
    ```bash
    ssh debian@$SOURCE_IP "sudo rsync -aH --checksum --dry-run --itemize-changes \
-     -e 'ssh -i /home/debian/.ssh/migrate_key' \
+     -e 'ssh -i /root/.ssh/migrate_key' \
      --rsync-path='sudo rsync' \
      /home/deploy/deployments/$DEPLOY/ debian@$TARGET_IP:/home/deploy/deployments/$DEPLOY/"
 
    ssh debian@$SOURCE_IP "sudo rsync -aH --checksum --dry-run --itemize-changes \
-     -e 'ssh -i /home/debian/.ssh/migrate_key' \
+     -e 'ssh -i /root/.ssh/migrate_key' \
      --rsync-path='sudo rsync' \
      --exclude=cometbft/config/priv_validator_key.json \
      --exclude=cometbft/data/priv_validator_state.json \
@@ -331,12 +331,12 @@ If a rsync gets interrupted (network blip, server restart, etc.), re-run the sam
      $DATA_DIR/ debian@$TARGET_IP:$DATA_DIR/"
 
    ssh debian@$SOURCE_IP "sudo rsync -aH --checksum --dry-run --itemize-changes \
-     -e 'ssh -i /home/debian/.ssh/migrate_key' \
+     -e 'ssh -i /root/.ssh/migrate_key' \
      --rsync-path='sudo rsync' \
      /home/deploy/psql/ debian@$TARGET_IP:/home/deploy/psql/"
 
    ssh debian@$SOURCE_IP "sudo rsync -aH --checksum --dry-run --itemize-changes \
-     -e 'ssh -i /home/debian/.ssh/migrate_key' \
+     -e 'ssh -i /root/.ssh/migrate_key' \
      --rsync-path='sudo rsync' \
      /home/deploy/clickhouse/ debian@$TARGET_IP:/home/deploy/clickhouse/"
    ```
@@ -439,8 +439,8 @@ Run the full-app play scoped to target only, with `-e cometbft_peers=<the 3 heal
 3. Save the source images and load them on target via the migrate_key from step 3. Bytes flow source → target directly over tailscale; nothing routes through your laptop. `sudo` because `debian` isn't in the docker group; `debian` because the migrate_key is registered for that user.
 
    ```bash
-   ssh debian@$SOURCE_IP "sudo docker save ghcr.io/left-curve/left-curve/dango@$DANGO_DIGEST | ssh -i ~/.ssh/migrate_key debian@$TARGET_IP 'sudo docker load'"
-   ssh debian@$SOURCE_IP "sudo docker save ghcr.io/left-curve/left-curve/dango-frontend@$FRONTEND_DIGEST | ssh -i ~/.ssh/migrate_key debian@$TARGET_IP 'sudo docker load'"
+   ssh debian@$SOURCE_IP "sudo docker save ghcr.io/left-curve/left-curve/dango@$DANGO_DIGEST | sudo ssh -i /root/.ssh/migrate_key debian@$TARGET_IP 'sudo docker load'"
+   ssh debian@$SOURCE_IP "sudo docker save ghcr.io/left-curve/left-curve/dango-frontend@$FRONTEND_DIGEST | sudo ssh -i /root/.ssh/migrate_key debian@$TARGET_IP 'sudo docker load'"
    ```
 
    Each prints `Loaded image ID: sha256:<digest>` matching the one we passed.
@@ -474,7 +474,7 @@ Run the full-app play scoped to target only, with `-e cometbft_peers=<the 3 heal
 
    ```bash
    mkdir -p logs && uv run ansible-playbook full-app.yml \
-     -e '{"traefik_enabled": true, "cometbft_generate_keys": true, "dex_bot_enabled": false, "github_deployments_enabled": false, "expose_ports": false, "delete_postgres_database_at_merge": false, "delete_clickhouse_database_at_merge": false, "deploy_includes_postgres": false, "deploy_includes_clickhouse": false, "chain_id": "dango-1", "dango_network": "mainnet", "system_wide_directories": true, "deploy_env": "production", "verify_signatures": false, "pull_images": false, "cosign_verified_images": {}, "skip_cometbft_sync": true}' \
+     -e '{"traefik_enabled": true, "cometbft_generate_keys": true, "github_deployments_enabled": false, "expose_ports": false, "delete_postgres_database_at_merge": false, "delete_clickhouse_database_at_merge": false, "deploy_includes_postgres": false, "deploy_includes_clickhouse": false, "chain_id": "dango-1", "dango_network": "mainnet", "system_wide_directories": true, "deploy_env": "production", "verify_signatures": false, "pull_images": false, "cosign_verified_images": {}, "skip_cometbft_sync": true}' \
      -e dango_image_tag=latest \
      -e frontend_image_tag=latest \
      -e cometbft_peers=100.126.8.2,100.66.234.16,100.76.197.30 \
@@ -528,14 +528,14 @@ This is the slashable step — the validator key must exist on **exactly one** r
 # validator private key never transits through your laptop. sudo on both ends because the
 # files are root-owned 0600. -a preserves the 0600 file mode.
 ssh debian@$SOURCE_IP "sudo rsync -aH \
-  -e 'ssh -i /home/debian/.ssh/migrate_key' \
+  -e 'ssh -i /root/.ssh/migrate_key' \
   --rsync-path='sudo rsync' \
   $DATA_DIR/cometbft/config/priv_validator_key.json \
   debian@$TARGET_IP:$DATA_DIR/cometbft/config/priv_validator_key.json"
 
 # 8b. priv_validator_state.json: source → target.
 ssh debian@$SOURCE_IP "sudo rsync -aH \
-  -e 'ssh -i /home/debian/.ssh/migrate_key' \
+  -e 'ssh -i /root/.ssh/migrate_key' \
   --rsync-path='sudo rsync' \
   $DATA_DIR/cometbft/data/priv_validator_state.json \
   debian@$TARGET_IP:$DATA_DIR/cometbft/data/priv_validator_state.json"
@@ -624,7 +624,7 @@ ssh debian@$SOURCE_IP 'sudo systemctl disable --now \
   cloudflared-compose.service' || true
 
 # Wipe application and identity state
-ssh debian@$SOURCE_IP 'sudo rm -rf /home/deploy/{mainnet,deployments,psql,clickhouse,traefik,hyperlane-agents,.ssh/migrate_key,.ssh/migrate_key.pub}'
+ssh debian@$SOURCE_IP 'sudo rm -rf /home/deploy/{mainnet,deployments,psql,clickhouse,traefik,hyperlane-agents} /root/.ssh/migrate_key /root/.ssh/migrate_key.pub'
 
 # Remove the temporary migrate-key grant from target's authorized_keys (the corresponding
 # private key on source is gone, but clean up the trust for hygiene).

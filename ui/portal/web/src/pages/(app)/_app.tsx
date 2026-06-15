@@ -7,9 +7,12 @@ import { Footer } from "~/components/foundation/Footer";
 import { Header } from "~/components/foundation/Header";
 import { NotFound } from "~/components/foundation/NotFound";
 import { StatusBadge } from "~/components/foundation/StatusBadge";
+import { GeoblockBanner } from "~/components/foundation/GeoblockBanner";
+import { useGeoblock } from "~/components/foundation/hooks/useGeoblock";
 import { TestnetBanner } from "~/components/foundation/TestnetBanner";
 
 import { z } from "zod";
+import { Image } from "~/components/foundation/Image";
 
 export const Route = createFileRoute("/(app)/_app")({
   validateSearch: z.object({
@@ -26,7 +29,7 @@ export const Route = createFileRoute("/(app)/_app")({
 
     return (
       <main className="flex flex-col h-screen w-screen relative items-center justify-start overflow-x-hidden bg-surface-primary-rice text-ink-secondary-700">
-        <img
+        <Image
           src={theme === "dark" ? "/images/union-dark.png" : "/images/union.png"}
           alt="bg-image"
           className={twMerge(
@@ -46,6 +49,7 @@ function LayoutApp() {
   const { showModal } = useApp();
   const [isScrolled, setIsScrolled] = useState(false);
   const { isLg } = useMediaQuery();
+  const isGeoblocked = useGeoblock();
   const router = useRouter();
   const { isSidebarVisible } = useApp();
   const { isConnected, userStatus, account } = useAccount();
@@ -92,8 +96,7 @@ function LayoutApp() {
 
   useEffect(() => {
     const handleScroll = () => {
-      const scrollTop =
-        window.scrollY || document.documentElement.scrollTop || document.body.scrollTop || 0;
+      const scrollTop = window.scrollY || 0;
       setIsScrolled(scrollTop > headerThreshold);
     };
 
@@ -108,13 +111,18 @@ function LayoutApp() {
   const effectiveIsScrolled = isSidebarVisible ? lockedY > headerThreshold : isScrolled;
 
   return (
-    <main className={twMerge("flex flex-col w-full min-h-[100svh] relative pb-[3rem] max-w-screen bg-surface-primary-rice text-ink-secondary-700", isProSwap ? "lg:pb-0" : "lg:pb-10")}>
-      <img
+    <main
+      className={twMerge(
+        "flex flex-col w-full min-h-[100svh] relative pb-[3rem] max-w-screen bg-surface-primary-rice text-ink-secondary-700",
+        isProSwap ? "lg:pb-0" : "lg:pb-10",
+      )}
+    >
+      <Image
         src={theme === "dark" ? "/images/union-dark.png" : "/images/union.png"}
         alt="bg-image"
         className="pointer-events-none drag-none select-none h-[20vh] lg:h-[20vh] w-full fixed lg:absolute bottom-0 lg:top-0 left-0 z-40 lg:z-0 rotate-180 lg:rotate-0 object-cover object-bottom"
       />
-      {!isLg ? <div id="quest-banner-mobile" /> : null}
+      {!isLg && isProSwap && isGeoblocked ? <GeoblockBanner /> : null}
       {!isLg ? <TestnetBanner /> : null}
       <Header isScrolled={effectiveIsScrolled} />
       <div className="flex flex-1 items-center justify-start w-full h-full relative flex-col z-30">

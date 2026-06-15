@@ -1,13 +1,13 @@
-import { createSessionSigner, createSignerClient, toAccount } from "@left-curve/dango";
-import { getUser } from "@left-curve/dango/actions";
-import { decodeBase64, decodeUtf8, deserializeJson } from "@left-curve/dango/encoding";
+import { createSessionSigner, createSignerClient, toAccount } from "@left-curve/sdk";
+import { getUser } from "@left-curve/sdk/actions";
+import { decodeBase64, decodeUtf8, deserializeJson } from "@left-curve/encoding";
 
 import { createConnector } from "./createConnector.js";
 
-import type { SigningSession } from "@left-curve/dango/types";
-import type { Address } from "@left-curve/dango/types";
+import type { SigningSession } from "@left-curve/types";
+import type { Address } from "@left-curve/types";
 
-import { createStorage } from "../storages/createStorage.js";
+import { sessionStorage } from "../storages/sessionStorage.js";
 import type { Storage } from "../types/storage.js";
 
 type SessionConnectorParameters = {
@@ -23,7 +23,7 @@ type SessionConnectorParameters = {
 export function session(parameters: SessionConnectorParameters = {}) {
   let _provider_ = async (): Promise<SigningSession | null> => await storage.getItem("session");
 
-  const { storage = createStorage({ storage: window?.sessionStorage }), target } = parameters;
+  const { storage = sessionStorage, target } = parameters;
 
   const { id = "session", name = "Session Provider", icon } = target || {};
 
@@ -40,6 +40,7 @@ export function session(parameters: SessionConnectorParameters = {}) {
         const client = createSignerClient({
           signer: this,
           type: "session",
+          chain,
           transport,
         });
 
@@ -73,11 +74,13 @@ export function session(parameters: SessionConnectorParameters = {}) {
         emitter.emit("disconnect");
       },
       async getClient() {
+        const provider = await this.getProvider();
         return createSignerClient({
           signer: this,
           chain,
           type: "session",
-          transport: transport,
+          transport,
+          sessionKey: provider.sessionInfo.sessionKey,
         });
       },
       async getKeyHash() {

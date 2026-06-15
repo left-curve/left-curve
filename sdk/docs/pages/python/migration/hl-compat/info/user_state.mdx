@@ -1,0 +1,43 @@
+# Info.user_state (HL-compat)
+
+HL `clearinghouseState` — user margin and asset positions. `dex` is accepted-and-ignored.
+
+## Signature
+
+```python
+def user_state(self, address: str, dex: str = "") -> dict[str, Any]
+```
+
+## Example
+
+```python
+from dango.hyperliquid_compatibility.info import Info
+
+info = Info(base_url="https://...")
+state = info.user_state("0x...")
+print(state["marginSummary"], state["assetPositions"])
+```
+
+## Parameters
+
+**`address`** — `str`. The user's account address.
+
+**`dex`** — `str`, optional. Accepted-and-ignored (Dango has no builder DEX abstraction). Default: `""`.
+
+## Returns
+
+**`dict[str, Any]`** — HL-shaped clearinghouseState: `{assetPositions, crossMarginSummary, marginSummary, withdrawable}`. Empty user returns the four keys with zero values.
+
+## Divergences from upstream
+
+- `assetPositions[*].marginUsed` is always `"0"` (Dango doesn't track per-position margin).
+- `assetPositions[*].returnOnEquity` is always `"0"` (no per-position margin → no RoE).
+- `assetPositions[*].leverage.value` is always `1` (cross-only).
+- `assetPositions[*].maxLeverage` is always `1`.
+- `assetPositions[*].cumFunding` series are always `"0"` (funding folds into realized PnL on each fill).
+- `crossMarginSummary` and `marginSummary` always carry equal values (Dango is cross-margin only).
+
+## See also
+
+- [Native `user_state_extended`](../../../api/methods/info/user_state_extended)
+- [Migration overview](../../hyperliquid)

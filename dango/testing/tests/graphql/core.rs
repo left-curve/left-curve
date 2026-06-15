@@ -1,0 +1,263 @@
+use {
+    assert_json_diff::assert_json_eq,
+    assertor::*,
+    dango_indexer_graphql_types::{QueryApp, SubscribeQueryApp, query_app, subscribe_query_app},
+    dango_primitives::{
+        Addressable, Coins, Inner, Json, JsonSerExt, Message, NonEmpty, Query,
+        QueryAppConfigRequest, QueryBalanceRequest, ResultExt,
+    },
+    dango_testing::{
+        GraphQLCustomRequest, TestOption, build_app_service, call_graphql_query,
+        call_graphql_with_headers, call_ws_graphql_stream, parse_graphql_subscription_response,
+        setup_test_naive_with_indexer, setup_test_naive_with_indexer_and_create_blocks,
+    },
+    dango_types::constants::usdc,
+    graphql_client::GraphQLQuery,
+    serde_json::json,
+    tokio::sync::mpsc,
+};
+
+#[derive(serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct RequesterIpGraphqlResponse {
+    remote_ip: Option<String>,
+    peer_ip: Option<String>,
+    x_forwarded_for: Option<String>,
+    forwarded: Option<String>,
+    cf_connecting_ip: Option<String>,
+    true_client_ip: Option<String>,
+    x_real_ip: Option<String>,
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn graphql_returns_query_app() -> anyhow::Result<()> {
+    let (_, _, httpd_context, _db_guard) = setup_test_naive_with_indexer_and_create_blocks(
+        TestOption::default().with_mocked_clickhouse(),
+        1,
+    )
+    .await;
+
+    let body_request = Query::AppConfig(QueryAppConfigRequest {}).to_json_value()?;
+
+    let local_set = tokio::task::LocalSet::new();
+
+    local_set
+        .run_until(async {
+            tokio::task::spawn_local(async move {
+                let variables = query_app::Variables {
+                    request: body_request.into_inner(),
+                    height: Some(1),
+                };
+
+                let app = build_app_service(httpd_context);
+                let query_body = QueryApp::build_query(variables);
+
+                let response =
+                    call_graphql_query::<_, query_app::ResponseData, _, _, _>(app, query_body)
+                        .await?;
+
+                assert_that!(response.data).is_some();
+                let data = response.data.unwrap();
+
+                // Convert the JSON response for comparison
+                let query_app_result: Json = serde_json::from_value(data.query_app)?;
+                assert_that!(query_app_result.into_inner())
+                    .is_not_equal_to(serde_json::Value::Null);
+
+                Ok::<(), anyhow::Error>(())
+            })
+            .await
+        })
+        .await?
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn graphql_subscribe_to_query_app() -> anyhow::Result<()> {
+    let (mut suite, mut accounts, httpd_context, _db_guard) =
+        setup_test_naive_with_indexer_and_create_blocks(
+            TestOption::default().with_mocked_clickhouse(),
+            1,
+        )
+        .await;
+
+    let user2_addr = accounts.user2.address();
+
+    // Use typed subscription from indexer-graphql-types
+    let body_request = Query::Balance(QueryBalanceRequest {
+        address: user2_addr,
+        denom: usdc::DENOM.clone(),
+    })
+    .to_json_value()?;
+
+    let request_body = GraphQLCustomRequest::from_query_body(
+        SubscribeQueryApp::build_query(subscribe_query_app::Variables {
+            request: body_request.into_inner(),
+            block_interval: 1,
+        }),
+        "queryApp",
+    );
+
+    let (crate_block_tx, mut rx) = mpsc::channel::<u32>(1);
+
+    // Can't call this from LocalSet so using channels instead.
+    tokio::spawn(async move {
+        while rx.recv().await.is_some() {
+            suite
+                .send_messages_with_gas(
+                    &mut accounts.user1,
+                    1_000_000,
+                    NonEmpty::new_unchecked(vec![
+                        Message::transfer(
+                            accounts.user2.address(),
+                            Coins::one(usdc::DENOM.clone(), 100).unwrap(),
+                        )
+                        .unwrap(),
+                    ]),
+                )
+                .await
+                .should_succeed();
+        }
+
+        Ok::<(), anyhow::Error>(())
+    });
+
+    let local_set = tokio::task::LocalSet::new();
+
+    local_set
+        .run_until(async {
+            tokio::task::spawn_local(async move {
+                let name = request_body.name;
+                let (_srv, _ws, mut framed) =
+                    call_ws_graphql_stream(httpd_context, build_app_service, request_body).await?;
+
+                // 1st response
+                let response = parse_graphql_subscription_response::<
+                    subscribe_query_app::SubscribeQueryAppQueryApp,
+                >(&mut framed, name)
+                .await?;
+
+                assert_that!(response.data.block_height).is_equal_to(1);
+                assert_json_eq!(
+                    response.data.response,
+                    json!({"balance": {"amount": "100000000100", "denom": "bridge/usdc"}})
+                );
+
+                crate_block_tx.send(2).await?;
+
+                // 2nd response
+                let response = parse_graphql_subscription_response::<
+                    subscribe_query_app::SubscribeQueryAppQueryApp,
+                >(&mut framed, name)
+                .await?;
+
+                assert_that!(response.data.block_height).is_equal_to(2);
+                assert_json_eq!(
+                    response.data.response,
+                    json!({"balance": {"amount": "100000000200", "denom": "bridge/usdc"}})
+                );
+
+                crate_block_tx.send(3).await?;
+
+                // 3rd response
+                let response = parse_graphql_subscription_response::<
+                    subscribe_query_app::SubscribeQueryAppQueryApp,
+                >(&mut framed, name)
+                .await?;
+
+                assert_that!(response.data.block_height).is_equal_to(3);
+                assert_json_eq!(
+                    response.data.response,
+                    json!({"balance": {"amount": "100000000300", "denom": "bridge/usdc"}})
+                );
+
+                Ok::<(), anyhow::Error>(())
+            })
+            .await
+        })
+        .await?
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn graphql_returns_requester_ip() -> anyhow::Result<()> {
+    let (_, _, _, _, _, httpd_context, _, _, _db_guard) =
+        setup_test_naive_with_indexer(TestOption::default().with_mocked_clickhouse()).await;
+
+    let local_set = tokio::task::LocalSet::new();
+
+    local_set
+        .run_until(async {
+            tokio::task::spawn_local(async move {
+                let app = build_app_service(httpd_context);
+                let response = call_graphql_with_headers::<RequesterIpGraphqlResponse, _, _, _>(
+                    app,
+                    GraphQLCustomRequest {
+                        name: "requesterIp",
+                        query: "query RequesterIp { requesterIp { remoteIp peerIp xForwardedFor forwarded cfConnectingIp trueClientIp xRealIp } }",
+                        variables: Default::default(),
+                    },
+                    &[("X-Forwarded-For", "198.51.100.10, 127.0.0.1")],
+                )
+                .await?;
+
+                assert_that!(response.data.remote_ip)
+                    .is_equal_to(Some("198.51.100.10".to_string()));
+                assert_that!(response.data.x_forwarded_for)
+                    .is_equal_to(Some("198.51.100.10, 127.0.0.1".to_string()));
+                assert_that!(response.data.peer_ip).is_some();
+                assert_that!(response.data.forwarded).is_none();
+                assert_that!(response.data.cf_connecting_ip).is_none();
+                assert_that!(response.data.true_client_ip).is_none();
+                assert_that!(response.data.x_real_ip).is_none();
+
+                Ok::<(), anyhow::Error>(())
+            })
+            .await
+        })
+        .await?
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn graphql_prefers_cf_connecting_ip_when_forwarded_headers_are_proxy_hops()
+-> anyhow::Result<()> {
+    let (_, _, _, _, _, httpd_context, _, _, _db_guard) =
+        setup_test_naive_with_indexer(TestOption::default().with_mocked_clickhouse()).await;
+
+    let local_set = tokio::task::LocalSet::new();
+
+    local_set
+        .run_until(async {
+            tokio::task::spawn_local(async move {
+                let app = build_app_service(httpd_context);
+                let response = call_graphql_with_headers::<RequesterIpGraphqlResponse, _, _, _>(
+                    app,
+                    GraphQLCustomRequest {
+                        name: "requesterIp",
+                        query: "query RequesterIp { requesterIp { remoteIp peerIp xForwardedFor forwarded cfConnectingIp trueClientIp xRealIp } }",
+                        variables: Default::default(),
+                    },
+                    &[
+                        ("X-Forwarded-For", "172.23.0.2"),
+                        ("X-Real-Ip", "172.23.0.2"),
+                        ("CF-Connecting-IP", "2001:db8::1234"),
+                    ],
+                )
+                .await?;
+
+                assert_that!(response.data.remote_ip)
+                    .is_equal_to(Some("2001:db8::1234".to_string()));
+                assert_that!(response.data.peer_ip).is_some();
+                assert_that!(response.data.x_forwarded_for)
+                    .is_equal_to(Some("172.23.0.2".to_string()));
+                assert_that!(response.data.forwarded).is_none();
+                assert_that!(response.data.cf_connecting_ip)
+                    .is_equal_to(Some("2001:db8::1234".to_string()));
+                assert_that!(response.data.true_client_ip).is_none();
+                assert_that!(response.data.x_real_ip)
+                    .is_equal_to(Some("172.23.0.2".to_string()));
+
+                Ok::<(), anyhow::Error>(())
+            })
+            .await
+        })
+        .await?
+}

@@ -1,0 +1,49 @@
+# Trade
+
+A real-time perps trade fill from the `subscribe_perps_trades` stream. Keys are camelCase (indexer wire shape).
+
+## Definition
+
+```python
+class Trade(TypedDict):
+    orderId: str
+    pairId: str
+    user: str
+    fillPrice: str
+    fillSize: str
+    closingSize: str
+    openingSize: str
+    realizedPnl: str
+    fee: str
+    createdAt: str
+    blockHeight: int
+    tradeIdx: int
+    fillId: str | None
+    isMaker: bool | None
+```
+
+## Fields
+
+**`orderId`** — `str`. The chain order id this fill belongs to.
+
+**`pairId`** — `str`.
+
+**`user`** — `str`. The user address that owns the order.
+
+**`fillPrice`/`fillSize`** — `str`. 6-decimal strings.
+
+**`closingSize`/`openingSize`** — `str`. The fill's split between closing an existing position and opening new size.
+
+**`realizedPnl`/`fee`** — `str`. Realised PnL and fee in USD.
+
+**`createdAt`** — `str`. ISO-8601 datetime.
+
+**`blockHeight`/`tradeIdx`** — `int`.
+
+**`fillId`** — `str | None`. Stable per-fill id; pairs the maker and taker rows.
+
+**`isMaker`** — `bool | None`. `True` for the maker's view of the fill, `False` for the taker's. Each match emits both rows.
+
+## See also
+
+- [`subscribe_perps_trades`](../methods/info/subscribe_perps_trades) — consumer

@@ -1,18 +1,20 @@
 import { Badge, FormattedNumber, twMerge, useTheme } from "@left-curve/applets-kit";
-import { Decimal } from "@left-curve/dango/utils";
 import { getReferralLink, useAccount, useConfig } from "@left-curve/store";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 import type { Ref } from "react";
 
 import { CHARACTERS } from "../../foundation/CharacterSelector";
+import { Image } from "~/components/foundation/Image";
 
-type PnlCardProps = {
+export type PnlCardProps = {
   ref?: Ref<HTMLDivElement>;
   symbol: string;
   size: string;
-  entryPrice: string;
-  currentPrice: number;
-  equity: string | null;
+  referencePrice: string;
+  markPrice: string | number;
+  displayPercent: number;
+  leverage: string | null;
+  subtitle?: string;
   selectedCharacter: number;
 };
 
@@ -20,26 +22,19 @@ export function PreviewCard({
   ref,
   symbol,
   size,
-  entryPrice,
-  currentPrice,
-  equity,
+  referencePrice,
+  markPrice,
+  displayPercent,
+  leverage,
+  subtitle,
   selectedCharacter,
 }: PnlCardProps) {
   const { theme } = useTheme();
   const { coins } = useConfig();
   const { userIndex } = useAccount();
 
-  const sizeD = Decimal(size);
-  const entryD = Decimal(entryPrice);
-  const currentD = Decimal(currentPrice);
-
-  const isLong = sizeD.gt(0);
-  const pnlPercent = currentD.minus(entryD).div(entryD).mul(100);
-  const displayPercent = isLong ? pnlPercent.toNumber() : -pnlPercent.toNumber();
+  const isLong = !size.startsWith("-");
   const isPositive = displayPercent >= 0;
-
-  const equityD = equity ? Decimal(equity) : Decimal(0);
-  const leverage = equityD.gt(0) ? sizeD.abs().mul(currentD).div(equityD).toFixed(2) : null;
 
   const referralLink = getReferralLink(userIndex);
   const logoURI = coins.bySymbol[symbol]?.logoURI;
@@ -53,11 +48,11 @@ export function PreviewCard({
       ref={ref}
       className="group bg-surface-secondary-rice rounded-2xl shadow-account-card p-6 relative overflow-hidden flex flex-col min-h-[345px] lg:min-w-[47rem] lg:min-h-[26.4375rem] data-[export=true]:w-[47rem] data-[export=true]:h-[26.4375rem]"
     >
-      <img src={dangoLogoSrc} alt="Dango" className="relative z-10 h-8 w-auto self-start" />
+      <Image src={dangoLogoSrc} alt="Dango" className="relative z-10 h-8 w-auto self-start" />
 
       <div className="relative z-10 flex-1 flex flex-col justify-center gap-3">
         <div className="flex items-center gap-2">
-          {logoURI && <img src={logoURI} alt={symbol} className="w-6 h-6 rounded-full" />}
+          {logoURI && <Image src={logoURI} alt={symbol} className="w-6 h-6 rounded-full" />}
           <span className="diatype-m-bold text-ink-primary-900">{symbol}</span>
           <Badge
             text={`${isLong ? "Long" : "Short"}${leverage ? ` ${leverage}x` : ""}`}
@@ -65,6 +60,9 @@ export function PreviewCard({
             size="s"
           />
         </div>
+        {subtitle ? (
+          <span className="diatype-xs-regular text-ink-tertiary-500">{subtitle}</span>
+        ) : null}
         <p
           className={twMerge(
             "exposure-h1-italic leading-tight",
@@ -83,7 +81,7 @@ export function PreviewCard({
             </span>
             <FormattedNumber
               as="span"
-              number={entryPrice}
+              number={referencePrice}
               formatOptions={{ currency: "USD" }}
               className="diatype-sm-bold text-ink-primary-900"
             />
@@ -94,7 +92,7 @@ export function PreviewCard({
             </span>
             <FormattedNumber
               as="span"
-              number={currentPrice}
+              number={markPrice}
               formatOptions={{ currency: "USD" }}
               className="diatype-sm-bold text-ink-primary-900"
             />
@@ -111,7 +109,7 @@ export function PreviewCard({
         )}
       </div>
 
-      <img
+      <Image
         src={characterImg}
         alt="character"
         className="absolute right-0 bottom-0 h-[60%] lg:h-full max-h-[9rem] lg:max-h-[24rem] group-data-[export=true]:h-full group-data-[export=true]:max-h-[24rem] opacity-90 pointer-events-none select-none"

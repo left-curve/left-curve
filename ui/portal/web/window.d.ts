@@ -1,4 +1,4 @@
-import type { Chain } from "@left-curve/dango/types";
+import type { Chain } from "@left-curve/types";
 
 declare global {
   interface Window {
@@ -6,7 +6,6 @@ declare global {
       chain: Chain;
       urls: {
         faucetUrl: string;
-        questUrl: string;
         upUrl: string;
         pointsUrl: string;
       };

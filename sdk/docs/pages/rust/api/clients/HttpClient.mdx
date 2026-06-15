@@ -1,0 +1,135 @@
+# HttpClient
+
+A GraphQL + REST client over `reqwest` that talks to a Dango node.
+
+## Setup
+
+```rust
+use {
+    anyhow::Result,
+    dango_sdk::HttpClient,
+};
+
+#[tokio::main]
+async fn main() -> Result<()> {
+    let client = HttpClient::new("https://api-mainnet.dango.zone")?;
+    let _ = client;
+    Ok(())
+}
+```
+
+`new` accepts any `reqwest::IntoUrl` and validates the URL syntactically. It does not perform a network call.
+
+```rust
+pub struct HttpClient { /* private fields */ }
+
+impl HttpClient {
+    pub fn new<U>(url: U) -> Result<Self, anyhow::Error>
+    where
+        U: reqwest::IntoUrl;
+}
+```
+
+## Configuration
+
+`HttpClient` does not expose constructor options. It uses `reqwest::Client::new()` internally with default settings (HTTPS, connection pool, no proxy override). For custom transports — proxies, TLS roots, timeouts — fork the source.
+
+## Methods
+
+The methods are split between own pagination helpers and the four trait impls. Bring the trait into scope to call its methods.
+
+### Pagination (own methods)
+
+| Method | Description |
+|--------|-------------|
+| [`paginate_all`](../methods/http-client/paginate_all)        | Generic forward/backward cursor pagination loop. |
+| [`paginate_accounts`](../methods/http-client/paginate_accounts)         | All accounts, forward pagination. |
+| [`paginate_transfers`](../methods/http-client/paginate_transfers)       | All transfers, forward pagination. |
+| [`paginate_transactions`](../methods/http-client/paginate_transactions) | All transactions, forward pagination. |
+| [`paginate_blocks`](../methods/http-client/paginate_blocks)             | All blocks, forward pagination. |
+| [`paginate_events`](../methods/http-client/paginate_events)             | All events, forward pagination. |
+| [`paginate_messages`](../methods/http-client/paginate_messages)         | All messages, forward pagination. |
+
+### `impl QueryClient` 
+
+| Method | Description |
+|--------|-------------|
+| [`query_app`](../methods/http-client/query_app)     | Run an app-level query at a given height. |
+| [`query_store`](../methods/http-client/query_store) | Read a raw key from store, optionally with a proof. |
+| [`simulate`](../methods/http-client/simulate)       | Dry-run an `UnsignedTx` and return its outcome. |
+
+### `impl BlockClient` 
+
+| Method | Description |
+|--------|-------------|
+| [`query_block`](../methods/http-client/query_block)                 | Fetch a block by height (REST `/block/info`). |
+| [`query_block_outcome`](../methods/http-client/query_block_outcome) | Fetch a block's execution outcome (REST `/block/result`). |
+
+### `impl BroadcastClient` 
+
+| Method | Description |
+|--------|-------------|
+| [`broadcast_tx`](../methods/http-client/broadcast_tx) | Submit a signed transaction with `tx-sync` semantics. |
+
+### `impl SearchTxClient` 
+
+| Method | Description |
+|--------|-------------|
+| [`search_tx`](../methods/http-client/search_tx) | Look up a transaction outcome by hash. |
+
+### Extension methods (from `QueryClientExt`)
+
+`QueryClientExt` is a blanket trait over `QueryClient`. It is reachable on `HttpClient` once `QueryClientExt` is in scope:
+
+| Method |  |
+|--------|-------------|
+| `query_app_config` | Typed `AppConfig` fetch. |
+| `query_balance`    | Single denom balance. |
+| `query_balances`   | All balances for an address. |
+| `query_supply`     | Total supply for a denom. |
+| `query_supplies`   | All denom supplies. |
+| `query_wasm_smart` | Typed contract smart query. |
+| `query_wasm_raw`   | Raw contract storage slot. |
+| `query_code`       | Wasm bytecode by hash. |
+| `query_codes`      | List uploaded code hashes. |
+| `query_contract`   | Contract info. |
+| `query_contracts`  | List contracts. |
+
+See the `QueryClientExt` reference for full signatures.
+
+## End-to-end example
+
+```rust
+use {
+    anyhow::Result,
+    dango_sdk::HttpClient,
+    dango_primitives::{BlockClient, QueryClient, QueryClientExt},
+};
+
+#[tokio::main]
+async fn main() -> Result<()> {
+    let client = HttpClient::new("https://api-mainnet.dango.zone")?;
+
+    let block = client.query_block(None).await?;
+    println!("height: {}", block.info.height);
+
+    let cfg = client
+        .query_app_config::<dango_types::config::AppConfig>(None)
+        .await?;
+    println!("account factory: {}", cfg.addresses.account_factory);
+
+    Ok(())
+}
+```
+
+## Notes
+
+- `HttpClient` is `Debug + Clone`. Cloning shares the underlying `reqwest::Client` connection pool — reuse a single instance.
+- The `tracing` feature emits `tracing::debug!` events for every GraphQL request/response. No public symbols change.
+- REST endpoints (`query_block`, `query_block_outcome`) hit `<url>/block/info` and `<url>/block/result`; GraphQL endpoints hit `<url>/graphql`.
+
+## See also
+
+- [WsClient](./WsClient) — subscriptions counterpart.
+- [Concepts: Clients](../../concepts/clients) — when to use which.
+- [Concepts: Transactions](../../concepts/transactions) — broadcast flow.

@@ -1,0 +1,76 @@
+# First call
+
+Read public chain state in five minutes. No wallet, no signing, no env vars.
+
+## Query the chain status
+
+```python
+from dango.info import Info
+from dango.utils.constants import MAINNET_API_URL
+
+info = Info(MAINNET_API_URL, skip_ws=True)
+status = info.query_status()
+print(status["chainId"], status["block"]["blockHeight"])
+```
+
+`skip_ws=True` disables the WebSocket subscription pipeline so the `Info` instance never opens a socket. Drop it when you want to subscribe.
+
+## Read a user's positions
+
+```python
+from dango.info import Info
+from dango.utils.constants import MAINNET_API_URL, PERPS_CONTRACT_MAINNET
+from dango.utils.types import Addr
+
+info = Info(MAINNET_API_URL, skip_ws=True)
+
+# The perps contract address holds the counterparty vault — it always
+# carries live positions, so it is a good stand-in for "any user".
+state = info.user_state(Addr(PERPS_CONTRACT_MAINNET))
+if state:
+    for pair_id, position in state["positions"].items():
+        print(pair_id, position["size"], position["entry_price"])
+```
+
+## List a pair's market data
+
+```python
+from dango.info import Info
+from dango.utils.constants import MAINNET_API_URL
+from dango.utils.types import CandleInterval, PairId
+
+info = Info(MAINNET_API_URL, skip_ws=True)
+pair_id = PairId("perp/ethusd")
+
+stats = info.perps_pair_stats(pair_id)
+print("mid:", stats["currentPrice"], "24h vol:", stats["volume24H"])
+
+candles = info.perps_candles(pair_id, CandleInterval.ONE_MINUTE, first=5)
+for candle in candles.nodes:
+    print(candle["timeStart"], candle["open"], candle["close"])
+```
+
+## Subscribe to live trades
+
+```python
+import time
+
+from dango.info import Info
+from dango.utils.constants import MAINNET_API_URL
+from dango.utils.types import PairId
+
+info = Info(MAINNET_API_URL)
+
+sub_id = info.subscribe_perps_trades(PairId("perp/ethusd"), print)
+time.sleep(15)
+
+info.unsubscribe(sub_id)
+info.disconnect_websocket()
+```
+
+Each callback fires once per fill with the unwrapped [`Trade`](../api/types/Trade) payload. The manager closes cleanly on `disconnect_websocket()`.
+
+## Next
+
+- [Project setup](./project-setup) — wire up a signer to write transactions
+- [Concepts: Clients](../concepts/clients) — when to use `Exchange` vs `Info` vs `WebsocketManager`

@@ -1,12 +1,13 @@
-import { AddressVisualizer, useMediaQuery } from "@left-curve/applets-kit";
+import { AddressVisualizer, StarToggleButton, useMediaQuery } from "@left-curve/applets-kit";
 import { useFavApplets } from "@left-curve/store";
 
-import { IconEmptyStar, IconStar, TruncateText } from "@left-curve/applets-kit";
+import { TruncateText } from "@left-curve/applets-kit";
 import { motion } from "framer-motion";
+import { Image } from "~/components/foundation/Image";
 
-import type { AccountDetails, Address, ContractInfo, User } from "@left-curve/dango/types";
+import type { AccountDetails, Address, ContractInfo, User } from "@left-curve/types";
 import type { AnyCoin, AppletMetadata, WithPrice } from "@left-curve/store/types";
-import type { MouseEvent, PropsWithChildren } from "react";
+import type { PropsWithChildren } from "react";
 
 const childVariants = {
   hidden: { opacity: 0, y: -30 },
@@ -24,12 +25,6 @@ const AppletItem: React.FC<SearchAppletItemProps> = (applet) => {
   const { favApplets, addFavApplet, removeFavApplet } = useFavApplets();
   const isFav = favApplets.includes(id);
 
-  const onClickStar = (e: MouseEvent<HTMLDivElement>) => {
-    e.stopPropagation();
-    if (isFav) removeFavApplet(applet);
-    else addFavApplet(applet);
-  };
-
   return (
     <motion.div
       className="w-full p-2 flex items-center justify-between hover:bg-surface-tertiary-rice rounded-xs group-data-[selected=true]:bg-surface-tertiary-rice cursor-pointer"
@@ -38,20 +33,18 @@ const AppletItem: React.FC<SearchAppletItemProps> = (applet) => {
     >
       <div className="flex items-center gap-4">
         <div className="p-1 bg-surface-primary-red rounded-xxs border border-surface-secondary-red">
-          <img src={img} alt={title} className="w-12 h-12" />
+          <Image src={img} alt={title} className="w-12 h-12" />
         </div>
         <div>
           <p className="diatype-lg-medium text-ink-secondary-700">{title}</p>
           <p className="diatype-m-regular text-ink-tertiary-500">{description}</p>
         </div>
       </div>
-      <div onClick={onClickStar}>
-        {isFav ? (
-          <IconStar className="w-6 h-6 text-primitives-rice-light-500" />
-        ) : (
-          <IconEmptyStar className="w-6 h-6 text-primitives-rice-light-500" />
-        )}
-      </div>
+      <StarToggleButton
+        isActive={isFav}
+        onToggle={() => (isFav ? removeFavApplet(applet) : addFavApplet(applet))}
+        className="w-6 h-6 text-primitives-rice-light-500"
+      />
     </motion.div>
   );
 };
@@ -66,7 +59,7 @@ const AssetItem: React.FC<SearchAssetProps> = ({ logoURI, symbol, price }) => {
       key={symbol}
     >
       <div className="flex items-start gap-4">
-        <img src={logoURI} alt={symbol} className="w-8 h-8" />
+        <Image src={logoURI} alt={symbol} className="w-8 h-8" />
         <div className="flex flex-col gap-1">
           <p className="diatype-m-bold">{symbol}</p>
           <p className="diatype-m-regular text-ink-tertiary-500">{symbol}</p>
@@ -94,7 +87,7 @@ const BlockItem: React.FC<SearchBlockItemProps> = ({ height, hash }) => {
     >
       <div className="flex items-center gap-4">
         <div className="p-1 bg-surface-primary-red rounded-xxs border border-surface-secondary-red">
-          <img src="/images/emojis/simple/blocks.svg" alt="test" className="w-12 h-12" />
+          <Image src="/images/emojis/simple/blocks.svg" alt="test" className="w-12 h-12" />
         </div>
         <div className="flex flex-col">
           <p className="diatype-m-medium">#{height} Block</p>
@@ -119,7 +112,7 @@ const TransactionItem: React.FC<SearchTransactionItemProps> = ({ height, hash })
     >
       <div className="flex items-center gap-4">
         <div className="p-1 bg-surface-primary-red rounded-xxs border border-surface-secondary-red">
-          <img src="/images/emojis/simple/txs.svg" alt="test" className="w-12 h-12" />
+          <Image src="/images/emojis/simple/txs.svg" alt="test" className="w-12 h-12" />
         </div>
         <div className="flex flex-col">
           <TruncateText className="flex gap-2 diatype-m-medium" text={hash} end={20} />
@@ -146,7 +139,7 @@ const ContractItem: React.FC<SearchContractItemProps> = ({ contract }) => {
     >
       <div className="flex items-center gap-4">
         <div className="p-1 bg-surface-primary-red rounded-xxs border border-surface-secondary-red">
-          <img src="/images/emojis/simple/factory.svg" alt="test" className="w-12 h-12" />
+          <Image src="/images/emojis/simple/factory.svg" alt="test" className="w-12 h-12" />
         </div>
         <div className="flex flex-col">
           <AddressVisualizer address={address} withIcon classNames={{ text: "diatype-m-medium" }} />
@@ -183,7 +176,7 @@ const AccountItem: React.FC<SearchAccountItemProps> = ({ account }) => {
     >
       <div className="flex items-center gap-4">
         <div className="p-1 bg-surface-primary-red rounded-xxs border border-surface-secondary-red">
-          <img src="/images/emojis/simple/hamster.svg" alt="account" className="w-12 h-12" />
+          <Image src="/images/emojis/simple/hamster.svg" alt="account" className="w-12 h-12" />
         </div>
         <div className="flex flex-col">
           <p className="flex gap-2 diatype-m-medium">{name}</p>
@@ -217,7 +210,7 @@ const UserItem: React.FC<SearchUserItemProps> = ({ user }) => {
     >
       <div className="flex items-center gap-4">
         <div className="p-1 bg-surface-primary-red rounded-xxs border border-surface-secondary-red">
-          <img src="/images/avatar.png" alt="user" className="w-12 h-12 rounded-lg" />
+          <Image src="/images/avatar.png" alt="user" className="w-12 h-12 rounded-lg" />
         </div>
         <div className="flex flex-col">
           <p className="flex gap-2 diatype-m-medium">{user.name}</p>

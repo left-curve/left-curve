@@ -3,34 +3,18 @@ discord_username: "Deploy"
 discord_avatar_url: "https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/ansible-light.svg"
 github_repo: "left-curve/left-curve"
 ssh_users:
-  - penso
+  - j0nl1
   - larry
-  # - rhaki
-  # - zexsor
-  # - j0nl1
-  # - michael
+  - penso
+  - rhaki
+  - zexsor
 sudo_users:
+  - larry
   - penso
 dango_domain: "dango.zone"
-dango:
-  dex_bot:
-    # NOTE: those are public from the genesis file
-    # Dex bot signer: the account that will open orders on the DEX
-    username: "user8"
-    address: "0x7f360aa0806f41aabe9fc43bfc1254e5bafe7583"
-    dex_address: "0xda32476efe31e535207f0ad690d337a4ebf54a22"
-    private_key: "ca956fcf6b0f32975f067e2deaf3bc1c8632be02ed628985105fd1afc94531b9"
-    # The account that will provide liquidity on the DEX and mint tokens to dex signer
-    minter_username: "user9"
-    minter_address: "0x3792b060a077fceca337334adf53f695e1362397"
-    minter_private_key: "c0d853951557d3bdec5add2ca8e03983fea2f50c6db0a45977990fb7b0c569b3"
-    mint_amount: 1000000000
-    liquidity_amount: 1000000000
 ports:
   dango_port: 8080
-  dango_frontend_port: 8081
   faucet_port: 8082
-  quest_port: 8083
   cometbft_p2p_port: 26656
   cometbft_rpc_port: 26657
   cometbft_abci_port: 26658
@@ -48,7 +32,6 @@ traefik:
   devnet:
     ports:
       dango_port: 8080
-      dango_frontend_port: 8081
       faucet_port: 8082
       graphiql_port: 8086
       cometbft_rpc_port: 26657
@@ -57,7 +40,6 @@ traefik:
   testnet:
     ports:
       dango_port: 8050
-      dango_frontend_port: 8051
       faucet_port: 8052
       graphiql_port: 8056
       cometbft_rpc_port: 36657
@@ -66,7 +48,6 @@ traefik:
   mainnet:
     ports:
       dango_port: 8030
-      dango_frontend_port: 8031
       faucet_port: 8032
       graphiql_port: 8036
       cometbft_rpc_port: 46657

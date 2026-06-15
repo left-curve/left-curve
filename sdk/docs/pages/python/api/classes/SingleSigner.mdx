@@ -1,0 +1,122 @@
+# SingleSigner
+
+Stateful per-account signer; tracks `user_index` and `next_nonce`, produces signed `Tx` envelopes.
+
+`SingleSigner` is constructed automatically by [`Exchange`](./Exchange) and exposed via `Exchange.signer`. Direct construction is supported for tests and recovery flows.
+
+## Setup
+
+```python
+from dango.utils.signing import Secp256k1Wallet, SingleSigner
+from dango.utils.types import Addr
+
+wallet = Secp256k1Wallet.random(Addr("0xaccount"))
+signer = SingleSigner(wallet, Addr("0xaccount"))
+```
+
+## Constructor
+
+```python
+SingleSigner(
+    wallet: Wallet,
+    address: Addr,
+    *,
+    user_index: int | None = None,
+    next_nonce: int | None = None,
+) -> None
+```
+
+**`wallet`** — `Wallet`. Any object satisfying the `Wallet` protocol.
+
+**`address`** — `Addr`. The Dango account address this signer is bound to. Taken explicitly (not from `wallet.address`) so the same key can sign for multiple accounts.
+
+**`user_index`** — `int | None`, optional. Pre-populate to skip the auto-resolve query. Default: unresolved; must be set before `build_unsigned_tx` / `sign_tx`.
+
+**`next_nonce`** — `int | None`, optional. Pre-populate to skip the auto-resolve query. Default: unresolved; must be set before `sign_tx`.
+
+## Attributes (mutable)
+
+**`wallet: Wallet`**, **`address: Addr`**, **`user_index: int | None`**, **`next_nonce: int | None`**
+
+All public and mutable. Power users overwrite `next_nonce` to recover after a failed broadcast.
+
+## Class methods
+
+### auto_resolve
+
+```python
+@classmethod
+def auto_resolve(
+    cls,
+    wallet: Wallet,
+    address: Addr,
+    info: _QueryClient,
+) -> SingleSigner
+```
+
+Construct a signer and populate `user_index` and `next_nonce` by querying the chain via `info.query_app_smart`.
+
+```python
+from dango.info import Info
+from dango.utils.signing import Secp256k1Wallet, SingleSigner
+from dango.utils.types import Addr
+
+info = Info("https://api-mainnet.dango.zone")
+wallet = Secp256k1Wallet.from_mnemonic("...", Addr("0x..."))
+signer = SingleSigner.auto_resolve(wallet, Addr("0x..."), info)
+```
+
+## Methods
+
+### query_user_index
+
+```python
+def query_user_index(self, info: _QueryClient) -> int
+```
+
+Look up `user_index` via the account-factory contract. Returns the stable index but does not mutate `self.user_index` (call `auto_resolve` or assign manually if you want both).
+
+### query_next_nonce
+
+```python
+def query_next_nonce(self, info: _QueryClient) -> int
+```
+
+Compute `next_nonce` from the account's seen-nonces sliding window. Returns `max(seen) + 1` or `0` if the account has never sent a transaction.
+
+### build_unsigned_tx
+
+```python
+def build_unsigned_tx(
+    self,
+    messages: list[Message],
+    chain_id: str,
+) -> UnsignedTx
+```
+
+Wrap messages plus `Metadata` into an `UnsignedTx` for `Info.simulate`. Raises `RuntimeError` if `user_index` or `next_nonce` is unresolved.
+
+### sign_tx
+
+```python
+def sign_tx(
+    self,
+    messages: list[Message],
+    chain_id: str,
+    gas_limit: int,
+) -> Tx
+```
+
+Sign and return a `Tx`. Optimistically increments `self.next_nonce` (success or failure) — the chain rejects duplicate nonces, so optimistic increment is safer than rewinding on broadcast failure.
+
+## Notes
+
+- The `_QueryClient` parameter type is a private structural `Protocol` with a single method `query_app_smart(...)`. `Info` satisfies it structurally — pass an `Info` instance directly.
+- After a failed broadcast that did NOT reach the chain, manually rewind: `signer.next_nonce -= 1`, or re-fetch: `signer.next_nonce = signer.query_next_nonce(info)`.
+- The signer does not retry, log, or wrap exceptions — it is intentionally thin.
+
+## See also
+
+- [`Secp256k1Wallet`](./Secp256k1Wallet) — the shipping `Wallet` implementation
+- [`Exchange`](./Exchange) — constructs and uses `SingleSigner` internally
+- [Concepts: Signers & Authentication](../../concepts/signers) — the layered signing model

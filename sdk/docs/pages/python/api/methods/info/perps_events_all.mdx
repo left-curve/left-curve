@@ -1,0 +1,51 @@
+# perps_events_all
+
+Iterate every perps event matching the filter, walking pages internally.
+
+## Signature
+
+```python
+def perps_events_all(
+    self,
+    *,
+    user_addr: Addr | None = None,
+    event_type: str | None = None,
+    pair_id: PairId | None = None,
+    block_height: int | None = None,
+    sort_by: PerpsEventSortBy = PerpsEventSortBy.BLOCK_HEIGHT_DESC,
+    page_size: int = 100,
+) -> Iterator[PerpsEvent]
+```
+
+## Example
+
+```python
+from dango.info import Info
+from dango.utils.constants import MAINNET_API_URL
+from dango.utils.types import Addr
+
+info = Info(MAINNET_API_URL, skip_ws=True)
+
+for event in info.perps_events_all(
+    user_addr=Addr("0x..."),
+    event_type="order_filled",
+):
+    print(event["createdAt"], event["data"])
+```
+
+## Parameters
+
+Same filter knobs as [`perps_events`](./perps_events) plus a `page_size` for the internal walker. Default page size: `100`.
+
+## Returns
+
+**`Iterator[PerpsEvent]`** — yields events in cursor-order (default `BLOCK_HEIGHT_DESC` — newest first). Memory stays bounded over very long histories.
+
+## Notes
+
+- Forward-only pagination. Backward (`last`/`before`) pagination is intentionally out of scope; call `perps_events` directly if you need a tail-anchored walk.
+
+## See also
+
+- [`perps_events`](./perps_events) — single-page version
+- [`paginate_all`](../../helpers/paginate_all) — generic forward-pagination helper

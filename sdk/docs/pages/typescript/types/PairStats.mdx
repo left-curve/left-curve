@@ -1,0 +1,34 @@
+# PairStats
+
+24h indexer-computed stats for a spot pair.
+
+## Definition
+
+```ts
+type PairStats = {
+  quoteDenom: Denom
+  baseDenom: Denom
+  currentPrice: string | undefined
+  price24HAgo: string | undefined
+  volume24H: string
+  priceChange24H: string | undefined
+}
+```
+
+## Fields
+
+**`currentPrice`** — current price (latest fill).
+
+**`price24HAgo`** — price 24 hours ago.
+
+**`volume24H`** — total volume over the last 24 hours.
+
+**`priceChange24H`** — relative change vs 24 hours ago.
+
+Any field may be `undefined` if the indexer lacks data.
+
+## See also
+
+- [`getPairStats`](../actions/dex/getPairStats)
+- [`getAllPairStats`](../actions/dex/getAllPairStats)
+- [`PerpsPairStats`](./PerpsPairStats)

@@ -1,17 +1,15 @@
-import { getAppConfig } from "@left-curve/sdk";
-import { getAction } from "@left-curve/sdk/actions";
-import { execute } from "../../app/mutations/execute.js";
+import { getAppConfig } from "#actions/app/queries/getAppConfig.js";
+import { execute } from "#actions/app/mutations/execute.js";
 
-import type { Address, Transport } from "@left-curve/sdk/types";
-import type { SignAndBroadcastTxReturnType } from "../../app/mutations/signAndBroadcastTx.js";
+import type { Address } from "@left-curve/types";
+import type { SignAndBroadcastTxReturnType } from "#actions/app/mutations/signAndBroadcastTx.js";
 import type {
-  AppConfig,
   ChildOrder,
-  DangoClient,
+  Client,
   PerpsOrderKind,
   Signer,
   TypedDataParameter,
-} from "../../../types/index.js";
+} from "@left-curve/types";
 
 export type SubmitPerpsOrderParameters = {
   sender: Address;
@@ -25,14 +23,13 @@ export type SubmitPerpsOrderParameters = {
 
 export type SubmitPerpsOrderReturnType = SignAndBroadcastTxReturnType;
 
-export async function submitPerpsOrder<transport extends Transport>(
-  client: DangoClient<transport, Signer>,
+export async function submitPerpsOrder(
+  client: Client<Signer>,
   parameters: SubmitPerpsOrderParameters,
 ): SubmitPerpsOrderReturnType {
   const { sender, pairId, size, kind, reduceOnly, tp, sl } = parameters;
 
-  const getAppConfigAction = getAction(client, getAppConfig, "getAppConfig");
-  const { addresses } = await getAppConfigAction<AppConfig>({});
+  const { addresses } = await getAppConfig(client);
 
   const buildChildOrder = (child: ChildOrder) => ({
     triggerPrice: child.triggerPrice,

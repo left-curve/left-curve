@@ -1,0 +1,83 @@
+# SubscriptionVariables
+
+Helper trait for subscription variables with an associated subscription type. Lets users call `vars.subscribe(&ws)` instead of `ws.subscribe::<Q>(vars)`.
+
+## Definition
+
+```rust
+pub trait SubscriptionVariables: Variables {
+    fn subscribe(
+        self,
+        client: &WsClient,
+    ) -> impl std::future::Future<
+        Output = Result<
+            SubscriptionStream<<<Self as Variables>::Query as GraphQLQuery>::ResponseData>,
+            anyhow::Error,
+        >,
+    > + Send
+    where
+        Self: Sized + Unpin + Send + Sync + 'static,
+        <Self as Variables>::Query: Unpin + Send + Sync + 'static,
+        <<Self as Variables>::Query as GraphQLQuery>::ResponseData:
+            DeserializeOwned + Unpin + Send + Sync + 'static;
+}
+```
+
+The provided method calls `client.subscribe::<Self::Query>(self)`.
+
+## Example
+
+```rust
+use {
+    anyhow::Result,
+    dango_sdk::{SubscriptionVariables, WsClient, subscribe_block},
+    futures::StreamExt,
+};
+
+#[tokio::main]
+async fn main() -> Result<()> {
+    let ws = WsClient::new("wss://api-mainnet.dango.zone/graphql")?;
+
+    let mut stream = subscribe_block::Variables {}.subscribe(&ws).await?;
+    while let Some(item) = stream.next().await {
+        println!("{item:?}");
+    }
+    Ok(())
+}
+```
+
+## Implementations
+
+`SubscriptionVariables` is implemented for the 13 codegen `Variables` types under `dango_indexer_graphql_types`. Each variant maps to a `GraphQLQuery` marker struct (`SubscribeBlock`, `SubscribeAccounts`, …) via `impl Variables for <module>::Variables`.
+
+| Variant module                       | Query type                  | What it streams |
+|--------------------------------------|-----------------------------|-----------------|
+| `subscribe_block`                    | `SubscribeBlock`            | Newly finalized blocks. |
+| `subscribe_accounts`                 | `SubscribeAccounts`         | Account lifecycle events. |
+| `subscribe_transfers`                | `SubscribeTransfers`        | Bank transfers. |
+| `subscribe_transactions`             | `SubscribeTransactions`     | Transactions as they are included. |
+| `subscribe_messages`                 | `SubscribeMessages`         | Per-message records from new transactions. |
+| `subscribe_events`                   | `SubscribeEvents`           | Indexer events filtered by type/contract. |
+| `subscribe_event_by_addresses`       | `SubscribeEventByAddresses` | Events filtered by a list of addresses. |
+| `subscribe_candles`                  | `SubscribeCandles`          | DEX candles for a pair. |
+| `subscribe_perps_candles`            | `SubscribePerpsCandles`     | Perps candles for a pair. |
+| `subscribe_trades`                   | `SubscribeTrades`           | DEX fills for a pair. |
+| `subscribe_perps_trades`             | `SubscribePerpsTrades`      | Perps fills for a pair. |
+| `subscribe_query_app`                | `SubscribeQueryApp`         | A streaming `query_app` snapshot. |
+| `subscribe_query_store`              | `SubscribeQueryStore`       | A streaming `query_store` snapshot. |
+| `subscribe_query_status`             | `SubscribeQueryStatus`      | Node status snapshots. |
+
+Each `Variables` struct derives `Default`, so partial construction is idiomatic — `subscribe_events::Variables::default()`. Most subscription schemas only expose pagination and `sort_by` arguments; filter on the streamed payload client-side.
+
+## Notes
+
+- The trait bound mirrors `WsClient::subscribe`: `Send + Sync + 'static`, plus `Unpin` for the variables and `DeserializeOwned` for the response data. Every codegen type satisfies these out of the box.
+- This is sugar only. The underlying call path is identical to `client.subscribe::<Q>(vars)`. Use whichever reads better.
+- Calls `WsClient::subscribe` — each invocation opens a dedicated connection. To multiplex multiple subscriptions over a single socket, use [`Session::subscribe`](../methods/session/subscribe) directly.
+
+## See also
+
+- [`WsClient::subscribe`](../methods/ws-client/subscribe).
+- [`SubscriptionStream`](./SubscriptionStream).
+- [Concepts: Subscriptions](../../concepts/subscriptions).
+- [Concepts: Encoding and types](../../concepts/encoding-and-types) — the underlying `Variables` trait used by codegen.

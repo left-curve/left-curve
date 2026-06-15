@@ -1,6 +1,6 @@
 import { Cell, Skeleton, Table, useApp } from "@left-curve/applets-kit";
 import type { TableColumn } from "@left-curve/applets-kit";
-import { formatNumber } from "@left-curve/dango/utils";
+import { formatNumber } from "@left-curve/utils";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 import { useAccount, useReferralParams } from "@left-curve/store";
 import type React from "react";

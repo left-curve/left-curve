@@ -20,5 +20,13 @@ export function createMMKVStorage(): AbstractStorage {
     removeItem(key: string): void {
       storage.delete(key);
     },
+    subscribe(key, listener) {
+      const subscription = storage.addOnValueChangedListener((changedKey) => {
+        if (changedKey !== key) return;
+        listener(storage.getString(changedKey) ?? null);
+      });
+
+      return () => subscription.remove();
+    },
   };
 }

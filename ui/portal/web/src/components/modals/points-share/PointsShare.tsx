@@ -5,6 +5,7 @@ import { getReferralLink, useAccount } from "@left-curve/store";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 
 import { CharacterSelector } from "../../foundation/CharacterSelector";
+import { shareCardFontEmbedCSS } from "../shareCardFonts.js";
 import { PreviewCard } from "./PreviewCard.js";
 
 export type PointsShareProps = {
@@ -28,6 +29,7 @@ export const PointsShare = forwardRef<unknown, PointsShareProps>((props, _ref) =
         source: cardRef.current,
         filename: `points-week-${weekNumber}.png`,
         width: 752,
+        fontEmbedCSS: shareCardFontEmbedCSS,
       });
     } catch (err) {
       console.error("Failed to save image", err);

@@ -1,0 +1,38 @@
+# Candle
+
+An OHLC candle for a spot pair at a given interval.
+
+## Definition
+
+```ts
+type Candle = {
+  quoteDenom: Denom
+  baseDenom: Denom
+  interval: CandleIntervals
+  blockHeight: number
+  open: string
+  high: string
+  low: string
+  close: string
+  volumeBase: string
+  volumeQuote: string
+  timeStart: string
+  timeStartUnix: number
+  timeEnd: string
+  timeEndUnix: number
+}
+```
+
+## Fields
+
+OHLC values (`open`, `high`, `low`, `close`) are decimal strings. Volume is split between base (`volumeBase`) and quote (`volumeQuote`).
+
+Time is returned both as ISO 8601 (`timeStart`, `timeEnd`) and Unix seconds (`timeStartUnix`, `timeEndUnix`).
+
+`interval` is one of `ONE_SECOND`, `ONE_MINUTE`, `FIVE_MINUTES`, `FIFTEEN_MINUTES`, `ONE_HOUR`, `FOUR_HOURS`, `ONE_DAY`, `ONE_WEEK`.
+
+## See also
+
+- [`queryCandles`](../actions/dex/queryCandles)
+- [`candlesSubscription`](../actions/indexer/candlesSubscription)
+- [`PerpsCandle`](./PerpsCandle)

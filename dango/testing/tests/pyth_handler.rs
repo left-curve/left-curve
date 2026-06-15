@@ -1,13 +1,13 @@
 use {
+    dango_primitives::{Coins, HashExt, NonEmpty, QuerierWrapper, ResultExt, btree_map},
     dango_proposal_preparer::{PythHandler, QueryPythId},
+    dango_pyth_client::PythClientTrait,
+    dango_pyth_types::{Channel, constants::LAZER_ENDPOINTS_TEST},
     dango_testing::setup_test,
     dango_types::{
-        constants::btc,
-        oracle::{ExecuteMsg, InstantiateMsg, PriceSource},
+        constants::perp_btc,
+        oracle::{ExecuteMsg, InstantiateMsg, PriceConfig, PriceSource},
     },
-    grug::{Coins, HashExt, NonEmpty, QuerierWrapper, ResultExt, btree_map},
-    pyth_client::PythClientTrait,
-    pyth_types::{Channel, constants::LAZER_ENDPOINTS_TEST},
     std::{thread::sleep, time::Duration},
 };
 
@@ -38,11 +38,10 @@ async fn handler() {
         .address;
 
     let price_source = btree_map!(
-        btc::DENOM.clone() => PriceSource::Pyth {
+        perp_btc::DENOM.clone() => PriceConfig::Single(PriceSource {
             id: 1,
-            precision: 8,
             channel: Channel::RealTime,
-        },
+        }),
     );
 
     suite

@@ -1,0 +1,51 @@
+# broadcast_tx
+
+Submit a signed transaction with `tx-sync` semantics: the node accepts or rejects it from the mempool but does not wait for inclusion.
+
+## Signature
+
+```rust
+async fn broadcast_tx(&self, tx: dango_primitives::Tx) -> Result<dango_primitives::BroadcastTxOutcome, anyhow::Error>;
+```
+
+From `impl BroadcastClient for HttpClient`.
+
+## Example
+
+```rust
+use {
+    anyhow::Result,
+    dango_sdk::{HttpClient, SingleSigner},
+    dango_primitives::{BroadcastClient, NonEmpty, Signer},
+};
+
+async fn submit(
+    http: &HttpClient,
+    signer: &mut SingleSigner<impl dango_sdk::Secret>,
+    messages: NonEmpty<Vec<dango_primitives::Message>>,
+    gas: u64,
+) -> Result<dango_primitives::Hash256> {
+    let tx     = signer.sign_transaction(messages, "dango-1", gas)?;
+    let result = http.broadcast_tx(tx).await?;
+    Ok(result.tx_hash)
+}
+```
+
+## Parameters
+
+**`tx`** — `Tx`. A signed transaction produced by `Signer::sign_transaction`.
+
+## Returns
+
+**`BroadcastTxOutcome`** — the mempool decision. Carries `tx_hash: Hash256` and `check_tx: CheckTxOutcome` (where `CheckTxOutcome` exposes the success/error detail). Inclusion in a block is *not* guaranteed by a successful response — poll [`search_tx`](./search_tx) until the transaction appears.
+
+## Notes
+
+- `tx-sync` only checks `CheckTx`. Execution happens later, when the block is processed.
+- A successful `broadcast_tx` followed by a failed `search_tx` means the transaction failed during `DeliverTx` — inspect the outcome for the error.
+
+## See also
+
+- [`search_tx`](./search_tx) — wait for inclusion.
+- [`simulate`](./simulate) — estimate gas without broadcasting.
+- [Concepts: Transactions](../../../concepts/transactions) — full submit-and-poll flow.

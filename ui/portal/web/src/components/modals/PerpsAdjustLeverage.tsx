@@ -12,22 +12,22 @@ import { perpsTradeSettingsStore } from "@left-curve/store";
 import { forwardRef, useState } from "react";
 
 type PerpsAdjustLeverageProps = {
-  perpsPairId: string;
+  pairId: string;
   baseSymbol: string;
   maxLeverage: number;
 };
 
 export const PerpsAdjustLeverage = forwardRef<void, PerpsAdjustLeverageProps>(
-  ({ perpsPairId, baseSymbol, maxLeverage }) => {
+  ({ pairId, baseSymbol, maxLeverage }) => {
     const { hideModal } = useApp();
-    const storedLeverage = perpsTradeSettingsStore((s) => s.leverageByPair[perpsPairId]);
+    const storedLeverage = perpsTradeSettingsStore((s) => s.leverageByPair[pairId]);
     const setLeverage = perpsTradeSettingsStore((s) => s.setLeverage);
 
     const initial = Math.min(Math.max(storedLeverage ?? maxLeverage, 1), maxLeverage);
     const [value, setValue] = useState<number>(initial);
 
     const onConfirm = () => {
-      setLeverage(perpsPairId, value, maxLeverage);
+      setLeverage(pairId, value, maxLeverage);
       hideModal();
     };
 

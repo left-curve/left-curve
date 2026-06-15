@@ -1,12 +1,13 @@
 use {
     crate::register_oracle_prices,
+    dango_math::{Uint64, Uint128},
     dango_order_book::{
         ClientOrderId, OrderId, OrderKind, Quantity, QueryOrdersByUserResponseItem, TimeInForce,
         UsdPrice,
     },
-    dango_testing::{TestOption, perps::pair_id, setup_test_naive},
+    dango_primitives::{Addressable, Coins, QuerierExt, ResultExt},
+    dango_testing::{TestOption, pair_id, setup_test_naive},
     dango_types::{constants::usdc, perps},
-    grug::{Addressable, Coins, QuerierExt, ResultExt, Uint64, Uint128},
     std::collections::BTreeMap,
 };
 
@@ -20,7 +21,7 @@ use {
 async fn submit_cancel_resubmit_by_client_order_id() {
     let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(TestOption::default());
 
-    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000).await;
+    register_oracle_prices(&mut suite, &mut accounts, 2_000).await;
 
     let pair = pair_id();
     let cid: ClientOrderId = Uint64::new(42);
@@ -131,7 +132,7 @@ async fn submit_cancel_resubmit_by_client_order_id() {
 async fn cancel_by_unknown_client_order_id_fails() {
     let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(TestOption::default());
 
-    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000).await;
+    register_oracle_prices(&mut suite, &mut accounts, 2_000).await;
 
     suite
         .execute(

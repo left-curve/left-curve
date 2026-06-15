@@ -1,0 +1,53 @@
+# SingleSigner::with_user_index
+
+Consume `self` and return a `SingleSigner` with `user_index` defined.
+
+## Signature
+
+```rust
+impl<S: Secret, N: MaybeDefined<Nonce>> SingleSigner<S, Undefined<UserIndex>, N> {
+    pub fn with_user_index(
+        self,
+        user_index: UserIndex,
+    ) -> SingleSigner<S, Defined<UserIndex>, N>;
+}
+```
+
+## Example
+
+```rust
+use {
+    anyhow::Result,
+    dango_sdk::{Secp256k1, SingleSigner},
+    dango_types::account_factory::UserIndex,
+    dango_primitives::Addr,
+    std::str::FromStr,
+};
+
+fn build() -> Result<SingleSigner<Secp256k1, _, _>> {
+    let signer = SingleSigner::new(
+        Addr::from_str("0x0000000000000000000000000000000000000000")?,
+        Secp256k1::new_random(),
+    )
+    .with_user_index(42 as UserIndex);
+    Ok(signer)
+}
+```
+
+## Parameters
+
+**`user_index`** — `UserIndex`. The account-factory user index for this address.
+
+## Returns
+
+**`SingleSigner<S, Defined<UserIndex>, N>`** — the same signer with the `user_index` slot now `Defined`. The `nonce` state is preserved.
+
+## Notes
+
+- Consumes `self`. The original signer cannot be used afterwards.
+- Synchronous; pairs with [`with_query_user_index`](./with_query_user_index) for the async-fetch variant.
+
+## See also
+
+- [`with_query_user_index`](./with_query_user_index) — fetch from the account factory.
+- [`query_user_index`](./query_user_index) — fetch without consuming `self`.

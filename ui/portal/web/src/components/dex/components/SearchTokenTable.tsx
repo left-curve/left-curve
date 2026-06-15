@@ -1,75 +1,67 @@
-import {
-  allPairStatsStore,
-  allPerpsPairStatsStore,
-  useFavPairs,
-  TradePairStore,
-} from "@left-curve/store";
+import { useAllPerpsPairStats, useFavPairs } from "@left-curve/store";
 import {
   Badge,
   Cell,
   FormattedNumber,
-  IconEmptyStar,
-  IconStar,
+  IconFlame,
   PairStatValue,
   SortHeader,
+  StarToggleButton,
   Table,
+  Tooltip,
 } from "@left-curve/applets-kit";
-import { memo, useMemo } from "react";
+import { memo, useCallback, useMemo } from "react";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
+import { Image } from "~/components/foundation/Image";
 
 import type { TableHeaderContext, TableClassNames, TableColumn } from "@left-curve/applets-kit";
 import type React from "react";
 
+import type { NormalizedPerpsPairStats } from "@left-curve/store";
 import type { SearchTokenRow } from "./SearchToken";
 
 const TokenImage = memo(({ src, alt }: { src?: string; alt: string }) => (
-  <img src={src} alt={alt} className="w-5 h-5 flex-shrink-0" />
+  <Image src={src} alt={alt} className="w-5 h-5 flex-shrink-0" />
 ));
 
+// `Udec128_6` arrives as a stringified decimal like "2.000000". Trim trailing
+// zeros (and the dangling dot) for display: "2.000000" → "2", "2.500000" → "2.5".
+const formatMultiplier = (raw: string) => raw.replace(/\.?0+$/, "") || raw;
+
 const PerpsPairNameWithFav: React.FC<{
-  baseCoin: { symbol: string; logoURI?: string };
-  quoteCoin: { symbol: string };
-  pairKey: string;
-}> = memo(({ baseCoin, quoteCoin, pairKey }) => {
+  pair: SearchTokenRow["pair"];
+  boostMultiplier?: string;
+}> = memo(({ pair, boostMultiplier }) => {
   const { toggleFavPair, hasFavPair } = useFavPairs();
-  const isFav = hasFavPair(pairKey);
+  const isFav = hasFavPair(pair.ticker);
 
   return (
     <div className="flex h-full gap-2 diatype-sm-medium justify-start items-center my-auto min-w-fit pr-2">
-      <button
-        type="button"
-        onClick={(e) => {
-          e.stopPropagation();
-          toggleFavPair(pairKey);
-        }}
-        className="focus:outline-none flex-shrink-0"
-      >
-        {isFav ? (
-          <IconStar className="w-4 h-4 text-fg-primary-700" />
-        ) : (
-          <IconEmptyStar className="w-4 h-4 text-fg-primary-700" />
-        )}
-      </button>
-      <TokenImage src={baseCoin.logoURI} alt={baseCoin.symbol} />
-      <p className="whitespace-nowrap">{`${baseCoin.symbol}-${quoteCoin.symbol}`}</p>
+      <StarToggleButton
+        isActive={isFav}
+        onToggle={() => toggleFavPair(pair.ticker)}
+        className={isFav ? "text-primitives-warning-500" : "text-fg-secondary-500"}
+      />
+      <TokenImage src={pair.logoURI} alt={pair.base.symbol} />
+      <p className="whitespace-nowrap">{pair.ticker}</p>
       <Badge text="Perp" color="green" size="s" />
+      {boostMultiplier ? (
+        <Tooltip
+          className="min-w-0 rounded-md"
+          content={
+            <div className="diatype-sm-regular text-primitives-gray-dark-200">
+              {`${formatMultiplier(boostMultiplier)}x points`}
+            </div>
+          }
+        >
+          <IconFlame className="text-primitives-red-light-500 w-4 h-4" />
+        </Tooltip>
+      ) : null}
     </div>
   );
 });
 
-function useRowPairStats(row: SearchTokenRow) {
-  const statsByPair = allPairStatsStore((s) => s.pairStatsByKey);
-  const perpStatsByPairId = allPerpsPairStatsStore((s) => s.perpsPairStatsByPairId);
-  const getPerpsPairId = TradePairStore((s) => s.getPerpsPairId);
-
-  return row.mode === "perps"
-    ? perpStatsByPairId[getPerpsPairId(row.pairId)]
-    : statsByPair[`${row.pairId.baseDenom}:${row.pairId.quoteDenom}`];
-}
-
-const PriceCell = memo(({ row }: { row: SearchTokenRow }) => {
-  const stats = useRowPairStats(row);
-
+const PriceCell = memo(({ stats }: { stats?: NormalizedPerpsPairStats }) => {
   return (
     <Cell.Text
       text={
@@ -83,9 +75,7 @@ const PriceCell = memo(({ row }: { row: SearchTokenRow }) => {
   );
 });
 
-const ChangeCell = memo(({ row }: { row: SearchTokenRow }) => {
-  const stats = useRowPairStats(row);
-
+const ChangeCell = memo(({ stats }: { stats?: NormalizedPerpsPairStats }) => {
   return (
     <div className="flex flex-col gap-1">
       <PairStatValue
@@ -98,9 +88,7 @@ const ChangeCell = memo(({ row }: { row: SearchTokenRow }) => {
   );
 });
 
-const VolumeCell = memo(({ row }: { row: SearchTokenRow }) => {
-  const stats = useRowPairStats(row);
-
+const VolumeCell = memo(({ stats }: { stats?: NormalizedPerpsPairStats }) => {
   return (
     <div className="flex flex-col gap-1">
       <PairStatValue
@@ -117,122 +105,114 @@ const VolumeCell = memo(({ row }: { row: SearchTokenRow }) => {
 type SearchTokenTableProps = {
   classNames?: TableClassNames;
   data: SearchTokenRow[];
-  onChangePairId: (row: SearchTokenRow) => void;
+  onChangePair: (row: SearchTokenRow) => void;
 };
 
 export const SearchTokenTable: React.FC<SearchTokenTableProps> = ({
   classNames,
   data: rows,
-  onChangePairId,
+  onChangePair,
 }) => {
-  const { favPairs } = useFavPairs();
+  const perpStatsByPairId = useAllPerpsPairStats((s) => s.perpsPairStatsByPairId);
 
-  const statsByPair = allPairStatsStore((s) => s.pairStatsByKey);
-  const perpStatsByPairId = allPerpsPairStatsStore((s) => s.perpsPairStatsByPairId);
-
-  const getPerpsPairId = TradePairStore((s) => s.getPerpsPairId);
-
-  const data = useMemo(() => [...rows], [rows, favPairs]);
-
-  const getPairStats = (row: SearchTokenRow) => {
-    return row.mode === "perps"
-      ? perpStatsByPairId[getPerpsPairId(row.pairId)]
-      : statsByPair[`${row.pairId.baseDenom}:${row.pairId.quoteDenom}`];
-  };
-
-  const columns: TableColumn<SearchTokenRow> = [
-    {
-      id: "isFavorite",
-      accessorFn: (row) => favPairs.includes(row.pairKey),
-    },
-    {
-      id: "pairName",
-      header: (ctx: TableHeaderContext<SearchTokenRow>) => (
-        <SortHeader
-          label={m["dex.protrade.searchPairTable.name"]()}
-          sorted={ctx.column.getIsSorted()}
-          toggleSort={ctx.column.toggleSorting}
-        />
-      ),
-      cell: ({ row }) => {
-        if (row.original.mode === "perps") {
+  const columns = useMemo<TableColumn<SearchTokenRow>>(
+    () => [
+      {
+        id: "isFavorite",
+        accessorFn: (row) => row.isFavorite,
+      },
+      {
+        id: "pairName",
+        header: (ctx: TableHeaderContext<SearchTokenRow>) => (
+          <SortHeader
+            label={m["dex.protrade.searchPairTable.name"]()}
+            sorted={ctx.column.getIsSorted()}
+            toggleSort={ctx.column.toggleSorting}
+          />
+        ),
+        cell: ({ row }) => (
+          <PerpsPairNameWithFav
+            pair={row.original.pair}
+            boostMultiplier={row.original.boostMultiplier}
+          />
+        ),
+        filterFn: (row, _, value) => {
+          const v = String(value ?? "").toUpperCase();
           return (
-            <PerpsPairNameWithFav
-              baseCoin={row.original.baseCoin}
-              quoteCoin={row.original.quoteCoin}
-              pairKey={row.original.pairKey}
-            />
+            row.original.pair.ticker.toUpperCase().includes(v) ||
+            row.original.pair.name.toUpperCase().includes(v)
           );
-        }
-        return <Cell.PairNameWithFav type="Spot" pairId={row.original.pairId} />;
+        },
+        accessorFn: (row) => row.pair.ticker,
       },
-      filterFn: (row, _, value) => {
-        const v = String(value ?? "").toUpperCase();
-        return (
-          row.original.baseCoin.symbol.toUpperCase().includes(v) ||
-          row.original.quoteCoin.symbol.toUpperCase().includes(v)
-        );
+      {
+        id: "price",
+        header: (ctx: TableHeaderContext<SearchTokenRow>) => (
+          <SortHeader
+            label={m["dex.protrade.searchPairTable.price"]()}
+            sorted={ctx.column.getIsSorted()}
+            toggleSort={ctx.column.toggleSorting}
+          />
+        ),
+        cell: ({ row }) => <PriceCell stats={perpStatsByPairId[row.original.pair.id]} />,
+        accessorFn: (row) => {
+          const stats = perpStatsByPairId[row.pair.id];
+          return Number(stats?.currentPrice ?? 0);
+        },
       },
-      accessorFn: (row) => row.pairKey,
-    },
-    {
-      id: "price",
-      header: (ctx: TableHeaderContext<SearchTokenRow>) => (
-        <SortHeader
-          label={m["dex.protrade.searchPairTable.price"]()}
-          sorted={ctx.column.getIsSorted()}
-          toggleSort={ctx.column.toggleSorting}
-        />
-      ),
-      cell: ({ row }) => <PriceCell row={row.original} />,
-      accessorFn: (row) => Number(getPairStats(row)?.currentPrice ?? 0),
-    },
-    {
-      id: "change24h",
-      header: (ctx: TableHeaderContext<SearchTokenRow>) => (
-        <SortHeader
-          label={m["dex.protrade.searchPairTable.24hChange"]()}
-          sorted={ctx.column.getIsSorted()}
-          toggleSort={ctx.column.toggleSorting}
-        />
-      ),
-      cell: ({ row }) => <ChangeCell row={row.original} />,
-      accessorFn: (row) => {
-        const value = getPairStats(row)?.priceChange24H;
-        return value === null || value === undefined ? Number.NEGATIVE_INFINITY : Number(value);
+      {
+        id: "change24h",
+        header: (ctx: TableHeaderContext<SearchTokenRow>) => (
+          <SortHeader
+            label={m["dex.protrade.searchPairTable.24hChange"]()}
+            sorted={ctx.column.getIsSorted()}
+            toggleSort={ctx.column.toggleSorting}
+          />
+        ),
+        cell: ({ row }) => <ChangeCell stats={perpStatsByPairId[row.original.pair.id]} />,
+        accessorFn: (row) => {
+          const stats = perpStatsByPairId[row.pair.id];
+          const value = stats?.priceChange24H;
+          return value === null || value === undefined ? Number.NEGATIVE_INFINITY : Number(value);
+        },
       },
-    },
-    {
-      id: "volume",
-      header: (ctx: TableHeaderContext<SearchTokenRow>) => (
-        <SortHeader
-          label={m["dex.protrade.searchPairTable.volume"]()}
-          sorted={ctx.column.getIsSorted()}
-          toggleSort={ctx.column.toggleSorting}
-          className="ml-auto w-full justify-end"
-        />
-      ),
-      cell: ({ row }) => <VolumeCell row={row.original} />,
-      accessorFn: (row) => {
-        const value = getPairStats(row)?.volume24H;
-        return value === undefined ? Number.NEGATIVE_INFINITY : Number(value);
+      {
+        id: "volume",
+        header: (ctx: TableHeaderContext<SearchTokenRow>) => (
+          <SortHeader
+            label={m["dex.protrade.searchPairTable.volume"]()}
+            sorted={ctx.column.getIsSorted()}
+            toggleSort={ctx.column.toggleSorting}
+            className="ml-auto w-full justify-end"
+          />
+        ),
+        cell: ({ row }) => <VolumeCell stats={perpStatsByPairId[row.original.pair.id]} />,
+        accessorFn: (row) => {
+          const stats = perpStatsByPairId[row.pair.id];
+          const value = stats?.volume24H;
+          return value === undefined ? Number.NEGATIVE_INFINITY : Number(value);
+        },
       },
-    },
-  ];
+    ],
+    [perpStatsByPairId],
+  );
+
+  const getRowId = useCallback((row: SearchTokenRow) => row.pair.ticker, []);
 
   return (
     <Table
-      data={data}
+      data={rows}
       columns={columns}
       style="simple"
       classNames={classNames}
+      getRowId={getRowId}
       initialSortState={{
         fixed: [{ id: "isFavorite", desc: true }],
         variable: [{ id: "pairName", desc: false }],
       }}
       initialColumnVisibility={{ isFavorite: false }}
       onRowPointerDown={(row) => {
-        onChangePairId(row.original);
+        onChangePair(row.original);
       }}
     />
   );

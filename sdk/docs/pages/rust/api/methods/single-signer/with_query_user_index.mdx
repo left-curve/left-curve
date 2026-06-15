@@ -1,0 +1,59 @@
+# SingleSigner::with_query_user_index
+
+Fetch the user index from the account factory and return a `SingleSigner` with `user_index` defined.
+
+## Signature
+
+```rust
+impl<S: Secret, N: MaybeDefined<Nonce>> SingleSigner<S, Undefined<UserIndex>, N> {
+    pub async fn with_query_user_index<C>(
+        self,
+        client: &C,
+    ) -> anyhow::Result<SingleSigner<S, Defined<UserIndex>, N>>
+    where
+        C: QueryClient,
+        anyhow::Error: From<C::Error>;
+}
+```
+
+## Example
+
+```rust
+use {
+    anyhow::Result,
+    dango_sdk::{HttpClient, Secp256k1, SingleSigner},
+    dango_primitives::Addr,
+    std::str::FromStr,
+};
+
+#[tokio::main]
+async fn main() -> Result<()> {
+    let http = HttpClient::new("https://api-mainnet.dango.zone")?;
+    let signer = SingleSigner::new(
+        Addr::from_str("0x0000000000000000000000000000000000000000")?,
+        Secp256k1::new_random(),
+    )
+    .with_query_user_index(&http)
+    .await?;
+    let _ = signer;
+    Ok(())
+}
+```
+
+## Parameters
+
+**`client`** — `&C` implementing `QueryClient`.
+
+## Returns
+
+**`SingleSigner<S, Defined<UserIndex>, N>`** — the same signer with `user_index` populated from the chain.
+
+## Notes
+
+- Wraps [`query_user_index`](./query_user_index) — same query, but consumes `self` to flip the typestate.
+- Errors propagate from `QueryClient::Error` via `anyhow::Error: From<C::Error>`.
+
+## See also
+
+- [`with_user_index`](./with_user_index) — synchronous variant.
+- [`query_user_index`](./query_user_index) — same query without consuming `self`.

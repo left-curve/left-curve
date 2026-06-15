@@ -1,4 +1,4 @@
-import type { PerpsPositionExtended, PerpsPairParam } from "@left-curve/dango/types";
+import type { PerpsPositionExtended, PerpsPairParam } from "@left-curve/types";
 
 type PairPrice = { currentPrice?: string | null };
 

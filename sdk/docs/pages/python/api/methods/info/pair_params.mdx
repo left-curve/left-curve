@@ -1,0 +1,41 @@
+# pair_params
+
+Enumerate per-pair parameters; paginated.
+
+## Signature
+
+```python
+def pair_params(
+    self,
+    *,
+    start_after: PairId | None = None,
+    limit: int = 30,
+) -> dict[PairId, PairParam]
+```
+
+## Example
+
+```python
+from dango.info import Info
+from dango.utils.constants import MAINNET_API_URL
+
+info = Info(MAINNET_API_URL, skip_ws=True)
+params = info.pair_params()
+for pair_id, p in params.items():
+    print(pair_id, p["tick_size"])
+```
+
+## Parameters
+
+**`start_after`** — `PairId | None`, optional. Cursor for the next page. Default: `None` (start from the first pair).
+
+**`limit`** — `int`, optional. Page size. Default: `30`.
+
+## Returns
+
+**`dict[PairId, PairParam]`** — map of pair id to per-pair parameters, in chain-sorted order.
+
+## See also
+
+- [`pair_param`](./pair_param) — fetch one pair
+- [`pair_states`](./pair_states) — enumerate runtime state

@@ -1,53 +1,69 @@
 import type React from "react";
 import { useEffect, useRef } from "react";
-import { useApp, useTheme } from "@left-curve/applets-kit";
+import { useTheme } from "@left-curve/applets-kit";
+import { useApp } from "@left-curve/foundation";
 import {
   useConfig,
   usePublicClient,
-  perpsUserStateExtendedStore,
-  perpsOrdersByUserStore,
+  usePerpsUserStateExtended,
+  usePerpsOrdersByUser,
 } from "@left-curve/store";
 import { useQueryClient } from "@tanstack/react-query";
 
 import * as TV from "@left-curve/tradingview";
-import { createTradingViewDataFeed, createPerpsDataFeed } from "~/datafeed";
-import {
-  buildPositionLines,
-  buildPerpsOrderLines,
-  buildSpotOrderLines,
-  drawLines,
-} from "../helpers/chartLines";
+import { deepEqual } from "@left-curve/utils";
+import { createPerpsDataFeed } from "~/datafeed";
+import { buildPositionLines, buildPerpsOrderLines, drawLines } from "../helpers/chartLines";
+import { isPerpsTradeHistoryAccountKey } from "../helpers/perpsTradeHistoryKeys";
 
-import type { AnyCoin } from "@left-curve/store/types";
-import type { OrdersByUserResponse, WithId } from "@left-curve/dango/types";
+import type { MarketPair } from "@left-curve/foundation/market-pair";
 
 type TradingViewProps = {
-  coins: { base: AnyCoin; quote: AnyCoin };
-  orders: WithId<OrdersByUserResponse>[];
-  mode?: "spot" | "perps";
+  pair: MarketPair;
+  accountAddress?: string;
 };
 
-export const TradingView: React.FC<TradingViewProps> = ({ coins, orders, mode = "spot" }) => {
-  const isPerps = mode === "perps";
-  const pairSymbol = isPerps
-    ? `${coins.base.symbol}-USD`
-    : `${coins.base.symbol}-${coins.quote.symbol}`;
-  const perpsPairId = isPerps ? `perp/${coins.base.symbol.toLowerCase()}usd` : "";
+function getStorageKey(ticker: string) {
+  return `tv_v4.${ticker}_perps`;
+}
 
-  const positions = perpsUserStateExtendedStore((s) => s.positions);
-  const perpsOrders = perpsOrdersByUserStore((s) => s.orders);
+export const TradingView: React.FC<TradingViewProps> = ({ pair, accountAddress }) => {
+  const pairId = pair.id;
+  const ticker = pair.ticker;
+
+  const position = usePerpsUserStateExtended((s) => s.positions[pairId], { accountAddress });
+  const perpsOrders = usePerpsOrdersByUser(
+    (s) => {
+      if (!s.orders) return null;
+      return Object.fromEntries(
+        Object.entries(s.orders).filter(([, order]) => order.pairId === pairId),
+      );
+    },
+    { accountAddress },
+    deepEqual,
+  );
 
   const { theme } = useTheme();
   const publicClient = usePublicClient();
   const queryClient = useQueryClient();
-  const { subscriptions, settings } = useApp();
-  const { coins: allCoins } = useConfig();
-  const { base, quote } = coins;
-  const { timeFormat, timeZone } = settings;
+  const { subscriptions } = useConfig();
+  const timeFormat = useApp((state) => state.settings.timeFormat);
+  const timeZone = useApp((state) => state.settings.timeZone);
 
-  const storageKey = `tv_v4.${pairSymbol}_${mode}`;
+  const storageKey = getStorageKey(ticker);
 
   const widgetRef = useRef<TV.IChartingLibraryWidget | null>(null);
+  const readyRef = useRef(false);
+  const tickerRef = useRef(ticker);
+  const storageKeyRef = useRef(storageKey);
+  // The datafeed is created with the widget; this keeps getMarks pointed at the live account.
+  const accountAddressRef = useRef(accountAddress);
+
+  tickerRef.current = ticker;
+
+  useEffect(() => {
+    accountAddressRef.current = accountAddress;
+  }, [accountAddress]);
 
   useEffect(() => {
     try {
@@ -60,27 +76,24 @@ export const TradingView: React.FC<TradingViewProps> = ({ coins, orders, mode = 
     const toolbar_bg = theme === "dark" ? "#2d2c2a" : "#FFFCF6";
     const textColor = theme === "dark" ? "#FFFCF6" : "#2E2521";
 
-    const datafeed = isPerps
-      ? createPerpsDataFeed({
-          client: publicClient,
-          queryClient,
-          subscriptions,
-        })
-      : createTradingViewDataFeed({
-          client: publicClient,
-          queryClient,
-          subscriptions,
-          coins: allCoins.bySymbol,
-        });
+    const datafeed = createPerpsDataFeed({
+      client: publicClient,
+      queryClient,
+      subscriptions,
+      getAccountAddress: () => accountAddressRef.current,
+    });
+    const activeTicker = tickerRef.current;
+    const activeStorageKey = getStorageKey(activeTicker);
+    storageKeyRef.current = activeStorageKey;
 
     const widget = new TV.widget({
       container: "tv-container",
       autosize: true,
-      symbol: pairSymbol,
+      symbol: activeTicker,
       interval: "5" as TV.ResolutionString,
       locale: "en",
-      library_path: "/static/charting_library/",
-      custom_css_url: "/styles/tv-overrides.css",
+      library_path: `/charting_library/${import.meta.env.TV_VERSION}/`,
+      custom_css_url: `${window.location.origin}/styles/tv-overrides.css`,
       theme,
       auto_save_delay: 1,
       datafeed,
@@ -103,7 +116,7 @@ export const TradingView: React.FC<TradingViewProps> = ({ coins, orders, mode = 
         "trading_account_manager",
         "create_volume_indicator_by_default",
       ],
-      saved_data: JSON.parse(localStorage.getItem(storageKey) || "null"),
+      saved_data: JSON.parse(localStorage.getItem(activeStorageKey) || "null"),
       overrides: {
         "mainSeriesProperties.candleStyle.upColor": "#27AE60",
         "mainSeriesProperties.candleStyle.downColor": "#EB5757",
@@ -155,19 +168,24 @@ export const TradingView: React.FC<TradingViewProps> = ({ coins, orders, mode = 
     const saveFn = () =>
       widget.save((state) => {
         try {
-          localStorage.setItem(storageKey, JSON.stringify(state));
+          localStorage.setItem(storageKeyRef.current, JSON.stringify(state));
         } catch {}
       });
 
     const invalidateCandles = () => {
-      widget.resetCache();
-      widget.chart().resetData();
+      if (!widgetRef.current || !readyRef.current) return;
+      try {
+        widgetRef.current.resetCache();
+        widgetRef.current.chart().resetData();
+      } catch {
+        // Iframe not yet same-origin or widget torn down — next getBars will refetch.
+      }
     };
-
-    publicClient.subscribe?.emitter?.addListener("connected", invalidateCandles);
 
     widget.onChartReady(() => {
       widgetRef.current = widget;
+      readyRef.current = true;
+      publicClient.subscribe?.emitter?.on("connected", invalidateCandles);
       const chart = widget.chart();
       const allStudies = chart.getAllStudies();
 
@@ -190,34 +208,74 @@ export const TradingView: React.FC<TradingViewProps> = ({ coins, orders, mode = 
       });
     });
     return () => {
-      publicClient.subscribe?.emitter?.removeListener("connected", invalidateCandles);
-      widgetRef.current?.remove();
+      readyRef.current = false;
+      publicClient.subscribe?.emitter?.off("connected", invalidateCandles);
+      widget.remove();
       widgetRef.current = null;
     };
-  }, [theme, mode]);
+  }, [publicClient, queryClient, subscriptions, theme, timeFormat, timeZone]);
 
   useEffect(() => {
-    if (!widgetRef.current) return;
-    const chart = widgetRef.current.chart();
-    if (chart.symbol() !== pairSymbol) {
-      chart.setSymbol(pairSymbol, () => {});
+    const widget = widgetRef.current;
+    if (!widget) return;
+    const chart = widget.chart();
+
+    const syncMarks = () => {
+      if (accountAddress) chart.refreshMarks();
+      else chart.clearMarks();
+    };
+
+    if (chart.symbol() !== ticker) {
+      const previousStorageKey = storageKeyRef.current;
+      widget.save((state) => {
+        try {
+          localStorage.setItem(previousStorageKey, JSON.stringify(state));
+        } catch {}
+      });
+      storageKeyRef.current = storageKey;
+      chart.setSymbol(ticker, syncMarks);
+      return;
     }
-  }, [coins]);
+
+    storageKeyRef.current = storageKey;
+    syncMarks();
+  }, [accountAddress, storageKey, ticker]);
+
+  useEffect(() => {
+    if (!accountAddress) return;
+
+    let subscribed = true;
+    let refreshQueued = false;
+    const unsubscribe = queryClient.getQueryCache().subscribe((event) => {
+      if (event.type !== "updated" || event.action.type !== "invalidate") return;
+      if (!isPerpsTradeHistoryAccountKey(event.query.queryKey, accountAddress)) return;
+      if (refreshQueued) return;
+
+      refreshQueued = true;
+      queueMicrotask(() => {
+        refreshQueued = false;
+        if (!subscribed) return;
+        widgetRef.current?.chart().refreshMarks();
+      });
+    });
+
+    return () => {
+      subscribed = false;
+      unsubscribe();
+    };
+  }, [accountAddress, queryClient]);
 
   useEffect(() => {
     if (!widgetRef.current) return;
     const chart = widgetRef.current.chart();
 
-    const position = positions[perpsPairId];
-    const lines = isPerps
-      ? [
-          ...(position ? buildPositionLines(position) : []),
-          ...(perpsOrders ? buildPerpsOrderLines(perpsOrders, perpsPairId) : []),
-        ]
-      : buildSpotOrderLines(orders, base, quote);
+    const lines = [
+      ...(position ? buildPositionLines(position) : []),
+      ...(perpsOrders ? buildPerpsOrderLines(perpsOrders, pairId) : []),
+    ];
 
     drawLines(chart, lines);
-  }, [orders, positions, perpsOrders, perpsPairId, isPerps]);
+  }, [position, perpsOrders, pairId]);
 
   return <div id="tv-container" className="w-full lg:min-h-[32.875rem] h-full" />;
 };

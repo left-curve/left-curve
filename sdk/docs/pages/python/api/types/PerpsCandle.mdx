@@ -1,0 +1,44 @@
+# PerpsCandle
+
+One OHLCV candle from the indexer. Keys are camelCase (indexer wire shape).
+
+## Definition
+
+```python
+class PerpsCandle(TypedDict):
+    pairId: str
+    interval: str
+    minBlockHeight: int
+    maxBlockHeight: int
+    open: str
+    high: str
+    low: str
+    close: str
+    volume: str
+    volumeUsd: str
+    timeStart: str
+    timeStartUnix: int
+    timeEnd: str
+    timeEndUnix: int
+```
+
+## Fields
+
+**`pairId`** — `str`.
+
+**`interval`** — `str`. The wire form of `CandleInterval` (e.g. `"ONE_MINUTE"`).
+
+**`open`/`high`/`low`/`close`** — `str`. 6-decimal `BigDecimal` strings.
+
+**`volume`** — `str`. Base-asset volume.
+
+**`volumeUsd`** — `str`. Quote-asset (USD) volume.
+
+**`timeStart`/`timeEnd`** — `str`. ISO-8601 datetime strings.
+
+**`timeStartUnix`/`timeEndUnix`** — `int`. Unix **milliseconds** (despite the `Unix` suffix).
+
+## See also
+
+- [`perps_candles`](../methods/info/perps_candles) — fetcher
+- [`subscribe_perps_candles`](../methods/info/subscribe_perps_candles) — live stream

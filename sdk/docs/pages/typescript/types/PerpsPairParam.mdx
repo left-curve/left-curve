@@ -1,0 +1,45 @@
+# PerpsPairParam
+
+Parameters of a single perps pair.
+
+## Definition
+
+```ts
+type PerpsPairParam = {
+  tickSize: string
+  minOrderSize: string
+  maxAbsOi: string
+  maxAbsFundingRate: string
+  initialMarginRatio: string
+  maintenanceMarginRatio: string
+  impactSize: string
+  vaultLiquidityWeight: string
+  vaultHalfSpread: string
+  vaultMaxQuoteSize: string
+  bucketSizes: string[]
+}
+```
+
+## Fields
+
+**`tickSize`** — minimum price increment.
+
+**`minOrderSize`** — minimum position size.
+
+**`maxAbsOi`** — open-interest cap per side.
+
+**`maxAbsFundingRate`** — cap on absolute funding rate.
+
+**`initialMarginRatio`**, **`maintenanceMarginRatio`** — margin requirements.
+
+**`impactSize`** — size used for impact-price computation.
+
+**`vaultLiquidityWeight`**, **`vaultHalfSpread`**, **`vaultMaxQuoteSize`** — vault market-making params.
+
+**`bucketSizes`** — depth-chart bucket widths.
+
+## See also
+
+- [`getPerpsPairParam`](../actions/perps/getPerpsPairParam)
+- [`getPerpsPairParams`](../actions/perps/getPerpsPairParams)
+- [`PerpsParam`](./PerpsParam)

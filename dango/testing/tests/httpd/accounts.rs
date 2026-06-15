@@ -1,13 +1,17 @@
 use {
-    crate::{
-        Accounts, PaginationDirection, accounts_query, build_actix_app, call_graphql_query,
-        paginate_accounts,
-    },
     assert_json_diff::assert_json_eq,
     assertor::*,
+    dango_app::Indexer,
+    dango_indexer_graphql_types::{QueryApp, SubscribeAccounts, query_app, subscribe_accounts},
+    dango_primitives::{
+        Addressable, Coin, Coins, Inner, Json, JsonDeExt, JsonSerExt, QuerierExt, Query,
+        QueryBalanceRequest, QueryResponse, QueryWasmSmartRequest, ResultExt,
+    },
     dango_testing::{
-        HyperlaneTestSuite, TestOption, add_account_with_existing_user, create_user_and_account,
-        setup_test_with_indexer,
+        Accounts, GraphQLCustomRequest, HyperlaneTestSuite, PaginationDirection, TestOption,
+        accounts_query, add_account_with_existing_user, build_app_service,
+        call_graphql_query_with_context, call_ws_graphql_stream, create_user_and_account,
+        paginate_accounts, parse_graphql_subscription_response, setup_test_with_indexer,
     },
     dango_types::{
         account::{QueryMsg, QuerySeenNoncesRequest},
@@ -15,16 +19,6 @@ use {
         constants::dango,
     },
     graphql_client::GraphQLQuery,
-    grug::{
-        Addressable, Coin, Coins, Inner, Json, JsonDeExt, QuerierExt, Query, QueryBalanceRequest,
-        QueryResponse, ResultExt,
-    },
-    grug_app::Indexer,
-    grug_types::{JsonSerExt, QueryWasmSmartRequest},
-    indexer_graphql_types::{QueryApp, SubscribeAccounts, query_app, subscribe_accounts},
-    indexer_testing::{
-        GraphQLCustomRequest, call_ws_graphql_stream, parse_graphql_subscription_response,
-    },
     std::collections::BTreeSet,
     tokio::{sync::mpsc, time::sleep},
 };
@@ -37,8 +31,8 @@ async fn query_accounts() -> anyhow::Result<()> {
         codes,
         contracts,
         validator_sets,
-        _,
         dango_httpd_context,
+        _,
         _,
         _db_guard,
     ) = setup_test_with_indexer(TestOption::default()).await;
@@ -54,7 +48,7 @@ async fn query_accounts() -> anyhow::Result<()> {
     local_set
         .run_until(async {
             tokio::task::spawn_local(async move {
-                let response = call_graphql_query::<_, accounts_query::ResponseData>(
+                let response = call_graphql_query_with_context::<_, accounts_query::ResponseData>(
                     dango_httpd_context,
                     Accounts::build_query(accounts_query::Variables::default()),
                 )
@@ -84,8 +78,8 @@ async fn query_accounts_with_user_index() -> anyhow::Result<()> {
         codes,
         contracts,
         validator_sets,
-        _,
         dango_httpd_context,
+        _,
         _,
         _db_guard,
     ) = setup_test_with_indexer(TestOption::default()).await;
@@ -105,7 +99,7 @@ async fn query_accounts_with_user_index() -> anyhow::Result<()> {
                     ..Default::default()
                 };
 
-                let response = call_graphql_query::<_, accounts_query::ResponseData>(
+                let response = call_graphql_query_with_context::<_, accounts_query::ResponseData>(
                     dango_httpd_context,
                     Accounts::build_query(variables),
                 )
@@ -136,8 +130,8 @@ async fn query_accounts_with_wrong_user_index() -> anyhow::Result<()> {
         codes,
         contracts,
         validator_sets,
-        _,
         dango_httpd_context,
+        _,
         _,
         _db_guard,
     ) = setup_test_with_indexer(TestOption::default()).await;
@@ -157,7 +151,7 @@ async fn query_accounts_with_wrong_user_index() -> anyhow::Result<()> {
                     ..Default::default()
                 };
 
-                let response = call_graphql_query::<_, accounts_query::ResponseData>(
+                let response = call_graphql_query_with_context::<_, accounts_query::ResponseData>(
                     dango_httpd_context,
                     Accounts::build_query(variables),
                 )
@@ -184,8 +178,8 @@ async fn query_user_multiple_single_signature_accounts() -> anyhow::Result<()> {
         codes,
         contracts,
         validator_sets,
-        _,
         dango_httpd_context,
+        _,
         _,
         _db_guard,
     ) = setup_test_with_indexer(TestOption::default()).await;
@@ -213,11 +207,12 @@ async fn query_user_multiple_single_signature_accounts() -> anyhow::Result<()> {
 
                 // Trying to figure out a bug
                 for _ in 0..10 {
-                    let response = call_graphql_query::<_, accounts_query::ResponseData>(
-                        dango_httpd_context.clone(),
-                        Accounts::build_query(variables.clone()),
-                    )
-                    .await?;
+                    let response =
+                        call_graphql_query_with_context::<_, accounts_query::ResponseData>(
+                            dango_httpd_context.clone(),
+                            Accounts::build_query(variables.clone()),
+                        )
+                        .await?;
 
                     let data = response.data.unwrap();
 
@@ -233,7 +228,7 @@ async fn query_user_multiple_single_signature_accounts() -> anyhow::Result<()> {
                     sleep(std::time::Duration::from_millis(1000)).await;
                 }
 
-                let response = call_graphql_query::<_, accounts_query::ResponseData>(
+                let response = call_graphql_query_with_context::<_, accounts_query::ResponseData>(
                     dango_httpd_context,
                     Accounts::build_query(variables),
                 )
@@ -274,8 +269,8 @@ async fn graphql_paginate_accounts() -> anyhow::Result<()> {
         codes,
         contracts,
         validator_sets,
-        _,
         dango_httpd_context,
+        _,
         _,
         _db_guard,
     ) = setup_test_with_indexer(TestOption::default()).await;
@@ -388,8 +383,8 @@ async fn graphql_subscribe_to_accounts() -> anyhow::Result<()> {
         codes,
         contracts,
         validator_sets,
-        _,
         dango_httpd_context,
+        _,
         _,
         _db_guard,
     ) = setup_test_with_indexer(TestOption::default()).await;
@@ -423,7 +418,7 @@ async fn graphql_subscribe_to_accounts() -> anyhow::Result<()> {
             tokio::task::spawn_local(async move {
                 let name = request_body.name;
                 let (_srv, _ws, mut framed) =
-                    call_ws_graphql_stream(dango_httpd_context, build_actix_app, request_body)
+                    call_ws_graphql_stream(dango_httpd_context, build_app_service, request_body)
                         .await?;
 
                 // 1st response - parse as typed subscription response
@@ -473,8 +468,8 @@ async fn graphql_subscribe_to_accounts_with_user_index() -> anyhow::Result<()> {
         codes,
         contracts,
         validator_sets,
-        _,
         dango_httpd_context,
+        _,
         _,
         _db_guard,
     ) = setup_test_with_indexer(TestOption::default()).await;
@@ -520,7 +515,7 @@ async fn graphql_subscribe_to_accounts_with_user_index() -> anyhow::Result<()> {
         .run_until(async {
             tokio::task::spawn_local(async move {
                 let (_srv, _ws, mut framed) =
-                    call_ws_graphql_stream(dango_httpd_context, build_actix_app, request_body)
+                    call_ws_graphql_stream(dango_httpd_context, build_app_service, request_body)
                         .await?;
 
                 // 1st response is always accounts from the last block if any
@@ -552,7 +547,7 @@ async fn graphql_subscribe_to_accounts_with_user_index() -> anyhow::Result<()> {
 
 #[tokio::test(flavor = "multi_thread")]
 async fn graphql_returns_account_owner_nonces() -> anyhow::Result<()> {
-    let (mut suite, mut accounts, _, _, _, _, dango_httpd_context, _, _db_guard) =
+    let (mut suite, mut accounts, _, _, _, dango_httpd_context, _, _, _db_guard) =
         setup_test_with_indexer(TestOption::default()).await;
 
     // copied from `tracked_nonces_works``
@@ -573,7 +568,7 @@ async fn graphql_returns_account_owner_nonces() -> anyhow::Result<()> {
         .query_wasm_smart(accounts.owner.address(), QuerySeenNoncesRequest {})
         .should_succeed_and_equal((0..20).collect());
 
-    let body_request = grug_types::Query::WasmSmart(QueryWasmSmartRequest {
+    let body_request = dango_primitives::Query::WasmSmart(QueryWasmSmartRequest {
         contract: accounts.owner.address(),
         msg: (QueryMsg::SeenNonces {}).to_json_value()?,
     })
@@ -589,7 +584,7 @@ async fn graphql_returns_account_owner_nonces() -> anyhow::Result<()> {
                     ..Default::default()
                 };
 
-                let response = call_graphql_query::<_, query_app::ResponseData>(
+                let response = call_graphql_query_with_context::<_, query_app::ResponseData>(
                     dango_httpd_context,
                     QueryApp::build_query(variables),
                 )
@@ -613,7 +608,7 @@ async fn graphql_returns_account_owner_nonces() -> anyhow::Result<()> {
 
 #[tokio::test(flavor = "multi_thread")]
 async fn graphql_returns_address_balance() -> anyhow::Result<()> {
-    let (mut suite, mut accounts, _, _, _, _, dango_httpd_context, _, _db_guard) =
+    let (mut suite, mut accounts, _, _, _, dango_httpd_context, _, _, _db_guard) =
         setup_test_with_indexer(TestOption::default()).await;
 
     // copied from `tracked_nonces_works``
@@ -640,7 +635,7 @@ async fn graphql_returns_address_balance() -> anyhow::Result<()> {
 
     suite.app.indexer.wait_for_finish().await?;
 
-    let body_request = grug_types::Query::Balance(QueryBalanceRequest {
+    let body_request = dango_primitives::Query::Balance(QueryBalanceRequest {
         address: accounts.user1.address(),
         denom: dango::DENOM.clone(),
     })
@@ -656,7 +651,7 @@ async fn graphql_returns_address_balance() -> anyhow::Result<()> {
                     ..Default::default()
                 };
 
-                let response = call_graphql_query::<_, query_app::ResponseData>(
+                let response = call_graphql_query_with_context::<_, query_app::ResponseData>(
                     dango_httpd_context,
                     QueryApp::build_query(variables),
                 )

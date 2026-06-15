@@ -1,8 +1,11 @@
-import type { Client, Prettify, Transport } from "@left-curve/sdk/types";
+import type {
+  Client,
+  GraphqlPagination,
+  GraphqlQueryResult,
+  IndexedTransaction,
+  Prettify,
+} from "@left-curve/types";
 import { queryIndexer } from "./queryIndexer.js";
-
-import type { GraphqlPagination, GraphqlQueryResult } from "../../types/graphql.js";
-import type { IndexedTransaction } from "../../types/indexer.js";
 
 export type SearchTxsParameters = Prettify<
   GraphqlPagination & {
@@ -13,8 +16,8 @@ export type SearchTxsParameters = Prettify<
 
 export type SearchTxsReturnType = Promise<GraphqlQueryResult<IndexedTransaction>>;
 
-export async function searchTxs<transport extends Transport>(
-  client: Client<transport>,
+export async function searchTxs(
+  client: Client,
   parameters: SearchTxsParameters,
 ): SearchTxsReturnType {
   const document = /* GraphQL */ `

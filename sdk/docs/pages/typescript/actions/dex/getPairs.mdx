@@ -1,0 +1,47 @@
+# getPairs
+
+Enumerate all trading pairs and their parameters, paginated.
+
+:::warning[DEX currently disabled]
+The Dango DEX is currently disabled. Calls described on this page will not execute on the live network until the DEX is enabled.
+:::
+
+
+## Signature
+
+```ts
+function getPairs(
+  client: Client,
+  parameters?: {
+    limit?: number
+    startAfter?: PairId
+    height?: number
+  },
+): Promise<PairUpdate[]>
+```
+
+## Example
+
+```ts
+import { createPublicClient, createTransport, testnet } from "@left-curve/sdk"
+
+const client = createPublicClient({ chain: testnet, transport: createTransport() })
+const pairs = await client.getPairs({ limit: 50 })
+```
+
+## Parameters
+
+**`limit`** — `number`, optional. Maximum pairs to return.
+
+**`startAfter`** — `PairId`, optional. `{ baseDenom, quoteDenom }` to start after.
+
+**`height`** — `number`, optional. Block height. Default `0` (latest).
+
+## Returns
+
+**`PairUpdate[]`** — array of `{ baseDenom, quoteDenom, params }`.
+
+## See also
+
+- [`getPair`](./getPair)
+- [`getAllPairStats`](./getAllPairStats)

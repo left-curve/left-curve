@@ -1,0 +1,50 @@
+# simulate
+
+Dry-run an unsigned transaction against the latest committed state and return its outcome.
+
+## Signature
+
+```rust
+async fn simulate(&self, tx: UnsignedTx) -> Result<TxOutcome, anyhow::Error>;
+```
+
+From `impl QueryClient for HttpClient`. `UnsignedTx` and `TxOutcome` are re-exported by the SDK.
+
+## Example
+
+```rust
+use {
+    anyhow::Result,
+    dango_sdk::{HttpClient, SingleSigner},
+    dango_primitives::{NonEmpty, QueryClient, Signer},
+};
+
+async fn estimate_gas(
+    http: &HttpClient,
+    signer: &SingleSigner<impl dango_sdk::Secret>,
+    messages: NonEmpty<Vec<dango_primitives::Message>>,
+) -> Result<u64> {
+    let unsigned = signer.unsigned_transaction(messages, "dango-1")?;
+    let outcome  = http.simulate(unsigned).await?;
+    Ok(outcome.gas_used as u64)
+}
+```
+
+## Parameters
+
+**`tx`** — `UnsignedTx`. The transaction body (sender, messages, metadata) without a signature.
+
+## Returns
+
+**`TxOutcome`** — the simulated outcome, including `gas_used`, `gas_limit`, the success/failure result, and emitted events.
+
+## Notes
+
+- Simulation runs without consuming nonce or gas on chain. Authentication is skipped.
+- Apply your own gas buffer — the report is actual usage, not a recommended limit.
+- Builds `UnsignedTx` via `Signer::unsigned_transaction` to keep the `sender` and metadata consistent with what `sign_transaction` will produce.
+
+## See also
+
+- [`broadcast_tx`](./broadcast_tx) — submit a signed version.
+- [Concepts: Transactions](../../../concepts/transactions) — full sign-and-broadcast flow.

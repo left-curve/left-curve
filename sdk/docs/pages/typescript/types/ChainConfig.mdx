@@ -1,0 +1,45 @@
+# ChainConfig
+
+The chain-level configuration: owner, system contracts, permissions, cronjobs.
+
+## Definition
+
+```ts
+type ChainConfig = {
+  owner: Address
+  bank: Address
+  taxman: Address
+  cronjobs: Record<Address, Duration>
+  permissions: {
+    upload: Permission
+    instantiate: Permission
+  }
+  maxOrphanAge: Duration
+}
+
+type Permission =
+  | "everybody"
+  | "nobody"
+  | { somebodies: Address[] }
+```
+
+## Fields
+
+**`owner`** — `Address`. Account that can update this config.
+
+**`bank`** — `Address`. Bank contract (token transfers).
+
+**`taxman`** — `Address`. Fee handler contract.
+
+**`cronjobs`** — map of contract address to interval (in seconds).
+
+**`permissions.upload`** — who can `storeCode`.
+
+**`permissions.instantiate`** — who can `instantiate`.
+
+**`maxOrphanAge`** — `Duration` (seconds). Orphaned codes are deleted after this age.
+
+## See also
+
+- [`AppConfig`](./AppConfig)
+- [`configure`](../actions/app/configure)

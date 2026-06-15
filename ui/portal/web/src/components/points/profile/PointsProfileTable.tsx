@@ -9,7 +9,7 @@ import {
   Table,
   useApp,
 } from "@left-curve/applets-kit";
-import { formatNumber } from "@left-curve/dango/utils";
+import { formatNumber } from "@left-curve/utils";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 import { useAccount, useEpochPoints } from "@left-curve/store";
 import { useNavigate } from "@tanstack/react-router";
@@ -215,6 +215,7 @@ export const PointsProfileTable: React.FC = () => {
       }
       classNames={{
         base: "p-0 p-4 bg-surface-primary-gray",
+        header: "px-6",
         cell: "px-6 py-4",
         row: "border-b border-outline-secondary-gray last:border-b-0",
       }}

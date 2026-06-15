@@ -1,0 +1,55 @@
+# paginate_all
+
+Yield every node across all forward-paginated pages.
+
+## Signature
+
+```python
+def paginate_all[T](
+    fetch_page: Callable[[str | None, int], Connection[T]],
+    *,
+    page_size: int = 100,
+) -> Iterator[T]
+```
+
+## Example
+
+```python
+from dango.info import Info, paginate_all
+from dango.utils.constants import MAINNET_API_URL
+from dango.utils.types import CandleInterval, PairId
+
+info = Info(MAINNET_API_URL, skip_ws=True)
+
+candles = paginate_all(
+    lambda after, first: info.perps_candles(
+        PairId("perp/ethusd"),
+        CandleInterval.ONE_MINUTE,
+        first=first,
+        after=after,
+    ),
+    page_size=200,
+)
+for candle in candles:
+    print(candle["timeStart"])
+```
+
+## Parameters
+
+**`fetch_page`** — `Callable[[str | None, int], Connection[T]]`. A function that takes `(after_cursor, page_size)` and returns a `Connection[T]`. Match the signature of [`perps_events`](../methods/info/perps_events) / [`perps_candles`](../methods/info/perps_candles).
+
+**`page_size`** — `int`, optional. Number of nodes per request. Default: `100`.
+
+## Returns
+
+**`Iterator[T]`** — yields every node across all pages, in cursor order.
+
+## Notes
+
+- Forward-only. Walks via `after`/`first`; backward (`last`/`before`) pagination is intentionally out of scope.
+- Stops when the server reports `has_next_page=false` OR `end_cursor=null`. The latter guard prevents an infinite loop against a non-conforming server.
+
+## See also
+
+- [`perps_events_all`](../methods/info/perps_events_all) — pre-wired walker for the events stream
+- [`Connection`](../types/Connection) — the page shape

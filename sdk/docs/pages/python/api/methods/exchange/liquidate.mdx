@@ -1,0 +1,45 @@
+# liquidate
+
+Force-close an underwater user's positions. Permissionless — anyone can call.
+
+The contract closes the minimum set of positions needed to restore
+`equity ≥ MM × (1 + liquidation_buffer_ratio)`, starting with the largest MM
+contributors. Closure runs against the order book first; any unfilled
+remainder is auto-deleveraged (ADL) against the most profitable counter-
+parties at the liquidated user's bankruptcy price. Liquidation fills (book
+and ADL) carry zero trading fees; the liquidation fee goes to the insurance
+fund, not the vault. See protocol book: `perps/4-liquidation-and-adl`.
+
+## Signature
+
+```python
+def liquidate(self, user: Addr) -> dict[str, Any]
+```
+
+## Example
+
+```python
+from dango.exchange import Exchange
+from dango.utils.types import Addr
+
+exchange = Exchange(wallet, base_url, account_address=Addr("0x..."))
+
+exchange.liquidate(Addr("0xunderwater"))
+```
+
+## Parameters
+
+**`user`** — `Addr`. The target trader's account address. The contract checks whether the target is actually liquidatable based on equity vs. maintenance margin; non-liquidatable targets are rejected by the chain.
+
+## Returns
+
+**`dict[str, Any]`** — the BroadcastTxOutcome envelope.
+
+## Notes
+
+- No client-side validation: the chain's liquidatable-or-not check is authoritative.
+- The contract handler at `dango/exchange/perps/src/maintain/liquidate.rs` does NOT check the caller's identity — any signer can submit this message for any trader.
+
+## See also
+
+- [`user_state_extended`](../info/user_state_extended) — read equity / maintenance margin / liquidation price to find candidates

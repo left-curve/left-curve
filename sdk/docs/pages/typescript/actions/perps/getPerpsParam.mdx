@@ -1,0 +1,41 @@
+# getPerpsParam
+
+Read the global perps parameters: max unlocks, max open orders, fee schedules, funding period, vault config.
+
+These chain-wide knobs include the volume-tiered `makerFeeRates` /
+`takerFeeRates`, `protocolFeeRate` (treasury cut), `liquidationFeeRate` and
+`liquidationBufferRatio`, the global `fundingPeriod`, vault settings
+(`vaultCooldownPeriod`, `vaultTotalWeight`, `vaultDepositCap`), and the
+referral master switch (`referralActive`, `minReferrerVolume`,
+`referrerCommissionRates`). Per-pair fields live in `getPerpsPairParam`.
+
+## Signature
+
+```ts
+function getPerpsParam(
+  client: Client,
+  parameters?: { height?: number },
+): Promise<PerpsParam>
+```
+
+## Example
+
+```ts
+import { createPublicClient, createTransport, testnet } from "@left-curve/sdk"
+
+const client = createPublicClient({ chain: testnet, transport: createTransport() })
+const param = await client.getPerpsParam()
+```
+
+## Parameters
+
+**`height`** — `number`, optional. Block height. Default `0` (latest).
+
+## Returns
+
+**`PerpsParam`** — `{ maxUnlocks, maxOpenOrders, makerFeeRates, takerFeeRates, fundingPeriod, vaultTotalWeight, referralActive, ... }`.
+
+## See also
+
+- [`getPerpsState`](./getPerpsState) — runtime state
+- [`getPerpsPairParams`](./getPerpsPairParams)

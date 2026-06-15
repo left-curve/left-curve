@@ -4,20 +4,17 @@ import { useAccount } from "./useAccount.js";
 import { useStorage } from "./useStorage.js";
 import { useQueryClient } from "@tanstack/react-query";
 
-import { snakeToCamel, uid } from "@left-curve/dango/utils";
+import { uid } from "@left-curve/utils";
 
 import type {
   Address,
   Coins,
   Hex,
-  OrderCanceledEvent,
-  OrderCreatedEvent,
-  OrderFilledEvent,
   OrderFilledData,
   LiquidatedData,
   DeleveragedData,
   UID,
-} from "@left-curve/dango/types";
+} from "@left-curve/types";
 import { useBalances } from "./useBalances.js";
 
 export type Activities = {
@@ -31,9 +28,6 @@ export type Activities = {
     address: Address;
     accountIndex: number;
   };
-  orderCreated: OrderCreatedEvent;
-  orderCanceled: OrderCanceledEvent;
-  orderFilled: OrderFilledEvent;
   perpOrderFilled: OrderFilledData;
   perpLiquidated: LiquidatedData;
   perpDeleveraged: DeleveragedData;
@@ -194,23 +188,13 @@ export function useActivities() {
                 return { data: details, type: "transfer" as const };
               }
               case "order_filled": {
-                queryClient.invalidateQueries({ queryKey: ["ordersByUser", account?.address] });
-                queryClient.invalidateQueries({ queryKey: ["tradeHistory", account?.address] });
-                refetchBalances();
-                const isPerps = "pair_id" in (data as Record<string, unknown>);
-                return {
-                  data: data as Activities[keyof Activities],
-                  type: (isPerps ? "perpOrderFilled" : "orderFilled") as keyof Activities,
-                };
-              }
-              case "order_created":
-              case "order_canceled": {
-                queryClient.invalidateQueries({ queryKey: ["ordersByUser", account?.address] });
-                queryClient.invalidateQueries({ queryKey: ["tradeHistory", account?.address] });
+                queryClient.invalidateQueries({
+                  queryKey: ["perpsTradeHistory", account?.address],
+                });
                 refetchBalances();
                 return {
-                  data: data as Activities[keyof Activities],
-                  type: snakeToCamel(type) as keyof Activities,
+                  data: data as Activities["perpOrderFilled"],
+                  type: "perpOrderFilled" as const,
                 };
               }
               case "liquidated": {

@@ -4,7 +4,6 @@
     "app_config": {
       "addresses": {
         "account_factory": "0x18d28bafcdf9d4574f920ea004dea2d13ec16f6b",
-        "dex": "0xda32476efe31e535207f0ad690d337a4ebf54a22",
         "gateway": "0xc51e2cbe9636a90c86463ac3eb18fbee92b700d1",
         "hyperlane": {
           "ism": "0xdc68d6c82f5e4386294e7fda27317ab6ae8ff54c",
@@ -16,16 +15,14 @@
         "taxman": "0xda70a9c1417aee00f960fe896add9d571f9c365b",
         "warp": "0x981e6817442143ce5128992c7ab4a317321f00e9"
       },
-      "maker_fee_rate": "0.0025",
-      "minimum_deposit": {},
-      "taker_fee_rate": "0.004"
+      "minimum_deposit": {}
     },
     "config": {
       "bank": "0xe0b49f70991ecab05d5d7dc1f71e4ede63c8f2b7",
       "cronjobs": {
+        "0xcedc5f73cbb963a48471b849c3650e6e34cd3b6d": "60",
         "0xc51e2cbe9636a90c86463ac3eb18fbee92b700d1": "86400",
-        "0xd04b99adca5d3d31a1e7bc72fd606202f1e2fc69": "60",
-        "0xda32476efe31e535207f0ad690d337a4ebf54a22": "0"
+        "0xd04b99adca5d3d31a1e7bc72fd606202f1e2fc69": "60"
       },
       "max_orphan_age": "604800",
       "owner": "0xc4a8f7bbadd1457092a8cd182480230c0a848331",
@@ -53,11 +50,6 @@
       {
         "upload": {
           "code": "AwAAAAAAAAA="
-        }
-      },
-      {
-        "upload": {
-          "code": "BAAAAAAAAAA="
         }
       },
       {
@@ -283,110 +275,6 @@
             "mailbox": "0x974e57564ed3ed7d8f99d0c359fd03f3d78259c7"
           },
           "salt": "aHlwZXJsYW5lL3Zh"
-        }
-      },
-      {
-        "instantiate": {
-          "admin": "0xc4a8f7bbadd1457092a8cd182480230c0a848331",
-          "code_hash": "F0A0278E4372459CCA6159CD5E71CFEE638302A7B9CA9B05C34181AC0A65AC5D",
-          "funds": {},
-          "label": "dango/dex",
-          "msg": {
-            "pairs": [
-              {
-                "base_denom": "dango",
-                "params": {
-                  "bucket_sizes": [],
-                  "lp_denom": "dex/pool/dango/usdc",
-                  "min_order_size_base": "0",
-                  "min_order_size_quote": "0",
-                  "pool_type": {
-                    "geometric": {
-                      "limit": 1,
-                      "ratio": "1",
-                      "spacing": "0.0001"
-                    }
-                  },
-                  "swap_fee_rate": "0.0001"
-                },
-                "quote_denom": "bridge/usdc"
-              },
-              {
-                "base_denom": "bridge/btc",
-                "params": {
-                  "bucket_sizes": [
-                    "0.0001",
-                    "0.001",
-                    "0.01",
-                    "0.1",
-                    "0.5",
-                    "1"
-                  ],
-                  "lp_denom": "dex/pool/btc/usdc",
-                  "min_order_size_base": "0",
-                  "min_order_size_quote": "0",
-                  "pool_type": {
-                    "geometric": {
-                      "limit": 1,
-                      "ratio": "1",
-                      "spacing": "0.0001"
-                    }
-                  },
-                  "swap_fee_rate": "0.0001"
-                },
-                "quote_denom": "bridge/usdc"
-              },
-              {
-                "base_denom": "bridge/eth",
-                "params": {
-                  "bucket_sizes": [
-                    "0.00000000000001",
-                    "0.0000000000001",
-                    "0.000000000001",
-                    "0.00000000001",
-                    "0.00000000005",
-                    "0.0000000001"
-                  ],
-                  "lp_denom": "dex/pool/eth/usdc",
-                  "min_order_size_base": "0",
-                  "min_order_size_quote": "0",
-                  "pool_type": {
-                    "geometric": {
-                      "limit": 1,
-                      "ratio": "1",
-                      "spacing": "0.0001"
-                    }
-                  },
-                  "swap_fee_rate": "0.0001"
-                },
-                "quote_denom": "bridge/usdc"
-              },
-              {
-                "base_denom": "bridge/sol",
-                "params": {
-                  "bucket_sizes": [
-                    "0.00001",
-                    "0.0001",
-                    "0.001",
-                    "0.01"
-                  ],
-                  "lp_denom": "dex/pool/sol/usdc",
-                  "min_order_size_base": "0",
-                  "min_order_size_quote": "0",
-                  "pool_type": {
-                    "geometric": {
-                      "limit": 1,
-                      "ratio": "1",
-                      "spacing": "0.0001"
-                    }
-                  },
-                  "swap_fee_rate": "0.0001"
-                },
-                "quote_denom": "bridge/usdc"
-              }
-            ]
-          },
-          "salt": "ZGFuZ28vZGV4"
         }
       },
       {
@@ -747,8 +635,7 @@
               }
             },
             "namespaces": {
-              "bridge": "0xc51e2cbe9636a90c86463ac3eb18fbee92b700d1",
-              "dex": "0xda32476efe31e535207f0ad690d337a4ebf54a22"
+              "bridge": "0xc51e2cbe9636a90c86463ac3eb18fbee92b700d1"
             }
           },
           "salt": "ZGFuZ28vYmFuaw=="
@@ -778,87 +665,75 @@
           "msg": {
             "price_sources": {
               "bridge/atom": {
-                "pyth": {
+                "single": {
                   "channel": "fixed_rate@200ms",
-                  "id": 44,
-                  "precision": 6
+                  "id": 44
                 }
               },
               "bridge/bch": {
-                "pyth": {
+                "single": {
                   "channel": "fixed_rate@200ms",
-                  "id": 24,
-                  "precision": 8
+                  "id": 24
                 }
               },
               "bridge/bnb": {
-                "pyth": {
+                "single": {
                   "channel": "fixed_rate@200ms",
-                  "id": 15,
-                  "precision": 18
+                  "id": 15
                 }
               },
               "bridge/btc": {
-                "pyth": {
+                "single": {
                   "channel": "real_time",
-                  "id": 1,
-                  "precision": 8
+                  "id": 1
                 }
               },
               "bridge/doge": {
-                "pyth": {
+                "single": {
                   "channel": "fixed_rate@200ms",
-                  "id": 13,
-                  "precision": 8
+                  "id": 13
                 }
               },
               "bridge/eth": {
-                "pyth": {
+                "single": {
                   "channel": "real_time",
-                  "id": 2,
-                  "precision": 18
+                  "id": 2
                 }
               },
               "bridge/ltc": {
-                "pyth": {
+                "single": {
                   "channel": "fixed_rate@200ms",
-                  "id": 26,
-                  "precision": 8
+                  "id": 26
                 }
               },
               "bridge/sol": {
-                "pyth": {
+                "single": {
                   "channel": "real_time",
-                  "id": 6,
-                  "precision": 9
+                  "id": 6
                 }
               },
               "bridge/usdc": {
-                "pyth": {
+                "single": {
                   "channel": "real_time",
-                  "id": 7,
-                  "precision": 6
+                  "id": 7
                 }
               },
               "bridge/xrp": {
-                "pyth": {
+                "single": {
                   "channel": "fixed_rate@200ms",
-                  "id": 14,
-                  "precision": 6
+                  "id": 14
                 }
               },
               "perp/btcusd": {
-                "pyth": {
+                "single": {
                   "channel": "real_time",
-                  "id": 1,
-                  "precision": 8
+                  "id": 1
                 }
               },
               "perp/ethusd": {
-                "pyth": {
+                "single": {
                   "channel": "real_time",
-                  "id": 2,
-                  "precision": 18
+                  "id": 2
                 }
               }
             },

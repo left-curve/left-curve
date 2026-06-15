@@ -1,0 +1,29 @@
+# query_status
+
+Chain ID and latest block info.
+
+## Signature
+
+```python
+def query_status(self) -> dict[str, Any]
+```
+
+## Example
+
+```python
+from dango.info import Info
+from dango.utils.constants import MAINNET_API_URL
+
+info = Info(MAINNET_API_URL, skip_ws=True)
+status = info.query_status()
+print(status["chainId"], status["block"]["blockHeight"])
+```
+
+## Returns
+
+**`dict[str, Any]`** — `{chainId, block: {blockHeight, hash, ...}, ...}` from the indexer's `queryStatus` field. Shape follows the GraphQL schema.
+
+## See also
+
+- [`simulate`](./simulate) — uses the chain ID resolved here
+- [`Exchange`](../../classes/Exchange) — auto-fetches chain ID via `query_status` at construction

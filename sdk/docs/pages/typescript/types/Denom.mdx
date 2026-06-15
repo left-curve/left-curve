@@ -1,0 +1,29 @@
+# Denom
+
+A token denomination — a chain-unique string identifier.
+
+## Definition
+
+```ts
+type Denom = string
+```
+
+## Construction
+
+```ts
+import type { Denom } from "@left-curve/sdk"
+
+const dango: Denom = "dango"
+const usdc: Denom = "bridge/usdc"
+const lp: Denom = "lp/dango/bridge_usdc"
+```
+
+## Notes
+
+- Denoms are free-form strings. By convention, system tokens are short (`"dango"`), bridged tokens use the `bridge/` prefix, and LP tokens use `lp/{base}/{quote}` with the slash in the quote denom replaced by an underscore.
+- Use the branded type to keep denoms and addresses distinct at compile time.
+
+## See also
+
+- [`Coin`](./Coin)
+- [`Coins`](./Coins)

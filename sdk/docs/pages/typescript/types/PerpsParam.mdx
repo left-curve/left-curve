@@ -1,0 +1,40 @@
+# PerpsParam
+
+Global perps parameters.
+
+## Definition
+
+```ts
+type PerpsParam = {
+  maxUnlocks: number
+  maxOpenOrders: number
+  maxActionBatchSize: number
+  liquidationBufferRatio: string
+  makerFeeRates: RateSchedule
+  takerFeeRates: RateSchedule
+  protocolFeeRate: string
+  liquidationFeeRate: string
+  fundingPeriod: number
+  vaultTotalWeight: string
+  vaultCooldownPeriod: number
+  referralActive: boolean
+  minReferrerVolume: string
+  referrerCommissionRates: RateSchedule
+  vaultDepositCap: string | null
+}
+
+type RateSchedule = {
+  base: string
+  tiers: Record<string, string>
+}
+```
+
+## Notes
+
+- `RateSchedule` has a base rate plus volume-tier overrides keyed by min-volume thresholds.
+- `vaultCooldownPeriod` is in seconds.
+
+## See also
+
+- [`getPerpsParam`](../actions/perps/getPerpsParam)
+- [`PerpsPairParam`](./PerpsPairParam)

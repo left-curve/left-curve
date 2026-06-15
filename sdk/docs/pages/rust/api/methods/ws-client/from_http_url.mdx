@@ -1,0 +1,41 @@
+# WsClient::from_http_url
+
+Construct a `WsClient` from an HTTP URL, rewriting the scheme.
+
+## Signature
+
+```rust
+pub fn from_http_url(url: impl Into<String>) -> Result<Self, anyhow::Error>;
+```
+
+## Example
+
+```rust
+use {anyhow::Result, dango_sdk::WsClient};
+
+fn main() -> Result<()> {
+    // https:// -> wss://
+    let prod = WsClient::from_http_url("https://api-mainnet.dango.zone/graphql")?;
+    // http://  -> ws://
+    let dev  = WsClient::from_http_url("http://localhost:8080/graphql")?;
+    let _ = (prod, dev);
+    Ok(())
+}
+```
+
+## Parameters
+
+**`url`** — `impl Into<String>`. An `http://`, `https://`, `ws://`, or `wss://` URL.
+
+## Returns
+
+**`WsClient`** — same as [`new`](./new), but with HTTP schemes rewritten.
+
+## Notes
+
+- `http://` → `ws://`, `https://` → `wss://`. WebSocket schemes pass through unchanged.
+- Any other scheme errors with `Invalid URL scheme: …`.
+
+## See also
+
+- [`new`](./new) — accept WebSocket schemes directly.

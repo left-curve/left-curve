@@ -49,7 +49,7 @@
   template:
     src: "{{ item }}"
     dest: "{{ traefik_dir }}/config/"
-  loop: ["certs.yml", "quest.yml"]
+  loop: ["certs.yml"]
 
 - name: Generate templates for letsencrypt
   template:

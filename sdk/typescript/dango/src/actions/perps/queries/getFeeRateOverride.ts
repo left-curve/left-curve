@@ -1,10 +1,7 @@
-import { queryWasmSmart } from "@left-curve/sdk";
-import type { Client, Prettify, Transport } from "@left-curve/sdk/types";
+import { queryWasmSmart } from "#actions/app/queries/queryWasmSmart.js";
+import type { Client, FeeRateOverride, GetPerpsQueryMsg, Prettify } from "@left-curve/types";
 
-import { getAction, getAppConfig } from "@left-curve/sdk/actions";
-import type { Chain, Signer } from "@left-curve/sdk/types";
-import type { AppConfig } from "../../../types/app.js";
-import type { FeeRateOverride, GetPerpsQueryMsg } from "../../../types/perps.js";
+import { getAppConfig } from "#actions/app/queries/getAppConfig.js";
 
 type ActionMsg = GetPerpsQueryMsg<"feeRateOverride">;
 
@@ -14,16 +11,11 @@ export type GetFeeRateOverrideParameters = Prettify<
 
 export type GetFeeRateOverrideReturnType = Promise<FeeRateOverride | null>;
 
-export async function getFeeRateOverride<
-  chain extends Chain | undefined,
-  signer extends Signer | undefined,
->(
-  client: Client<Transport, chain, signer>,
+export async function getFeeRateOverride(
+  client: Client,
   parameters: GetFeeRateOverrideParameters,
 ): GetFeeRateOverrideReturnType {
   const { height = 0, ...queryMsg } = parameters;
-
-  const action = getAction(client, getAppConfig, "getAppConfig");
 
   const msg: ActionMsg = {
     feeRateOverride: {
@@ -31,7 +23,7 @@ export async function getFeeRateOverride<
     },
   };
 
-  const { addresses } = await action<AppConfig>({});
+  const { addresses } = await getAppConfig(client);
 
   const result = (await queryWasmSmart(client, {
     contract: addresses.perps,

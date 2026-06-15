@@ -1,0 +1,35 @@
+# Info.name_to_pair (HL-compat)
+
+Translate an HL coin name to a Dango `PairId`. Raises `KeyError` on an unknown coin.
+
+## Signature
+
+```python
+def name_to_pair(self, name: str) -> PairId
+```
+
+## Example
+
+```python
+from dango.hyperliquid_compatibility.info import Info
+
+info = Info(base_url="https://...")
+pair = info.name_to_pair("ETH")    # "perp/ethusd"
+```
+
+## Parameters
+
+**`name`** — `str`. HL coin name (uppercase).
+
+## Returns
+
+**`PairId`** — the Dango pair id (`perp/<coin>usd`).
+
+## Notes
+
+- The coin resolver is built at construction from either the `meta` argument or a live `pair_params()` fetch.
+- This is a wrapper-only helper; HL upstream does not expose it.
+
+## See also
+
+- [`name_to_asset`](./name_to_asset) — coin → integer asset index

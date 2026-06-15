@@ -1,0 +1,37 @@
+# Info.unsubscribe (HL-compat)
+
+Drop a subscription by id. The `subscription` argument is informational.
+
+## Signature
+
+```python
+def unsubscribe(self, subscription: Subscription, subscription_id: int) -> bool
+```
+
+## Example
+
+```python
+from dango.hyperliquid_compatibility.info import Info
+
+info = Info(base_url="https://...")
+sub = {"type": "trades", "coin": "ETH"}
+sid = info.subscribe(sub, print)
+
+# ... later ...
+info.unsubscribe(sub, sid)
+```
+
+## Parameters
+
+**`subscription`** — `Subscription`. Accepted for HL signature parity; ignored — the native `unsubscribe` keys on `subscription_id` alone.
+
+**`subscription_id`** — `int`. The id returned by `subscribe`.
+
+## Returns
+
+**`bool`** — same as the native [`unsubscribe`](../../../api/methods/info/unsubscribe).
+
+## See also
+
+- [`subscribe`](./subscribe) — register a subscription
+- [`disconnect_websocket`](./disconnect_websocket) — close the connection

@@ -3,7 +3,7 @@
 import { type PropsWithChildren, createContext, createElement } from "react";
 import { Hydrate } from "./hydrate.js";
 import { createConfig } from "./createConfig.js";
-import { graphql } from "@left-curve/dango";
+import { createTransport } from "@left-curve/sdk";
 import { remote } from "./connectors/remote.js";
 
 import { ConnectionStatus, type Config, type State } from "./types/store.js";
@@ -39,7 +39,7 @@ export const DangoRemoteProvider: React.FC<React.PropsWithChildren> = (parameter
 
   const config = createConfig({
     chain,
-    transport: graphql(chain.urls.indexer, { batch: true }),
+    transport: createTransport(chain.url, { batch: true }),
     coins: window.dango.coins,
     ssr: false,
     connectors: [remote()],

@@ -11,8 +11,8 @@ import {
   useApp,
   useMediaQuery,
 } from "@left-curve/applets-kit";
-import { decodeBase64, encodeHex } from "@left-curve/dango/encoding";
-import { uid } from "@left-curve/dango/utils";
+import { decodeBase64, encodeHex } from "@left-curve/encoding";
+import { uid } from "@left-curve/utils";
 import { useAccount, useSigningClient } from "@left-curve/store";
 import { ConnectionStatus } from "@left-curve/store/types";
 import { useQuery } from "@tanstack/react-query";
@@ -22,7 +22,7 @@ import { m } from "@left-curve/foundation/paraglide/messages.js";
 
 const KeyTranslation = {
   secp256r1: "Passkey",
-  secp256k1: "Wallet",
+  secp256k1: "Secp256k1 Public Key",
   ethereum: "Ethereum Wallet",
 };
 

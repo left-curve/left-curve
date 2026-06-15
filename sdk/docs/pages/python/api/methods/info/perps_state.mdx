@@ -1,0 +1,35 @@
+# perps_state
+
+Global perps runtime state: last funding time, vault share supply, treasury, insurance fund.
+
+The insurance fund collects liquidation fees and absorbs bad debt; it can go
+negative when accumulated bad debt exceeds fees collected, with future fees
+naturally replenishing it. The vault and insurance fund are isolated —
+external liquidation losses never touch vault margin. See protocol book:
+`perps/4-liquidation-and-adl` §7.
+
+## Signature
+
+```python
+def perps_state(self) -> State
+```
+
+## Example
+
+```python
+from dango.info import Info
+from dango.utils.constants import MAINNET_API_URL
+
+info = Info(MAINNET_API_URL, skip_ws=True)
+state = info.perps_state()
+print(state["vault_share_supply"], state["insurance_fund"])
+```
+
+## Returns
+
+**`State`** — TypedDict with global runtime fields. See [`State`](../../types/State) for the full field list.
+
+## See also
+
+- [`perps_param`](./perps_param) — global parameters counterpart
+- [`pair_states`](./pair_states) — per-pair runtime state

@@ -1,6 +1,6 @@
 use {
-    grug::ByteArray,
-    identity::Identity256,
+    dango_identity::Identity256,
+    dango_primitives::ByteArray,
     k256::{
         ecdsa::{Signature, SigningKey, signature::DigestSigner},
         elliptic_curve::rand_core::OsRng,
