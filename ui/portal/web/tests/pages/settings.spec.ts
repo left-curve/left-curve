@@ -5,6 +5,28 @@ import {
   getStoredSettings,
   waitForStorageHydration,
 } from "../utils/indexeddb";
+import { message } from "../utils/messages";
+
+const settingsLabels = {
+  accountStatus: message("settings.session.userStatus.title"),
+  chart: message("settings.chart"),
+  connectToMobile: message("settings.connectToMobile"),
+  date: message("settings.date"),
+  deposit: message("settings.session.userStatus.button"),
+  display: message("settings.display"),
+  endpoint: message("settings.session.network.endpoint"),
+  inactive: message("settings.session.accountStatus", { status: "inactive" }),
+  language: message("settings.language"),
+  latestBlockHeight: message("settings.session.network.latestBlockHeight"),
+  network: message("settings.session.network.title"),
+  number: message("settings.number"),
+  remaining: message("settings.session.remaining"),
+  status: message("statusBadge.status"),
+  theme: message("settings.theme"),
+  time: message("settings.time"),
+  timeZone: message("settings.timeZone"),
+  username: message("common.username"),
+};
 
 test.describe("Settings Page", () => {
   test.describe("Not Authenticated", () => {
@@ -15,13 +37,13 @@ test.describe("Settings Page", () => {
 
     test.describe("Session Section", () => {
       test("network section is always visible", async ({ page }) => {
-        const networkTitle = page.getByText("Network", { exact: false });
+        const networkTitle = page.getByText(settingsLabels.network, { exact: false });
         await expect(networkTitle.first()).toBeVisible();
 
-        const latestBlockHeight = page.getByText("Latest block height", {
+        const latestBlockHeight = page.getByText(settingsLabels.latestBlockHeight, {
           exact: false,
         });
-        const endpoint = page.getByText("Endpoint", { exact: false });
+        const endpoint = page.getByText(settingsLabels.endpoint, { exact: false });
 
         const networkInfoVisible =
           (await latestBlockHeight.isVisible()) || (await endpoint.isVisible());
@@ -35,13 +57,13 @@ test.describe("Settings Page", () => {
       });
 
       test("user status section is hidden when not connected", async ({ page }) => {
-        const accountStatus = page.getByText("Account Status", { exact: false });
+        const accountStatus = page.getByText(settingsLabels.accountStatus, { exact: false });
         const statusVisible = await accountStatus.isVisible().catch(() => false);
         expect(statusVisible).toBeFalsy();
       });
 
       test("connect to mobile section is hidden when not connected", async ({ page }) => {
-        const connectMobile = page.getByText("Connect to mobile", { exact: false });
+        const connectMobile = page.getByText(settingsLabels.connectToMobile, { exact: false });
         const visible = await connectMobile.isVisible().catch(() => false);
         expect(visible).toBeFalsy();
       });
@@ -49,71 +71,95 @@ test.describe("Settings Page", () => {
 
     test.describe("Display Section", () => {
       test("display section is visible", async ({ page }) => {
-        const displayTitle = page.getByText("Display", { exact: true });
+        const displayTitle = page.getByText(settingsLabels.display, { exact: true });
         await expect(displayTitle).toBeVisible();
       });
 
       test("language selector is available", async ({ page }) => {
-        const languageLabel = page.getByText("Language", { exact: false });
+        const languageLabel = page.getByText(settingsLabels.language, { exact: false });
         await expect(languageLabel.first()).toBeVisible();
       });
 
       test("number format selector changes format", async ({ page }) => {
-        const numberLabel = page.getByText("Number", { exact: false });
+        const numberLabel = page.getByText(settingsLabels.number, { exact: false });
         await expect(numberLabel.first()).toBeVisible();
 
-        const numberSelect = numberLabel.first().locator("..").locator("button");
-        if ((await numberSelect.count()) > 0) {
-          await numberSelect.click();
-          await page.waitForTimeout(200);
+        const numberSelect = numberLabel
+          .first()
+          .locator("xpath=ancestor::div[contains(@class, 'cursor-pointer')][1]");
+        await expect(numberSelect).toBeVisible();
 
-          const option = page.getByText("1.234,00");
-          if (await option.isVisible()) {
-            await option.click();
-            await page.waitForTimeout(300);
+        const currentFormat =
+          (await numberSelect.getByRole("button").first().textContent()) ?? "";
+        const targetFormat = currentFormat.includes("1.234,56")
+          ? { label: "1,234.56", mask: 1 }
+          : { label: "1.234,56", mask: 2 };
 
+        await numberSelect.click();
+
+        const targetOption = page
+          .getByRole("listitem")
+          .filter({ hasText: targetFormat.label })
+          .first();
+        await expect(targetOption).toBeVisible();
+        await targetOption.evaluate((element) => (element as HTMLElement).click());
+        await expect(numberSelect.getByRole("button").first()).toContainText(targetFormat.label);
+
+        await expect
+          .poll(async () => {
             const settings = await getStoredSettings(page);
-            if (settings?.formatNumberOptions) {
-              expect(
-                (settings.formatNumberOptions as { mask: number }).mask,
-              ).toBe(2);
-            }
-          }
-        }
+            return (settings?.formatNumberOptions as { mask?: number } | undefined)?.mask;
+          })
+          .toBe(targetFormat.mask);
       });
 
       test("date format selector changes format", async ({ page }) => {
-        const dateLabel = page.getByText("Date", { exact: false }).first();
+        const dateLabel = page.getByText(settingsLabels.date, { exact: false }).first();
         await expect(dateLabel).toBeVisible();
       });
 
       test("time format selector changes format", async ({ page }) => {
-        const timeLabel = page.getByText("Time").first();
+        const timeLabel = page.getByText(settingsLabels.time).first();
         await expect(timeLabel).toBeVisible();
       });
 
-      test("timezone selector is available", async ({ page }) => {
-        const timezoneLabel = page.getByText("Time zone", { exact: false });
+      test("timezone selector changes timezone", async ({ page }) => {
+        const timezoneLabel = page.getByText(settingsLabels.timeZone, { exact: false });
         await expect(timezoneLabel.first()).toBeVisible();
 
-        const selectButton = timezoneLabel.first().locator("..").locator("button");
-        if ((await selectButton.count()) > 0) {
-          await selectButton.click();
-          await page.waitForTimeout(200);
+        const timezoneSelect = timezoneLabel
+          .first()
+          .locator("xpath=ancestor::div[contains(@class, 'cursor-pointer')][1]");
+        await expect(timezoneSelect).toBeVisible();
 
-          const utcOption = page.getByText("UTC", { exact: true });
-          const localOption = page.getByText("Local", { exact: true });
+        const currentTimezone =
+          (await timezoneSelect.getByRole("button").first().textContent()) ?? "";
+        const targetTimezone = currentTimezone.includes("UTC")
+          ? { label: "Local", value: "local" }
+          : { label: "UTC", value: "utc" };
 
-          const hasOptions =
-            (await utcOption.isVisible()) || (await localOption.isVisible());
-          expect(hasOptions).toBeTruthy();
+        await timezoneSelect.click();
 
-          await page.keyboard.press("Escape");
-        }
+        const targetOption = page
+          .getByRole("listitem")
+          .filter({ hasText: targetTimezone.label })
+          .first();
+        await expect(targetOption).toBeVisible();
+        await targetOption.evaluate((element) => (element as HTMLElement).click());
+        await expect(timezoneSelect.getByRole("button").first()).toContainText(
+          targetTimezone.label,
+        );
+
+        await expect
+          .poll(async () => {
+            const settings = await getStoredSettings(page);
+            return settings?.timeZone;
+          })
+          .toBe(targetTimezone.value);
       });
 
       test("chart engine selector is available", async ({ page }) => {
-        const chartLabel = page.getByText("Chart", { exact: false });
+        const chartLabel = page.getByText(settingsLabels.chart, { exact: false });
         await expect(chartLabel.first()).toBeVisible();
       });
     });
@@ -132,7 +178,7 @@ test.describe("Settings Page", () => {
       };
 
       test("theme buttons are visible", async ({ page }) => {
-        const themeLabel = page.getByText("Theme", { exact: false });
+        const themeLabel = page.getByText(settingsLabels.theme, { exact: false });
         await expect(themeLabel.first()).toBeVisible();
 
         // Theme buttons are regular buttons
@@ -192,7 +238,7 @@ test.describe("Settings Page", () => {
       });
     });
 
-    test("all display settings persist in IndexedDB", async ({ page }) => {
+    test("all display settings persist in storage", async ({ page }) => {
       // Wait for settings to be hydrated
       await page.waitForTimeout(1000);
 
@@ -200,7 +246,7 @@ test.describe("Settings Page", () => {
 
       // Settings might be null on first load before any changes
       // Just verify the page has the settings UI rendered
-      const displaySection = page.getByText("Display", { exact: true });
+      const displaySection = page.getByText(settingsLabels.display, { exact: true });
       await expect(displaySection).toBeVisible();
 
       // If settings exist, verify structure
@@ -231,7 +277,7 @@ test.describe("Settings Page", () => {
       await sharedPage.goto("/settings");
       await waitForStorageHydration(sharedPage);
 
-      const usernameLabel = sharedPage.getByText("Username", { exact: true });
+      const usernameLabel = sharedPage.getByText(settingsLabels.username, { exact: true });
       await expect(usernameLabel).toBeVisible();
 
       // Default username format: user_N (e.g. user_0, user_24)
@@ -285,9 +331,8 @@ test.describe("Settings Page", () => {
       // Wait for session section to render
       await sharedPage.waitForTimeout(500);
 
-      // Look for status-related text - might be "Account Status", "Status", or just "Inactive"
-      const statusSection = sharedPage.getByText("Status", { exact: false });
-      const inactiveStatus = sharedPage.getByText("Inactive", { exact: false });
+      const statusSection = sharedPage.getByText(settingsLabels.status, { exact: false });
+      const inactiveStatus = sharedPage.getByText(settingsLabels.inactive, { exact: false });
 
       // Either the status section label or the inactive badge should be visible
       const statusVisible =
@@ -305,7 +350,7 @@ test.describe("Settings Page", () => {
       await waitForStorageHydration(sharedPage);
 
       const depositButton = sharedPage
-        .getByRole("link", { name: /deposit|bridge/i })
+        .getByRole("link", { name: settingsLabels.deposit })
         .or(sharedPage.locator('a[href*="/bridge"]'));
 
       if ((await depositButton.count()) > 0) {
@@ -317,7 +362,7 @@ test.describe("Settings Page", () => {
       await sharedPage.goto("/settings");
       await waitForStorageHydration(sharedPage);
 
-      const connectMobileButton = sharedPage.getByText("Connect to mobile", {
+      const connectMobileButton = sharedPage.getByText(settingsLabels.connectToMobile, {
         exact: false,
       });
       await expect(connectMobileButton.first()).toBeVisible();
@@ -327,7 +372,7 @@ test.describe("Settings Page", () => {
       await sharedPage.goto("/settings");
       await waitForStorageHydration(sharedPage);
 
-      const connectMobileButton = sharedPage.getByText("Connect to mobile", {
+      const connectMobileButton = sharedPage.getByText(settingsLabels.connectToMobile, {
         exact: false,
       });
       await connectMobileButton.click();
@@ -353,7 +398,7 @@ test.describe("Settings Page", () => {
       await sharedPage.goto("/settings");
       await waitForStorageHydration(sharedPage);
 
-      const remainingLabel = sharedPage.getByText("Remaining", { exact: false });
+      const remainingLabel = sharedPage.getByText(settingsLabels.remaining, { exact: false });
 
       if ((await remainingLabel.count()) > 0) {
         await expect(remainingLabel.first()).toBeVisible();
@@ -370,7 +415,7 @@ test.describe("Settings Page", () => {
       await sharedPage.goto("/settings");
       await waitForStorageHydration(sharedPage);
 
-      const networkTitle = sharedPage.getByText("Network", { exact: false });
+      const networkTitle = sharedPage.getByText(settingsLabels.network, { exact: false });
       await expect(networkTitle.first()).toBeVisible();
     });
   });

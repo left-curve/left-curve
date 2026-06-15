@@ -1,6 +1,7 @@
 import { useMediaQuery, useTheme } from "@left-curve/applets-kit";
 import { SearchMenu } from "../foundation/SearchMenu";
 import { AppletsSection } from "./AppletsSection";
+import { Image } from "~/components/foundation/Image";
 
 export function Landing() {
   const { isLg } = useMediaQuery();
@@ -8,7 +9,7 @@ export function Landing() {
 
   return (
     <div className="mx-auto pt-[5svh] pb-[15svh] p-4 lg:p-0 w-full flex flex-col gap-6 relative flex-1 items-center justify-between lg:justify-center lg:gap-16 lg:pb-60">
-      <img
+      <Image
         src={`/images/dango${theme === "dark" ? "-dark" : ""}.svg`}
         alt="Dango"
         className="max-w-[10rem] lg:max-w-[13rem] select-none"

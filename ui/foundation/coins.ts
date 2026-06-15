@@ -14,7 +14,6 @@ export const coins = {
     symbol: "BTC",
     denom: "bridge/btc",
     decimals: 8,
-    coingeckoId: "bitcoin",
   },
   "bridge/eth": {
     type: "native",
@@ -23,7 +22,6 @@ export const coins = {
     symbol: "ETH",
     denom: "bridge/eth",
     decimals: 18,
-    coingeckoId: "ethereum",
   },
   "bridge/xrp": {
     type: "native",
@@ -32,7 +30,6 @@ export const coins = {
     symbol: "XRP",
     denom: "bridge/xrp",
     decimals: 6,
-    coingeckoId: "ripple",
   },
   "bridge/usdc": {
     type: "native",
@@ -41,7 +38,6 @@ export const coins = {
     symbol: "USDC",
     denom: "bridge/usdc",
     decimals: 6,
-    coingeckoId: "usd-coin",
   },
   "bridge/sol": {
     type: "native",
@@ -50,7 +46,6 @@ export const coins = {
     symbol: "SOL",
     denom: "bridge/sol",
     decimals: 9,
-    coingeckoId: "solana",
   },
   "bridge/hype": {
     type: "native",
@@ -60,36 +55,36 @@ export const coins = {
     denom: "bridge/hype",
     decimals: 18,
   },
-  "bridge/gold": {
+  "perp/xauusd": {
     type: "native",
     name: "Gold",
     logoURI: "/images/coins/gold.svg",
     symbol: "XAU",
-    denom: "bridge/gold",
+    denom: "perp/xauusd",
     decimals: 0,
   },
-  "bridge/silver": {
+  "perp/xagusd": {
     type: "native",
     name: "Silver",
     logoURI: "/images/coins/silver.svg",
     symbol: "XAG",
-    denom: "bridge/silver",
+    denom: "perp/xagusd",
     decimals: 0,
   },
-  "bridge/wtioil": {
+  "perp/wtiusd": {
     type: "native",
     name: "WTI Oil",
     logoURI: "/images/coins/wtioil.svg",
-    symbol: "WTIOIL",
-    denom: "bridge/wtioil",
+    symbol: "WTI",
+    denom: "perp/wtiusd",
     decimals: 0,
   },
-  "bridge/brentoil": {
+  "perp/brentusd": {
     type: "native",
     name: "Brent Oil",
     logoURI: "/images/coins/brentoil.svg",
-    symbol: "BRENTOIL",
-    denom: "bridge/brentoil",
+    symbol: "BRENT",
+    denom: "perp/brentusd",
     decimals: 0,
   },
 } as const;

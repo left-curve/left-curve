@@ -1,15 +1,15 @@
 use {
     assertor::*,
-    dango_testing::{TestOption, setup_test_naive_with_indexer},
-    dango_types::constants::usdc,
-    grug_app::{Db, Indexer},
-    grug_types::{
+    dango_app::{Db, Indexer},
+    dango_indexer_cache::cache_file::CacheFile,
+    dango_indexer_sql::entity,
+    dango_primitives::{
         Addressable, Block, BlockInfo, BlockOutcome, Coins, Empty, Hash, Message, ReplyOn,
         ResultExt,
     },
-    grug_vm_rust::ContractBuilder,
-    indexer_cache::cache_file::CacheFile,
-    indexer_sql::entity,
+    dango_testing::{TestOption, setup_test_naive_with_indexer},
+    dango_types::constants::usdc,
+    dango_vm_rust::ContractBuilder,
     replier::{ExecuteMsg, ReplyMsg},
     sea_orm::{ColumnTrait, EntityTrait, QueryFilter, QueryOrder},
 };
@@ -265,11 +265,11 @@ async fn no_sql_index_error_after_restart() {
 
 pub mod replier {
     use {
-        grug_storage::Set,
-        grug_types::{
+        dango_primitives::{
             Coins, Empty, ImmutableCtx, Json, JsonSerExt, Message, MutableCtx, Order, QueryRequest,
             ReplyOn, Response, StdError, StdResult, SubMessage, SubMsgResult, SudoCtx,
         },
+        dango_storage::Set,
         serde::{Deserialize, Serialize},
     };
 

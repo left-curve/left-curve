@@ -3,12 +3,13 @@ import { useNavigate } from "@tanstack/react-router";
 import { Button } from "@left-curve/applets-kit";
 
 import { m } from "@left-curve/foundation/paraglide/messages.js";
+import { Image } from "~/components/foundation/Image";
 
 export const NotFound: React.FC = () => {
   const navigate = useNavigate();
   return (
     <div className="w-full flex flex-1 justify-center items-center p-4 flex-col gap-6 text-center pb-[76px]">
-      <img
+      <Image
         src="/images/characters/emptybox1.svg"
         alt="404 Not Found"
         className="w-full max-w-[14.75rem] md:max-w-[22.5rem] opacity-60"

@@ -3,6 +3,7 @@ import { useFavApplets } from "@left-curve/store";
 
 import { TruncateText } from "@left-curve/applets-kit";
 import { motion } from "framer-motion";
+import { Image } from "~/components/foundation/Image";
 
 import type { AccountDetails, Address, ContractInfo, User } from "@left-curve/types";
 import type { AnyCoin, AppletMetadata, WithPrice } from "@left-curve/store/types";
@@ -32,7 +33,7 @@ const AppletItem: React.FC<SearchAppletItemProps> = (applet) => {
     >
       <div className="flex items-center gap-4">
         <div className="p-1 bg-surface-primary-red rounded-xxs border border-surface-secondary-red">
-          <img src={img} alt={title} className="w-12 h-12" />
+          <Image src={img} alt={title} className="w-12 h-12" />
         </div>
         <div>
           <p className="diatype-lg-medium text-ink-secondary-700">{title}</p>
@@ -58,7 +59,7 @@ const AssetItem: React.FC<SearchAssetProps> = ({ logoURI, symbol, price }) => {
       key={symbol}
     >
       <div className="flex items-start gap-4">
-        <img src={logoURI} alt={symbol} className="w-8 h-8" />
+        <Image src={logoURI} alt={symbol} className="w-8 h-8" />
         <div className="flex flex-col gap-1">
           <p className="diatype-m-bold">{symbol}</p>
           <p className="diatype-m-regular text-ink-tertiary-500">{symbol}</p>
@@ -86,7 +87,7 @@ const BlockItem: React.FC<SearchBlockItemProps> = ({ height, hash }) => {
     >
       <div className="flex items-center gap-4">
         <div className="p-1 bg-surface-primary-red rounded-xxs border border-surface-secondary-red">
-          <img src="/images/emojis/simple/blocks.svg" alt="test" className="w-12 h-12" />
+          <Image src="/images/emojis/simple/blocks.svg" alt="test" className="w-12 h-12" />
         </div>
         <div className="flex flex-col">
           <p className="diatype-m-medium">#{height} Block</p>
@@ -111,7 +112,7 @@ const TransactionItem: React.FC<SearchTransactionItemProps> = ({ height, hash })
     >
       <div className="flex items-center gap-4">
         <div className="p-1 bg-surface-primary-red rounded-xxs border border-surface-secondary-red">
-          <img src="/images/emojis/simple/txs.svg" alt="test" className="w-12 h-12" />
+          <Image src="/images/emojis/simple/txs.svg" alt="test" className="w-12 h-12" />
         </div>
         <div className="flex flex-col">
           <TruncateText className="flex gap-2 diatype-m-medium" text={hash} end={20} />
@@ -138,7 +139,7 @@ const ContractItem: React.FC<SearchContractItemProps> = ({ contract }) => {
     >
       <div className="flex items-center gap-4">
         <div className="p-1 bg-surface-primary-red rounded-xxs border border-surface-secondary-red">
-          <img src="/images/emojis/simple/factory.svg" alt="test" className="w-12 h-12" />
+          <Image src="/images/emojis/simple/factory.svg" alt="test" className="w-12 h-12" />
         </div>
         <div className="flex flex-col">
           <AddressVisualizer address={address} withIcon classNames={{ text: "diatype-m-medium" }} />
@@ -175,7 +176,7 @@ const AccountItem: React.FC<SearchAccountItemProps> = ({ account }) => {
     >
       <div className="flex items-center gap-4">
         <div className="p-1 bg-surface-primary-red rounded-xxs border border-surface-secondary-red">
-          <img src="/images/emojis/simple/hamster.svg" alt="account" className="w-12 h-12" />
+          <Image src="/images/emojis/simple/hamster.svg" alt="account" className="w-12 h-12" />
         </div>
         <div className="flex flex-col">
           <p className="flex gap-2 diatype-m-medium">{name}</p>
@@ -209,7 +210,7 @@ const UserItem: React.FC<SearchUserItemProps> = ({ user }) => {
     >
       <div className="flex items-center gap-4">
         <div className="p-1 bg-surface-primary-red rounded-xxs border border-surface-secondary-red">
-          <img src="/images/avatar.png" alt="user" className="w-12 h-12 rounded-lg" />
+          <Image src="/images/avatar.png" alt="user" className="w-12 h-12 rounded-lg" />
         </div>
         <div className="flex flex-col">
           <p className="flex gap-2 diatype-m-medium">{user.name}</p>

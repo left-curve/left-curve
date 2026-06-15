@@ -23,7 +23,6 @@ export {
   type AppProviderProps,
   type AppState,
 } from "./providers/AppProvider.js";
-export { AppRemoteProvider } from "./providers/AppRemoteProvider.js";
 
 /* -------------------------------------------------------------------------- */
 /*                                    Types                                   */

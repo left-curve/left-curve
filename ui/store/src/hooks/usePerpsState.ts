@@ -1,38 +1,52 @@
-import { useEffect } from "react";
 import { useAppConfig } from "./useAppConfig.js";
 import { useConfig } from "./useConfig.js";
-import { createBlockStore } from "./createBlockStore.js";
+import { createLiveResource } from "../live/createLiveResource.js";
+import { equalLiveResourcePayload } from "../live/equality.js";
+import { useLiveResource } from "../live/useLiveResource.js";
 
 import { camelCaseJsonDeserialization, snakeCaseJsonSerialization } from "@left-curve/encoding";
 
 import type { PerpsState, QueryRequest } from "@left-curve/types";
+import type { Config } from "../types/store.js";
+import type { LiveResourceSnapshot } from "../live/types.js";
 
-export const perpsStateStore = createBlockStore({
-  initialState: { state: null as PerpsState | null },
-});
+const PERPS_STATE_INTERVAL = 5;
+const PERPS_STATE_HTTP_INTERVAL = 5_000;
 
-type UsePerpsStateParameters = {
-  subscribe?: boolean;
+export type PerpsStateSnapshot = LiveResourceSnapshot & {
+  state: PerpsState | null;
+  lastUpdatedBlockHeight: number;
 };
 
-export function usePerpsState(parameters?: UsePerpsStateParameters) {
-  const { subscribe = true } = parameters ?? {};
-  const { subscriptions } = useConfig();
-  const { data: appConfig } = useAppConfig();
+export type UsePerpsStateParameters = {
+  enabled?: boolean;
+};
 
-  const { setState } = perpsStateStore();
+type PerpsStateResourceParams = {
+  perpsContract: string;
+  subscriptions: Config["subscriptions"];
+};
 
-  useEffect(() => {
-    if (!subscribe) return;
-    const { addresses } = appConfig;
+const initialPerpsStateSnapshot: PerpsStateSnapshot = {
+  status: "idle",
+  error: null,
+  state: null,
+  lastUpdatedBlockHeight: 0,
+};
 
-    const unsubscribe = subscriptions.subscribe("queryApp", {
+const perpsStateResource = createLiveResource<PerpsStateResourceParams, PerpsStateSnapshot>({
+  name: "perpsState",
+  getKey: ({ perpsContract }) => `perpsState:${perpsContract}`,
+  getInitialSnapshot: () => initialPerpsStateSnapshot,
+  equal: (previous, next) => equalLiveResourcePayload(previous, next, ["state"]),
+  start: ({ perpsContract, subscriptions }, { emit, error }) =>
+    subscriptions.subscribe("queryApp", {
       params: {
-        interval: 5,
-        httpInterval: 5_000,
+        interval: PERPS_STATE_INTERVAL,
+        httpInterval: PERPS_STATE_HTTP_INTERVAL,
         request: snakeCaseJsonSerialization<QueryRequest>({
           wasmSmart: {
-            contract: addresses.perps,
+            contract: perpsContract,
             msg: { state: {} },
           },
         }),
@@ -43,12 +57,38 @@ export function usePerpsState(parameters?: UsePerpsStateParameters) {
           blockHeight: number;
         };
         const { response, blockHeight } = camelCaseJsonDeserialization<Event>(event);
-        setState({ state: response.wasmSmart, blockHeight });
+        emit(
+          {
+            status: "ready",
+            error: null,
+            state: response.wasmSmart,
+            lastUpdatedBlockHeight: blockHeight,
+          },
+          { version: blockHeight },
+        );
       },
-    });
+      onError: error,
+    }),
+});
 
-    return () => unsubscribe();
-  }, [appConfig.addresses, subscribe]);
+export function usePerpsState<Selection>(
+  selector: (snapshot: PerpsStateSnapshot) => Selection,
+  parameters: UsePerpsStateParameters = {},
+  equalityFn?: (previous: Selection, next: Selection) => boolean,
+): Selection {
+  const { enabled = true } = parameters;
+  const config = useConfig();
+  const { data: appConfig } = useAppConfig();
 
-  return { perpsStateStore };
+  return useLiveResource({
+    resource: perpsStateResource,
+    params: {
+      perpsContract: appConfig.addresses.perps,
+      subscriptions: config.subscriptions,
+    },
+    enabled,
+    selector,
+    equalityFn,
+    restartToken: config.subscriptions,
+  });
 }

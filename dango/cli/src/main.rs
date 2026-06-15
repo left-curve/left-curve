@@ -9,7 +9,7 @@ use {
     crate::{db::DbCmd, home_directory::HomeDirectory, indexer::IndexerCmd, start::StartCmd},
     clap::{CommandFactory, FromArgMatches, Parser},
     config::Config,
-    config_parser::parse_config,
+    dango_config_parser::parse_config,
     opentelemetry::{KeyValue, trace::TracerProvider},
     opentelemetry_otlp::{ExportConfig, Protocol, SpanExporter, WithExportConfig},
     opentelemetry_sdk::{Resource, trace as sdktrace},
@@ -22,8 +22,13 @@ use {
     tracing_subscriber::{fmt::format::FmtSpan, prelude::*},
 };
 
-static VERSION_WITH_COMMIT: LazyLock<String> =
-    LazyLock::new(|| format!("{} ({})", env!("CARGO_PKG_VERSION"), grug_types::GIT_COMMIT));
+static VERSION_WITH_COMMIT: LazyLock<String> = LazyLock::new(|| {
+    format!(
+        "{} ({})",
+        env!("CARGO_PKG_VERSION"),
+        dango_primitives::GIT_COMMIT
+    )
+});
 
 #[derive(Parser)]
 #[command(author, about, next_display_order = None)]

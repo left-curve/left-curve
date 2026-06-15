@@ -41,7 +41,7 @@ let secret = Eip712::new_random();
 use {
     anyhow::Result,
     dango_sdk::{HttpClient, Secp256k1, Secret, SingleSigner},
-    grug::Addr,
+    dango_primitives::Addr,
     std::str::FromStr,
 };
 
@@ -82,7 +82,7 @@ This calls `QueryForgotUsernameRequest` with `limit: 1` against the account fact
 
 ```rust
 use {
-    grug::{Message, NonEmpty, Signer},
+    dango_primitives::{Message, NonEmpty, Signer},
 };
 
 let tx = signer.sign_transaction(

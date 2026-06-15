@@ -1,0 +1,18 @@
+[package]
+authors       = { workspace = true }
+categories    = { workspace = true }
+documentation = { workspace = true }
+edition       = { workspace = true }
+license       = { workspace = true }
+name          = "dango-indexer-graphql-types"
+repository    = { workspace = true }
+rust-version  = { workspace = true }
+version       = { workspace = true }
+
+[dependencies]
+anyhow                  = { workspace = true }
+dango-graphql-ws-client = { workspace = true }
+graphql_client          = { workspace = true }
+paste                   = { workspace = true }
+serde                   = { workspace = true, features = ["derive"] }
+serde_json              = { workspace = true }

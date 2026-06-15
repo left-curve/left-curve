@@ -1,3 +1,3 @@
 # Dango
 
-A suite of decentralized finance (DeFi) applications built on top of [Grug](../grug/).
+Blockchain engine ([`core/`](core/)), DeFi applications ([`exchange/`](exchange/)), indexer infrastructure ([`indexer/`](indexer/)), oracle ([`pyth/`](pyth/)), and bridging ([`hyperlane`](hyperlane/)).

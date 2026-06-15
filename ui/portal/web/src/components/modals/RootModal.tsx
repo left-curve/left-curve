@@ -117,13 +117,6 @@ const modals: Record<(typeof Modals)[keyof typeof Modals], ModalDefinition> = {
       })),
     ),
   },
-  [Modals.SignupReminder]: {
-    component: lazyWithRetry(() =>
-      import("./SignupReminder").then(({ SignupReminder }) => ({
-        default: SignupReminder,
-      })),
-    ),
-  },
   [Modals.WalletSelector]: {
     component: lazyWithRetry(() =>
       import("./WalletSelector").then(({ WalletSelector }) => ({

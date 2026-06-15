@@ -4,6 +4,7 @@ export type AbstractStorage = {
   getItem(key: string): string | null | undefined | Promise<string | null | undefined>;
   setItem(key: string, value: string): void | Promise<void>;
   removeItem(key: string): void | Promise<void>;
+  subscribe?(key: string, listener: (value: string | null) => void): () => void;
 };
 
 export type CreateStorageParameters = {
@@ -26,4 +27,8 @@ export type Storage<inner extends Record<string, unknown> = Record<string, unkno
     value: value,
   ): void | Promise<void>;
   removeItem(key: keyof inner): void | Promise<void>;
+  subscribe?<key extends keyof inner, value extends inner[key] | null>(
+    key: key,
+    listener: (value: value) => void,
+  ): () => void;
 };

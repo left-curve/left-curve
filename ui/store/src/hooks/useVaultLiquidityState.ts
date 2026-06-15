@@ -5,8 +5,8 @@ import { useAppConfig } from "./useAppConfig.js";
 import { usePublicClient } from "./usePublicClient.js";
 import { useSigningClient } from "./useSigningClient.js";
 import { useSubmitTx } from "./useSubmitTx.js";
-import { perpsUserStateStore } from "./usePerpsUserState.js";
-import { perpsUserStateExtendedStore } from "./usePerpsUserStateExtended.js";
+import { usePerpsUserState } from "./usePerpsUserState.js";
+import { usePerpsUserStateExtended } from "./usePerpsUserStateExtended.js";
 
 import { Decimal, computeVaultApy, sharesToUsd, usdToShares } from "@left-curve/utils";
 
@@ -30,8 +30,14 @@ export function useVaultLiquidityState(parameters: UseVaultLiquidityStateParamet
 
   const { data: signingClient } = useSigningClient();
 
-  const perpsUserState = perpsUserStateStore((s) => s.userState);
-  const availableMargin = perpsUserStateExtendedStore((s) => s.availableMargin);
+  const perpsUserState = usePerpsUserState((s) => s.userState, {
+    accountAddress: account?.address,
+    enabled: !!account,
+  });
+  const availableMargin = usePerpsUserStateExtended((s) => s.availableMargin, {
+    accountAddress: account?.address,
+    enabled: !!account,
+  });
 
   const depositAmount = Decimal(inputs.depositAmount?.value || "0").toFixed(6);
   const withdrawShares = Decimal(inputs.withdrawShares?.value || "0").toFixed(0);

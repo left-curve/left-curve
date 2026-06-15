@@ -53,11 +53,7 @@
       }
     ],
     "devnet": { "advice": "you are using devnet" },
-    "testnet": {
-      "advice": "you are using testnet",
-      "title": "Message from the founder",
-      "description": "Thank you for trying out Dango’s first ever testnet!\t\tThe purpose of testnet-1 <b>is</b> for testing the basic infrastructure of Dango chain, including consensus, smart contract engine, and indexer. As such, user-facing features are very limited. The coming testnet-2 (expected in June/July) will add our flagship product, the Dango DEX. Then, testnet-3 (August/September) will add margin trading.\n\nFor now, you can register, open subaccounts, and transfer tokens, that’s it. Upon your first login, you will receive some fake tokens (fake BTC, fake ETH, ...) to play with.\n\nMake sure to complete the Galxe quests[ADD LINK] and mint your limited time NFT!\n\ng🍡"
-    },
+    "testnet": { "advice": "you are using testnet" },
     "accountMenu": {
       "assets": {
         "dex": "DEX",
@@ -804,19 +800,6 @@
     "sendSuccessfully": "Sent Successfully",
     "inputPlaceholder": "Wallet address or username"
   },
-  "quests": {
-    "galxeQuest": {
-      "title": "Galxe Quest",
-      "quest": {
-        "connectEthereumWallet": "Connect your Ethereum wallet",
-        "completeTxsInEthereum": "(For anti-sybil purpose) have 10 or more outgoing transaction on Ethereum mainnet (current: {number} Txs)",
-        "completeLimitOrder": "Complete a limit order",
-        "completeMarketOrder": "Complete a market order",
-        "swapAtLeastInPairs": "Trade in 3 different token pairs ({number} remaining)",
-        "swapAtLeastForUSD": "Trade $6.9M in volume (current: {number})"
-      }
-    }
-  },
   "transfer": {
     "error": {
       "title": "Transfer Error",
@@ -1101,19 +1084,20 @@
     "connectToMobile": "Connect to Mobile",
     "keyManagement": {
       "title": "Security",
-      "description": "Easily add or delete passkeys to manage access to your account. Each passkey is vital for secure logins, ensuring only you can access your account.",
+      "description": "Add or delete keys to manage access to your account. Each key can authorize account activity, so keep only the keys you trust.",
       "add": "Add",
+      "advanced": "Advanced",
       "management": {
         "add": {
-          "title": "Add new credential",
-          "description": "Choose a credential. You can add or remove credentials later.",
+          "title": "Add a new key",
+          "description": "Choose how you want to add a key.",
           "success": {
-            "title": "Credential added",
-            "description": "Your new credential has been successfully linked to your account."
+            "title": "Key added",
+            "description": "Your new key has been linked to your account."
           },
           "error": {
-            "title": "Failed to add credential",
-            "alreadyExists": "This credential is already linked to your account."
+            "title": "Failed to add key",
+            "alreadyExists": "Key already exists."
           }
         },
         "delete": {
@@ -1126,6 +1110,40 @@
         "title": "Link Email",
         "description": "We'll send a verification code to your email",
         "alreadyLinked": "This email is already linked to your account"
+      },
+      "wallets": {
+        "title": "Connect a wallet",
+        "description": "Choose a wallet to add as a key."
+      },
+      "publicKey": {
+        "option": "Secp256k1 Public Key",
+        "warning": {
+          "title": "Warning",
+          "description": "Anyone who owns this key can send transactions on your behalf. Only proceed if you generated this key yourself and have not shared it.",
+          "scam": "If someone gave you this key and told you to add it, STOP. This is a scam.",
+          "confirmations": {
+            "generated": "I generated this key myself",
+            "privateKey": "I have not shared the private key with anyone",
+            "authority": "I understand this key can sign transactions on my behalf"
+          }
+        },
+        "input": {
+          "title": "Add a Public Key",
+          "description": "Paste a secp256k1 public key in hex or base64. You'll keep the private key; we never see it.",
+          "label": "Public Key",
+          "placeholder": "Paste hex or base64...",
+          "valid": "Secp256k1 - hex - 33 bytes (compressed)",
+          "error": "This doesn't look like a valid secp256k1 key. Please check and try again.",
+          "submit": "Add key"
+        },
+        "summary": {
+          "title": "Review Before Signing",
+          "description": "Verify these details before your passkey signs the transaction.",
+          "key": "Key",
+          "type": "Type",
+          "typeValue": "Secp256k1 Public Key",
+          "confirm": "Confirm & Sign"
+        }
       }
     }
   },
@@ -1563,7 +1581,23 @@
         "oneMonth": "1M"
       },
       "you": "(You)",
-      "userFallback": "User #{index}"
+      "recentDrops": {
+        "title": "Recent Hunt Drops",
+        "live": "Live",
+        "columns": {
+          "user": "User",
+          "rewardType": "Reward Type",
+          "boost": "Boost",
+          "dropped": "Dropped"
+        },
+        "rewards": {
+          "pearl_dango": "Pearl Dango",
+          "silver_shell": "Silver Shell",
+          "bronze_shell": "Bronze Shell",
+          "golden_shell": "Golden Shell"
+        },
+        "empty": "No recent drops yet"
+      }
     },
     "profile": {
       "pointHistory": "Point History",

@@ -7,7 +7,7 @@ Run an app-level query against the node at a given height.
 ```rust
 impl QueryClient for HttpClient {
     type Error = anyhow::Error;
-    type Proof = grug::Proof;
+    type Proof = dango_primitives::Proof;
 
     async fn query_app(
         &self,
@@ -25,7 +25,7 @@ impl QueryClient for HttpClient {
 use {
     anyhow::Result,
     dango_sdk::HttpClient,
-    grug::{Query, QueryClient, QueryConfigRequest},
+    dango_primitives::{Query, QueryClient, QueryConfigRequest},
 };
 
 #[tokio::main]

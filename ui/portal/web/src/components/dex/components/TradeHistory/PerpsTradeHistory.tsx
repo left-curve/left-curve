@@ -12,19 +12,27 @@ import {
 } from "@left-curve/applets-kit";
 import { Decimal } from "@left-curve/utils";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
+import { MarketPair } from "@left-curve/foundation/market-pair";
 import { useNavigate } from "@tanstack/react-router";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { useEffect, useMemo, useRef } from "react";
 
+import { isFeatureEnabled } from "../../../../featureFlags";
 import { EmptyPlaceholder } from "../../../foundation/EmptyPlaceholder";
 import { ExportCsvButton } from "./ExportCsvButton";
 import { TradeHistoryToolbar } from "./TradeHistoryToolbar";
-import { normalizePerpsEvent, type NormalizedFields } from "./normalizePerpsEvent";
-import { getMakerTakerLabel, getPerpsEventLabel, getSideLabel } from "./perpsEventLabels";
-import { useTradeHistoryFilter } from "./tradeHistoryFilterContext";
+import { normalizePerpsEvent, type NormalizedFields } from "../../helpers/normalizePerpsEvent";
+import {
+  getMakerTakerLabel,
+  getPerpsEventLabel,
+  getSideLabel,
+} from "../../helpers/perpsEventLabels";
+import { type QueryRange, useTradeHistoryFilter } from "./useTradeHistoryFilter";
 import { usePerpsTradeHistory } from "./usePerpsTradeHistory";
 
 import type { PerpsEvent } from "@left-curve/types";
+
+const EMPTY_QUERY_RANGE: QueryRange = { earlierThan: undefined, laterThan: undefined };
 
 const V016_CUTOFF = new Date("2026-04-22T12:00:00Z");
 const V017_CUTOFF = new Date("2026-04-30T12:00:00Z");
@@ -48,7 +56,7 @@ function buildColumns(onShareFill: ShareFillHandler): ColumnDef[] {
       header: m["dex.protrade.tradeHistory.pair"](),
       width: "minmax(80px, 1fr)",
       render: (event) => {
-        const pair = event.pairId.replace("perp/", "").replace("usd", "/USD").toUpperCase();
+        const pair = MarketPair.fromPairId(event.pairId).ticker;
         return <Cell.Text text={pair} className="diatype-xs-medium" />;
       },
     },
@@ -80,7 +88,7 @@ function buildColumns(onShareFill: ShareFillHandler): ColumnDef[] {
       render: (event, { size }) => {
         if (!size) return <Cell.Text text="-" className="text-ink-tertiary-500" />;
         const abs = size.startsWith("-") ? size.slice(1) : size;
-        const baseSymbol = event.pairId.replace("perp/", "").replace("usd", "").toUpperCase();
+        const baseSymbol = MarketPair.fromPairId(event.pairId).base.symbol;
         return (
           <Cell.Text
             text={
@@ -257,11 +265,13 @@ function buildColumns(onShareFill: ShareFillHandler): ColumnDef[] {
 
 export function PerpsTradeHistory() {
   const navigate = useNavigate();
-  const { showModal } = useApp();
+  const showModal = useApp((state) => state.showModal);
   const { isMd } = useMediaQuery();
-  const { queryRange } = useTradeHistoryFilter();
-  const { nodes, isLoading, isFetchingNextPage, hasNextPage, fetchNextPage } =
-    usePerpsTradeHistory(queryRange);
+  const isAdvancedEnabled = isFeatureEnabled("trade_history_export");
+  const { filter, setPreset, setCustomRange, queryRange } = useTradeHistoryFilter();
+  const { nodes, isLoading, isFetchingNextPage, hasNextPage, fetchNextPage } = usePerpsTradeHistory(
+    isAdvancedEnabled ? queryRange : EMPTY_QUERY_RANGE,
+  );
 
   const scrollRef = useRef<HTMLDivElement | null>(null);
 
@@ -269,7 +279,7 @@ export function PerpsTradeHistory() {
     () =>
       buildColumns((event, fields) => {
         if (!fields.size || !fields.price || !fields.pnl) return;
-        const baseSymbol = event.pairId.replace("perp/", "").replace("usd", "").toUpperCase();
+        const baseSymbol = MarketPair.fromPairId(event.pairId).base.symbol;
         showModal(Modals.PnlShare, {
           mode: "fill",
           pairId: event.pairId,
@@ -314,23 +324,35 @@ export function PerpsTradeHistory() {
 
   return (
     <>
-      {isMd ? (
-        <div className="flex items-center justify-between gap-4 py-2 px-1">
-          <TradeHistoryToolbar layout="desktop" />
-          <ExportCsvButton events={nodes} />
-        </div>
-      ) : (
-        <div className="flex flex-col gap-3 py-2 px-1">
-          <TradeHistoryToolbar layout="mobile" />
-          <div className="flex justify-end">
+      {isAdvancedEnabled ? (
+        isMd ? (
+          <div className="flex items-center justify-between gap-4 py-2 px-1">
+            <TradeHistoryToolbar
+              layout="desktop"
+              filter={filter}
+              onPresetChange={setPreset}
+              onCustomRangeChange={setCustomRange}
+            />
             <ExportCsvButton events={nodes} />
           </div>
-        </div>
-      )}
+        ) : (
+          <div className="flex flex-col gap-3 py-2 px-1">
+            <TradeHistoryToolbar
+              layout="mobile"
+              filter={filter}
+              onPresetChange={setPreset}
+              onCustomRangeChange={setCustomRange}
+            />
+            <div className="flex justify-end">
+              <ExportCsvButton events={nodes} />
+            </div>
+          </div>
+        )
+      ) : null}
 
-      <div className="flex flex-col w-full max-h-[31vh] overflow-x-auto scrollbar-none">
+      <div ref={scrollRef} className="w-full max-h-[31vh] overflow-auto scrollbar-none">
         <div
-          className="grid bg-surface-primary-rice diatype-xs-medium text-ink-tertiary-500 px-1 py-2 border-b border-outline-secondary-gray"
+          className="sticky top-0 z-10 grid bg-surface-primary-rice diatype-xs-medium text-ink-tertiary-500 px-1 py-2 border-b border-outline-secondary-gray"
           style={{ gridTemplateColumns: gridTemplate, minWidth: "fit-content" }}
         >
           {columns.map((col) => (
@@ -340,11 +362,7 @@ export function PerpsTradeHistory() {
           ))}
         </div>
 
-        <div
-          ref={scrollRef}
-          className="flex-1 overflow-y-auto scrollbar-none"
-          style={{ minWidth: "fit-content" }}
-        >
+        <div style={{ minWidth: "fit-content" }}>
           {showEmpty ? (
             <EmptyPlaceholder
               component={m["dex.protrade.history.noOpenOrders"]()}

@@ -591,7 +591,7 @@ class Info:
         # non-mainnet deployment with a different contract address) gets
         # routed correctly. Native Info defaults to mainnet when None,
         # which would otherwise produce
-        # `data not found! type: grug_types::app::ContractInfo` against
+        # `data not found! type: dango_primitives::app::ContractInfo` against
         # any other chain.
         self._native: _native_info.Info = NativeInfo(
             base_url,

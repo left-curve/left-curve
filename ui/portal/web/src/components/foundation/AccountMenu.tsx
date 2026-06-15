@@ -3,9 +3,7 @@ import {
   useActivities,
   useBalances,
   usePerpsUserState,
-  perpsUserStateStore,
   usePerpsUserStateExtended,
-  perpsUserStateExtendedStore,
   usePerpsVaultUserShares,
   usePrices,
   useSessionKey,
@@ -55,14 +53,18 @@ const [AccountMenuProvider, useAccountMenu] = createContext<{
 }>();
 
 const Container: React.FC = () => {
-  const { settings } = useApp();
+  const { settings, isSidebarVisible } = useApp();
   const { isLg } = useMediaQuery();
   const { account } = useAccount();
   const { calculateBalance } = usePrices();
-  usePerpsUserState();
-  usePerpsUserStateExtended();
-  const perpsEquity = perpsUserStateExtendedStore((s) => s.equity) ?? "0";
-  const { userSharesValue } = usePerpsVaultUserShares();
+  const perpsEquity = usePerpsUserStateExtended((s) => s.equity ?? "0", {
+    accountAddress: account?.address,
+    enabled: isSidebarVisible && !!account,
+  });
+  const { userSharesValue } = usePerpsVaultUserShares({
+    accountAddress: account?.address,
+    enabled: isSidebarVisible && !!account,
+  });
 
   const { formatNumberOptions } = settings;
 
@@ -315,10 +317,19 @@ const SectionHeader: React.FC<{ title: string }> = ({ title }) => (
 
 export const WalletTab: React.FC = () => {
   const context = useAccountMenu();
+  const { isSidebarVisible } = useApp();
+  const { account } = useAccount();
   const balances = Object.entries(context.balances);
   const { calculateBalance } = usePrices();
-  const perpsState = perpsUserStateStore((s) => s.userState);
-  const { userVaultShares, userSharesValue } = usePerpsVaultUserShares();
+  const isLiveAccountEnabled = isSidebarVisible && !!account;
+  const perpsState = usePerpsUserState((s) => s.userState, {
+    accountAddress: account?.address,
+    enabled: isLiveAccountEnabled,
+  });
+  const { userVaultShares, userSharesValue } = usePerpsVaultUserShares({
+    accountAddress: account?.address,
+    enabled: isLiveAccountEnabled,
+  });
 
   const sortedBalances = useMemo(() => {
     return balances.sort(([denomA, amountA], [denomB, amountB]) => {

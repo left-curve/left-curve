@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { shallowEqual } from "@left-curve/utils";
 
 const medias = {
   sm: 640,
@@ -23,28 +24,23 @@ type MediaQueries = {
   is3XlTall: boolean;
 };
 
+const getMediaQueries = (): MediaQueries => ({
+  isSm: window.innerWidth >= medias.sm,
+  isMd: window.innerWidth >= medias.md,
+  isLg: window.innerWidth >= medias.lg,
+  isXl: window.innerWidth >= medias.xl,
+  is2Xl: window.innerWidth >= medias["2xl"],
+  is3Xl: window.innerWidth >= medias["3xl"],
+  is3XlTall: window.innerWidth >= medias["3xl"] && window.innerHeight >= heights.minTall,
+});
+
 export const useMediaQuery = () => {
-  const [matchSize, setMatchSize] = useState<MediaQueries>({
-    isSm: window.innerWidth >= medias.sm,
-    isMd: window.innerWidth >= medias.md,
-    isLg: window.innerWidth >= medias.lg,
-    isXl: window.innerWidth >= medias.xl,
-    is2Xl: window.innerWidth >= medias["2xl"],
-    is3Xl: window.innerWidth >= medias["3xl"],
-    is3XlTall: window.innerWidth >= medias["3xl"] && window.innerHeight >= heights.minTall,
-  });
+  const [matchSize, setMatchSize] = useState<MediaQueries>(getMediaQueries);
 
   useEffect(() => {
     const handleResize = () => {
-      setMatchSize({
-        isSm: window.innerWidth >= medias.sm,
-        isMd: window.innerWidth >= medias.md,
-        isLg: window.innerWidth >= medias.lg,
-        isXl: window.innerWidth >= medias.xl,
-        is2Xl: window.innerWidth >= medias["2xl"],
-        is3Xl: window.innerWidth >= medias["3xl"],
-        is3XlTall: window.innerWidth >= medias["3xl"] && window.innerHeight >= heights.minTall,
-      });
+      const next = getMediaQueries();
+      setMatchSize((previous) => (shallowEqual(previous, next) ? previous : next));
     };
     window.addEventListener("resize", handleResize);
     handleResize();

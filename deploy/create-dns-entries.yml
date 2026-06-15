@@ -2,7 +2,7 @@
   connection: local
   gather_facts: false
   vars:
-    subs: [www, api, faucet, cometbft]
+    subs: [api, faucet, cometbft]
     nets: [devnet, mainnet, testnet]
     hosts_list: [ovh1, ovh2]
   tasks:

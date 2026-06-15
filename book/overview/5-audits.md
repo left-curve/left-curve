@@ -14,7 +14,7 @@ A list of audits we have completed so far:
 [hyperlane]: https://x.com/hyperlane
 [informal]: https://x.com/informalinc
 [informal-jmt-blog]: https://informal.systems/blog/jellyfish-merkle-tree-quint-2025
-[informal-jmt-spec]: ../../grug/jellyfish-merkle/spec/
+[informal-jmt-spec]: ../../dango/core/jellyfish-merkle/spec/
 [quint]: https://github.com/informalsystems/quint
 [sherlock]: https://sherlock.xyz/
 [sherlock-spot-contest]: https://audits.sherlock.xyz/contests/1066

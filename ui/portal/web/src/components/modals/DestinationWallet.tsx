@@ -17,6 +17,7 @@ import {
 
 import type { ModalRef } from "./RootModal";
 import type { EIP1193Provider } from "@left-curve/store/types";
+import { Image } from "~/components/foundation/Image";
 
 type DestinationWalletProps = {
   network: string;
@@ -88,7 +89,7 @@ export const DestinationWallet = forwardRef<ModalRef, DestinationWalletProps>(
                 className="flex items-center gap-3 justify-center"
               >
                 {connector.icon && (
-                  <img src={connector.icon} alt={connector.name} className="w-5 h-5" />
+                  <Image src={connector.icon} alt={connector.name} className="w-5 h-5" />
                 )}
                 <span>{connector.name}</span>
               </Button>

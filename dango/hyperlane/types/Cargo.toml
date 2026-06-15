@@ -1,0 +1,22 @@
+[package]
+authors       = { workspace = true }
+categories    = { workspace = true }
+documentation = { workspace = true }
+edition       = { workspace = true }
+license       = { workspace = true }
+name          = "dango-hyperlane-types"
+repository    = { workspace = true }
+rust-version  = { workspace = true }
+version       = { workspace = true }
+
+[dependencies]
+anyhow           = { workspace = true }
+dango-primitives = { workspace = true }
+dango-storage    = { workspace = true }
+hex-literal      = { workspace = true }
+sha3             = { workspace = true }
+
+[dev-dependencies]
+hex        = { workspace = true }
+serde      = { workspace = true, features = ["derive"] }
+serde_json = { workspace = true }

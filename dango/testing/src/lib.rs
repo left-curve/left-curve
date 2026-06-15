@@ -25,6 +25,6 @@ pub use {
 
 // Re-exports
 pub use {
-    grug_vm_rust::{ContractBuilder, ContractWrapper},
-    indexer_httpd::error::Error as HttpdError,
+    dango_indexer_httpd::error::Error as HttpdError,
+    dango_vm_rust::{ContractBuilder, ContractWrapper},
 };

@@ -1,22 +1,22 @@
 use {
+    dango_app::{AppError, NaiveProposalPreparer, NullIndexer},
+    dango_backtrace::Backtraceable,
+    dango_crypto::{sha2_256, sha2_512},
+    dango_db_memory::MemDb,
     dango_genesis::{GenesisCodes, GenesisOption},
-    dango_testing::{Preset, TestAccounts, TestSuite, setup_suite_with_db_and_vm},
-    error_backtrace::Backtraceable,
-    grug_app::{AppError, NaiveProposalPreparer, NullIndexer},
-    grug_crypto::{sha2_256, sha2_512},
-    grug_db_memory::MemDb,
-    grug_tester::{
-        QueryRecoverSecp256k1Request, QueryVerifyEd25519BatchRequest, QueryVerifyEd25519Request,
-        QueryVerifySecp256k1Request, QueryVerifySecp256r1Request,
-    },
-    grug_types::{
+    dango_identity::{Identity256, Identity512},
+    dango_primitives::{
         Addr, Binary, Coins, GenericResult, InnerMut, Message, QuerierExt, QueryRequest, ResultExt,
         VerificationError,
     },
-    grug_vm_hybrid::HybridVm,
-    grug_vm_rust::RustVm,
-    grug_vm_wasm::VmError,
-    identity::{Identity256, Identity512},
+    dango_tester::{
+        QueryRecoverSecp256k1Request, QueryVerifyEd25519BatchRequest, QueryVerifyEd25519Request,
+        QueryVerifySecp256k1Request, QueryVerifySecp256r1Request,
+    },
+    dango_testing::{Preset, TestAccounts, TestSuite, setup_suite_with_db_and_vm},
+    dango_vm_hybrid::HybridVm,
+    dango_vm_rust::RustVm,
+    dango_vm_wasm::VmError,
     rand::rngs::OsRng,
     serde::{Serialize, de::DeserializeOwned},
     std::{fmt::Debug, vec},
@@ -47,8 +47,8 @@ async fn setup_test() -> (
         .upload_and_instantiate_with_gas(
             &mut accounts.owner,
             320_000_000,
-            read_wasm_file("grug_tester.wasm"),
-            &grug_tester::InstantiateMsg {},
+            read_wasm_file("dango_tester.wasm"),
+            &dango_tester::InstantiateMsg {},
             "tester",
             Some("tester"),
             None,
@@ -73,7 +73,7 @@ async fn infinite_loop() {
             1_000_000,
             Message::execute(
                 tester,
-                &grug_tester::ExecuteMsg::InfiniteLoop {},
+                &dango_tester::ExecuteMsg::InfiniteLoop {},
                 Coins::new(),
             )
             .unwrap(),
@@ -94,7 +94,7 @@ async fn immutable_state() {
     // This tests how the VM handles state mutability while serving the `Query`
     // ABCI request.
     suite
-        .query_wasm_smart(tester, grug_tester::QueryForceWriteRequest {
+        .query_wasm_smart(tester, dango_tester::QueryForceWriteRequest {
             key: "larry".to_string(),
             value: "engineer".to_string(),
         })
@@ -113,7 +113,7 @@ async fn immutable_state() {
             2_000_000,
             Message::execute(
                 tester,
-                &grug_tester::ExecuteMsg::ForceWriteOnQuery {
+                &dango_tester::ExecuteMsg::ForceWriteOnQuery {
                     key: "larry".to_string(),
                     value: "engineer".to_string(),
                 },
@@ -132,7 +132,7 @@ async fn query_stack_overflow() {
     // The contract attempts to call with `QueryMsg::StackOverflow` to itself in
     // a loop. Should raise the "exceeded max query depth" error.
     suite
-        .query_wasm_smart(tester, grug_tester::QueryStackOverflowRequest {})
+        .query_wasm_smart(tester, dango_tester::QueryStackOverflowRequest {})
         .should_fail_with_error(VmError::exceed_max_query_depth());
 }
 
@@ -148,7 +148,7 @@ async fn message_stack_overflow() {
             10_000_000,
             Message::execute(
                 tester,
-                &grug_tester::ExecuteMsg::StackOverflow {},
+                &dango_tester::ExecuteMsg::StackOverflow {},
                 Coins::new(),
             )
             .unwrap(),

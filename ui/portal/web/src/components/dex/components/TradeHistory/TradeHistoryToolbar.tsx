@@ -1,11 +1,7 @@
 import { Button, DateRangePicker, Select, twMerge } from "@left-curve/applets-kit";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 
-import {
-  PRESETS,
-  type TradeHistoryPreset,
-  useTradeHistoryFilter,
-} from "./tradeHistoryFilterContext";
+import { PRESETS, type TradeHistoryFilter, type TradeHistoryPreset } from "./useTradeHistoryFilter";
 
 const PRESET_LABELS: Record<TradeHistoryPreset, () => string> = {
   "1d": m["dex.protrade.tradeHistory.preset.1d"],
@@ -16,16 +12,22 @@ const PRESET_LABELS: Record<TradeHistoryPreset, () => string> = {
 
 type TradeHistoryToolbarProps = {
   layout: "desktop" | "mobile";
+  filter: TradeHistoryFilter;
+  onPresetChange: (preset: TradeHistoryPreset) => void;
+  onCustomRangeChange: (from: Date, to: Date) => void;
 };
 
-export function TradeHistoryToolbar({ layout }: TradeHistoryToolbarProps) {
-  const { filter, setPreset, setCustomRange } = useTradeHistoryFilter();
-
+export function TradeHistoryToolbar({
+  layout,
+  filter,
+  onPresetChange,
+  onCustomRangeChange,
+}: TradeHistoryToolbarProps) {
   const datePicker = (
     <DateRangePicker
       value={{ from: filter.from, to: filter.to }}
       onChange={(value) => {
-        if (value.from && value.to) setCustomRange(value.from, value.to);
+        if (value.from && value.to) onCustomRangeChange(value.from, value.to);
       }}
       disabled={(date) => date > new Date()}
       triggerClassName="shrink-0"
@@ -41,7 +43,7 @@ export function TradeHistoryToolbar({ layout }: TradeHistoryToolbarProps) {
             type="button"
             variant="link"
             size="xs"
-            onClick={() => setPreset(preset.id)}
+            onClick={() => onPresetChange(preset.id)}
             className={twMerge(filter.preset === preset.id && "bg-surface-primary-blue")}
           >
             {PRESET_LABELS[preset.id]()}
@@ -58,7 +60,7 @@ export function TradeHistoryToolbar({ layout }: TradeHistoryToolbarProps) {
       <Select
         value={filter.preset ?? "custom"}
         onChange={(v) => {
-          if (v !== "custom") setPreset(v as TradeHistoryPreset);
+          if (v !== "custom") onPresetChange(v as TradeHistoryPreset);
         }}
         classNames={{
           trigger: "py-1.5 px-3 exposure-xs-italic text-ink-secondary-blue",

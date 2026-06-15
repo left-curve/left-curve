@@ -6,18 +6,18 @@ use {
     },
     anyhow::anyhow,
     clap::Parser,
-    config_parser::parse_config,
-    dango_genesis::GenesisCodes,
-    dango_proposal_preparer::ProposalPreparer,
-    grug_app::{
+    dango_app::{
         AbciService, App, Db, HaltReason, Indexer, NaiveProposalPreparer, NullIndexer,
         SimpleCommitment,
     },
-    grug_db_disk::DiskDb,
-    grug_types::{GIT_COMMIT, HttpdConfig},
-    grug_vm_rust::RustVm,
-    indexer_hooked::HookedIndexer,
-    indexer_httpd::{TendermintRpcClient, context::MinimalContext as HttpdContext},
+    dango_config_parser::parse_config,
+    dango_db_disk::DiskDb,
+    dango_genesis::GenesisCodes,
+    dango_indexer_hooked::HookedIndexer,
+    dango_indexer_httpd::{TendermintRpcClient, context::MinimalContext as HttpdContext},
+    dango_primitives::{GIT_COMMIT, HttpdConfig},
+    dango_proposal_preparer::ProposalPreparer,
+    dango_vm_rust::RustVm,
     metrics_exporter_prometheus::{PrometheusBuilder, PrometheusHandle},
     std::sync::{Arc, atomic::AtomicBool},
     tokio::{
@@ -270,8 +270,8 @@ impl StartCmd {
         cfg: &Config,
         app: Arc<App<DiskDb<SimpleCommitment>, RustVm, NaiveProposalPreparer, NullIndexer>>,
         tendermint_rpc_addr: &str,
-    ) -> anyhow::Result<(HookedIndexer, indexer_httpd::context::FullContext)> {
-        let sql_indexer = indexer_sql::IndexerBuilder::default()
+    ) -> anyhow::Result<(HookedIndexer, dango_indexer_httpd::context::FullContext)> {
+        let sql_indexer = dango_indexer_sql::IndexerBuilder::default()
             .with_database_url(&cfg.indexer.database.url)
             .with_database_max_connections(cfg.indexer.database.max_connections)
             .with_sqlx_pubsub()
@@ -280,22 +280,22 @@ impl StartCmd {
             .map_err(|err| anyhow!("failed to build indexer: {err:?}"))?;
         let sql_context = sql_indexer.context.clone();
 
-        let clickhouse_context = indexer_clickhouse::context::Context::new(
+        let clickhouse_context = dango_indexer_clickhouse::context::Context::new(
             cfg.indexer.clickhouse.url.clone(),
             cfg.indexer.clickhouse.database.clone(),
             cfg.indexer.clickhouse.user.clone(),
             cfg.indexer.clickhouse.password.clone(),
         );
 
-        let clickhouse_indexer = indexer_clickhouse::Indexer::new(clickhouse_context.clone());
+        let clickhouse_indexer = dango_indexer_clickhouse::Indexer::new(clickhouse_context.clone());
 
-        let mut indexer_cache = indexer_cache::Cache::new_with_dir(app_dir.indexer_dir());
+        let mut indexer_cache = dango_indexer_cache::Cache::new_with_dir(app_dir.indexer_dir());
         indexer_cache.context.s3 = cfg.indexer.s3.clone();
         let indexer_cache_context = indexer_cache.context.clone();
 
         let mut hooked_indexer = HookedIndexer::new(indexer_cache, sql_indexer, clickhouse_indexer);
 
-        let dango_httpd_context = indexer_httpd::context::FullContext::new(
+        let dango_httpd_context = dango_indexer_httpd::context::FullContext::new(
             indexer_cache_context,
             sql_context,
             clickhouse_context,
@@ -323,7 +323,7 @@ impl StartCmd {
         context: HttpdContext,
         shutdown_flag: Arc<AtomicBool>,
     ) -> anyhow::Result<()> {
-        indexer_httpd::server::run_minimal_server(cfg, context, shutdown_flag)
+        dango_indexer_httpd::server::run_minimal_server(cfg, context, shutdown_flag)
             .await
             .map_err(|err| {
                 tracing::error!("Failed to run minimal HTTP server: {err:?}");
@@ -337,13 +337,13 @@ impl StartCmd {
     /// The HTTP port is bound immediately; the ClickHouse and perps trade
     /// cache preloads run concurrently in a background task. `/up` does not
     /// touch any of those caches (it only reads
-    /// `grug_app.last_finalized_block()` and a Postgres blocks query), and
+    /// `dango_app.last_finalized_block()` and a Postgres blocks query), and
     /// the GraphQL handlers that do read from them already fall through to
     /// ClickHouse / return empty state on a cache miss, so handlers reading
     /// during warm-up see the same state as a freshly indexed node.
     async fn run_dango_httpd_server(
         cfg: &HttpdConfig,
-        dango_httpd_context: indexer_httpd::context::FullContext,
+        dango_httpd_context: dango_indexer_httpd::context::FullContext,
         shutdown_flag: std::sync::Arc<std::sync::atomic::AtomicBool>,
     ) -> anyhow::Result<()> {
         tracing::info!(
@@ -394,7 +394,7 @@ impl StartCmd {
             );
         });
 
-        indexer_httpd::server::run_server(cfg, dango_httpd_context, shutdown_flag, None)
+        dango_indexer_httpd::server::run_server(cfg, dango_httpd_context, shutdown_flag, None)
             .await
             .map_err(|err| {
                 tracing::error!("Failed to run full-featured HTTP server: {err:?}");
@@ -407,7 +407,7 @@ impl StartCmd {
         cfg: &MetricsHttpdConfig,
         metrics_handler: PrometheusHandle,
     ) -> anyhow::Result<()> {
-        indexer_metrics::run_metrics_server(&cfg.ip, cfg.port, metrics_handler)
+        dango_indexer_metrics::run_metrics_server(&cfg.ip, cfg.port, metrics_handler)
             .await
             .map_err(|err| {
                 tracing::error!("Failed to run metrics HTTP server: {err:?}");
@@ -435,7 +435,7 @@ impl StartCmd {
         ID: Indexer + Send + Sync + 'static,
     {
         // Channel used by the app to request a graceful shutdown from inside
-        // `finalize_block` (see `grug_app::HaltReason`). Initial value is
+        // `finalize_block` (see `dango_app::HaltReason`). Initial value is
         // `None`; a `Some(reason)` means the app has requested a halt.
         let (halt_tx, mut halt_rx) = watch::channel::<Option<HaltReason>>(None);
         let halt_tx = Arc::new(halt_tx);

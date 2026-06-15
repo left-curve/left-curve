@@ -116,6 +116,7 @@ const SearchMenu: React.FC = () => {
                 <IconSearch className="w-5 h-5 text-ink-tertiary-500" />
                 <Command.Input
                   ref={inputRef}
+                  aria-label={`${m["searchBar.placeholder.title"]()} ${m["searchBar.placeholder.apps"]()}`}
                   onValueChange={setSearchText}
                   value={searchText}
                   onBlur={(e) => {

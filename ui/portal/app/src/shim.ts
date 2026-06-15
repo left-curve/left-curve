@@ -22,11 +22,3 @@ global.TextDecoder = TextDecoder;
 
 import { createMMKVStorage } from "~/storage";
 global.localStorage = createMMKVStorage() as Storage;
-
-global.BroadcastChannel = class {
-  constructor(public name: string) {}
-  addEventListener() {}
-  removeEventListener() {}
-  postMessage() {}
-  close() {}
-} as unknown as typeof BroadcastChannel;

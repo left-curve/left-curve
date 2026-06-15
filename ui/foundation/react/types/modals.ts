@@ -12,7 +12,6 @@ export const Modals = {
   ProSwapEditedSL: "pro-edited-sl",
   ActivityTransfer: "activity-transfer",
   ActivityConvert: "activity-convert",
-  SignupReminder: "signup-reminder",
   WalletSelector: "wallet-selector",
   Authenticate: "authenticate",
   EditUsername: "edit-username",

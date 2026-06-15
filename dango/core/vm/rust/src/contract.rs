@@ -1,0 +1,659 @@
+use {
+    crate::{
+        AuthenticateFn, BankExecuteFn, BankQueryFn, Contract, CronExecuteFn, ExecuteFn,
+        FinalizeFeeFn, InstantiateFn, MigrateFn, QueryFn, ReceiveFn, ReplyFn, VmError, VmResult,
+        WithholdFeeFn,
+    },
+    dango_backtrace::Backtraceable,
+    dango_primitives::{
+        Api, AuthCtx, BankMsg, BankQuery, BankQueryResponse, Binary, BorshDeExt, Context, Empty,
+        GenericResult, GenericResultExt, ImmutableCtx, Json, JsonDeExt, MutableCtx, Querier,
+        QuerierWrapper, Response, StdError, Storage, SubMsgResult, SudoCtx, Tx, TxOutcome,
+        make_auth_ctx, make_immutable_ctx, make_mutable_ctx, make_sudo_ctx,
+    },
+    elsa::sync::FrozenVec,
+    serde::de::DeserializeOwned,
+    std::sync::OnceLock,
+};
+
+static CONTRACTS: OnceLock<FrozenVec<Box<dyn Contract + Send + Sync>>> = OnceLock::new();
+
+pub(crate) fn get_contract_impl(
+    wrapper: ContractWrapper,
+) -> VmResult<&'static (dyn Contract + Send + Sync)> {
+    CONTRACTS
+        .get_or_init(Default::default)
+        .get(wrapper.index)
+        .ok_or_else(|| VmError::contract_not_found(wrapper.index))
+}
+
+// ---------------------------------- wrapper ----------------------------------
+
+#[derive(Debug, Clone, Copy)]
+pub struct ContractWrapper {
+    index: usize,
+}
+
+impl ContractWrapper {
+    pub fn from_index(index: usize) -> Self {
+        Self { index }
+    }
+
+    pub fn from_bytes(bytes: &[u8]) -> Self {
+        Self {
+            index: usize::from_le_bytes(bytes.try_into().unwrap()),
+        }
+    }
+
+    pub fn to_bytes(self) -> [u8; usize::BITS as usize / 8] {
+        self.index.to_le_bytes()
+    }
+}
+
+impl From<ContractWrapper> for Binary {
+    fn from(wrapper: ContractWrapper) -> Self {
+        wrapper.to_bytes().into()
+    }
+}
+
+// ---------------------------------- builder ----------------------------------
+
+pub struct ContractBuilder<
+    M1,
+    E1,
+    M2 = Empty,
+    M3 = Empty,
+    M5 = Empty,
+    M6 = Empty,
+    E2 = StdError,
+    E3 = StdError,
+    E4 = StdError,
+    E5 = StdError,
+    E6 = StdError,
+    E7 = StdError,
+    E8 = StdError,
+    E9 = StdError,
+    E10 = StdError,
+    E11 = StdError,
+    E12 = StdError,
+> {
+    instantiate_fn: InstantiateFn<M1, E1>,
+    execute_fn: Option<ExecuteFn<M2, E2>>,
+    migrate_fn: Option<MigrateFn<M3, E3>>,
+    receive_fn: Option<ReceiveFn<E4>>,
+    reply_fn: Option<ReplyFn<M5, E5>>,
+    query_fn: Option<QueryFn<M6, E6>>,
+    authenticate_fn: Option<AuthenticateFn<E7>>,
+    bank_execute_fn: Option<BankExecuteFn<E8>>,
+    bank_query_fn: Option<BankQueryFn<E9>>,
+    withhold_fee_fn: Option<WithholdFeeFn<E10>>,
+    finalize_fee_fn: Option<FinalizeFeeFn<E11>>,
+    cron_execute_fn: Option<CronExecuteFn<E12>>,
+}
+
+impl<M1, E1> ContractBuilder<M1, E1>
+where
+    M1: DeserializeOwned + 'static,
+    E1: ToString + 'static,
+{
+    pub fn new(instantiate_fn: InstantiateFn<M1, E1>) -> Self {
+        Self {
+            instantiate_fn,
+            execute_fn: None,
+            migrate_fn: None,
+            receive_fn: None,
+            reply_fn: None,
+            query_fn: None,
+            authenticate_fn: None,
+            bank_execute_fn: None,
+            bank_query_fn: None,
+            withhold_fee_fn: None,
+            finalize_fee_fn: None,
+            cron_execute_fn: None,
+        }
+    }
+}
+
+impl<M1, E1, M2, M3, M5, M6, E2, E3, E4, E5, E6, E7, E8, E9, E10, E11, E12>
+    ContractBuilder<M1, E1, M2, M3, M5, M6, E2, E3, E4, E5, E6, E7, E8, E9, E10, E11, E12>
+where
+    M1: DeserializeOwned + 'static,
+    M2: DeserializeOwned + 'static,
+    M3: DeserializeOwned + 'static,
+    M5: DeserializeOwned + 'static,
+    M6: DeserializeOwned + 'static,
+    E1: Backtraceable + 'static,
+    E2: Backtraceable + 'static,
+    E3: Backtraceable + 'static,
+    E4: Backtraceable + 'static,
+    E5: Backtraceable + 'static,
+    E6: Backtraceable + 'static,
+    E7: Backtraceable + 'static,
+    E8: Backtraceable + 'static,
+    E9: Backtraceable + 'static,
+    E10: Backtraceable + 'static,
+    E11: Backtraceable + 'static,
+    E12: Backtraceable + 'static,
+{
+    pub fn with_execute<M2A, E2A>(
+        self,
+        execute_fn: ExecuteFn<M2A, E2A>,
+    ) -> ContractBuilder<M1, E1, M2A, M3, M5, M6, E2A, E3, E4, E5, E6, E7, E8, E9, E10, E11, E12>
+    where
+        M2A: DeserializeOwned + 'static,
+        E2A: Backtraceable + 'static,
+    {
+        ContractBuilder {
+            instantiate_fn: self.instantiate_fn,
+            execute_fn: Some(execute_fn),
+            migrate_fn: self.migrate_fn,
+            receive_fn: self.receive_fn,
+            reply_fn: self.reply_fn,
+            query_fn: self.query_fn,
+            authenticate_fn: self.authenticate_fn,
+            bank_execute_fn: self.bank_execute_fn,
+            bank_query_fn: self.bank_query_fn,
+            withhold_fee_fn: self.withhold_fee_fn,
+            finalize_fee_fn: self.finalize_fee_fn,
+            cron_execute_fn: self.cron_execute_fn,
+        }
+    }
+
+    pub fn with_migrate<M3A, E3A>(
+        self,
+        migrate_fn: MigrateFn<M3A, E3A>,
+    ) -> ContractBuilder<M1, E1, M2, M3A, M5, M6, E2, E3A, E4, E5, E6, E7, E8, E9, E10, E11, E12>
+    where
+        M3A: DeserializeOwned + 'static,
+        E3A: Backtraceable + 'static,
+    {
+        ContractBuilder {
+            instantiate_fn: self.instantiate_fn,
+            execute_fn: self.execute_fn,
+            migrate_fn: Some(migrate_fn),
+            receive_fn: self.receive_fn,
+            reply_fn: self.reply_fn,
+            query_fn: self.query_fn,
+            authenticate_fn: self.authenticate_fn,
+            bank_execute_fn: self.bank_execute_fn,
+            bank_query_fn: self.bank_query_fn,
+            withhold_fee_fn: self.withhold_fee_fn,
+            finalize_fee_fn: self.finalize_fee_fn,
+            cron_execute_fn: self.cron_execute_fn,
+        }
+    }
+
+    pub fn with_receive<E4A>(
+        self,
+        receive_fn: ReceiveFn<E4A>,
+    ) -> ContractBuilder<M1, E1, M2, M3, M5, M6, E2, E3, E4A, E5, E6, E7, E8, E9, E10, E11, E12>
+    where
+        E4A: Backtraceable + 'static,
+    {
+        ContractBuilder {
+            instantiate_fn: self.instantiate_fn,
+            execute_fn: self.execute_fn,
+            migrate_fn: self.migrate_fn,
+            receive_fn: Some(receive_fn),
+            reply_fn: self.reply_fn,
+            query_fn: self.query_fn,
+            authenticate_fn: self.authenticate_fn,
+            bank_execute_fn: self.bank_execute_fn,
+            bank_query_fn: self.bank_query_fn,
+            withhold_fee_fn: self.withhold_fee_fn,
+            finalize_fee_fn: self.finalize_fee_fn,
+            cron_execute_fn: self.cron_execute_fn,
+        }
+    }
+
+    pub fn with_reply<M5A, E5A>(
+        self,
+        reply_fn: ReplyFn<M5A, E5A>,
+    ) -> ContractBuilder<M1, E1, M2, M3, M5A, M6, E2, E3, E4, E5A, E6, E7, E8, E9, E10, E11, E12>
+    where
+        M5A: DeserializeOwned + 'static,
+        E5A: Backtraceable + 'static,
+    {
+        ContractBuilder {
+            instantiate_fn: self.instantiate_fn,
+            execute_fn: self.execute_fn,
+            migrate_fn: self.migrate_fn,
+            receive_fn: self.receive_fn,
+            reply_fn: Some(reply_fn),
+            query_fn: self.query_fn,
+            authenticate_fn: self.authenticate_fn,
+            bank_execute_fn: self.bank_execute_fn,
+            bank_query_fn: self.bank_query_fn,
+            withhold_fee_fn: self.withhold_fee_fn,
+            finalize_fee_fn: self.finalize_fee_fn,
+            cron_execute_fn: self.cron_execute_fn,
+        }
+    }
+
+    pub fn with_query<M6A, E6A>(
+        self,
+        query_fn: QueryFn<M6A, E6A>,
+    ) -> ContractBuilder<M1, E1, M2, M3, M5, M6A, E2, E3, E4, E5, E6A, E7, E8, E9, E10, E11, E12>
+    where
+        M6A: DeserializeOwned + 'static,
+        E6A: Backtraceable + 'static,
+    {
+        ContractBuilder {
+            instantiate_fn: self.instantiate_fn,
+            execute_fn: self.execute_fn,
+            migrate_fn: self.migrate_fn,
+            receive_fn: self.receive_fn,
+            reply_fn: self.reply_fn,
+            query_fn: Some(query_fn),
+            authenticate_fn: self.authenticate_fn,
+            bank_execute_fn: self.bank_execute_fn,
+            bank_query_fn: self.bank_query_fn,
+            withhold_fee_fn: self.withhold_fee_fn,
+            finalize_fee_fn: self.finalize_fee_fn,
+            cron_execute_fn: self.cron_execute_fn,
+        }
+    }
+
+    pub fn with_authenticate<E7A>(
+        self,
+        authenticate_fn: AuthenticateFn<E7A>,
+    ) -> ContractBuilder<M1, E1, M2, M3, M5, M6, E2, E3, E4, E5, E6, E7A, E8, E9, E10, E11, E12>
+    {
+        ContractBuilder {
+            instantiate_fn: self.instantiate_fn,
+            execute_fn: self.execute_fn,
+            migrate_fn: self.migrate_fn,
+            receive_fn: self.receive_fn,
+            reply_fn: self.reply_fn,
+            query_fn: self.query_fn,
+            authenticate_fn: Some(authenticate_fn),
+            bank_execute_fn: self.bank_execute_fn,
+            bank_query_fn: self.bank_query_fn,
+            withhold_fee_fn: self.withhold_fee_fn,
+            finalize_fee_fn: self.finalize_fee_fn,
+            cron_execute_fn: self.cron_execute_fn,
+        }
+    }
+
+    pub fn with_bank_execute<E8A>(
+        self,
+        bank_execute_fn: BankExecuteFn<E8A>,
+    ) -> ContractBuilder<M1, E1, M2, M3, M5, M6, E2, E3, E4, E5, E6, E7, E8A, E9, E10, E11, E12>
+    {
+        ContractBuilder {
+            instantiate_fn: self.instantiate_fn,
+            execute_fn: self.execute_fn,
+            migrate_fn: self.migrate_fn,
+            receive_fn: self.receive_fn,
+            reply_fn: self.reply_fn,
+            query_fn: self.query_fn,
+            authenticate_fn: self.authenticate_fn,
+            bank_execute_fn: Some(bank_execute_fn),
+            bank_query_fn: self.bank_query_fn,
+            withhold_fee_fn: self.withhold_fee_fn,
+            finalize_fee_fn: self.finalize_fee_fn,
+            cron_execute_fn: self.cron_execute_fn,
+        }
+    }
+
+    pub fn with_bank_query<E9A>(
+        self,
+        bank_query_fn: BankQueryFn<E9A>,
+    ) -> ContractBuilder<M1, E1, M2, M3, M5, M6, E2, E3, E4, E5, E6, E7, E8, E9A, E10, E11, E12>
+    {
+        ContractBuilder {
+            instantiate_fn: self.instantiate_fn,
+            execute_fn: self.execute_fn,
+            migrate_fn: self.migrate_fn,
+            receive_fn: self.receive_fn,
+            reply_fn: self.reply_fn,
+            query_fn: self.query_fn,
+            authenticate_fn: self.authenticate_fn,
+            bank_execute_fn: self.bank_execute_fn,
+            bank_query_fn: Some(bank_query_fn),
+            withhold_fee_fn: self.withhold_fee_fn,
+            finalize_fee_fn: self.finalize_fee_fn,
+            cron_execute_fn: self.cron_execute_fn,
+        }
+    }
+
+    pub fn with_withhold_fee<E10A>(
+        self,
+        withhold_fee_fn: WithholdFeeFn<E10A>,
+    ) -> ContractBuilder<M1, E1, M2, M3, M5, M6, E2, E3, E4, E5, E6, E7, E8, E9, E10A, E11, E12>
+    {
+        ContractBuilder {
+            instantiate_fn: self.instantiate_fn,
+            execute_fn: self.execute_fn,
+            migrate_fn: self.migrate_fn,
+            receive_fn: self.receive_fn,
+            reply_fn: self.reply_fn,
+            query_fn: self.query_fn,
+            authenticate_fn: self.authenticate_fn,
+            bank_execute_fn: self.bank_execute_fn,
+            bank_query_fn: self.bank_query_fn,
+            withhold_fee_fn: Some(withhold_fee_fn),
+            finalize_fee_fn: self.finalize_fee_fn,
+            cron_execute_fn: self.cron_execute_fn,
+        }
+    }
+
+    pub fn with_finalize_fee<E11A>(
+        self,
+        finalize_fee_fn: FinalizeFeeFn<E11A>,
+    ) -> ContractBuilder<M1, E1, M2, M3, M5, M6, E2, E3, E4, E5, E6, E7, E8, E9, E10, E11A, E12>
+    {
+        ContractBuilder {
+            instantiate_fn: self.instantiate_fn,
+            execute_fn: self.execute_fn,
+            migrate_fn: self.migrate_fn,
+            receive_fn: self.receive_fn,
+            reply_fn: self.reply_fn,
+            query_fn: self.query_fn,
+            authenticate_fn: self.authenticate_fn,
+            bank_execute_fn: self.bank_execute_fn,
+            bank_query_fn: self.bank_query_fn,
+            withhold_fee_fn: self.withhold_fee_fn,
+            finalize_fee_fn: Some(finalize_fee_fn),
+            cron_execute_fn: self.cron_execute_fn,
+        }
+    }
+
+    pub fn with_cron_execute<E12A>(
+        self,
+        cron_execute_fn: CronExecuteFn<E12A>,
+    ) -> ContractBuilder<M1, E1, M2, M3, M5, M6, E2, E3, E4, E5, E6, E7, E8, E9, E10, E11, E12A>
+    {
+        ContractBuilder {
+            instantiate_fn: self.instantiate_fn,
+            execute_fn: self.execute_fn,
+            migrate_fn: self.migrate_fn,
+            receive_fn: self.receive_fn,
+            reply_fn: self.reply_fn,
+            query_fn: self.query_fn,
+            authenticate_fn: self.authenticate_fn,
+            bank_execute_fn: self.bank_execute_fn,
+            bank_query_fn: self.bank_query_fn,
+            withhold_fee_fn: self.withhold_fee_fn,
+            finalize_fee_fn: self.finalize_fee_fn,
+            cron_execute_fn: Some(cron_execute_fn),
+        }
+    }
+
+    pub fn build(self) -> ContractWrapper {
+        let index = CONTRACTS
+            .get_or_init(Default::default)
+            .push_get_index(Box::new(ContractImpl {
+                instantiate_fn: self.instantiate_fn,
+                execute_fn: self.execute_fn,
+                migrate_fn: self.migrate_fn,
+                receive_fn: self.receive_fn,
+                reply_fn: self.reply_fn,
+                query_fn: self.query_fn,
+                authenticate_fn: self.authenticate_fn,
+                bank_execute_fn: self.bank_execute_fn,
+                bank_query_fn: self.bank_query_fn,
+                withhold_fee_fn: self.withhold_fee_fn,
+                finalize_fee_fn: self.finalize_fee_fn,
+                cron_execute_fn: self.cron_execute_fn,
+            }));
+
+        ContractWrapper { index }
+    }
+}
+
+// ----------------------------------- impl ------------------------------------
+
+struct ContractImpl<M1, M2, M3, M5, M6, E1, E2, E3, E4, E5, E6, E7, E8, E9, E10, E11, E12> {
+    instantiate_fn: InstantiateFn<M1, E1>,
+    execute_fn: Option<ExecuteFn<M2, E2>>,
+    migrate_fn: Option<MigrateFn<M3, E3>>,
+    receive_fn: Option<ReceiveFn<E4>>,
+    reply_fn: Option<ReplyFn<M5, E5>>,
+    query_fn: Option<QueryFn<M6, E6>>,
+    authenticate_fn: Option<AuthenticateFn<E7>>,
+    bank_execute_fn: Option<BankExecuteFn<E8>>,
+    bank_query_fn: Option<BankQueryFn<E9>>,
+    withhold_fee_fn: Option<WithholdFeeFn<E10>>,
+    finalize_fee_fn: Option<FinalizeFeeFn<E11>>,
+    cron_execute_fn: Option<CronExecuteFn<E12>>,
+}
+
+impl<M1, M2, M3, M5, M6, E1, E2, E3, E4, E5, E6, E7, E8, E9, E10, E11, E12> Contract
+    for ContractImpl<M1, M2, M3, M5, M6, E1, E2, E3, E4, E5, E6, E7, E8, E9, E10, E11, E12>
+where
+    M1: DeserializeOwned,
+    M2: DeserializeOwned,
+    M3: DeserializeOwned,
+    M5: DeserializeOwned,
+    M6: DeserializeOwned,
+    E1: Backtraceable,
+    E2: Backtraceable,
+    E3: Backtraceable,
+    E4: Backtraceable,
+    E5: Backtraceable,
+    E6: Backtraceable,
+    E7: Backtraceable,
+    E8: Backtraceable,
+    E9: Backtraceable,
+    E10: Backtraceable,
+    E11: Backtraceable,
+    E12: Backtraceable,
+{
+    fn instantiate(
+        &self,
+        ctx: Context,
+        storage: &mut dyn Storage,
+        api: &dyn Api,
+        querier: &dyn Querier,
+        msg: &[u8],
+    ) -> VmResult<GenericResult<Response>> {
+        let mutable_ctx = make_mutable_ctx!(ctx, storage, api, querier);
+        let msg = msg.deserialize_borsh::<Json>()?.deserialize_json()?;
+        let res = (self.instantiate_fn)(mutable_ctx, msg);
+
+        Ok(res.into_generic_result())
+    }
+
+    fn execute(
+        &self,
+        ctx: Context,
+        storage: &mut dyn Storage,
+        api: &dyn Api,
+        querier: &dyn Querier,
+        msg: &[u8],
+    ) -> VmResult<GenericResult<Response>> {
+        let Some(execute_fn) = &self.execute_fn else {
+            return Err(VmError::function_not_found("execute"));
+        };
+
+        let mutable_ctx = make_mutable_ctx!(ctx, storage, api, querier);
+        let msg = msg.deserialize_borsh::<Json>()?.deserialize_json()?;
+        let res = execute_fn(mutable_ctx, msg);
+
+        Ok(res.into_generic_result())
+    }
+
+    fn migrate(
+        &self,
+        ctx: Context,
+        storage: &mut dyn Storage,
+        api: &dyn Api,
+        querier: &dyn Querier,
+        msg: &[u8],
+    ) -> VmResult<GenericResult<Response>> {
+        let Some(migrate_fn) = &self.migrate_fn else {
+            return Err(VmError::function_not_found("migrate"));
+        };
+
+        let sudo_ctx = make_sudo_ctx!(ctx, storage, api, querier);
+        let msg = msg.deserialize_borsh::<Json>()?.deserialize_json()?;
+        let res = migrate_fn(sudo_ctx, msg);
+
+        Ok(res.into_generic_result())
+    }
+
+    fn receive(
+        &self,
+        ctx: Context,
+        storage: &mut dyn Storage,
+        api: &dyn Api,
+        querier: &dyn Querier,
+    ) -> VmResult<GenericResult<Response>> {
+        let Some(receive_fn) = &self.receive_fn else {
+            return Err(VmError::function_not_found("receive"));
+        };
+
+        let mutable_ctx = make_mutable_ctx!(ctx, storage, api, querier);
+        let res = receive_fn(mutable_ctx);
+
+        Ok(res.into_generic_result())
+    }
+
+    fn reply(
+        &self,
+        ctx: Context,
+        storage: &mut dyn Storage,
+        api: &dyn Api,
+        querier: &dyn Querier,
+        msg: &[u8],
+        result: SubMsgResult,
+    ) -> VmResult<GenericResult<Response>> {
+        let Some(reply_fn) = &self.reply_fn else {
+            return Err(VmError::function_not_found("reply"));
+        };
+
+        let sudo_ctx = make_sudo_ctx!(ctx, storage, api, querier);
+        let msg = msg.deserialize_borsh::<Json>()?.deserialize_json()?;
+        let res = reply_fn(sudo_ctx, msg, result);
+
+        Ok(res.into_generic_result())
+    }
+
+    fn query(
+        &self,
+        ctx: Context,
+        storage: &dyn Storage,
+        api: &dyn Api,
+        querier: &dyn Querier,
+        msg: &[u8],
+    ) -> VmResult<GenericResult<Json>> {
+        let Some(query_fn) = &self.query_fn else {
+            return Err(VmError::function_not_found("query"));
+        };
+
+        let immutable_ctx = make_immutable_ctx!(ctx, storage, api, querier);
+        let msg = msg.deserialize_borsh::<Json>()?.deserialize_json()?;
+        let res = query_fn(immutable_ctx, msg);
+
+        Ok(res.into_generic_result())
+    }
+
+    fn authenticate(
+        &self,
+        ctx: Context,
+        storage: &mut dyn Storage,
+        api: &dyn Api,
+        querier: &dyn Querier,
+        tx: Tx,
+    ) -> VmResult<GenericResult<Response>> {
+        let Some(authenticate_fn) = &self.authenticate_fn else {
+            return Err(VmError::function_not_found("authenticate"));
+        };
+
+        let auth_ctx = make_auth_ctx!(ctx, storage, api, querier);
+        let res = authenticate_fn(auth_ctx, tx);
+
+        Ok(res.into_generic_result())
+    }
+
+    fn bank_execute(
+        &self,
+        ctx: Context,
+        storage: &mut dyn Storage,
+        api: &dyn Api,
+        querier: &dyn Querier,
+        msg: BankMsg,
+    ) -> VmResult<GenericResult<Response>> {
+        let Some(bank_execute_fn) = &self.bank_execute_fn else {
+            return Err(VmError::function_not_found("bank_execute"));
+        };
+
+        let sudo_ctx = make_sudo_ctx!(ctx, storage, api, querier);
+        let res = bank_execute_fn(sudo_ctx, msg);
+
+        Ok(res.into_generic_result())
+    }
+
+    fn bank_query(
+        &self,
+        ctx: Context,
+        storage: &dyn Storage,
+        api: &dyn Api,
+        querier: &dyn Querier,
+        msg: BankQuery,
+    ) -> VmResult<GenericResult<BankQueryResponse>> {
+        let Some(bank_query_fn) = &self.bank_query_fn else {
+            return Err(VmError::function_not_found("bank_query"));
+        };
+
+        let immutable_ctx = make_immutable_ctx!(ctx, storage, api, querier);
+        let res = bank_query_fn(immutable_ctx, msg);
+
+        Ok(res.into_generic_result())
+    }
+
+    fn withhold_fee(
+        &self,
+        ctx: Context,
+        storage: &mut dyn Storage,
+        api: &dyn Api,
+        querier: &dyn Querier,
+        tx: Tx,
+    ) -> VmResult<GenericResult<Response>> {
+        let Some(withhold_fee_fn) = &self.withhold_fee_fn else {
+            return Err(VmError::function_not_found("withhold_fee"));
+        };
+
+        let auth_ctx = make_auth_ctx!(ctx, storage, api, querier);
+        let res = withhold_fee_fn(auth_ctx, tx);
+
+        Ok(res.into_generic_result())
+    }
+
+    fn finalize_fee(
+        &self,
+        ctx: Context,
+        storage: &mut dyn Storage,
+        api: &dyn Api,
+        querier: &dyn Querier,
+        tx: Tx,
+        outcome: TxOutcome,
+    ) -> VmResult<GenericResult<Response>> {
+        let Some(finalize_fee_fn) = &self.finalize_fee_fn else {
+            return Err(VmError::function_not_found("finalize_fee"));
+        };
+
+        let auth_ctx = make_auth_ctx!(ctx, storage, api, querier);
+        let res = finalize_fee_fn(auth_ctx, tx, outcome);
+
+        Ok(res.into_generic_result())
+    }
+
+    fn cron_execute(
+        &self,
+        ctx: Context,
+        storage: &mut dyn Storage,
+        api: &dyn Api,
+        querier: &dyn Querier,
+    ) -> VmResult<GenericResult<Response>> {
+        let Some(cron_execute_fn) = &self.cron_execute_fn else {
+            return Err(VmError::function_not_found("cron_execute"));
+        };
+
+        let sudo_ctx = make_sudo_ctx!(ctx, storage, api, querier);
+        let res = cron_execute_fn(sudo_ctx);
+
+        Ok(res.into_generic_result())
+    }
+}
