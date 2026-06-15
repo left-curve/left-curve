@@ -1,17 +1,7 @@
-# SOPS configuration skeleton for deploy secrets.
+# SOPS configuration for deploy secrets.
+# Public age/YubiKey recipients are safe to commit; identity files are not.
 #
-# Replace every placeholder with a real public age/YubiKey recipient before
-# creating or re-encrypting SOPS files. The placeholders are intentionally
-# invalid so accidental SOPS use fails closed.
-#
-# Team policy:
-# - one YubiKey-backed age recipient per user
-# - no backup age key per user
-# - github-ci is generated on a trusted desktop
-# - github-ci is included only for routine deploy files in phase 1
-# - github-ci is intentionally excluded from root/debian files in phase 1
-#
-# Placeholder map:
+# Recipient map:
 # - age1yubikey1q2jpj60frm2eh0lndcqf8he649yrmtp9z5n5l4l8e5rhmpncck03vsjwh62  # penso
 # - age1yubikey1qdvpvuaxnxxrhdghjzmcm2m69w6f480h9wwt8g2900mu8pm2npn32hwdz5x  # larry
 # - age1yubikey1qtwrakqqgzc4pue7fg5xp2d6vnna8xvd7vh7vtzvk37jvcc8zawnjvzcyce  # rhaki

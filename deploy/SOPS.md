@@ -1,23 +1,22 @@
-# SOPS deploy secrets scaffold
+# SOPS deploy secrets
 
-This is the repo-local SOPS plan for deploy secrets. It is a scaffold only:
-the current Ansible Vault files remain in place and are not converted in this
-phase.
+This repository stores deploy secrets with SOPS and age recipients. Human
+recipients are YubiKey-backed through `age-plugin-yubikey`; the CI recipient is
+an age key generated on a trusted desktop and stored only in GitHub secrets.
 
 ## Architecture
 
-SOPS encrypts each secret file with a per-file data key. That data key is
-wrapped for every recipient selected by `.sops.yaml`. The repo commits the
-encrypted file and SOPS metadata, not private keys.
+SOPS encrypts each file with a random data key. That data key is wrapped for the
+age recipients selected by `.sops.yaml`. Public recipient strings are safe to
+commit. Private key material stays either in a teammate's YubiKey or in the
+GitHub `deploy` environment secret `SOPS_AGE_KEY`.
 
-Phase 1 keeps the model simple:
+Ansible integration uses:
 
-- `.sops.yaml` is committed at the repo root with invalid placeholder
-  recipients. The next ceremony step is replacing those placeholders with real
-  public age/YubiKey recipients.
-- Existing Ansible Vault files continue to serve deploy workflows until the
-  migration phase changes playbooks and helpers.
-- `community.sops` is available for the later Ansible integration phase.
+- `community.sops.sops` as the `group_vars`/`host_vars` vars plugin.
+- `community.sops.load_vars` for root/debian files that must not be decrypted
+  by deploy CI.
+- `SOPS_AGE_KEY` / `ANSIBLE_SOPS_AGE_KEY` in GitHub Actions.
 
 ## Recipient Groups
 
@@ -31,7 +30,7 @@ Routine deploy files use the non-root/service decrypt group plus `github-ci`:
 - `kyar1s`
 - `github-ci`
 
-Root/debian files use the root/debian group only:
+Root/debian files use:
 
 - `penso`
 - `larry`
@@ -44,13 +43,14 @@ Team decisions:
 - `github-ci` is generated on a trusted desktop, not on a remote server.
 - In phase 1, `github-ci` is included only for routine deploy files and is not
   included for root/debian files.
-- `key_groups` are deferred to phase 2.
+- If a user loses a key, add the new public recipient and re-encrypt.
+- Hyperlane stays in `group_vars/hyperlane/vault.sops.yml` for this cutover.
+  The per-validator custody split from PR #2170 is deferred.
+- SOPS `key_groups` are deferred to phase 2.
 
-## Planned SOPS Files
+## SOPS Files
 
-These future files mirror the 11 current Vault-backed classes.
-
-| Current Vault file | Future SOPS file | Recipients |
+| Legacy Vault file | SOPS file | Recipients |
 | --- | --- | --- |
 | `group_vars/all/vault.yml` | `group_vars/all/vault.sops.yml` | routine |
 | `group_vars/all/deploy_key.vault` | `group_vars/all/deploy_key.sops` | routine |
@@ -64,16 +64,25 @@ These future files mirror the 11 current Vault-backed classes.
 | `vaults/debian/debian_key.vault` | `vaults/debian/debian_key.sops` | root/debian |
 | `vaults/debian/root_vault.yml` | `vaults/debian/root_vault.sops.yml` | root/debian |
 
-## Install And Setup
+## Local Setup
 
 Install local tools:
 
 ```bash
-brew install sops age
-brew install age-plugin-yubikey
+brew install sops age age-plugin-yubikey
 ```
 
-Check the local setup without decrypting anything:
+Create or list a YubiKey recipient:
+
+```bash
+age-plugin-yubikey --generate
+age-plugin-yubikey --list
+```
+
+Store the local identity file outside the repository. Commit only the public
+`age1yubikey1...` recipient in `.sops.yaml`.
+
+Check local tooling without decrypting secrets:
 
 ```bash
 cd deploy
@@ -81,37 +90,7 @@ just sops-check
 just sops-audit
 ```
 
-Replace placeholders only after recipient collection:
-
-```bash
-cd ..
-$EDITOR .sops.yaml
-```
-
-Commit the updated `.sops.yaml` only after the team has reviewed the real public
-recipients. The public recipient strings are safe to commit; local identity
-files and private age keys are not.
-
-## Recipient Collection
-
-Each person creates one YubiKey-backed age recipient locally. A typical flow is:
-
-```bash
-age-plugin-yubikey --generate
-age-plugin-yubikey --list
-```
-
-Then collect the public recipient only:
-
-```bash
-cd deploy
-just sops-collect-recipient --user j0nl1 --group routine age1...
-```
-
-The helper validates that the value looks like a public age recipient and prints
-a reviewable snippet. It does not edit `.sops.yaml`.
-
-## CI Age Key Creation
+## Deploy CI Key
 
 Generate `github-ci` on a trusted desktop with local disk permissions locked
 down:
@@ -129,32 +108,64 @@ For GitHub Actions, store it in the `deploy` environment as `SOPS_AGE_KEY` and
 pass it as both `SOPS_AGE_KEY` and `ANSIBLE_SOPS_AGE_KEY` when wiring SOPS into
 Ansible.
 
-## Daily Usage
+## Migration Ceremony
 
-During the transition, existing Vault recipes stay available:
+Run the migration on a trusted machine that still has access to the legacy
+default and debian Vault passwords.
+
+The ceremony should:
+
+- confirm the `github-ci` public recipient in `.sops.yaml`
+- store the `github-ci` private age key in the GitHub `deploy` environment as
+  `SOPS_AGE_KEY`
+- decrypt each legacy Vault file locally
+- write the matching SOPS file using the recipient rules in `.sops.yaml`
+- delete the legacy Vault files and Vault password helper scripts
+- verify that no legacy Vault payloads remain under `deploy/`
+- verify that GitHub runners have `/usr/local/bin/sops`
+
+After the ceremony:
 
 ```bash
 cd deploy
-just edit-secrets
-just edit-root-secrets
+just sops-audit
 ```
 
-Future SOPS edit recipes are staged now and will work once the real `.sops.yaml`
-and encrypted files exist:
+Check for old Vault references:
+
+```bash
+rg -n 'vault_password_file|vault_identity_list|ANSIBLE_VAULT_PASSWORD|ANSIBLE_DEBIAN_PASSWORD|root_vault\.yml|\.vault' \
+  deploy .github/workflows \
+  --glob '!deploy/SOPS.md'
+```
+
+## Daily Usage
+
+Edit routine secrets:
 
 ```bash
 cd deploy
 just sops-edit-secrets
 just sops-edit-hyperlane-secrets
-just sops-edit-root-secrets
+just sops-edit-points-bot-secrets
+just sops-edit-perps-bot-secrets
+just sops-edit-dango-assistant-secrets
 ```
 
-The audit helper is metadata-only. It does not call `sops --decrypt` and does
-not print encrypted values:
+Edit root/debian secrets:
 
 ```bash
 cd deploy
-just sops-audit
+just sops-edit-root-secrets
+just sops-edit-root-key
+```
+
+Load SSH keys into the local agent:
+
+```bash
+cd deploy
+just add-deploy-key
+just add-debian-key
 ```
 
 ## Re-Encryption
@@ -168,10 +179,9 @@ just sops-reencrypt --dry-run
 just sops-reencrypt
 ```
 
-The helper fails if `.sops.yaml` or `sops` is missing. It only processes the
-planned future `*.sops.yml` or `*.sops` paths and refuses unexpected paths.
+Removing a recipient protects future encrypted versions only.
 
-## Revocation Caveats
+## Revocation
 
 Removing a recipient from `.sops.yaml` does not undo access to old Git history
 or to plaintext a person already decrypted. It only prevents that recipient from
@@ -192,24 +202,17 @@ For meaningful revocation:
 Phase 1 uses one recipient list per path rule. This is easier to audit while the
 team is moving from Ansible Vault to SOPS.
 
-Phase 2 can move to SOPS `key_groups` when the team wants quorum-style decrypt
-policy. For example, root/debian files could require separate groups for root
-operators and an offline break-glass process. That change should be made only
-after the phase 1 migration is stable, because `key_groups` changes the decrypt
-policy semantics and must be tested carefully.
+Phase 2 can move root/debian or other high-value files to SOPS `key_groups` with
+a `shamir_threshold`, for example 2-of-N decrypt. That should stay out of
+routine deploy paths because one SOPS process needs access to enough groups at
+decrypt time.
 
 ## Migration Plan
 
-1. Keep current Ansible Vault files and recipes working.
-2. Collect public YubiKey recipients from the six routine users and the three
-   root/debian users.
-3. Generate the `github-ci` age key on a trusted desktop and store only its
-   public recipient in `.sops.yaml`.
-4. Replace placeholders in the committed `.sops.yaml`.
-5. Convert one non-root Vault file to its matching `.sops.yml` file in a small
-   reviewable change.
-6. Add Ansible loading for that SOPS file using `community.sops`.
-7. Repeat for the remaining routine files.
-8. Convert root/debian files separately, without `github-ci` in phase 1.
-9. Remove legacy Vault helpers only after all deploy playbooks are using SOPS
-   and the team has verified rollback expectations.
+1. Confirm all committed public recipients in `.sops.yaml`.
+2. Confirm the GitHub `deploy` environment has `SOPS_AGE_KEY`.
+3. Convert each legacy Vault file to its matching `.sops.yml` or `.sops` file.
+4. Remove the legacy Vault files in the same change that adds their SOPS
+   replacements.
+5. Run `just sops-audit` from `deploy/`.
+6. Run the normal deploy workflow only after the audit passes.

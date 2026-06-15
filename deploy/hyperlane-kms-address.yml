@@ -3,12 +3,16 @@
   hosts: localhost
   connection: local
   gather_facts: false
-  vars_files:
-    - group_vars/hyperlane/vault.yml
 
   vars:
     hyperlane_agents_network: "{{ hyperlane_agents_network | default('') }}"
     hyperlane_validator_index: "{{ hyperlane_validator_index | default('') }}"
+
+  pre_tasks:
+    - name: Load Hyperlane secrets
+      community.sops.load_vars:
+        file: group_vars/hyperlane/vault.sops.yml
+      no_log: true
 
   tasks:
     - name: Validate required inputs

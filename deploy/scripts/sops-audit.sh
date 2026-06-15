@@ -40,6 +40,7 @@ count_visible_metadata() {
 printf 'SOPS audit (metadata only; no decrypt)\n'
 printf 'repo: %s\n\n' "$REPO_ROOT"
 
+status=0
 if [ -f "$REPO_ROOT/.sops.yaml" ]; then
   if grep -q 'PLACEHOLDER' "$REPO_ROOT/.sops.yaml"; then
     printf 'config: .sops.yaml present but still contains placeholder recipients\n'
@@ -53,13 +54,13 @@ else
 fi
 
 printf '\nExpected SOPS files\n'
-status=0
 while IFS= read -r rel; do
   [ -n "$rel" ] || continue
 
   file="$REPO_ROOT/$rel"
   if [ ! -f "$file" ]; then
     printf 'missing  %s\n' "$rel"
+    status=1
     continue
   fi
 
@@ -109,5 +110,8 @@ $(find "$REPO_ROOT/deploy/group_vars" "$REPO_ROOT/deploy/host_vars" "$REPO_ROOT/
 EOF
 
 printf 'vault_count=%s\n' "$vault_count"
+if [ "$vault_count" -ne 0 ]; then
+  status=1
+fi
 
 exit "$status"

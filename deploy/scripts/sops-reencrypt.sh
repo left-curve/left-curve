@@ -22,10 +22,10 @@ usage() {
 Usage:
   sops-reencrypt.sh [--dry-run] [--list] [PATH ...]
 
-Re-encrypt expected future SOPS files with recipients from .sops.yaml.
+Re-encrypt expected SOPS files with recipients from .sops.yaml.
 With no PATH arguments, all existing expected files are processed.
 
-This script only operates on the planned deploy *.sops.yml/*.sops paths.
+This script only operates on the deploy *.sops.yml/*.sops paths.
 EOF
 }
 

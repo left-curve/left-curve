@@ -6,7 +6,7 @@ Step-by-step runbook for commissioning a new server into the fleet (mainnet, tes
 
 Before you start:
 
-- **Vault access**: complete [Setup Ansible Vault](README.md#setup-ansible-vault) (the deploy and debian passwords must be in `pass` or Keychain).
+- **SOPS access**: complete [Setup SOPS Secrets](README.md#setup-sops-secrets). Your local age identity must be able to decrypt the routine deploy files and, for provisioning, the root/debian files.
 - **Keys in agent**: `eval $(ssh-agent -s) && just add-deploy-key && just add-debian-key`. Ansible authenticates outbound using whatever ssh-agent has loaded; both keys are required.
 - **Plan the host's identity**: pick four values up front and write them down — you'll use them in steps 1 and 7.
   - `hostname` (e.g. `hetzner5`) — next free slot.
@@ -174,7 +174,7 @@ Expected: prints `<hostname>`.
 > ssh debian@$PUBLIC_IP 'sudo journalctl -u tailscaled -n 30'
 > ```
 >
-> A repeating "Received error: invalid key: API key does not exist" means the `tailscale_authkey` in `group_vars/all/vault.yml` has been invalidated by Tailscale's control plane (revoked, or expired and pruned). Existing servers are unaffected — auth keys are only consulted during first-time registration.
+> A repeating "Received error: invalid key: API key does not exist" means the `tailscale_authkey` in `group_vars/all/vault.sops.yml` has been invalidated by Tailscale's control plane (revoked, or expired and pruned). Existing servers are unaffected — auth keys are only consulted during first-time registration.
 >
 > Fix: generate a fresh auth key at <https://login.tailscale.com/admin/settings/keys>. Then update the vault:
 >
@@ -318,4 +318,4 @@ Application-level scrapes — `traefik`, `clickhouse`, `postgres`, `dango`, `com
 The host is now a fully provisioned member of the fleet but has no application services yet. From here:
 
 - **Application deploy**: run the relevant deploy recipe from `Justfile` (`just deploy-mainnet`, `just deploy-testnet`, etc.). For mainnet, also update the `--limit` list in the recipe to include the new tailscale IP.
-- **Hyperlane** (if applicable): see the `deploy-hyperlane-*` recipes — these need the new validator's KMS key set up in `group_vars/hyperlane/vault.yml`.
+- **Hyperlane** (if applicable): see the `deploy-hyperlane-*` recipes — these need the new validator's KMS key set up in `group_vars/hyperlane/vault.sops.yml`.
