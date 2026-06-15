@@ -7,9 +7,9 @@
 # Team policy:
 # - one YubiKey-backed age recipient per user
 # - no backup age key per user
-# - deploy-ci is generated on a trusted desktop
-# - deploy-ci is included only for routine deploy files in phase 1
-# - deploy-ci is intentionally excluded from root/debian files in phase 1
+# - github-ci is generated on a trusted desktop
+# - github-ci is included only for routine deploy files in phase 1
+# - github-ci is intentionally excluded from root/debian files in phase 1
 #
 # Placeholder map:
 # - age1yubikey1q2jpj60frm2eh0lndcqf8he649yrmtp9z5n5l4l8e5rhmpncck03vsjwh62  # penso
@@ -18,10 +18,10 @@
 # - age1yubikey1q2ltwfyvzecj9nfr862nql2z67rwejwr6rjnzn8aspc8la3ax5gkkn5upmh  # zexsor
 # - age1yubikey1qg8wygtvmr5hyx5njmpar8n35xjcvsh29dzug989hmyn3vd7atj85rft8d0  # j0nl1
 # - age1yubikey1q2y2eshvcqgyuuxd8kch54mdhf96znghyf99rd3yxqcrw4g5l9vpcs03x5h  # kyar1s
-# - age1PLACEHOLDER_DEPLOY_CI_DESKTOP  # deploy-ci public recipient
+# - age1PLACEHOLDER_GITHUB_CI_DESKTOP  # github-ci public recipient
 
 creation_rules:
-  # Routine deploy files: penso, larry, rhaki, zexsor, j0nl1, kyar1s, deploy-ci.
+  # Routine deploy files: penso, larry, rhaki, zexsor, j0nl1, kyar1s, github-ci.
   - path_regex: ^(deploy/)?group_vars/all/vault\.sops\.yml$
     age: >-
       age1yubikey1q2jpj60frm2eh0lndcqf8he649yrmtp9z5n5l4l8e5rhmpncck03vsjwh62,
@@ -30,7 +30,7 @@ creation_rules:
       age1yubikey1q2ltwfyvzecj9nfr862nql2z67rwejwr6rjnzn8aspc8la3ax5gkkn5upmh,
       age1yubikey1qg8wygtvmr5hyx5njmpar8n35xjcvsh29dzug989hmyn3vd7atj85rft8d0,
       age1yubikey1q2y2eshvcqgyuuxd8kch54mdhf96znghyf99rd3yxqcrw4g5l9vpcs03x5h,
-      age1PLACEHOLDER_DEPLOY_CI_DESKTOP
+      age1PLACEHOLDER_GITHUB_CI_DESKTOP
 
   - path_regex: ^(deploy/)?group_vars/all/deploy_key\.sops$
     age: >-
@@ -40,7 +40,7 @@ creation_rules:
       age1yubikey1q2ltwfyvzecj9nfr862nql2z67rwejwr6rjnzn8aspc8la3ax5gkkn5upmh,
       age1yubikey1qg8wygtvmr5hyx5njmpar8n35xjcvsh29dzug989hmyn3vd7atj85rft8d0,
       age1yubikey1q2y2eshvcqgyuuxd8kch54mdhf96znghyf99rd3yxqcrw4g5l9vpcs03x5h,
-      age1PLACEHOLDER_DEPLOY_CI_DESKTOP
+      age1PLACEHOLDER_GITHUB_CI_DESKTOP
 
   - path_regex: ^(deploy/)?group_vars/dango-assistant/vault\.sops\.yml$
     age: >-
@@ -50,7 +50,7 @@ creation_rules:
       age1yubikey1q2ltwfyvzecj9nfr862nql2z67rwejwr6rjnzn8aspc8la3ax5gkkn5upmh,
       age1yubikey1qg8wygtvmr5hyx5njmpar8n35xjcvsh29dzug989hmyn3vd7atj85rft8d0,
       age1yubikey1q2y2eshvcqgyuuxd8kch54mdhf96znghyf99rd3yxqcrw4g5l9vpcs03x5h,
-      age1PLACEHOLDER_DEPLOY_CI_DESKTOP
+      age1PLACEHOLDER_GITHUB_CI_DESKTOP
 
   - path_regex: ^(deploy/)?group_vars/hyperlane/vault\.sops\.yml$
     age: >-
@@ -60,7 +60,7 @@ creation_rules:
       age1yubikey1q2ltwfyvzecj9nfr862nql2z67rwejwr6rjnzn8aspc8la3ax5gkkn5upmh,
       age1yubikey1qg8wygtvmr5hyx5njmpar8n35xjcvsh29dzug989hmyn3vd7atj85rft8d0,
       age1yubikey1q2y2eshvcqgyuuxd8kch54mdhf96znghyf99rd3yxqcrw4g5l9vpcs03x5h,
-      age1PLACEHOLDER_DEPLOY_CI_DESKTOP
+      age1PLACEHOLDER_GITHUB_CI_DESKTOP
 
   - path_regex: ^(deploy/)?group_vars/perps-bot/vault\.sops\.yml$
     age: >-
@@ -70,7 +70,7 @@ creation_rules:
       age1yubikey1q2ltwfyvzecj9nfr862nql2z67rwejwr6rjnzn8aspc8la3ax5gkkn5upmh,
       age1yubikey1qg8wygtvmr5hyx5njmpar8n35xjcvsh29dzug989hmyn3vd7atj85rft8d0,
       age1yubikey1q2y2eshvcqgyuuxd8kch54mdhf96znghyf99rd3yxqcrw4g5l9vpcs03x5h,
-      age1PLACEHOLDER_DEPLOY_CI_DESKTOP
+      age1PLACEHOLDER_GITHUB_CI_DESKTOP
 
   - path_regex: ^(deploy/)?group_vars/points-bot/vault\.sops\.yml$
     age: >-
@@ -80,7 +80,7 @@ creation_rules:
       age1yubikey1q2ltwfyvzecj9nfr862nql2z67rwejwr6rjnzn8aspc8la3ax5gkkn5upmh,
       age1yubikey1qg8wygtvmr5hyx5njmpar8n35xjcvsh29dzug989hmyn3vd7atj85rft8d0,
       age1yubikey1q2y2eshvcqgyuuxd8kch54mdhf96znghyf99rd3yxqcrw4g5l9vpcs03x5h,
-      age1PLACEHOLDER_DEPLOY_CI_DESKTOP
+      age1PLACEHOLDER_GITHUB_CI_DESKTOP
 
   - path_regex: ^(deploy/)?host_vars/100\.107\.248\.71/vault\.sops\.yml$
     age: >-
@@ -90,7 +90,7 @@ creation_rules:
       age1yubikey1q2ltwfyvzecj9nfr862nql2z67rwejwr6rjnzn8aspc8la3ax5gkkn5upmh,
       age1yubikey1qg8wygtvmr5hyx5njmpar8n35xjcvsh29dzug989hmyn3vd7atj85rft8d0,
       age1yubikey1q2y2eshvcqgyuuxd8kch54mdhf96znghyf99rd3yxqcrw4g5l9vpcs03x5h,
-      age1PLACEHOLDER_DEPLOY_CI_DESKTOP
+      age1PLACEHOLDER_GITHUB_CI_DESKTOP
 
   - path_regex: ^(deploy/)?host_vars/100\.122\.37\.57/main\.sops\.yml$
     age: >-
@@ -100,7 +100,7 @@ creation_rules:
       age1yubikey1q2ltwfyvzecj9nfr862nql2z67rwejwr6rjnzn8aspc8la3ax5gkkn5upmh,
       age1yubikey1qg8wygtvmr5hyx5njmpar8n35xjcvsh29dzug989hmyn3vd7atj85rft8d0,
       age1yubikey1q2y2eshvcqgyuuxd8kch54mdhf96znghyf99rd3yxqcrw4g5l9vpcs03x5h,
-      age1PLACEHOLDER_DEPLOY_CI_DESKTOP
+      age1PLACEHOLDER_GITHUB_CI_DESKTOP
 
   - path_regex: ^(deploy/)?host_vars/100\.96\.253\.40/vault\.sops\.yml$
     age: >-
@@ -110,9 +110,9 @@ creation_rules:
       age1yubikey1q2ltwfyvzecj9nfr862nql2z67rwejwr6rjnzn8aspc8la3ax5gkkn5upmh,
       age1yubikey1qg8wygtvmr5hyx5njmpar8n35xjcvsh29dzug989hmyn3vd7atj85rft8d0,
       age1yubikey1q2y2eshvcqgyuuxd8kch54mdhf96znghyf99rd3yxqcrw4g5l9vpcs03x5h,
-      age1PLACEHOLDER_DEPLOY_CI_DESKTOP
+      age1PLACEHOLDER_GITHUB_CI_DESKTOP
 
-  # Root/debian files: penso, larry, j0nl1 only. No deploy-ci in phase 1.
+  # Root/debian files: penso, larry, j0nl1 only. No github-ci in phase 1.
   - path_regex: ^(deploy/)?vaults/debian/debian_key\.sops$
     age: >-
       age1yubikey1q2jpj60frm2eh0lndcqf8he649yrmtp9z5n5l4l8e5rhmpncck03vsjwh62,

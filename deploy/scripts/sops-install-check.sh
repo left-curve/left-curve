@@ -34,7 +34,7 @@ printf 'SOPS local tool check\n'
 printf 'repo: %s\n\n' "$REPO_ROOT"
 
 check_required "sops" "install SOPS before editing or re-encrypting SOPS files"
-check_required "age-keygen" "install age before generating the deploy-ci age key"
+check_required "age-keygen" "install age before generating the github-ci age key"
 check_optional "age-plugin-yubikey" "needed for users who create YubiKey-backed age recipients"
 
 printf '\nSOPS repo config\n'

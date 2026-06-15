@@ -21,7 +21,7 @@ Phase 1 keeps the model simple:
 
 ## Recipient Groups
 
-Routine deploy files use the non-root/service decrypt group plus deploy CI:
+Routine deploy files use the non-root/service decrypt group plus `github-ci`:
 
 - `penso`
 - `larry`
@@ -29,7 +29,7 @@ Routine deploy files use the non-root/service decrypt group plus deploy CI:
 - `zexsor`
 - `j0nl1`
 - `kyar1s`
-- `deploy-ci`
+- `github-ci`
 
 Root/debian files use the root/debian group only:
 
@@ -41,8 +41,8 @@ Team decisions:
 
 - Each user gets one YubiKey-backed age recipient.
 - Users do not get backup age keys in this repo.
-- `deploy-ci` is generated on a trusted desktop, not on a remote server.
-- In phase 1, `deploy-ci` is included only for routine deploy files and is not
+- `github-ci` is generated on a trusted desktop, not on a remote server.
+- In phase 1, `github-ci` is included only for routine deploy files and is not
   included for root/debian files.
 - `key_groups` are deferred to phase 2.
 
@@ -113,18 +113,18 @@ a reviewable snippet. It does not edit `.sops.yaml`.
 
 ## CI Age Key Creation
 
-Generate `deploy-ci` on a trusted desktop with local disk permissions locked
+Generate `github-ci` on a trusted desktop with local disk permissions locked
 down:
 
 ```bash
 umask 077
-age-keygen -o deploy-ci.agekey
-age-keygen -y deploy-ci.agekey
+age-keygen -o github-ci.agekey
+age-keygen -y github-ci.agekey
 ```
 
 Use the public recipient from `age-keygen -y` in routine deploy rules only. Put
 the private key into the CI secret store using the deployment platform's normal
-secret mechanism. Do not include `deploy-ci` in root/debian rules in phase 1.
+secret mechanism. Do not include `github-ci` in root/debian rules in phase 1.
 For GitHub Actions, store it in the `deploy` environment as `SOPS_AGE_KEY` and
 pass it as both `SOPS_AGE_KEY` and `ANSIBLE_SOPS_AGE_KEY` when wiring SOPS into
 Ansible.
@@ -183,7 +183,7 @@ For meaningful revocation:
 - remove the public recipient from `.sops.yaml`
 - run `just sops-reencrypt`
 - rotate affected service credentials when access exposure matters
-- remove or rotate the corresponding CI secret when revoking `deploy-ci`
+- remove or rotate the corresponding CI secret when revoking `github-ci`
 - treat root/debian material as requiring credential rotation, not only SOPS
   metadata updates
 
@@ -203,13 +203,13 @@ policy semantics and must be tested carefully.
 1. Keep current Ansible Vault files and recipes working.
 2. Collect public YubiKey recipients from the six routine users and the three
    root/debian users.
-3. Generate the `deploy-ci` age key on a trusted desktop and store only its
+3. Generate the `github-ci` age key on a trusted desktop and store only its
    public recipient in `.sops.yaml`.
 4. Replace placeholders in the committed `.sops.yaml`.
 5. Convert one non-root Vault file to its matching `.sops.yml` file in a small
    reviewable change.
 6. Add Ansible loading for that SOPS file using `community.sops`.
 7. Repeat for the remaining routine files.
-8. Convert root/debian files separately, without `deploy-ci` in phase 1.
+8. Convert root/debian files separately, without `github-ci` in phase 1.
 9. Remove legacy Vault helpers only after all deploy playbooks are using SOPS
    and the team has verified rollback expectations.
