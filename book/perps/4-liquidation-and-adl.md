@@ -93,14 +93,16 @@ $$
 $$
 
 $$
-\mathtt{remainingMargin} = \max (0,\; \mathtt{margin} + \mathtt{userPnlAfterCloses})
+\mathtt{remainingEquity} = \max (0,\; \mathtt{equityAfterCloses})
 $$
 
 $$
-\mathtt{fee} = \min (\mathtt{rawFee},\; \mathtt{remainingMargin})
+\mathtt{fee} = \min (\mathtt{rawFee},\; \mathtt{remainingEquity})
 $$
 
-The fee is deducted from the user's margin and routed to the **insurance fund** (not the vault). It is capped at the remaining margin so the fee itself never creates bad debt.
+where $\mathtt{equityAfterCloses}$ is the account's equity once the scheduled closes are settled — i.e. the post-close margin plus the unrealised PnL of any positions left open.
+
+The fee is deducted from the user's margin and routed to the **insurance fund** (not the vault). It is capped at the remaining **equity** — not margin alone — so the fee itself never drives equity below zero and therefore never creates bad debt. The cap matters precisely when margin and equity diverge: an account can reach liquidation with negative margin but positive equity (its open positions hold unrealised profit), and capping at margin would skip a fee the account can clearly afford; conversely, capping at margin when remaining positions are underwater could charge a fee that pushes equity negative.
 
 ## 5. PnL settlement
 
@@ -108,19 +110,21 @@ All PnL from the liquidation fills (user, book makers, ADL counter-parties) is s
 
 ## 6. Bad debt
 
-After PnL and fee settlement, if the user's margin is negative the absolute value is bad debt. The margin is floored to zero and the bad debt is subtracted from the **insurance fund**:
+After PnL and fee settlement, if the user's **equity** is negative the absolute value is bad debt. The account is topped up to exactly zero equity — the bad debt is credited to the user's margin — and the same amount is subtracted from the **insurance fund**:
 
 $$
-\mathtt{badDebt} = |\min(0,\; \mathtt{margin\ after\ settlement})|
+\mathtt{badDebt} = |\min(0,\; \mathtt{equity\ after\ settlement})|
 $$
 
 $$
-\mathtt{user.margin} \gets 0
+\mathtt{user.margin} \mathrel{+}= \mathtt{badDebt} \quad (\text{so } \mathtt{equity} \gets 0)
 $$
 
 $$
 \mathtt{insuranceFund} \mathrel{-}= \mathtt{badDebt}
 $$
+
+Bad debt is a **negative-equity** condition, not merely a negative margin balance. A cross-margined account can carry negative margin while still solvent when its remaining positions hold unrealised profit (see [margin §3](1-margin.md)); recognising bad debt off the margin sign in that case would transfer insurance-fund value to a solvent user. When the account is fully closed — the normal insolvent path — no positions remain, so equity equals margin and crediting $\mathtt{badDebt}$ is identical to flooring margin to zero.
 
 The insurance fund may go negative. A negative insurance fund represents unresolved bad debt — future liquidation fees will replenish it.
 
@@ -156,9 +160,9 @@ Cast:
 - **Bob** holds the exact opposite position(s), opened against Alice at her entry price — being the most profitable counter-position, he is the ADL counter-party.
 - **Carol** is a third-party maker who supplies order-book liquidity where stated.
 
-Examples 1–6 cover a single position, ordered from the most ideal situation to the least: Alice solvent (1–3) then insolvent (4–6), with the order book absorbing all (1, 4), part (2, 5), or none (3, 6) of the close. Examples 7–8 cover an account with two positions.
+Examples 1–6 cover a single position, ordered from the most ideal situation to the least: Alice solvent (1–3) then insolvent (4–6), with the order book absorbing all (1, 4), part (2, 5), or none (3, 6) of the close. Examples 7–8 cover an account with two positions. A final example covers the cross-margin edge case where the account reaches liquidation with **negative margin but positive equity** — the case the equity caps in §4 and §6 exist for.
 
-All eight examples — plus mirrored variants with the sides flipped — are implemented as end-to-end tests in [`dango/testing/tests/perps/liquidation_spec.rs`](https://github.com/left-curve/left-curve/blob/main/dango/testing/tests/perps/liquidation_spec.rs), asserting every figure below exactly.
+All eight numbered examples — plus mirrored variants with the sides flipped — are implemented as end-to-end tests in [`dango/testing/tests/perps/liquidation_spec.rs`](https://github.com/left-curve/left-curve/blob/main/dango/testing/tests/perps/liquidation_spec.rs), asserting every figure below exactly. The negative-margin edge case is likewise covered by an end-to-end test there.
 
 ### Example 1 — Solvent; close fully absorbed by the book
 
@@ -583,3 +587,83 @@ Remaining margin is \$0, so the fee is \$0; the margin is exactly zero, so there
 | Insurance fund | —                    | unchanged                               |
 
 Bob's two ADL fills realize $1 \times (\$50{,}000 - \$44{,}935) = \$5{,}065$ on BTC and $10 \times (\$2{,}000 - \$1{,}800) = \$2{,}000$ on ETH. Alice's \$935 shortfall is absorbed entirely by the BTC fill's above-oracle premium.
+
+### Edge case — negative margin, positive equity
+
+Every example above reaches the fee and bad-debt steps with margin equal to equity: a solvent account is only partially closed but its margin stays positive, and an insolvent account is fully closed, leaving no positions so that margin equals equity. Neither the §4 fee cap nor the §6 bad-debt check can tell margin and equity apart in those cases.
+
+A cross-margined account can, however, reach liquidation with **negative margin but positive equity**. The cash margin balance goes negative — while the account stays solvent — when the trader extracts an open position's unrealised profit before it is realised: by withdrawing against it ([margin §3](1-margin.md)), or by realising a loss on a different position against it. The account is still solvent because that position's unrealised profit is part of equity. This is the case the **equity** caps exist for.
+
+**Setup**
+
+|             | Alice                |
+| ----------- | -------------------- |
+| Position    | Long 10 ETH          |
+| Entry price | \$2,000              |
+| Margin      | **−\$1,450**         |
+
+Carol rests a 5-ETH bid at the \$2,200 oracle.
+
+**ETH at \$2,200**
+
+$$
+\mathtt{equity} = -\$1{,}450 + 10 \times (\$2{,}200 - \$2{,}000) = \$550
+$$
+
+$$
+\mathtt{MM} = 10 \times \$2{,}200 \times 5\% = \$1{,}100
+$$
+
+$$
+\$0 < \$550 < \$1{,}100 \;\Rightarrow\; \text{liquidatable, but solvent}
+$$
+
+_Close schedule_
+
+$$
+\mathtt{deficit} = \$1{,}100 - \$550 = \$550
+\qquad
+\mathtt{closeSize} = \left\lceil \frac{\$550}{\$2{,}200 \times 5\%} \right\rceil = 5 \text{ ETH} \quad (\text{5 ETH remain})
+$$
+
+_Execution_
+
+Alice is solvent, so the close order's limit price is the bankruptcy price $\mathtt{bp} = \$2{,}200 - \$550 / 10 = \$2{,}145$. Carol's bid at \$2,200 is above that limit, so the 5-ETH close fills on the book at \$2,200 (no ADL):
+
+$$
+\mathtt{AlicePnL} = 5 \times (\$2{,}200 - \$2{,}000) = +\$1{,}000 \;\Rightarrow\; \mathtt{margin} = -\$1{,}450 + \$1{,}000 = -\$450
+$$
+
+Closing at the oracle realises no concession, so equity is unchanged at \$550.
+
+_Liquidation fee_
+
+$$
+\mathtt{rawFee} = 5 \times \$2{,}200 \times 0.1\% = \$11.00
+$$
+
+$$
+\mathtt{equityAfterCloses} = -\$450 + 5 \times (\$2{,}200 - \$2{,}000) = \$550
+\;\Rightarrow\;
+\mathtt{fee} = \min(\$11.00,\; \$550) = \$11.00
+$$
+
+The margin-based cap would instead have used $\max(0,\; -\$450) = \$0$ and skipped the fee entirely.
+
+_Bad debt_
+
+$$
+\mathtt{equity\ after\ settlement} = (-\$450 - \$11) + 5 \times \$200 = \$539 > 0 \;\Rightarrow\; \textbf{no bad debt}
+$$
+
+The margin-based check would instead have seen $\mathtt{margin} = -\$461 < 0$, paid \$461 from the insurance fund, and floored Alice's margin to zero — handing \$461 of insurance-fund value to a solvent account and inflating her equity by the same amount.
+
+**Final state**
+
+|                | Position             | Margin / balance                  |
+| -------------- | -------------------- | --------------------------------- |
+| Alice          | Long 5 ETH @ \$2,000 | −\$450 − \$11 = −\$461            |
+| Carol          | Long 5 ETH @ \$2,200 | —                                 |
+| Insurance fund | —                    | +\$11.00 (fee only; no bad debt)  |
+
+Alice keeps 5 ETH and equity of −\$461 + 5 × \$200 = \$539, still solvent. Her margin stays negative — a valid cross-margin state, backed by the open position's unrealised profit, that resolves itself when she eventually closes the position and realises that profit into margin.
