@@ -51,15 +51,6 @@ const usdcCoin = {
   type: "native",
 };
 
-const ethCoin = {
-  decimals: 18,
-  denom: "bridge/eth",
-  logoURI: "/eth.png",
-  name: "Ether",
-  symbol: "ETH",
-  type: "native",
-};
-
 const bridgeConfig = {
   chain: {
     id: 11155111,
@@ -273,7 +264,7 @@ vi.mock("@left-curve/store", () => ({
     action,
     changeCoin: bridgeUiMocks.changeCoin,
     coin: usdcCoin,
-    coins: [usdcCoin, ethCoin],
+    coins: [usdcCoin],
     config: bridgeUiMocks.hasRouter ? bridgeConfig : { chain: bridgeConfig.chain },
     connector: bridgeUiMocks.connector,
     network: bridgeUiMocks.network,
@@ -398,7 +389,7 @@ describe("bridge UI", () => {
     expect(bridgeUiMocks.showModal).not.toHaveBeenCalled();
   });
 
-  it("filters Ether from mainnet deposits while keeping it available for withdrawals", () => {
+  it("renders the supported bridge coins supplied by bridge state", () => {
     bridgeUiMocks.chainId = "dango-1";
 
     const { unmount } = renderBridgeDeposit();
@@ -420,7 +411,6 @@ describe("bridge UI", () => {
 
     expect(Array.from(withdrawCoinSelector.options).map((option) => option.textContent)).toEqual([
       "USDC",
-      "ETH",
     ]);
   });
 
@@ -429,7 +419,7 @@ describe("bridge UI", () => {
 
     fireEvent.change(screen.getByRole("combobox", { name: m["bridge.selectCoin"]() }), {
       target: {
-        value: "bridge/eth",
+        value: "bridge/usdc",
       },
     });
     fireEvent.change(screen.getByRole("combobox", { name: m["bridge.selectNetwork"]() }), {
@@ -438,7 +428,7 @@ describe("bridge UI", () => {
       },
     });
 
-    expect(bridgeUiMocks.changeCoin).toHaveBeenCalledWith("bridge/eth");
+    expect(bridgeUiMocks.changeCoin).toHaveBeenCalledWith("bridge/usdc");
     expect(bridgeUiMocks.setNetwork).toHaveBeenCalledWith("bitcoin");
   });
 
