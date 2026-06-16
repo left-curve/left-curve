@@ -323,6 +323,20 @@ remove-deploy-lock-testnet:
       --limit {{hetzner2}},{{hetzner4}} \
       2>&1 | tee "{{justfile_directory()}}/logs/$(date -u +%Y%m%d%H%M%S)-remove-deploy-lock-testnet.log"
 
+# Pull testnet docker images on every host without restarting anything.
+# Layers already present locally are not re-downloaded, so this is cheap to
+# re-run and safe to use as a warm-up before `deploy-testnet`.
+pull-docker-images-testnet dango_image_tag bots_image_tag:
+  mkdir -p "{{justfile_directory()}}/logs" \
+    && uv run ansible-playbook pull-docker-images.yml \
+      -e dango_network=testnet \
+      -e dango_image_tag={{dango_image_tag}} \
+      -e faucet_bot_tag={{bots_image_tag}} \
+      -e perps_bot_tag={{bots_image_tag}} \
+      -e perp_liquidator_tag={{bots_image_tag}} \
+      --limit {{hetzner2}},{{hetzner4}} \
+      2>&1 | tee "{{justfile_directory()}}/logs/$(date -u +%Y%m%d%H%M%S)-pull-docker-images-testnet.log"
+
 # ---------------------------------- Mainnet -----------------------------------
 
 # Note: the `reset-and-deploy-mainnet` command has been deleted.
@@ -361,6 +375,20 @@ remove-deploy-lock-mainnet:
       --limit {{hetzner5}},{{hetzner6}},{{hetzner1}},{{hetzner3}} \
       2>&1 | tee "{{justfile_directory()}}/logs/$(date -u +%Y%m%d%H%M%S)-remove-deploy-lock-mainnet.log"
 
+# Pull mainnet docker images on every host without restarting anything.
+# Layers already present locally are not re-downloaded, so this is cheap to
+# re-run and safe to use as a warm-up before `deploy-mainnet`.
+pull-docker-images-mainnet dango_image_tag bots_image_tag:
+  mkdir -p "{{justfile_directory()}}/logs" \
+    && uv run ansible-playbook pull-docker-images.yml \
+      -e dango_network=mainnet \
+      -e dango_image_tag={{dango_image_tag}} \
+      -e faucet_bot_tag={{bots_image_tag}} \
+      -e perps_bot_tag={{bots_image_tag}} \
+      -e perp_liquidator_tag={{bots_image_tag}} \
+      --limit {{hetzner5}},{{hetzner6}},{{hetzner1}},{{hetzner3}} \
+      2>&1 | tee "{{justfile_directory()}}/logs/$(date -u +%Y%m%d%H%M%S)-pull-docker-images-mainnet.log"
+
 # ---------------------------------- Preview -----------------------------------
 
 deploy-preview-latest:
@@ -374,11 +402,37 @@ deploy-preview-latest:
       --limit {{ovh1}},{{ovh2}},{{ovh3}} \
       2>&1 | tee "{{justfile_directory()}}/logs/$(date -u +%Y%m%d%H%M%S)-deploy-preview-latest.log"
 
+# List all PR deployments with age on ovh1 and ovh2
+list-pr-deploys:
+  mkdir -p {{justfile_directory()}}/logs \
+    && uv run ansible-playbook list-pr-deploys.yml \
+      --limit {{ovh1}},{{ovh2}} \
+      2>&1 | tee {{justfile_directory()}}/logs/$(date -u +%Y%m%d%H%M%S)-list-pr-deploys.log
+
+# Delete the deploy of a specific PR
 delete-pr number:
   mkdir -p "{{justfile_directory()}}/logs" \
     && uv run ansible-playbook delete-full-app.yml \
       -e deployment_name=pr-{{number}} \
-      2>&1 | tee "{{justfile_directory()}}/logs/$(date -u +%Y%m%d%H%M%S)-delete-pr.log"
+      --limit {{ovh1}},{{ovh2}} \
+      2>&1 | tee {{justfile_directory()}}/logs/$(date -u +%Y%m%d%H%M%S)-delete-pr.log
+
+# Delete a specific devnet deploy by timestamp (e.g. just delete-devnet-deploy 20260122064234)
+delete-devnet-deploy timestamp:
+  mkdir -p {{justfile_directory()}}/logs \
+    && uv run ansible-playbook delete-old-devnet-deploys.yml \
+      -e deployment_name={{timestamp}} \
+      --limit {{ovh1}},{{ovh2}} \
+      2>&1 | tee {{justfile_directory()}}/logs/$(date -u +%Y%m%d%H%M%S)-delete-devnet-deploy.log
+
+# Delete a specific devnet deploy AND its data directory under ~/devnet/<timestamp>
+delete-devnet-deploy-with-data timestamp:
+  mkdir -p {{justfile_directory()}}/logs \
+    && uv run ansible-playbook delete-old-devnet-deploys.yml \
+      -e deployment_name={{timestamp}} \
+      -e remove_devnet_data=true \
+      --limit {{ovh1}},{{ovh2}} \
+      2>&1 | tee {{justfile_directory()}}/logs/$(date -u +%Y%m%d%H%M%S)-delete-devnet-deploy-with-data.log
 
 # --------------------------------- Hyperlane ----------------------------------
 

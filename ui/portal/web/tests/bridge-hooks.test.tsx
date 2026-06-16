@@ -113,53 +113,86 @@ const tokenAddress = "0x2222222222222222222222222222222222222222";
 const nativeRouterAddress = "0x3333333333333333333333333333333333333333";
 const mainnetRouterAddress = "0x8888888888888888888888888888888888888888";
 const mainnetTokenAddress = "0x9999999999999999999999999999999999999999";
+const arbitrumSepoliaRouterAddress = "0x9d0ea335355da17ee89e50df43ab823416cf73d4";
+const arbitrumSepoliaTokenAddress = "0x75faf114eafb1bdbe2f0316df893fd58ce46aa4d";
 const evmAccount = "0x0000000000000000000000000000000000000abc";
 const evmRecipient = "0x4444444444444444444444444444444444444444";
 
 const bridger = {
-  chain_id: 11155111,
-  hyperlane_deployments: {
+  chainId: 11155111,
+  contracts: {
     mailbox: "0x5555555555555555555555555555555555555555",
-    static_message_id_multisig_ism_factory: "0x6666666666666666666666666666666666666666",
+    proxyAdmin: "0x7777777777777777777777777777777777777777",
+    staticMessageIdMultisigIsmFactory: "0x6666666666666666666666666666666666666666",
   },
-  hyperlane_domain: 17,
-  hyperlane_protocol_fee: 77,
-  infura_rpc_url: "https://sepolia.example",
+  domain: 17,
+  estimatedTime: "5-30 mins",
   ism: {
-    static_message_id_multisig_ism: {
+    staticMessageIdMultisigIsm: {
       threshold: 1,
       validators: ["0xvalidator"],
     },
   },
-  proxy_admin_address: "0x7777777777777777777777777777777777777777",
-  warp_routes: [
+  protocolFee: 77,
+  name: "Sepolia Network",
+  order: 0,
+  rpcUrl: "https://sepolia.example",
+  routes: [
     {
-      proxy_address: routerAddress,
       symbol: "USDC",
-      warp_route_type: {
-        erc20_collateral: tokenAddress,
-      },
+      type: "erc20Collateral",
+      tokenAddress,
+      routerAddress,
+      implementationAddress: "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
     },
     {
-      proxy_address: nativeRouterAddress,
       symbol: "ETH",
-      warp_route_type: "native",
+      type: "native",
+      tokenAddress: "native",
+      routerAddress: nativeRouterAddress,
+      implementationAddress: "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
     },
   ],
 };
 
 const mainnetBridger = {
   ...bridger,
-  chain_id: 1,
-  hyperlane_domain: 1,
-  infura_rpc_url: "https://mainnet.example",
-  warp_routes: [
+  chainId: 1,
+  domain: 1,
+  estimatedTime: "6 blocks | 1-3 mins",
+  name: "Ethereum Network",
+  order: 0,
+  rpcUrl: "https://mainnet.example",
+  routes: [
     {
-      proxy_address: mainnetRouterAddress,
       symbol: "USDC",
-      warp_route_type: {
-        erc20_collateral: mainnetTokenAddress,
-      },
+      type: "erc20Collateral",
+      tokenAddress: mainnetTokenAddress,
+      routerAddress: mainnetRouterAddress,
+      implementationAddress: "0xcccccccccccccccccccccccccccccccccccccccc",
+    },
+  ],
+};
+
+const arbitrumSepoliaBridger = {
+  ...bridger,
+  chainId: 421614,
+  domain: 421614,
+  estimatedTime: "5-30 mins",
+  name: "Arbitrum Sepolia Network",
+  order: 1,
+  rpcUrl: "https://arbitrum-sepolia.example",
+  contracts: {
+    ...bridger.contracts,
+    proxyAdmin: "0x947303e34c1a2b97fb00c68c1cc4ca97b3361fe6",
+  },
+  routes: [
+    {
+      symbol: "USDC",
+      type: "erc20Collateral",
+      tokenAddress: arbitrumSepoliaTokenAddress,
+      routerAddress: arbitrumSepoliaRouterAddress,
+      implementationAddress: "0x34dc3f292fc04e3dcc2830ac69bb5d4cd5e8f654",
     },
   ],
 };
@@ -167,6 +200,7 @@ const mainnetBridger = {
 const bridgeEnvConfig = {
   evm: {
     "11155111": bridger,
+    "421614": arbitrumSepoliaBridger,
   },
 };
 
@@ -179,11 +213,11 @@ const evmBridgeConfig = {
   router: {
     address: routerAddress,
     coin: tokenAddress,
-    domain: bridger.hyperlane_domain,
+    domain: bridger.domain,
     remote: {
       warp: {
         contract: toAddr32(routerAddress),
-        domain: bridger.hyperlane_domain,
+        domain: bridger.domain,
       },
     },
   },
@@ -198,11 +232,11 @@ const nativeEvmBridgeConfig = {
   router: {
     address: nativeRouterAddress,
     coin: "native",
-    domain: bridger.hyperlane_domain,
+    domain: bridger.domain,
     remote: {
       warp: {
         contract: toAddr32(nativeRouterAddress),
-        domain: bridger.hyperlane_domain,
+        domain: bridger.domain,
       },
     },
   },
@@ -285,7 +319,7 @@ describe("bridge hooks", () => {
     vi.clearAllMocks();
   });
 
-  it("exposes only bridgeable EVM coins from the configured coin store", () => {
+  it("exposes only supported bridge coins from the configured coin store", () => {
     const atomCoin = {
       decimals: 6,
       denom: "bridge/atom",
@@ -322,7 +356,7 @@ describe("bridge hooks", () => {
       { wrapper: createQueryClientWrapper() },
     );
 
-    expect(result.current.coins).toEqual([ethCoin, usdcCoin]);
+    expect(result.current.coins).toEqual([usdcCoin]);
 
     act(() => result.current.changeCoin(atomCoin.denom));
 
@@ -524,6 +558,7 @@ describe("bridge hooks", () => {
 
     expect(result.current.networks).toEqual([
       { id: "11155111", name: "Sepolia Network", time: "5-30 mins" },
+      { id: "421614", name: "Arbitrum Sepolia Network", time: "5-30 mins" },
     ]);
 
     act(() => result.current.changeCoin(usdcCoin.denom));
@@ -535,11 +570,11 @@ describe("bridge hooks", () => {
     expect(result.current.config?.router).toEqual({
       address: routerAddress,
       coin: tokenAddress,
-      domain: bridger.hyperlane_domain,
+      domain: bridger.domain,
       remote: {
         warp: {
           contract: toAddr32(routerAddress),
-          domain: bridger.hyperlane_domain,
+          domain: bridger.domain,
         },
       },
     });
@@ -576,6 +611,7 @@ describe("bridge hooks", () => {
 
     expect(result.current.networks).toEqual([
       { id: "11155111", name: "Sepolia Network", time: "5-30 mins" },
+      { id: "421614", name: "Arbitrum Sepolia Network", time: "5-30 mins" },
     ]);
 
     act(() => result.current.changeCoin(usdcCoin.denom));
@@ -588,17 +624,17 @@ describe("bridge hooks", () => {
     expect(result.current.config?.router).toEqual({
       address: routerAddress,
       coin: tokenAddress,
-      domain: bridger.hyperlane_domain,
+      domain: bridger.domain,
       remote: {
         warp: {
           contract: toAddr32(routerAddress),
-          domain: bridger.hyperlane_domain,
+          domain: bridger.domain,
         },
       },
     });
   });
 
-  it("derives native EVM router config from the selected ETH warp route", async () => {
+  it("does not derive deprecated ETH router config even when backend config still has the route", async () => {
     const controllers = {
       inputs: {},
       reset: vi.fn(),
@@ -618,17 +654,59 @@ describe("bridge hooks", () => {
     act(() => result.current.changeCoin(ethCoin.denom));
     act(() => result.current.setNetwork("11155111"));
 
-    await waitFor(() => expect(result.current.config?.router).toBeDefined());
+    await waitFor(() => expect(result.current.config?.bridger).toBe(bridger));
 
     expect(result.current.coin).toEqual(ethCoin);
+    expect(result.current.config?.chain).toEqual(expect.objectContaining({ id: 11155111 }));
+    expect(result.current.config?.router).toBeUndefined();
+  });
+
+  it("derives Arbitrum Sepolia USDC bridge routes when connected to a Dango testnet environment", async () => {
+    hookMocks.useConfig.mockReturnValue({
+      chain: {
+        id: "dango-test-1",
+        name: "Testnet",
+      },
+      coins: {
+        byDenom: {
+          [ethCoin.denom]: ethCoin,
+          [usdcCoin.denom]: usdcCoin,
+        },
+      },
+    });
+    const controllers = {
+      inputs: {},
+      reset: vi.fn(),
+      setValue: vi.fn(),
+    };
+
+    const { result } = renderHook(
+      () =>
+        useBridgeState({
+          action: "withdraw",
+          config: bridgeEnvConfig,
+          controllers,
+        }),
+      { wrapper: createQueryClientWrapper() },
+    );
+
+    expect(result.current.coins).toEqual([usdcCoin]);
+
+    act(() => result.current.changeCoin(usdcCoin.denom));
+    act(() => result.current.setNetwork("421614"));
+
+    await waitFor(() => expect(result.current.config?.router).toBeDefined());
+
+    expect(result.current.config?.chain).toEqual(expect.objectContaining({ id: 421614 }));
+    expect(result.current.config?.bridger).toEqual(arbitrumSepoliaBridger);
     expect(result.current.config?.router).toEqual({
-      address: nativeRouterAddress,
-      coin: "native",
-      domain: bridger.hyperlane_domain,
+      address: arbitrumSepoliaRouterAddress,
+      coin: arbitrumSepoliaTokenAddress,
+      domain: arbitrumSepoliaBridger.domain,
       remote: {
         warp: {
-          contract: toAddr32(nativeRouterAddress),
-          domain: bridger.hyperlane_domain,
+          contract: toAddr32(arbitrumSepoliaRouterAddress),
+          domain: arbitrumSepoliaBridger.domain,
         },
       },
     });
@@ -681,11 +759,11 @@ describe("bridge hooks", () => {
     expect(result.current.config?.router).toEqual({
       address: mainnetRouterAddress,
       coin: mainnetTokenAddress,
-      domain: mainnetBridger.hyperlane_domain,
+      domain: mainnetBridger.domain,
       remote: {
         warp: {
           contract: toAddr32(mainnetRouterAddress),
-          domain: mainnetBridger.hyperlane_domain,
+          domain: mainnetBridger.domain,
         },
       },
     });
@@ -852,7 +930,7 @@ describe("bridge hooks", () => {
       remote: {
         warp: {
           contract: toAddr32(routerAddress),
-          domain: bridger.hyperlane_domain,
+          domain: bridger.domain,
         },
       },
       funds: {
@@ -889,7 +967,7 @@ describe("bridge hooks", () => {
       remote: {
         warp: {
           contract: toAddr32(routerAddress),
-          domain: bridger.hyperlane_domain,
+          domain: bridger.domain,
         },
       },
       funds: {
@@ -942,7 +1020,7 @@ describe("bridge hooks", () => {
       remote: {
         warp: {
           contract: toAddr32(routerAddress),
-          domain: bridger.hyperlane_domain,
+          domain: bridger.domain,
         },
       },
       funds: {
@@ -985,7 +1063,7 @@ describe("bridge hooks", () => {
       remote: {
         warp: {
           contract: toAddr32(nativeRouterAddress),
-          domain: bridger.hyperlane_domain,
+          domain: bridger.domain,
         },
       },
       funds: {
@@ -1695,7 +1773,7 @@ describe("bridge hooks", () => {
       ...evmBridgeConfig,
       bridger: {
         ...evmBridgeConfig.bridger,
-        hyperlane_protocol_fee: 0,
+        protocolFee: 0,
       },
     };
 
