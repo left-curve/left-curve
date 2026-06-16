@@ -26,6 +26,8 @@ type DestinationWalletProps = {
 
 type Step = "list" | "warning" | "input";
 
+const HIDDEN_CONNECTOR_TYPES = ["passkey", "session", "privy", "debug"];
+
 export const DestinationWallet = forwardRef<ModalRef, DestinationWalletProps>(
   ({ network, onAddressSet }, ref) => {
     const { hideModal } = useApp();
@@ -37,9 +39,7 @@ export const DestinationWallet = forwardRef<ModalRef, DestinationWalletProps>(
       triggerOnClose: () => {},
     }));
 
-    const filteredConnectors = connectors.filter(
-      (c) => c.type !== "passkey" && c.type !== "session" && c.type !== "privy",
-    );
+    const filteredConnectors = connectors.filter((c) => !HIDDEN_CONNECTOR_TYPES.includes(c.type));
 
     const networkName = m["bridge.network"]({ network });
 
