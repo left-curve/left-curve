@@ -41,7 +41,7 @@ The code hash is the same on mainnet and testnet.
 
 ## Hyperlane deployments
 
-Dango bridges assets to and from EVM chains via [Hyperlane](https://hyperlane.xyz/) warp routes. The tables below list the relevant contracts on each chain: Ethereum and Arbitrum serve Dango mainnet; Sepolia and Arbitrum Sepolia serve Dango testnet. The first three rows of each table are contracts deployed by other parties (Circle, Hyperlane), included for reference; the rest are deployed by us. Our contracts are not deployed on Arbitrum yet (marked TBD), and on Arbitrum Sepolia only the USDC warp route is deployed.
+Dango bridges assets to and from EVM chains via [Hyperlane](https://hyperlane.xyz/) warp routes. The tables below list the relevant contracts on each chain: Ethereum and Arbitrum serve Dango mainnet; Sepolia and Arbitrum Sepolia serve Dango testnet. The first three rows of each table are contracts deployed by other parties (Circle, Hyperlane), included for reference; the rest are deployed by us.
 
 ### Ethereum
 
@@ -80,13 +80,11 @@ Dango bridges assets to and from EVM chains via [Hyperlane](https://hyperlane.xy
 | `FiatTokenProxy`                    | USDC token                       | [`0xaf88d065e77c8cC2239327C5EDb3A432268e5831`](https://arbiscan.io/address/0xaf88d065e77c8cC2239327C5EDb3A432268e5831)[^1] |
 | `Mailbox`                           | Hyperlane mailbox                | [`0x979Ca5202784112f4738403dBec5D0F3B9daabB9`](https://arbiscan.io/address/0x979Ca5202784112f4738403dBec5D0F3B9daabB9)[^6] |
 | `StaticMessageIdMultisigIsmFactory` | Hyperlane multisig ISM factory   | [`0x12Df53079d399a47e9E730df095b712B0FDFA791`](https://arbiscan.io/address/0x12Df53079d399a47e9E730df095b712B0FDFA791)[^7] |
-| `TransparentUpgradeableProxy`       | Warp-route proxy (USDC)          | TBD                                                                                                                        |
-| `HypERC20Collateral`                | Warp-route implementation (USDC) | TBD                                                                                                                        |
-| `TransparentUpgradeableProxy`       | Warp-route proxy (ETH)           | TBD                                                                                                                        |
-| `HypNative`                         | Warp-route implementation (ETH)  | TBD                                                                                                                        |
-| `ProxyAdmin`                        | Proxy administrator              | TBD                                                                                                                        |
-| `TimelockController`                | Timelock                         | TBD                                                                                                                        |
-| `SafeProxy`                         | Dango team multisig              | TBD                                                                                                                        |
+| `TransparentUpgradeableProxy`       | Warp-route proxy (USDC)          | [`0x9d0ea335355dA17eE89E50DF43AB823416Cf73d4`](https://arbiscan.io/address/0x9d0ea335355dA17eE89E50DF43AB823416Cf73d4)     |
+| `HypERC20Collateral`                | Warp-route implementation (USDC) | [`0x34DC3F292fC04e3Dcc2830AC69bb5d4cd5E8F654`](https://arbiscan.io/address/0x34DC3F292fC04e3Dcc2830AC69bb5d4cd5E8F654)     |
+| `ProxyAdmin`                        | Proxy administrator              | [`0x947303E34C1a2B97fB00C68C1cC4cA97B3361fE6`](https://arbiscan.io/address/0x947303E34C1a2B97fB00C68C1cC4cA97B3361fE6)     |
+| `TimelockController`                | Timelock (48 hr)                 | [`0x2e289c81537C8B096432042d549992e56f4feFF4`](https://arbiscan.io/address/0x2e289c81537C8B096432042d549992e56f4feFF4)     |
+| `SafeProxy`                         | Dango team multisig              | [`0x94115077A1Dbe2944935186625D57e2e10Fb807D`](https://arbiscan.io/address/0x94115077A1Dbe2944935186625D57e2e10Fb807D)     |
 
 ### Arbitrum Sepolia
 
