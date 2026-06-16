@@ -113,6 +113,8 @@ const tokenAddress = "0x2222222222222222222222222222222222222222";
 const nativeRouterAddress = "0x3333333333333333333333333333333333333333";
 const mainnetRouterAddress = "0x8888888888888888888888888888888888888888";
 const mainnetTokenAddress = "0x9999999999999999999999999999999999999999";
+const arbitrumMainnetRouterAddress = "0x9d0ea335355da17ee89e50df43ab823416cf73d4";
+const arbitrumMainnetTokenAddress = "0xaf88d065e77c8cc2239327c5edb3a432268e5831";
 const arbitrumSepoliaRouterAddress = "0x9d0ea335355da17ee89e50df43ab823416cf73d4";
 const arbitrumSepoliaTokenAddress = "0x75faf114eafb1bdbe2f0316df893fd58ce46aa4d";
 const evmAccount = "0x0000000000000000000000000000000000000abc";
@@ -174,11 +176,36 @@ const mainnetBridger = {
   ],
 };
 
+const arbitrumMainnetBridger = {
+  ...bridger,
+  chainId: 42161,
+  domain: 42161,
+  estimatedTime: "1 block | <1 second",
+  name: "Arbitrum Network",
+  order: 1,
+  rpcUrl: "https://arbitrum-mainnet.example",
+  contracts: {
+    ...bridger.contracts,
+    mailbox: "0x979ca5202784112f4738403dbec5d0f3b9daabb9",
+    proxyAdmin: "0x947303e34c1a2b97fb00c68c1cc4ca97b3361fe6",
+    staticMessageIdMultisigIsmFactory: "0x12df53079d399a47e9e730df095b712b0fdfa791",
+  },
+  routes: [
+    {
+      symbol: "USDC",
+      type: "erc20Collateral",
+      tokenAddress: arbitrumMainnetTokenAddress,
+      routerAddress: arbitrumMainnetRouterAddress,
+      implementationAddress: "0x34dc3f292fc04e3dcc2830ac69bb5d4cd5e8f654",
+    },
+  ],
+};
+
 const arbitrumSepoliaBridger = {
   ...bridger,
   chainId: 421614,
   domain: 421614,
-  estimatedTime: "5-30 mins",
+  estimatedTime: "1 block | <1 second",
   name: "Arbitrum Sepolia Network",
   order: 1,
   rpcUrl: "https://arbitrum-sepolia.example",
@@ -558,7 +585,7 @@ describe("bridge hooks", () => {
 
     expect(result.current.networks).toEqual([
       { id: "11155111", name: "Sepolia Network", time: "5-30 mins" },
-      { id: "421614", name: "Arbitrum Sepolia Network", time: "5-30 mins" },
+      { id: "421614", name: "Arbitrum Sepolia Network", time: "1 block | <1 second" },
     ]);
 
     act(() => result.current.changeCoin(usdcCoin.denom));
@@ -611,7 +638,7 @@ describe("bridge hooks", () => {
 
     expect(result.current.networks).toEqual([
       { id: "11155111", name: "Sepolia Network", time: "5-30 mins" },
-      { id: "421614", name: "Arbitrum Sepolia Network", time: "5-30 mins" },
+      { id: "421614", name: "Arbitrum Sepolia Network", time: "1 block | <1 second" },
     ]);
 
     act(() => result.current.changeCoin(usdcCoin.denom));
@@ -738,6 +765,7 @@ describe("bridge hooks", () => {
           config: {
             evm: {
               "1": mainnetBridger,
+              "42161": arbitrumMainnetBridger,
             },
           },
           controllers,
@@ -747,6 +775,7 @@ describe("bridge hooks", () => {
 
     expect(result.current.networks).toEqual([
       { id: "1", name: "Ethereum Network", time: "6 blocks | 1-3 mins" },
+      { id: "42161", name: "Arbitrum Network", time: "1 block | <1 second" },
     ]);
 
     act(() => result.current.changeCoin(usdcCoin.denom));
@@ -764,6 +793,65 @@ describe("bridge hooks", () => {
         warp: {
           contract: toAddr32(mainnetRouterAddress),
           domain: mainnetBridger.domain,
+        },
+      },
+    });
+  });
+
+  it("derives the production Arbitrum USDC router config when connected to the Dango mainnet", async () => {
+    hookMocks.useConfig.mockReturnValue({
+      chain: {
+        id: "dango-1",
+        name: "Mainnet",
+      },
+      coins: {
+        byDenom: {
+          [ethCoin.denom]: ethCoin,
+          [usdcCoin.denom]: usdcCoin,
+        },
+      },
+    });
+    const controllers = {
+      inputs: {},
+      reset: vi.fn(),
+      setValue: vi.fn(),
+    };
+
+    const { result } = renderHook(
+      () =>
+        useBridgeState({
+          action: "deposit",
+          config: {
+            evm: {
+              "1": mainnetBridger,
+              "42161": arbitrumMainnetBridger,
+            },
+          },
+          controllers,
+        }),
+      { wrapper: createQueryClientWrapper() },
+    );
+
+    expect(result.current.networks).toEqual([
+      { id: "1", name: "Ethereum Network", time: "6 blocks | 1-3 mins" },
+      { id: "42161", name: "Arbitrum Network", time: "1 block | <1 second" },
+    ]);
+
+    act(() => result.current.changeCoin(usdcCoin.denom));
+    act(() => result.current.setNetwork("42161"));
+
+    await waitFor(() => expect(result.current.config?.router).toBeDefined());
+
+    expect(result.current.config?.chain).toEqual(expect.objectContaining({ id: 42161 }));
+    expect(result.current.config?.bridger).toEqual(arbitrumMainnetBridger);
+    expect(result.current.config?.router).toEqual({
+      address: arbitrumMainnetRouterAddress,
+      coin: arbitrumMainnetTokenAddress,
+      domain: arbitrumMainnetBridger.domain,
+      remote: {
+        warp: {
+          contract: toAddr32(arbitrumMainnetRouterAddress),
+          domain: arbitrumMainnetBridger.domain,
         },
       },
     });
