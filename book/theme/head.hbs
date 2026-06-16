@@ -1,0 +1,17 @@
+<!--
+Load the Mermaid library, which renders the diagrams written in ```mermaid code
+blocks (the mdbook-mermaid preprocessor transforms these blocks into
+<pre class="mermaid"> elements; this library then renders them client-side).
+
+We load the library from a CDN instead of vendoring the ~2.5 MB minified file
+in the repository. The version is pinned and the integrity hash ensures the
+browser rejects the script if the CDN ever serves different bytes. Keep the
+version in sync with the one bundled by mdbook-mermaid (11.6.0 as of
+mdbook-mermaid 0.17.0), which is what `book/mermaid-init.js` is written
+against.
+-->
+<script
+  src="https://cdn.jsdelivr.net/npm/mermaid@11.6.0/dist/mermaid.min.js"
+  integrity="sha384-zkWMJO4sgpPUzyuOgDx8HB/K55glbAwajEpk1Go2NWRuPkPA/wIhoEJTuSkmOYrV"
+  crossorigin="anonymous"
+></script>
