@@ -6,7 +6,7 @@ DEPLOY_DIR="$(cd -- "$SCRIPT_DIR/.." && pwd)"
 REPO_ROOT="$(cd -- "$DEPLOY_DIR/.." && pwd)"
 
 EXPECTED_FILES='deploy/group_vars/all/vault.sops.yml
-deploy/group_vars/all/deploy_key.sops
+deploy/vaults/deploy/deploy_key.sops
 deploy/group_vars/dango-assistant/vault.sops.yml
 deploy/group_vars/hyperlane/vault.sops.yml
 deploy/group_vars/perps-bot/vault.sops.yml

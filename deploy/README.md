@@ -209,7 +209,7 @@ You must rerun `ssh-add` after you rebooted.
 
 ### Using the deploy key
 
-The private key is encrypted in `group_vars/all/deploy_key.sops`, load it
+The private key is encrypted in `vaults/deploy/deploy_key.sops`, load it
 directly into ssh-agent without writing to disk:
 
 `just add-deploy-key`

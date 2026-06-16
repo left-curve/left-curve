@@ -59,7 +59,7 @@ sops-edit-secrets:
   sops edit group_vars/all/vault.sops.yml
 
 sops-edit-deploy-key:
-  sops edit --input-type binary --output-type binary group_vars/all/deploy_key.sops
+  sops edit --input-type binary --output-type binary vaults/deploy/deploy_key.sops
 
 sops-edit-hyperlane-secrets:
   sops edit group_vars/hyperlane/vault.sops.yml

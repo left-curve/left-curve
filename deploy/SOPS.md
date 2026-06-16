@@ -53,7 +53,7 @@ Team decisions:
 | Legacy Vault file | SOPS file | Recipients |
 | --- | --- | --- |
 | `group_vars/all/vault.yml` | `group_vars/all/vault.sops.yml` | routine |
-| `group_vars/all/deploy_key.vault` | `group_vars/all/deploy_key.sops` | routine |
+| `group_vars/all/deploy_key.vault` | `vaults/deploy/deploy_key.sops` | routine |
 | `group_vars/dango-assistant/vault.yml` | `group_vars/dango-assistant/vault.sops.yml` | routine |
 | `group_vars/hyperlane/vault.yml` | `group_vars/hyperlane/vault.sops.yml` | routine |
 | `group_vars/perps-bot/vault.yml` | `group_vars/perps-bot/vault.sops.yml` | routine |
