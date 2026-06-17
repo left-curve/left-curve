@@ -3732,7 +3732,7 @@ dependencies = [
 
 [[package]]
 name = "dango-cli"
-version = "0.24.0"
+version = "0.25.0"
 dependencies = [
  "anyhow",
  "clap",
@@ -4496,15 +4496,8 @@ dependencies = [
 name = "dango-upgrade"
 version = "0.0.0"
 dependencies = [
- "anyhow",
  "dango-app",
- "dango-bank",
- "dango-math",
- "dango-order-book",
- "dango-perps",
  "dango-primitives",
- "dango-types",
- "serde_json",
  "tracing",
 ]
 

@@ -8,7 +8,7 @@ export const hyperlaneConfigs = {
         domain: 1,
         estimatedTime: "6 blocks | 1-3 mins",
         name: "Ethereum Network",
-        order: 0,
+        order: 1,
         protocolFee: 0,
         rpcUrl: "https://mainnet.infura.io/v3/00f81bbb13ef4da997f6351b8146807e",
         contracts: {
@@ -34,6 +34,47 @@ export const hyperlaneConfigs = {
             tokenAddress: "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
             routerAddress: "0xd05909852ae07118857f9d071781671d12c0f36c",
             implementationAddress: "0xe071653043828c9923c79b04b077358d94fc84f9",
+          },
+          {
+            type: "native",
+            symbol: "ETH",
+            tokenAddress: "native",
+            routerAddress: "0x9d259aa1ec7324c7433b89d2935b08c30f3154cb",
+            implementationAddress: "0x9d0ea335355da17ee89e50df43ab823416cf73d4",
+          },
+        ],
+      },
+      "42161": {
+        chainId: 42161,
+        domain: 42161,
+        estimatedTime: "1 block | <1 second",
+        name: "Arbitrum Network",
+        order: 0,
+        protocolFee: 0,
+        rpcUrl: "https://arbitrum-mainnet.infura.io/v3/00f81bbb13ef4da997f6351b8146807e",
+        contracts: {
+          mailbox: "0x979ca5202784112f4738403dbec5d0f3b9daabb9",
+          proxyAdmin: "0x947303e34c1a2b97fb00c68c1cc4ca97b3361fe6",
+          staticMessageIdMultisigIsmFactory: "0x12df53079d399a47e9e730df095b712b0fdfa791",
+        },
+        ism: {
+          staticMessageIdMultisigIsm: {
+            threshold: 3,
+            validators: [
+              "0x2F3bC8d740dBfC310D78124db8476040F9Cd7357",
+              "0x2cc539a1383128Ab0e2007D24543445A665B1947",
+              "0xb45dea8d034AfD3A9753732cAe9eFE15B7f97Fd0",
+              "0xCC315d2c581315D5961bdaFd1944B3b4c7DbAC57",
+            ],
+          },
+        },
+        routes: [
+          {
+            type: "erc20Collateral",
+            symbol: "USDC",
+            tokenAddress: "0xaf88d065e77c8cc2239327c5edb3a432268e5831",
+            routerAddress: "0x9d0ea335355da17ee89e50df43ab823416cf73d4",
+            implementationAddress: "0x34dc3f292fc04e3dcc2830ac69bb5d4cd5e8f654",
           },
         ],
       },
@@ -77,7 +118,7 @@ export const hyperlaneConfigs = {
       "421614": {
         chainId: 421614,
         domain: 421614,
-        estimatedTime: "5-30 mins",
+        estimatedTime: "1 block | <1 second",
         name: "Arbitrum Sepolia Network",
         order: 1,
         protocolFee: 1,

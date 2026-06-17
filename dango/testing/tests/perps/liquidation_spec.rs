@@ -1113,3 +1113,142 @@ async fn example_16_two_positions_insolvent_short() {
     })
     .await;
 }
+
+// --------------- edge case: negative margin, positive equity -----------------
+
+/// Reads the perps insurance fund.
+async fn insurance_fund(suite: &mut TestSuiteNaive, perps: Addr) -> UsdValue {
+    let state: perps::State = suite
+        .query_wasm_smart(perps, perps::QueryStateRequest {})
+        .should_succeed();
+    state.insurance_fund
+}
+
+/// A cross-margined account can reach liquidation with **negative margin but
+/// positive equity**. Here Alice withdraws against her open long's unrealised
+/// profit (the case-(a) path), driving her margin negative while she stays
+/// solvent; a later price drop makes her liquidatable. The partial close must
+/// NOT be mistaken for bad debt — the insurance fund must grow by the
+/// liquidation fee rather than be drained — and Alice's margin must stay
+/// negative (not floored to zero).
+///
+/// Mirrors the "negative margin, positive equity" edge case in
+/// `book/perps/4-liquidation-and-adl.md`.
+#[tokio::test]
+async fn negative_margin_positive_equity_no_bad_debt() {
+    let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(TestOption::default());
+
+    let pair = pair_id();
+
+    seed_prices(&mut suite, &mut accounts, ENTRY_ETH, None).await;
+    configure(&mut suite, &mut accounts, contracts.perps, false).await;
+
+    // Bob makes at the entry price; Alice takes a long 10 ETH @ $2,000.
+    deposit(
+        &mut suite,
+        &mut accounts.user2,
+        contracts.perps,
+        BOB_MARGIN_SINGLE,
+    )
+    .await;
+    submit_limit(
+        &mut suite,
+        &mut accounts.user2,
+        contracts.perps,
+        &pair,
+        -10,
+        ENTRY_ETH,
+    )
+    .await;
+
+    deposit(&mut suite, &mut accounts.user1, contracts.perps, 2_500).await;
+    submit_market(&mut suite, &mut accounts.user1, contracts.perps, &pair, 10).await;
+
+    // ETH rises to $2,400: Alice's long shows +$4,000 unrealised. Equity
+    // $6,500, used IM $2,400, available $4,100. She withdraws $3,950 — more
+    // than her $2,500 deposit — driving margin to −$1,450 while staying solvent.
+    // This is the case-(a) withdraw-against-unrealised-profit path.
+    seed_prices(&mut suite, &mut accounts, 2_400, None).await;
+
+    suite
+        .execute(
+            &mut accounts.user1,
+            contracts.perps,
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::Withdraw {
+                amount: UsdValue::new_int(3_950),
+            }),
+            Coins::new(),
+        )
+        .await
+        .should_succeed();
+
+    let alice = query_user(&mut suite, contracts.perps, accounts.user1.address())
+        .await
+        .unwrap();
+    assert!(
+        alice.margin.is_negative(),
+        "withdrawal against unrealised profit should drive margin negative"
+    );
+
+    // ETH falls to $2,200: equity = −1,450 + 10×200 = 550; MM = 1,100 ⇒
+    // liquidatable, but solvent.
+    seed_prices(&mut suite, &mut accounts, 2_200, None).await;
+
+    // Carol rests a deep bid at the oracle so the whole close fills on the book
+    // (no ADL), regardless of small funding drift in the exact close size.
+    deposit(
+        &mut suite,
+        &mut accounts.user3,
+        contracts.perps,
+        CAROL_MARGIN,
+    )
+    .await;
+    submit_limit(
+        &mut suite,
+        &mut accounts.user3,
+        contracts.perps,
+        &pair,
+        10,
+        2_200,
+    )
+    .await;
+
+    let insurance_before = insurance_fund(&mut suite, contracts.perps).await;
+
+    let events = liquidate(&mut suite, &mut accounts, contracts.perps).await;
+
+    // The account is solvent (equity > 0) throughout ⇒ no bad debt.
+    assert!(
+        search_bad_debt(&events).is_empty(),
+        "solvent account must not produce bad debt"
+    );
+    // The book absorbs the whole close ⇒ no ADL.
+    assert!(
+        search_deleveraged(&events).is_empty(),
+        "close fills on the book; no ADL expected"
+    );
+
+    // Alice keeps a (long) position and her margin stays negative — the bug
+    // would have floored it to zero.
+    let alice = query_user(&mut suite, contracts.perps, accounts.user1.address())
+        .await
+        .unwrap();
+    assert!(
+        alice.margin.is_negative(),
+        "margin must remain negative for a solvent account"
+    );
+    let pos = alice
+        .positions
+        .get(&pair)
+        .expect("Alice retains a partial position");
+    assert!(pos.size.is_positive(), "still long after the partial close");
+
+    // The insurance fund GREW by the liquidation fee; the bug would instead
+    // have drained it by the phantom bad debt.
+    let insurance_after = insurance_fund(&mut suite, contracts.perps).await;
+    assert!(
+        insurance_after > insurance_before,
+        "insurance fund should grow by the fee, not be drained: \
+         {insurance_before} -> {insurance_after}"
+    );
+}

@@ -17,13 +17,9 @@ pub mod arbitrum {
 
     pub const DOMAIN: Domain = 42161;
 
-    // TODO: not yet deployed
+    /// https://arbiscan.io/address/0x9d0ea335355dA17eE89E50DF43AB823416Cf73d4
     pub const USDC_WARP: Addr32 =
-        addr32!("0000000000000000000000000000000000000000000000000000000000000000");
-
-    // TODO: not yet deployed
-    pub const ETH_WARP: Addr32 =
-        addr32!("0000000000000000000000000000000000000000000000000000000000000001");
+        addr32!("0000000000000000000000009d0ea335355da17ee89e50df43ab823416cf73d4");
 }
 
 pub mod arbitrum_testnet {
@@ -31,41 +27,9 @@ pub mod arbitrum_testnet {
 
     pub const DOMAIN: Domain = 421614;
 
-    // TODO: not yet deployed
+    /// https://sepolia.arbiscan.io/address/0x9d0ea335355dA17eE89E50DF43AB823416Cf73d4
     pub const USDC_WARP: Addr32 =
-        addr32!("0000000000000000000000000000000000000000000000000000000000000000");
-
-    // TODO: not yet deployed
-    pub const ETH_WARP: Addr32 =
-        addr32!("0000000000000000000000000000000000000000000000000000000000000001");
-}
-
-pub mod base {
-    use super::*;
-
-    pub const DOMAIN: Domain = 8453;
-
-    // TODO: not yet deployed
-    pub const USDC_WARP: Addr32 =
-        addr32!("0000000000000000000000000000000000000000000000000000000000000000");
-
-    // TODO: not yet deployed
-    pub const ETH_WARP: Addr32 =
-        addr32!("0000000000000000000000000000000000000000000000000000000000000001");
-}
-
-pub mod base_testnet {
-    use super::*;
-
-    pub const DOMAIN: Domain = 84532;
-
-    // TODO: not yet deployed
-    pub const USDC_WARP: Addr32 =
-        addr32!("0000000000000000000000000000000000000000000000000000000000000000");
-
-    // TODO: not yet deployed
-    pub const ETH_WARP: Addr32 =
-        addr32!("0000000000000000000000000000000000000000000000000000000000000001");
+        addr32!("0000000000000000000000009d0ea335355da17ee89e50df43ab823416cf73d4");
 }
 
 pub mod ethereum {
@@ -90,88 +54,4 @@ pub mod ethereum_testnet {
 
     pub const ETH_WARP: Addr32 =
         addr32!("000000000000000000000000e3109f83bef36aece35870ee1b2e07a5dd12cfa9");
-}
-
-pub mod optimism {
-    use super::*;
-
-    pub const DOMAIN: Domain = 10;
-
-    // TODO: not yet deployed
-    pub const USDC_WARP: Addr32 =
-        addr32!("0000000000000000000000000000000000000000000000000000000000000000");
-
-    // TODO: not yet deployed
-    pub const ETH_WARP: Addr32 =
-        addr32!("0000000000000000000000000000000000000000000000000000000000000001");
-}
-
-pub mod optimism_testnet {
-    use super::*;
-
-    pub const DOMAIN: Domain = 11155420;
-
-    // TODO: not yet deployed
-    pub const USDC_WARP: Addr32 =
-        addr32!("0000000000000000000000000000000000000000000000000000000000000000");
-
-    // TODO: not yet deployed
-    pub const ETH_WARP: Addr32 =
-        addr32!("0000000000000000000000000000000000000000000000000000000000000001");
-}
-
-pub mod polygon {
-    use super::*;
-
-    pub const DOMAIN: Domain = 137;
-
-    // TODO: not yet deployed
-    pub const USDC_WARP: Addr32 =
-        addr32!("0000000000000000000000000000000000000000000000000000000000000000");
-
-    // TODO: not yet deployed
-    pub const ETH_WARP: Addr32 =
-        addr32!("0000000000000000000000000000000000000000000000000000000000000001");
-}
-
-pub mod polygon_testnet {
-    use super::*;
-
-    pub const DOMAIN: Domain = 80002;
-
-    // TODO: not yet deployed
-    pub const USDC_WARP: Addr32 =
-        addr32!("0000000000000000000000000000000000000000000000000000000000000000");
-
-    // TODO: not yet deployed
-    pub const ETH_WARP: Addr32 =
-        addr32!("0000000000000000000000000000000000000000000000000000000000000001");
-}
-
-pub mod solana {
-    use super::*;
-
-    pub const DOMAIN: Domain = 1399811149;
-
-    // TODO: not yet deployed
-    pub const USDC_WARP: Addr32 =
-        addr32!("0000000000000000000000000000000000000000000000000000000000000000");
-
-    // TODO: not yet deployed
-    pub const SOL_WARP: Addr32 =
-        addr32!("0000000000000000000000000000000000000000000000000000000000000001");
-}
-
-pub mod solana_testnet {
-    use super::*;
-
-    pub const DOMAIN: Domain = 1399811150;
-
-    // TODO: not yet deployed
-    pub const USDC_WARP: Addr32 =
-        addr32!("0000000000000000000000000000000000000000000000000000000000000000");
-
-    // TODO: not yet deployed
-    pub const SOL_WARP: Addr32 =
-        addr32!("0000000000000000000000000000000000000000000000000000000000000001");
 }

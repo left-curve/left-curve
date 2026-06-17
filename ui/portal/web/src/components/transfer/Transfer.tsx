@@ -319,7 +319,7 @@ const TransferSpotPerp: React.FC = () => {
 
   const effectiveBalances = isSpotToPerp
     ? { "bridge/usdc": spotUsdcBalance }
-    : { "bridge/usdc": availableMarginRaw };
+    : { [usd.denom]: availableMarginRaw };
 
   const amount = inputs.amount?.value || "0";
 
