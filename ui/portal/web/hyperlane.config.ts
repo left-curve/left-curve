@@ -51,7 +51,7 @@ export const hyperlaneConfigs = {
         name: "Arbitrum Network",
         order: 0,
         protocolFee: 0,
-        rpcUrl: "https://arbitrum-mainnet.infura.io/v3/00f81bbb13ef4da997f6351b8146807e",
+        rpcUrl: "https://arbitrum-mainnet.core.chainstack.com/0e3277a137b9af07fcd4c8088d7f618d",
         contracts: {
           mailbox: "0x979ca5202784112f4738403dbec5d0f3b9daabb9",
           proxyAdmin: "0x947303e34c1a2b97fb00c68c1cc4ca97b3361fe6",
