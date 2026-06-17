@@ -11,17 +11,40 @@ import type { HyperlaneConfig, HyperlaneEvmChainConfig } from "@left-curve/types
 import { useAccount } from "./useAccount.js";
 
 const SUPPORTED_BRIDGE_SYMBOLS = new Set(["USDC"]);
+const ETHEREUM_MAINNET_CHAIN_ID = 1;
+
+type BridgeAction = "deposit" | "withdraw";
 
 function normalizeSymbol(symbol: string) {
   return symbol.toUpperCase();
 }
 
-function hasSupportedRoute(bridger: HyperlaneEvmChainConfig | undefined, coin?: AnyCoin) {
+function isSupportedRoute(
+  action: BridgeAction,
+  bridger: HyperlaneEvmChainConfig,
+  route: HyperlaneEvmChainConfig["routes"][number],
+) {
+  const routeSymbol = normalizeSymbol(route.symbol);
+  if (SUPPORTED_BRIDGE_SYMBOLS.has(routeSymbol)) return true;
+
+  return (
+    action === "withdraw" &&
+    bridger.chainId === ETHEREUM_MAINNET_CHAIN_ID &&
+    route.type === "native" &&
+    routeSymbol === "ETH"
+  );
+}
+
+function hasSupportedRoute(
+  action: BridgeAction,
+  bridger: HyperlaneEvmChainConfig | undefined,
+  coin?: AnyCoin,
+) {
   if (!bridger) return false;
 
   return bridger.routes.some((route) => {
     const routeSymbol = normalizeSymbol(route.symbol);
-    if (!SUPPORTED_BRIDGE_SYMBOLS.has(routeSymbol)) return false;
+    if (!isSupportedRoute(action, bridger, route)) return false;
     if (!coin) return true;
     return routeSymbol === normalizeSymbol(coin.symbol);
   });
@@ -29,7 +52,7 @@ function hasSupportedRoute(bridger: HyperlaneEvmChainConfig | undefined, coin?: 
 
 export type UseBridgeStateParameters = {
   config: HyperlaneConfig;
-  action: "deposit" | "withdraw";
+  action: BridgeAction;
   controllers: {
     inputs: Record<string, { value: string }>;
     reset: () => void;
@@ -50,7 +73,6 @@ export function useBridgeState(params: UseBridgeStateParameters) {
   const [network, setNetwork] = useState<string>();
 
   const [coin, setCoin] = useState<AnyCoin>();
-  const changeCoin = useCallback((denom: string) => setCoin(allCoins.byDenom[denom]), [allCoins]);
 
   const connectors = useConnectors();
   const [connectorId, setConnectorId] = useStorage<string | null>("bridge_connector", {
@@ -64,18 +86,34 @@ export function useBridgeState(params: UseBridgeStateParameters) {
 
   const configuredNetworks = useMemo(() => {
     return Object.entries(evm)
-      .filter(([, bridger]) => hasSupportedRoute(bridger))
+      .filter(([, bridger]) => hasSupportedRoute(action, bridger))
       .sort(([, left], [, right]) => left.order - right.order)
       .map(([id, bridger]) => ({
         id,
         name: bridger.name,
         time: bridger.estimatedTime,
       }));
-  }, [evm]);
+  }, [action, evm]);
+
+  const changeCoin = useCallback(
+    (denom: string) => {
+      const nextCoin = allCoins.byDenom[denom];
+      setCoin(nextCoin);
+
+      // Deposit pre-selects the highest-priority supported network (lowest `order`);
+      // in production that's Arbitrum. Withdraw still requires an explicit choice.
+      if (action !== "deposit") return;
+      const [defaultNetwork] = configuredNetworks.filter(({ id }) =>
+        hasSupportedRoute(action, evm[id], nextCoin),
+      );
+      setNetwork(defaultNetwork?.id);
+    },
+    [action, allCoins, configuredNetworks, evm],
+  );
 
   const networks = useMemo(() => {
-    return configuredNetworks.filter(({ id }) => hasSupportedRoute(evm[id], coin));
-  }, [coin, configuredNetworks, evm]);
+    return configuredNetworks.filter(({ id }) => hasSupportedRoute(action, evm[id], coin));
+  }, [action, coin, configuredNetworks, evm]);
 
   const coins = useMemo(() => {
     const selectedNetworks = network
@@ -88,7 +126,7 @@ export function useBridgeState(params: UseBridgeStateParameters) {
 
       for (const route of bridger.routes) {
         const routeSymbol = normalizeSymbol(route.symbol);
-        if (SUPPORTED_BRIDGE_SYMBOLS.has(routeSymbol)) symbols.add(routeSymbol);
+        if (isSupportedRoute(action, bridger, route)) symbols.add(routeSymbol);
       }
 
       return symbols;
@@ -97,7 +135,7 @@ export function useBridgeState(params: UseBridgeStateParameters) {
     return Object.values(allCoins.byDenom).filter((c) =>
       supportedSymbols.has(normalizeSymbol(c.symbol)),
     );
-  }, [allCoins, configuredNetworks, evm, network]);
+  }, [action, allCoins, configuredNetworks, evm, network]);
 
   const config = useMemo(() => {
     if (!network || !coin) return undefined;
@@ -109,11 +147,11 @@ export function useBridgeState(params: UseBridgeStateParameters) {
     })();
 
     const router = (() => {
-      if (!SUPPORTED_BRIDGE_SYMBOLS.has(normalizeSymbol(coin.symbol))) return undefined;
-
       if (bridger) {
         const router = bridger.routes.find(
-          (r) => normalizeSymbol(r.symbol) === normalizeSymbol(coin.symbol),
+          (route) =>
+            isSupportedRoute(action, bridger, route) &&
+            normalizeSymbol(route.symbol) === normalizeSymbol(coin.symbol),
         );
         if (!router) return undefined;
 
@@ -132,7 +170,7 @@ export function useBridgeState(params: UseBridgeStateParameters) {
     })();
 
     return { chain, bridger, router };
-  }, [coin, evm, network]);
+  }, [action, coin, evm, network]);
 
   const reset = useCallback(() => {
     setConnectorId(null);
