@@ -445,6 +445,9 @@ deploy-hyperlane-mainnet:
   just deploy-hyperlane mainnet validator {{hetzner3}} 4
   just deploy-hyperlane mainnet relayer {{hetzner3}}
 
+deploy-hyperlane-relayer-mainnet:
+  just deploy-hyperlane mainnet relayer {{hetzner3}}
+
 deploy-hyperlane-testnet:
   just deploy-hyperlane testnet validator {{hetzner2}} 1
   just deploy-hyperlane testnet validator {{hetzner4}} 2

@@ -47,6 +47,24 @@
       "signer": {
         "type": "hexKey"
       }
+    },
+    "arbitrumsepolia": {
+      "index": {
+        "chunk": 20,
+        "from": 277880000
+      },
+      "signer": {
+        "type": "hexKey"
+      }
+    },
+    "arbitrum": {
+      "index": {
+        "chunk": 20,
+        "from": 474230000
+      },
+      "signer": {
+        "type": "hexKey"
+      }
     }
   },
   "log": {
