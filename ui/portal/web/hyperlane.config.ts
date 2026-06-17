@@ -8,7 +8,7 @@ export const hyperlaneConfigs = {
         domain: 1,
         estimatedTime: "6 blocks | 1-3 mins",
         name: "Ethereum Network",
-        order: 0,
+        order: 1,
         protocolFee: 0,
         rpcUrl: "https://mainnet.infura.io/v3/00f81bbb13ef4da997f6351b8146807e",
         contracts: {
@@ -35,6 +35,13 @@ export const hyperlaneConfigs = {
             routerAddress: "0xd05909852ae07118857f9d071781671d12c0f36c",
             implementationAddress: "0xe071653043828c9923c79b04b077358d94fc84f9",
           },
+          {
+            type: "native",
+            symbol: "ETH",
+            tokenAddress: "native",
+            routerAddress: "0x9d259aa1ec7324c7433b89d2935b08c30f3154cb",
+            implementationAddress: "0x9d0ea335355da17ee89e50df43ab823416cf73d4",
+          },
         ],
       },
       "42161": {
@@ -42,7 +49,7 @@ export const hyperlaneConfigs = {
         domain: 42161,
         estimatedTime: "1 block | <1 second",
         name: "Arbitrum Network",
-        order: 1,
+        order: 0,
         protocolFee: 0,
         rpcUrl: "https://arbitrum-mainnet.infura.io/v3/00f81bbb13ef4da997f6351b8146807e",
         contracts: {

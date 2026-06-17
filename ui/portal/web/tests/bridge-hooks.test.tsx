@@ -113,6 +113,7 @@ const tokenAddress = "0x2222222222222222222222222222222222222222";
 const nativeRouterAddress = "0x3333333333333333333333333333333333333333";
 const mainnetRouterAddress = "0x8888888888888888888888888888888888888888";
 const mainnetTokenAddress = "0x9999999999999999999999999999999999999999";
+const mainnetNativeRouterAddress = "0x9d259aa1ec7324c7433b89d2935b08c30f3154cb";
 const arbitrumMainnetRouterAddress = "0x9d0ea335355da17ee89e50df43ab823416cf73d4";
 const arbitrumMainnetTokenAddress = "0xaf88d065e77c8cc2239327c5edb3a432268e5831";
 const arbitrumSepoliaRouterAddress = "0x9d0ea335355da17ee89e50df43ab823416cf73d4";
@@ -163,7 +164,7 @@ const mainnetBridger = {
   domain: 1,
   estimatedTime: "6 blocks | 1-3 mins",
   name: "Ethereum Network",
-  order: 0,
+  order: 1,
   rpcUrl: "https://mainnet.example",
   routes: [
     {
@@ -172,6 +173,13 @@ const mainnetBridger = {
       tokenAddress: mainnetTokenAddress,
       routerAddress: mainnetRouterAddress,
       implementationAddress: "0xcccccccccccccccccccccccccccccccccccccccc",
+    },
+    {
+      symbol: "ETH",
+      type: "native",
+      tokenAddress: "native",
+      routerAddress: mainnetNativeRouterAddress,
+      implementationAddress: "0xdddddddddddddddddddddddddddddddddddddddd",
     },
   ],
 };
@@ -182,7 +190,7 @@ const arbitrumMainnetBridger = {
   domain: 42161,
   estimatedTime: "1 block | <1 second",
   name: "Arbitrum Network",
-  order: 1,
+  order: 0,
   rpcUrl: "https://arbitrum-mainnet.example",
   contracts: {
     ...bridger.contracts,
@@ -774,8 +782,8 @@ describe("bridge hooks", () => {
     );
 
     expect(result.current.networks).toEqual([
-      { id: "1", name: "Ethereum Network", time: "6 blocks | 1-3 mins" },
       { id: "42161", name: "Arbitrum Network", time: "1 block | <1 second" },
+      { id: "1", name: "Ethereum Network", time: "6 blocks | 1-3 mins" },
     ]);
 
     act(() => result.current.changeCoin(usdcCoin.denom));
@@ -792,6 +800,67 @@ describe("bridge hooks", () => {
       remote: {
         warp: {
           contract: toAddr32(mainnetRouterAddress),
+          domain: mainnetBridger.domain,
+        },
+      },
+    });
+  });
+
+  it("derives the production Ethereum native ETH router config for withdrawals", async () => {
+    hookMocks.useConfig.mockReturnValue({
+      chain: {
+        id: "dango-1",
+        name: "Mainnet",
+      },
+      coins: {
+        byDenom: {
+          [ethCoin.denom]: ethCoin,
+          [usdcCoin.denom]: usdcCoin,
+        },
+      },
+    });
+    const controllers = {
+      inputs: {},
+      reset: vi.fn(),
+      setValue: vi.fn(),
+    };
+
+    const { result } = renderHook(
+      () =>
+        useBridgeState({
+          action: "withdraw",
+          config: {
+            evm: {
+              "1": mainnetBridger,
+              "42161": arbitrumMainnetBridger,
+            },
+          },
+          controllers,
+        }),
+      { wrapper: createQueryClientWrapper() },
+    );
+
+    expect(result.current.coins).toEqual([ethCoin, usdcCoin]);
+
+    act(() => result.current.changeCoin(ethCoin.denom));
+
+    expect(result.current.networks).toEqual([
+      { id: "1", name: "Ethereum Network", time: "6 blocks | 1-3 mins" },
+    ]);
+
+    act(() => result.current.setNetwork("1"));
+
+    await waitFor(() => expect(result.current.config?.router).toBeDefined());
+
+    expect(result.current.config?.chain).toEqual(expect.objectContaining({ id: 1 }));
+    expect(result.current.config?.bridger).toEqual(mainnetBridger);
+    expect(result.current.config?.router).toEqual({
+      address: mainnetNativeRouterAddress,
+      coin: "native",
+      domain: mainnetBridger.domain,
+      remote: {
+        warp: {
+          contract: toAddr32(mainnetNativeRouterAddress),
           domain: mainnetBridger.domain,
         },
       },
@@ -833,8 +902,8 @@ describe("bridge hooks", () => {
     );
 
     expect(result.current.networks).toEqual([
-      { id: "1", name: "Ethereum Network", time: "6 blocks | 1-3 mins" },
       { id: "42161", name: "Arbitrum Network", time: "1 block | <1 second" },
+      { id: "1", name: "Ethereum Network", time: "6 blocks | 1-3 mins" },
     ]);
 
     act(() => result.current.changeCoin(usdcCoin.denom));
@@ -857,7 +926,63 @@ describe("bridge hooks", () => {
     });
   });
 
-  it("keeps unsupported bridge coin routes explicit when backend config has no matching warp route", async () => {
+  it("auto-selects the highest-priority network after choosing a coin in deposit mode", () => {
+    const controllers = {
+      inputs: {},
+      reset: vi.fn(),
+      setValue: vi.fn(),
+    };
+
+    const { result } = renderHook(
+      () =>
+        useBridgeState({
+          action: "deposit",
+          config: {
+            evm: {
+              "1": mainnetBridger,
+              "42161": arbitrumMainnetBridger,
+            },
+          },
+          controllers,
+        }),
+      { wrapper: createQueryClientWrapper() },
+    );
+
+    expect(result.current.network).toBeUndefined();
+
+    act(() => result.current.changeCoin(usdcCoin.denom));
+
+    expect(result.current.network).toBe("42161");
+  });
+
+  it("does not auto-select a network when choosing a coin in withdraw mode", () => {
+    const controllers = {
+      inputs: {},
+      reset: vi.fn(),
+      setValue: vi.fn(),
+    };
+
+    const { result } = renderHook(
+      () =>
+        useBridgeState({
+          action: "withdraw",
+          config: {
+            evm: {
+              "1": mainnetBridger,
+              "42161": arbitrumMainnetBridger,
+            },
+          },
+          controllers,
+        }),
+      { wrapper: createQueryClientWrapper() },
+    );
+
+    act(() => result.current.changeCoin(usdcCoin.denom));
+
+    expect(result.current.network).toBeUndefined();
+  });
+
+  it("keeps production Ethereum native ETH unavailable for deposits", async () => {
     hookMocks.useConfig.mockReturnValue({
       chain: {
         id: "dango-1",
@@ -889,6 +1014,8 @@ describe("bridge hooks", () => {
         }),
       { wrapper: createQueryClientWrapper() },
     );
+
+    expect(result.current.coins).toEqual([usdcCoin]);
 
     act(() => result.current.changeCoin(ethCoin.denom));
     act(() => result.current.setNetwork("1"));
