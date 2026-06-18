@@ -795,6 +795,34 @@ class Trade(TypedDict):  # noqa: N815
     isMaker: bool | None  # noqa: N815
 
 
+class PerpsEvent2(TypedDict):
+    """One perps-contract event from the perpsEvents2 subscription; camelCase (wire shape)."""
+
+    # Mirrors `PerpsEvent2` on the indexer (subscriptions/perpsEvents2.graphql).
+    # `user` / `pairId` / `orderId` / `clientOrderId` are nullable: not every
+    # event names a participant, market, or order (e.g. fee distribution), and
+    # `clientOrderId` is set only when the order carried one. `data` is the
+    # opaque per-event payload — match on `eventType` to interpret it.
+    idx: int
+    eventType: str  # noqa: N815
+    user: str | None
+    pairId: str | None  # noqa: N815
+    orderId: str | None  # noqa: N815
+    clientOrderId: str | None  # noqa: N815
+    data: dict[str, Any]
+
+
+class PerpsEvent2Batch(TypedDict):  # noqa: N815
+    """One block's matching perps events from the perpsEvents2 subscription."""
+
+    # Each `next` message on `subscribe_perps_events2` is one of these: the
+    # block's height/timestamp plus every perps event in it that passed the
+    # filter. Only blocks with at least one matching event are delivered.
+    blockHeight: int  # noqa: N815
+    createdAt: str  # noqa: N815  # RFC 3339 datetime.
+    events: list[PerpsEvent2]
+
+
 class BlockTransaction(TypedDict):  # noqa: N815
     """One transaction inside a Block (subscribe_block stream)."""
 

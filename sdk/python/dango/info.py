@@ -22,6 +22,7 @@ from dango.utils.types import (
     Param,
     PerpsCandle,
     PerpsEvent,
+    PerpsEvent2Batch,
     PerpsEventSortBy,
     PerpsPairStats,
     State,
@@ -74,6 +75,9 @@ _SUB_PERPS_CANDLES: Final[str] = _SUBSCRIPTIONS.joinpath("perpsCandles.graphql")
 _SUB_BLOCK: Final[str] = _SUBSCRIPTIONS.joinpath("block.graphql").read_text(encoding="utf-8")
 _SUB_EVENTS: Final[str] = _SUBSCRIPTIONS.joinpath("events.graphql").read_text(encoding="utf-8")
 _SUB_QUERY_APP: Final[str] = _SUBSCRIPTIONS.joinpath("queryApp.graphql").read_text(encoding="utf-8")
+_SUB_PERPS_EVENTS2: Final[str] = _SUBSCRIPTIONS.joinpath("perpsEvents2.graphql").read_text(
+    encoding="utf-8"
+)
 
 # perpsTrades is supported by the chain — `Subscription.perpsTrades` is
 # defined in indexer/graphql-types/src/schemas/schema.graphql, and
@@ -119,6 +123,15 @@ def _unwrap_node[T](payload: dict[str, Any], field: str, _typ: type[T]) -> Any:
     # (e.g. via pydantic) without reshaping the call signature.
     if "_error" in payload:
         return payload
+
+    # A `next` message can also carry GraphQL errors in-band as
+    # `{"data": null, "errors": [...]}` — e.g. an unknown field on a server
+    # that predates the operation, or a resolver failure. Surface those
+    # through the same `{"_error": ...}` convention so callbacks have a single
+    # error path and never receive a bare `None` they have to guard against.
+    errors = payload.get("errors")
+    if errors:
+        return {"_error": errors}
 
     data = payload.get("data") or {}
 
@@ -790,6 +803,44 @@ class Info(API):
             _SUB_BLOCK,
             {},
             lambda payload: callback(_unwrap_node(payload, "block", Block)),
+        )
+
+    def subscribe_perps_events2(
+        self,
+        callback: Callable[[PerpsEvent2Batch], None],
+        *,
+        since_block_height: int | None = None,
+        event_types: list[str] | None = None,
+        pair_ids: list[str] | None = None,
+        users: list[str] | None = None,
+        order_ids: list[str] | None = None,
+        client_order_ids: list[str] | None = None,
+    ) -> int:
+        """Stream every perps-contract event, grouped per block.
+
+        The richer superset of `subscribe_perps_trades` (which streams fills
+        only): order lifecycle, fills, liquidations, and deleveraging. With no
+        filter the full firehose is streamed. Each `next` message is one
+        block's batch, so the callback receives a `PerpsEvent2Batch` (block
+        height/timestamp + the matching events) — not one event at a time.
+        """
+
+        # All filters default to None (no filtering on that field). Pass an
+        # empty list to match nothing, or a list of values to keep only those;
+        # the five filters AND together — see API doc §8.3. A `client_order_id`
+        # is unique only per sender, so combine `client_order_ids` with `users`
+        # to single out one trader's order.
+        return self._ws.subscribe(
+            _SUB_PERPS_EVENTS2,
+            {
+                "sinceBlockHeight": since_block_height,
+                "eventTypes": event_types,
+                "pairIds": pair_ids,
+                "users": users,
+                "orderIds": order_ids,
+                "clientOrderIds": client_order_ids,
+            },
+            lambda payload: callback(_unwrap_node(payload, "perpsEvents2", PerpsEvent2Batch)),
         )
 
     def unsubscribe(self, subscription_id: int) -> bool:
