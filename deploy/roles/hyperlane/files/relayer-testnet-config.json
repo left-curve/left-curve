@@ -1,3 +1,29 @@
 {
-  "relaychains": "dangotestnet,sepolia"
+  "relaychains": "dangotestnet,sepolia,arbitrumsepolia",
+  "whitelist": [
+    {
+      "originDomain": "88888887",
+      "destinationDomain": "11155111",
+      "senderAddress": "*",
+      "recipientAddress": "*"
+    },
+    {
+      "originDomain": "11155111",
+      "destinationDomain": "88888887",
+      "senderAddress": "*",
+      "recipientAddress": "*"
+    },
+    {
+      "originDomain": "88888887",
+      "destinationDomain": "421614",
+      "senderAddress": "*",
+      "recipientAddress": "*"
+    },
+    {
+      "originDomain": "421614",
+      "destinationDomain": "88888887",
+      "senderAddress": "*",
+      "recipientAddress": "*"
+    }
+  ]
 }
