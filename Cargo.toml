@@ -56,7 +56,7 @@ members = [
   "dango/utils/identity",
   "dango/utils/temp-rocksdb",
 ]
-resolver = "2"
+resolver = "3"
 
 [workspace.package]
 authors       = ["Left Curve Software Limited"]
