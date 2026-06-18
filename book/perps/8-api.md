@@ -2275,7 +2275,9 @@ subscription {
   perpsEvents2(
     eventTypes: ["order_filled", "liquidated"],
     pairIds: ["perp/btcusd"],
-    users: ["0x1234...abcd"]
+    users: ["0x1234...abcd"],
+    orderIds: ["100"],
+    clientOrderIds: ["42"]
   ) {
     blockHeight
     createdAt
@@ -2284,6 +2286,8 @@ subscription {
       eventType
       user
       pairId
+      orderId
+      clientOrderId
       data
     }
   }
@@ -2292,14 +2296,16 @@ subscription {
 
 Each message carries one block's worth of matching events. Only blocks that contain at least one matching event are delivered.
 
-| Parameter          | Type        | Description                                                             |
+| Parameter          | Type        | Description                                                            |
 | ------------------ | ----------- | ---------------------------------------------------------------------- |
 | `sinceBlockHeight` | `Int`       | Replay retained blocks from this height on connect; omit for live-only |
 | `eventTypes`       | `[String!]` | Keep only these event types (see [§9](#9-events-reference))            |
 | `pairIds`          | `[String!]` | Keep only these trading pairs                                          |
 | `users`            | `[String!]` | Keep only events whose `user` is one of these addresses                |
+| `orderIds`         | `[String!]` | Keep only events whose `order_id` is one of these                      |
+| `clientOrderIds`   | `[String!]` | Keep only events whose `client_order_id` is one of these               |
 
-**Filter semantics.** The three filters AND together. Omitting a filter does not filter on that field (matches everything); passing an _empty_ list matches nothing. Addresses are matched verbatim against each event's canonical address string, so pass the same `0x`-prefixed form the API returns elsewhere.
+**Filter semantics.** The five filters AND together. Omitting a filter does not filter on that field (matches everything); passing an _empty_ list matches nothing. Addresses are matched verbatim against each event's canonical address string, so pass the same `0x`-prefixed form the API returns elsewhere; order and client order ids are matched the same way, as the decimal strings the API returns. A `client_order_id` is unique only per sender, so combine `clientOrderIds` with `users` to single out one trader's order.
 
 **PerpsEvent2Batch fields:**
 
@@ -2311,13 +2317,15 @@ Each message carries one block's worth of matching events. Only blocks that cont
 
 **PerpsEvent2 fields:**
 
-| Field       | Type      | Description                                                  |
-| ----------- | --------- | ----------------------------------------------------------- |
-| `idx`       | `Int`     | Ordinal of this event within the block                      |
-| `eventType` | `String`  | Event type name (see [§9](#9-events-reference))             |
-| `user`      | `String?` | The event's subject address, if it has a `user` field       |
-| `pairId`    | `String?` | The event's trading pair, if it has a `pair_id` field       |
-| `data`      | `JSON`    | Raw event payload (same shape as [§9](#9-events-reference)) |
+| Field           | Type      | Description                                                 |
+| --------------- | --------- | ----------------------------------------------------------- |
+| `idx`           | `Int`     | Ordinal of this event within the block                      |
+| `eventType`     | `String`  | Event type name (see [§9](#9-events-reference))             |
+| `user`          | `String?` | The event's subject address, if it has a `user` field       |
+| `pairId`        | `String?` | The event's trading pair, if it has a `pair_id` field       |
+| `orderId`       | `String?` | The event's order, if it has an `order_id` field            |
+| `clientOrderId` | `String?` | The caller-assigned client order id, if it has one          |
+| `data`          | `JSON`    | Raw event payload (same shape as [§9](#9-events-reference)) |
 
 **Reconnect.** Pass `sinceBlockHeight` to replay events missed while disconnected. The in-memory window retains only recent blocks; if `sinceBlockHeight` is older than the window, the subscription fails to start with a "resync required" error — reconnect with a newer height and backfill the gap from the `perpsEvents` query ([§5.5](#55-trade-history)).
 
