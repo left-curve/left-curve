@@ -11,7 +11,7 @@ use {
     config::Config,
     dango_config_parser::parse_config,
     opentelemetry::{KeyValue, trace::TracerProvider},
-    opentelemetry_otlp::{ExportConfig, Protocol, SpanExporter, WithExportConfig},
+    opentelemetry_otlp::{Protocol, SpanExporter, WithExportConfig},
     opentelemetry_sdk::{Resource, trace as sdktrace},
     sentry::integrations::tracing::layer as sentry_layer,
     std::{
@@ -135,28 +135,16 @@ async fn main() -> anyhow::Result<()> {
         // Build exporter and tracer provider
         // Build exporter via selected OTLP protocol (gRPC or HTTP).
         let exporter = match cfg.trace.protocol {
-            config::TraceProtocol::OtlpGrpc => {
-                let export_config = ExportConfig {
-                    endpoint: Some(cfg.trace.endpoint.clone()),
-                    protocol: Protocol::Grpc,
-                    ..Default::default()
-                };
-                SpanExporter::builder()
-                    .with_tonic()
-                    .with_export_config(export_config)
-                    .build()?
-            },
-            config::TraceProtocol::OtlpHttp => {
-                let export_config = ExportConfig {
-                    endpoint: Some(cfg.trace.endpoint.clone()),
-                    protocol: Protocol::HttpBinary,
-                    ..Default::default()
-                };
-                SpanExporter::builder()
-                    .with_http()
-                    .with_export_config(export_config)
-                    .build()?
-            },
+            config::TraceProtocol::OtlpGrpc => SpanExporter::builder()
+                .with_tonic()
+                .with_endpoint(cfg.trace.endpoint.clone())
+                .with_protocol(Protocol::Grpc)
+                .build()?,
+            config::TraceProtocol::OtlpHttp => SpanExporter::builder()
+                .with_http()
+                .with_endpoint(cfg.trace.endpoint.clone())
+                .with_protocol(Protocol::HttpBinary)
+                .build()?,
         };
 
         let provider = sdktrace::SdkTracerProvider::builder()
