@@ -35,8 +35,8 @@
   loop_control:
     label: "{{ item.item.name | default('skipped') }}"
 
-- name: Pull all images (separate from up, for clearer error diagnosis)
-  command: docker compose -p {{ deployment_name }} pull
+- name: Pull missing images (separate from up, for clearer error diagnosis)
+  command: docker compose -p {{ deployment_name }} pull --policy missing
   args:
     chdir: "{{ deployment_dir }}"
   register: pull_result

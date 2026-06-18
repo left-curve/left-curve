@@ -16,6 +16,7 @@ import { pluginNodePolyfill } from "@rsbuild/plugin-node-polyfill";
 import { pluginSourceBuild } from "@rsbuild/plugin-source-build";
 
 import { configurePortalAssets, copyPortalPublicAssets } from "./rsbuild.assets";
+import { getHyperlaneConfig } from "./hyperlane.config";
 
 import devnet from "@left-curve/sdk/chains/devnet.json" with { type: "json" };
 import local from "@left-curve/sdk/chains/local.json" with { type: "json" };
@@ -82,34 +83,6 @@ const tvVersion = (
 ).replace(/\./g, "_");
 
 copyPortalPublicAssets(__dirname);
-
-const hyperlaneConfig = async () => {
-  const mainFiles = {
-    config: "./config/hyperlane/config.json",
-    deployment: "./config/hyperlane/deployments.json",
-  };
-
-  const testFiles = {
-    config: "./config/hyperlane/config.testnet.json",
-    deployment: "./config/hyperlane/deployments-testnet.json",
-  };
-
-  const files = environment === "prod" ? mainFiles : testFiles;
-
-  const config = await import(files.config);
-  const deployments = await import(files.deployment);
-
-  Object.entries(deployments.evm).forEach(([chainId, deployment]: [string, any]) => {
-    config.evm[chainId].warp_routes = deployment.warp_routes.map(
-      ([warp_route_type, route]: [string, object]) => ({
-        warp_route_type,
-        ...route,
-      }),
-    );
-  });
-
-  return config;
-};
 
 const chain = {
   local: local,
@@ -229,7 +202,7 @@ export default defineConfig({
     define: {
       ...publicVars,
       "import.meta.env.CONFIG_ENVIRONMENT": `"${process.env.CONFIG_ENVIRONMENT || "local"}"`,
-      "import.meta.env.HYPERLANE_CONFIG": JSON.stringify(await hyperlaneConfig()),
+      "import.meta.env.HYPERLANE_CONFIG": JSON.stringify(getHyperlaneConfig(environment)),
       "import.meta.env.GIT_COMMIT": `"${gitCommit}"`,
       "import.meta.env.TV_VERSION": `"${tvVersion}"`,
       "import.meta.env.R2_ASSETS_PREFIX": JSON.stringify(r2AssetsPrefix),

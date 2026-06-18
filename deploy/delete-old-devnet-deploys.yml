@@ -1,0 +1,46 @@
+# Safety checks before deleting a devnet deploy — then delegates to delete-full-app.yml
+- hosts: full-app
+  remote_user: "{{ deploy_user }}"
+  tasks:
+    - name: Validate deployment_name is a numeric timestamp
+      assert:
+        that:
+          - deployment_name is match('^[0-9]{14}$')
+        fail_msg: "deployment_name must be a 14-digit timestamp, got '{{ deployment_name }}'"
+
+    - name: Check .env exists
+      stat:
+        path: "{{ ansible_facts['env']['HOME'] }}/deployments/{{ deployment_name }}/.env"
+      register: env_file
+
+    - name: Read network from .env
+      shell: grep -oP '^DANGO_NETWORK=\K.*' {{ ansible_facts['env']['HOME'] }}/deployments/{{ deployment_name }}/.env
+      register: env_network
+      when: env_file.stat.exists
+
+    - name: Refuse to delete testnet/mainnet
+      assert:
+        that:
+          - env_network.stdout not in ['testnet', 'mainnet']
+        fail_msg: "Refusing to delete {{ env_network.stdout }} deployment"
+      when: env_file.stat.exists
+
+    - name: Check this is not the active deployment
+      shell: |
+        tracker="{{ ansible_facts['env']['HOME'] }}/deployments/{{ env_network.stdout }}.json"
+        if [ -f "$tracker" ]; then
+          grep -oP '"current_deployment"\s*:\s*"\K[^"]+' "$tracker" 2>/dev/null || true
+        fi
+      register: active_deploy
+      changed_when: false
+      when: env_file.stat.exists
+
+    - name: Refuse to delete active deployment
+      assert:
+        that:
+          - active_deploy.stdout != deployment_name
+        fail_msg: "Refusing to delete the active {{ env_network.stdout }} deployment"
+      when: active_deploy.stdout is defined and active_deploy.stdout | length > 0
+
+# Full cleanup (data dir, docker, DBs, S3, Cloudflare, prometheus, etc.)
+- import_playbook: delete-full-app.yml

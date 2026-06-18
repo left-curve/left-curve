@@ -202,6 +202,10 @@ generate_subscription_types! {
         path: "src/schemas/subscriptions/perpsTrades.graphql",
     },
     {
+        name: SubscribePerpsEvents2,
+        path: "src/schemas/subscriptions/perpsEvents2.graphql",
+    },
+    {
         name: SubscribeQueryApp,
         path: "src/schemas/subscriptions/queryApp.graphql",
     },

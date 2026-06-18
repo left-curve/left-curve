@@ -116,6 +116,9 @@ where
         dango_indexer_clickhouse::indexer::Indexer::new(indexer_clickhouse_context.clone());
 
     let hooked_indexer = HookedIndexer::new(indexer_cache, indexer, clickhouse_indexer);
+    // Capture the realtime reader handle before `hooked_indexer` is moved into
+    // the suite; it shares the ring + broadcast the indexer publishes to.
+    let stream_context = hooked_indexer.stream.context();
 
     let (suite, test, codes, contracts, mock_validator_sets) = setup_suite_with_db_and_vm(
         MemDb::<SimpleCommitment>::new(),
@@ -145,6 +148,7 @@ where
         indexer_cache_context,
         sql_context,
         indexer_clickhouse_context,
+        stream_context,
         Arc::new(app),
         Arc::new(mock_client),
         None,

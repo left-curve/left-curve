@@ -394,11 +394,18 @@ fn _liquidate(
     // liquidation are zero (liq_param zeroes fee rates), so the liquidation
     // fee is the only additional margin hit — routed straight to the
     // insurance fund, bypassing the protocol/vault fee split.
-    let liq_fee = compute_liquidation_fee(
-        closed_notional,
-        param.liquidation_fee_rate,
-        user_state.margin,
-    )?;
+    //
+    // The fee is capped at the user's *equity* (margin + unrealized PnL of any
+    // remaining positions), not margin alone, so it can never drive equity
+    // below zero — i.e. the fee itself never creates bad debt. Realized PnL is
+    // already settled into `user_state.margin`, so the accumulators passed to
+    // the equity helper are zero, matching the bankruptcy-price convention
+    // used in `execute_close_schedule`.
+    let user_equity =
+        compute_user_equity_with_pnl(&user_state, oracle_prices, UsdValue::ZERO, UsdValue::ZERO)?;
+
+    let liq_fee =
+        compute_liquidation_fee(closed_notional, param.liquidation_fee_rate, user_equity)?;
 
     if liq_fee.is_non_zero() {
         user_state.margin.checked_sub_assign(liq_fee)?;
@@ -407,11 +414,28 @@ fn _liquidate(
 
     // -------------------- Step 5: Bad debt → insurance fund ------------------
 
-    if user_state.margin.is_negative() {
-        let bad_debt = user_state.margin.checked_abs()?;
-        user_state.margin = UsdValue::ZERO;
+    // Bad debt is a *negative-equity* condition, not merely a negative margin
+    // balance. A cross-margined account can carry negative margin while
+    // remaining solvent when its remaining positions hold unrealized profit
+    // (the user withdrew against, or realized a loss against, that profit before
+    // liquidation). Recognizing bad debt off the margin sign in that case would
+    // gift insurance-fund value to a solvent user.
+    //
+    // The fee is the only thing that changed the account since `user_equity` was
+    // computed above — it just lowered `margin`, leaving positions untouched —
+    // so the post-fee equity is exactly `user_equity - liq_fee`. No need to
+    // recompute the per-position sum.
+    let user_equity = user_equity.checked_sub(liq_fee)?;
 
-        // Deduct from insurance fund (can go negative as last resort).
+    if user_equity.is_negative() {
+        let bad_debt = user_equity.checked_abs()?;
+
+        // Top the account up to exactly zero equity by crediting its margin,
+        // and deduct the same amount from the insurance fund (which can go
+        // negative as a last resort). When the account is fully closed (the
+        // normal insolvent path) equity == margin, so this is identical to
+        // flooring margin to zero.
+        user_state.margin.checked_add_assign(bad_debt)?;
         state.insurance_fund.checked_sub_assign(bad_debt)?;
 
         events.push(BadDebtCovered {
@@ -919,18 +943,22 @@ fn execute_adl(
     Ok((total_adl_size, bankruptcy_price, total_user_funding))
 }
 
-/// Compute the liquidation fee, capped at the user's remaining margin.
+/// Compute the liquidation fee, capped at the user's remaining equity.
 ///
-/// Caller guarantees `user_margin` already reflects realized PnL from the
+/// Capping at equity (margin + unrealized PnL of remaining positions), rather
+/// than margin alone, guarantees the fee never pushes equity below zero and so
+/// can never itself create bad debt.
+///
+/// Caller guarantees `user_equity` already reflects realized PnL from the
 /// liquidation fills (per-fill settlement applies PnLs as fills happen).
 fn compute_liquidation_fee(
     closed_notional: UsdValue,
     liquidation_fee_rate: Dimensionless,
-    user_margin: UsdValue,
+    user_equity: UsdValue,
 ) -> anyhow::Result<UsdValue> {
     let fee_usd = closed_notional.checked_mul(liquidation_fee_rate)?;
-    let remaining_margin = user_margin.max(UsdValue::ZERO);
-    Ok(fee_usd.min(remaining_margin))
+    let remaining_equity = user_equity.max(UsdValue::ZERO);
+    Ok(fee_usd.min(remaining_equity))
 }
 
 // ----------------------------------- tests -----------------------------------
@@ -2055,6 +2083,118 @@ mod tests {
             state.insurance_fund < UsdValue::new_int(500),
             "insurance fund should have been reduced by bad debt"
         );
+    }
+
+    /// A cross-margined account can reach liquidation with NEGATIVE margin but
+    /// POSITIVE equity — e.g. the user withdrew, or realised a loss, against an
+    /// open position's unrealised profit. The remaining position keeps equity
+    /// above zero, so there is no bad debt: the engine must not mistake the
+    /// negative margin balance for insolvency and drain the insurance fund. It
+    /// must also still charge a liquidation fee, capped at equity rather than
+    /// the (negative) margin.
+    ///
+    /// Mirrors the "negative margin, positive equity" example in
+    /// `book/perps/4-liquidation-and-adl.md`.
+    #[test]
+    fn no_bad_debt_when_equity_positive_despite_negative_margin() {
+        let mut ctx = MockContext::new()
+            .with_contract(CONTRACT)
+            .with_funds(Coins::default());
+
+        // 0.1% liquidation fee, as in the spec examples.
+        let param = Param {
+            liquidation_fee_rate: Dimensionless::new_permille(1),
+            ..default_param()
+        };
+        // `index_price` must match `oracle_prices` below: the deficit /
+        // liquidatable computation reads the stored pair state, while the close
+        // execution reads the `oracle_prices` map — a mismatch would mis-size
+        // the close.
+        let pair_state = PairState {
+            long_oi: Quantity::new_int(10),
+            index_price: UsdPrice::new_int(2_200),
+            ..Default::default()
+        };
+
+        setup_storage(&mut ctx.storage, &param, &[(
+            pair_btc(),
+            btc_pair_param(),
+            pair_state.clone(),
+        )]);
+
+        // Alice: long 10 BTC @ $2,000, oracle $2,200 (position in profit). Her
+        // margin is set negative to model a prior withdrawal / loss realised
+        // against that unrealised profit:
+        //
+        //   equity = -1,450 + 10*(2,200-2,000) = 550   (> 0, solvent)
+        //   MM     = 10*2,200*5%               = 1,100 (> equity, liquidatable)
+        save_position(&mut ctx.storage, USER, &pair_btc(), 10, 2_000);
+
+        // Maker bid at the $2,200 oracle so the partial close fills on the book
+        // (no ADL).
+        let maker_state = UserState {
+            margin: UsdValue::new_int(100_000),
+            open_order_count: 1,
+            ..Default::default()
+        };
+        USER_STATES
+            .save(&mut ctx.storage, MAKER, &maker_state)
+            .unwrap();
+        save_bid(&mut ctx.storage, &pair_btc(), 1, MAKER, 10, 2_200);
+
+        // Seed the insurance fund with $100 so we can prove it GREW by the fee
+        // and was never debited for phantom bad debt.
+        let mut state = STATE.load(&ctx.storage).unwrap();
+        state.insurance_fund = UsdValue::new_int(100);
+        STATE.save(&mut ctx.storage, &state).unwrap();
+
+        let mut pair_params = BTreeMap::new();
+        pair_params.insert(pair_btc(), btc_pair_param());
+
+        let mut pair_states = BTreeMap::new();
+        pair_states.insert(pair_btc(), pair_state);
+
+        let mut oracle_prices = BTreeMap::new();
+        oracle_prices.insert(pair_btc(), UsdPrice::new_int(2_200));
+
+        let mut user_state = USER_STATES.load(&ctx.storage, USER).unwrap();
+        user_state.margin = UsdValue::new_int(-1_450);
+
+        let LiquidateOutcome {
+            state, user_state, ..
+        } = _liquidate(
+            &ctx.storage,
+            USER,
+            CONTRACT,
+            Timestamp::ZERO,
+            &param,
+            &state,
+            &pair_params,
+            &pair_states,
+            &user_state,
+            &oracle_prices,
+            &mut EventBuilder::new(),
+        )
+        .expect("liquidation should succeed");
+
+        // Close schedule: deficit = 1,100 - 550 = 550 ⇒ close 5 of 10 BTC.
+        // Book fill at $2,200: PnL = 5*(2,200-2,000) = +1,000 ⇒ margin -450.
+        // Fee = 5*2,200*0.1% = 11, capped at equity 550 ⇒ margin -461.
+        // Equity after = -461 + 5*200 = 539 > 0 ⇒ no bad debt.
+
+        // Margin stays negative — it must NOT be floored to zero.
+        assert_eq!(
+            user_state.margin,
+            UsdValue::new_int(-461),
+            "margin must remain negative; the account is solvent, not bad debt"
+        );
+
+        // 5 BTC remain (partial close).
+        assert_eq!(user_state.positions[&pair_btc()].size, Quantity::new_int(5));
+
+        // Insurance fund grew by the fee (100 + 11) and was never debited for
+        // phantom bad debt. The bug would have produced 100 + 0 - 450 = -350.
+        assert_eq!(state.insurance_fund, UsdValue::new_int(111));
     }
 
     /// Proves the cancel-before-match invariant: when a user is liquidated,

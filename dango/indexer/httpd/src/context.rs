@@ -28,6 +28,9 @@ pub struct FullContext {
     pub sql_context: dango_indexer_sql::Context,
     pub indexer_cache_context: dango_indexer_cache::Context,
     pub clickhouse_context: dango_indexer_clickhouse::context::Context,
+    /// Reader handle to the validator-side realtime stream backing the
+    /// `perps_events2` subscription.
+    pub stream_context: dango_indexer_stream::Context,
     pub base: MinimalContext,
     pub db: DatabaseConnection,
     pub pubsub: Arc<dyn PubSub<u64> + Send + Sync>,
@@ -43,6 +46,7 @@ impl FullContext {
         indexer_cache_context: dango_indexer_cache::Context,
         ctx: dango_indexer_sql::Context,
         clickhouse_context: dango_indexer_clickhouse::context::Context,
+        stream_context: dango_indexer_stream::Context,
         dango_app: Arc<dyn QueryApp + Send + Sync>,
         consensus_client: Arc<dyn ConsensusClient + Send + Sync>,
         static_files_path: Option<String>,
@@ -50,6 +54,7 @@ impl FullContext {
         Self {
             indexer_cache_context,
             clickhouse_context,
+            stream_context,
             db: ctx.db.clone(),
             pubsub: ctx.pubsub.clone(),
             perps_trade_pubsub: ctx.perps_trade_pubsub.clone(),

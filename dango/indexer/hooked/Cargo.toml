@@ -23,6 +23,7 @@ dango-app                = { workspace = true }
 dango-indexer-cache      = { workspace = true }
 dango-indexer-clickhouse = { workspace = true }
 dango-indexer-sql        = { workspace = true }
+dango-indexer-stream     = { workspace = true }
 dango-primitives         = { workspace = true }
 tokio                    = { workspace = true }
 tracing                  = { workspace = true, optional = true }

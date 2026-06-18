@@ -9,21 +9,22 @@ import type { useBridgeState } from "./useBridgeState.js";
 export type UseEvmBalancesParameters = {
   chain: NonNullable<ReturnType<typeof useBridgeState>["config"]>["chain"];
   address?: Address;
+  rpcUrl?: string;
 };
 
 export function useEvmBalances(parameters: UseEvmBalancesParameters) {
-  const { chain, address } = parameters;
+  const { chain, address, rpcUrl } = parameters;
 
   return useQuery({
     enabled: !!address,
-    queryKey: ["external-balances", chain, address],
+    queryKey: ["external-balances", chain, address, rpcUrl],
     queryFn: async () => {
       if (!address) return {};
       const { createPublicClient, http } = await import("viem");
 
       const evmClient = createPublicClient({
         chain: chain as Chain,
-        transport: http(INFURA_URLS[chain.id], {
+        transport: http(rpcUrl ?? INFURA_URLS[chain.id], {
           batch: true,
         }),
       });

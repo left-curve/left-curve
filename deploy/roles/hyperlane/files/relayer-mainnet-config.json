@@ -1,5 +1,5 @@
 {
-  "relaychains": "dango,ethereum",
+  "relaychains": "dango,ethereum,arbitrum",
   "chains": {
     "ethereum": {
       "ignoreReorgReports": true
@@ -15,6 +15,18 @@
     {
       "originDomain": "88888888",
       "destinationDomain": "1",
+      "senderAddress": "*",
+      "recipientAddress": "*"
+    },
+    {
+      "originDomain": "42161",
+      "destinationDomain": "88888888",
+      "senderAddress": "*",
+      "recipientAddress": "*"
+    },
+    {
+      "originDomain": "88888888",
+      "destinationDomain": "42161",
       "senderAddress": "*",
       "recipientAddress": "*"
     }

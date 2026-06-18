@@ -8,7 +8,7 @@ This chapter documents the complete API for the Dango perpetual futures exchange
 
 All queries and mutations use a standard GraphQL POST request.
 
-**Endpoint:** See [§11. Constants](#11-constants).
+**Endpoint:** See [Constants](9-constants.md#endpoints).
 
 **Headers:**
 
@@ -53,7 +53,7 @@ curl -X POST https://<host>/graphql \
 
 Subscriptions (real-time data) use WebSocket with the `graphql-ws` protocol.
 
-**Endpoint:** See [§11. Constants](#11-constants).
+**Endpoint:** See [Constants](9-constants.md#endpoints).
 
 **Connection handshake:**
 
@@ -565,7 +565,7 @@ A master account is created in the **inactive** state (for the purpose of spam p
 
 On testnet there is nothing of value to bridge, so in place of Step 2 you can call the public **faucet** to mint test tokens directly to the new master account. The account activates as soon as it receives the tokens. _The faucet exists on testnet only; there is no faucet on mainnet._
 
-**Endpoint:** `GET https://faucet-testnet.dango.zone/mint/{address}` (see [§11. Constants](#11-constants)).
+**Endpoint:** `GET https://faucet-testnet.dango.zone/mint/{address}` (see [Constants](9-constants.md#endpoints)).
 
 A freshly registered account is empty and owns exactly one account, so it passes the faucet's eligibility checks and the bare call succeeds:
 
@@ -638,8 +638,8 @@ The preimage layout (122 bytes total):
 
 | Byte range  | Size | Field       | Description                                                                                                   |
 | ----------- | ---- | ----------- | ------------------------------------------------------------------------------------------------------------- |
-| `[0..20)`   | 20   | `deployer`  | The `ACCOUNT_FACTORY_CONTRACT` address (see [§11](#11-constants))                                             |
-| `[20..52)`  | 32   | `code_hash` | The code hash of the Dango single-signature account contract (see [§11](#11-constants))                       |
+| `[0..20)`   | 20   | `deployer`  | The `ACCOUNT_FACTORY_CONTRACT` address (see [Constants](9-constants.md#dango-contract-addresses))             |
+| `[20..52)`  | 32   | `code_hash` | The code hash of the Dango single-signature account contract (see [Constants](9-constants.md#code-hashes))    |
 | `[52..56)`  | 4    | `seed`      | User-chosen `u32`, big-endian — arbitrary value for frontrunning protection                                   |
 | `[56..88)`  | 32   | `key_hash`  | Client-chosen 32-byte identifier for the key (see [§3.8](#38-query-users-by-key) for hashing rules)           |
 | `[88..89)`  | 1    | `key_tag`   | Key type: `0` = Secp256r1, `1` = Secp256k1, `2` = Ethereum                                                    |
@@ -653,11 +653,11 @@ address := ripemd160(sha256(deployer || code_hash || account_index))
 
 The preimage layout (56 bytes total):
 
-| Byte range | Size | Field           | Description                                                                             |
-| ---------- | ---- | --------------- | --------------------------------------------------------------------------------------- |
-| `[0..20)`  | 20   | `deployer`      | The `ACCOUNT_FACTORY_CONTRACT` address (see [§11](#11-constants))                       |
-| `[20..52)` | 32   | `code_hash`     | The code hash of the Dango single-signature account contract (see [§11](#11-constants)) |
-| `[52..56)` | 4    | `account_index` | Global account index, `u32`, big-endian                                                 |
+| Byte range | Size | Field           | Description                                                                                                |
+| ---------- | ---- | --------------- | ---------------------------------------------------------------------------------------------------------- |
+| `[0..20)`  | 20   | `deployer`      | The `ACCOUNT_FACTORY_CONTRACT` address (see [Constants](9-constants.md#dango-contract-addresses))          |
+| `[20..52)` | 32   | `code_hash`     | The code hash of the Dango single-signature account contract (see [Constants](9-constants.md#code-hashes)) |
+| `[52..56)` | 4    | `account_index` | Global account index, `u32`, big-endian                                                                    |
 
 The global account index is a chain-wide monotonic counter maintained by the account factory; it is incremented for every account created across all users, so every account has a unique index.
 
@@ -888,7 +888,7 @@ query {
 
 **Encoding.** `Hash256` is parsed strictly as 64 hex characters, **uppercase, without the `0x` prefix** (see [§10.2](#102-identifiers)). EVM tooling typically displays message IDs as `0x`-prefixed lowercase — strip the prefix and uppercase the rest, otherwise the query fails with a deserialization error.
 
-For continuous monitoring, poll this query at a block interval using the `queryApp` subscription ([§8.3](#83-contract-query-polling)). Alternatively, subscribe to the event stream ([§8.5](#85-event-stream)) filtered to the `mailbox_process_id` event, which the mailbox emits upon delivery; the filter value must use the same uppercase, unprefixed format:
+For continuous monitoring, poll this query at a block interval using the `queryApp` subscription ([§8.4](#84-contract-query-polling)). Alternatively, subscribe to the event stream ([§8.6](#86-event-stream)) filtered to the `mailbox_process_id` event, which the mailbox emits upon delivery; the filter value must use the same uppercase, unprefixed format:
 
 ```graphql
 subscription {
@@ -2266,7 +2266,62 @@ subscription {
 | `tradeIdx`    | `Int`      | Index within the block                                                                                   |
 | `isMaker`     | `Boolean?` | True for the maker side of a match, false for the taker side; null for trades executed before v0.16.0    |
 
-### 8.3 Contract query polling
+### 8.3 Perps events
+
+Stream every event emitted by the perps contract — order lifecycle, fills, liquidations, and deleveraging — grouped per block. It is the richer superset of [§8.2](#82-perps-trades) (which streams fills only), and a perps-scoped, lower-latency alternative to the generic event stream ([§8.6](#86-event-stream)). It is served from an in-memory window of the most recent blocks, so deep history is not available here — use the `perpsEvents` query ([§5.5](#55-trade-history)) for that.
+
+```graphql
+subscription {
+  perpsEvents2(
+    eventTypes: ["order_filled", "liquidated"],
+    pairIds: ["perp/btcusd"],
+    users: ["0x1234...abcd"]
+  ) {
+    blockHeight
+    createdAt
+    events {
+      idx
+      eventType
+      user
+      pairId
+      data
+    }
+  }
+}
+```
+
+Each message carries one block's worth of matching events. Only blocks that contain at least one matching event are delivered.
+
+| Parameter          | Type        | Description                                                             |
+| ------------------ | ----------- | ---------------------------------------------------------------------- |
+| `sinceBlockHeight` | `Int`       | Replay retained blocks from this height on connect; omit for live-only |
+| `eventTypes`       | `[String!]` | Keep only these event types (see [§9](#9-events-reference))            |
+| `pairIds`          | `[String!]` | Keep only these trading pairs                                          |
+| `users`            | `[String!]` | Keep only events whose `user` is one of these addresses                |
+
+**Filter semantics.** The three filters AND together. Omitting a filter does not filter on that field (matches everything); passing an _empty_ list matches nothing. Addresses are matched verbatim against each event's canonical address string, so pass the same `0x`-prefixed form the API returns elsewhere.
+
+**PerpsEvent2Batch fields:**
+
+| Field         | Type            | Description                       |
+| ------------- | --------------- | --------------------------------- |
+| `blockHeight` | `Int`           | Block height                      |
+| `createdAt`   | `String`        | Block timestamp (ISO 8601)        |
+| `events`      | `[PerpsEvent2]` | The block's matching perps events |
+
+**PerpsEvent2 fields:**
+
+| Field       | Type      | Description                                                  |
+| ----------- | --------- | ----------------------------------------------------------- |
+| `idx`       | `Int`     | Ordinal of this event within the block                      |
+| `eventType` | `String`  | Event type name (see [§9](#9-events-reference))             |
+| `user`      | `String?` | The event's subject address, if it has a `user` field       |
+| `pairId`    | `String?` | The event's trading pair, if it has a `pair_id` field       |
+| `data`      | `JSON`    | Raw event payload (same shape as [§9](#9-events-reference)) |
+
+**Reconnect.** Pass `sinceBlockHeight` to replay events missed while disconnected. The in-memory window retains only recent blocks; if `sinceBlockHeight` is older than the window, the subscription fails to start with a "resync required" error — reconnect with a newer height and backfill the gap from the `perpsEvents` query ([§5.5](#55-trade-history)).
+
+### 8.4 Contract query polling
 
 Poll any contract query at a regular block interval:
 
@@ -2302,7 +2357,7 @@ Common use cases:
 - **Order book depth** — track bid/ask levels.
 - **Pair states** — monitor open interest and funding.
 
-### 8.4 Block stream
+### 8.5 Block stream
 
 Subscribe to new blocks as they are finalized:
 
@@ -2317,7 +2372,7 @@ subscription {
 }
 ```
 
-### 8.5 Event stream
+### 8.6 Event stream
 
 Subscribe to events with optional filtering:
 
@@ -2358,7 +2413,7 @@ subscription {
 
 ## 9. Events reference
 
-The perps contract emits the following events. These can be queried via `perpsEvents` ([§5.5](#55-trade-history)) or streamed via the `events` subscription ([§8.5](#85-event-stream)).
+The perps contract emits the following events. These can be queried via `perpsEvents` ([§5.5](#55-trade-history)) or streamed in real time via the `perpsEvents2` subscription ([§8.3](#83-perps-events)) or the generic `events` subscription ([§8.6](#86-event-stream)).
 
 ### Margin events
 
@@ -2724,38 +2779,3 @@ One action inside a [`batch_update_orders`](#66-batch-update-orders) list. Condi
 | ------- | -------------- | ---------------------- |
 | `index` | `AccountIndex` | Account's unique index |
 | `owner` | `UserIndex`    | Owning user's index    |
-
-## 11. Constants
-
-### Endpoints
-
-| Network | HTTP                                     | WebSocket                              |
-| ------- | ---------------------------------------- | -------------------------------------- |
-| Mainnet | `https://api-mainnet.dango.zone/graphql` | `wss://api-mainnet.dango.zone/graphql` |
-| Testnet | `https://api-testnet.dango.zone/graphql` | `wss://api-testnet.dango.zone/graphql` |
-
-The testnet **faucet** is served separately at `https://faucet-testnet.dango.zone/mint` (see [§3.1.1](#311-funding-a-new-account-via-the-faucet-testnet)). There is no faucet on mainnet.
-
-### Chain IDs
-
-| Network | Chain ID          |
-| ------- | ----------------- |
-| Mainnet | `dango-1`         |
-| Testnet | `dango-testnet-1` |
-
-### Contract addresses
-
-| Name                       | Mainnet                                      | Testnet                                      |
-| -------------------------- | -------------------------------------------- | -------------------------------------------- |
-| `ACCOUNT_FACTORY_CONTRACT` | `0x18d28bafcdf9d4574f920ea004dea2d13ec16f6b` | `0x18d28bafcdf9d4574f920ea004dea2d13ec16f6b` |
-| `MAILBOX_CONTRACT`         | `0x974e57564ed3ed7d8f99d0c359fd03f3d78259c7` | `0x974e57564ed3ed7d8f99d0c359fd03f3d78259c7` |
-| `ORACLE_CONTRACT`          | `0xcedc5f73cbb963a48471b849c3650e6e34cd3b6d` | `0xcedc5f73cbb963a48471b849c3650e6e34cd3b6d` |
-| `PERPS_CONTRACT`           | `0x90bc84df68d1aa59a857e04ed529e9a26edbea4f` | `0xf6344c5e2792e8f9202c58a2d88fbbde4cd3142f` |
-
-### Code hashes
-
-| Name                     | Value                                                              |
-| ------------------------ | ------------------------------------------------------------------ |
-| Single-signature account | `d86e8112f3c4c4442126f8e9f44f16867da487f29052bf91b810457db34209a4` |
-
-The code hash is the same on mainnet and testnet.

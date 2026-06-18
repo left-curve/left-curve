@@ -35,6 +35,16 @@ pub struct HookedIndexer {
     pub file: dango_indexer_cache::Cache,
     pub sql: dango_indexer_sql::Indexer,
     pub clickhouse: dango_indexer_clickhouse::Indexer,
+    /// In-memory, validator-side realtime feed backing the `perps_events2`
+    /// GraphQL subscription. Unlike the other three components it does no
+    /// durable indexing — it only keeps a ring of recent perps-contract events
+    /// and broadcasts them live, in-process (lowest latency).
+    ///
+    /// FUTURE: this component will also host a "new blocks" subscription
+    /// consumed by the dedicated indexer node, and will eventually REPLACE this
+    /// `HookedIndexer` entirely once block files / Postgres / ClickHouse move to
+    /// that node.
+    pub stream: dango_indexer_stream::Indexer,
     /// Set to true between `start` and `shutdown`.
     is_running: Arc<AtomicBool>,
     /// One join handle per in-flight `post_indexing` block. Inserted when the
@@ -52,6 +62,7 @@ impl HookedIndexer {
             file,
             sql,
             clickhouse,
+            stream: dango_indexer_stream::Indexer::new(dango_indexer_stream::DEFAULT_RING_CAPACITY),
             is_running: Arc::new(AtomicBool::new(false)),
             post_indexing_tasks: Arc::new(Mutex::new(HashMap::new())),
         }
@@ -118,6 +129,10 @@ impl HookedIndexer {
             return Ok(());
         }
 
+        // The realtime stream (`perps_events2`) is intentionally NOT replayed
+        // here: it is an ephemeral, live-only feed with no subscribers during a
+        // cold catch-up, and this replay path has no `BlockOutcome` to extract
+        // events from (it only reloads the cached payload for SQL/Clickhouse).
         for block_height in (min_height + 1)..=block.height {
             // Cache loads the cached file into its in-memory map.
             self.file.pre_indexing(block_height).await?;
@@ -151,6 +166,7 @@ impl Indexer for HookedIndexer {
         self.file.start(storage).await?;
         self.sql.start(storage).await?;
         self.clickhouse.start(storage).await?;
+        self.stream.start(storage).await?;
 
         self.reindex(storage).await?;
 
@@ -185,6 +201,11 @@ impl Indexer for HookedIndexer {
         if let Err(err) = self.file.shutdown().await {
             #[cfg(feature = "tracing")]
             tracing::error!(err = %err, indexer = "file", "Error in shutdown");
+            errors.push(err.to_string());
+        }
+        if let Err(err) = self.stream.shutdown().await {
+            #[cfg(feature = "tracing")]
+            tracing::error!(err = %err, indexer = "stream", "Error in shutdown");
             errors.push(err.to_string());
         }
 
@@ -222,6 +243,14 @@ impl Indexer for HookedIndexer {
         // in-memory map for `post_indexing`.
         self.file.index_block(block, block_outcome).await?;
 
+        // Realtime feed: stash the outcome so `post_indexing` can extract and
+        // publish the perps events in height order. Best-effort: a failure here
+        // must not abort the block.
+        if let Err(_err) = self.stream.index_block(block, block_outcome).await {
+            #[cfg(feature = "tracing")]
+            tracing::error!(err = %_err, "stream index_block failed");
+        }
+
         Ok(())
     }
 
@@ -239,6 +268,22 @@ impl Indexer for HookedIndexer {
     ) -> IndexerResult<()> {
         if !self.is_running.load(Ordering::Relaxed) {
             return Err(IndexerError::not_running());
+        }
+
+        // Realtime feed: extract perps events and append them to the in-memory
+        // ring + broadcast, INLINE and IN STRICT HEIGHT ORDER (the app awaits
+        // this method per height), BEFORE the spawned task below. Running it
+        // here — not inside the spawn — is what keeps `perps_events2` free of
+        // the out-of-order publishing that the spawned SQL/Clickhouse path is
+        // subject to. Best-effort: errors are logged, never propagated, so the
+        // realtime feed can never affect consensus.
+        if let Err(_err) = self
+            .stream
+            .post_indexing(block_height, cfg.clone(), app_cfg.clone())
+            .await
+        {
+            #[cfg(feature = "tracing")]
+            tracing::error!(err = %_err, block_height, "stream post_indexing failed");
         }
 
         let file = self.file.clone();
@@ -347,6 +392,7 @@ impl Indexer for HookedIndexer {
         self.file.wait_for_finish().await?;
         self.sql.wait_for_finish().await?;
         self.clickhouse.wait_for_finish().await?;
+        self.stream.wait_for_finish().await?;
 
         Ok(())
     }
