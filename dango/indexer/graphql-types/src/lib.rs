@@ -223,8 +223,9 @@ generate_subscription_types! {
 pub mod subscriptions {
     pub use super::{
         subscribe_accounts, subscribe_block, subscribe_event_by_addresses, subscribe_events,
-        subscribe_messages, subscribe_perps_candles, subscribe_perps_trades, subscribe_query_app,
-        subscribe_query_status, subscribe_query_store, subscribe_transactions, subscribe_transfers,
+        subscribe_messages, subscribe_perps_candles, subscribe_perps_events2,
+        subscribe_perps_trades, subscribe_query_app, subscribe_query_status, subscribe_query_store,
+        subscribe_transactions, subscribe_transfers,
     };
 }
 

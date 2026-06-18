@@ -4355,6 +4355,7 @@ dependencies = [
  "dango-eth-utils",
  "dango-identity",
  "dango-indexer-graphql-types",
+ "dango-order-book",
  "dango-primitives",
  "dango-types",
  "futures",
