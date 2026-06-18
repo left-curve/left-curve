@@ -132,6 +132,8 @@ async fn graphql_subscribe_to_perps_events2() -> anyhow::Result<()> {
             pair_ids: Some(vec![pair.to_string()]),
             event_types: None,
             users: None,
+            order_ids: None,
+            client_order_ids: None,
         }),
         "perpsEvents2",
     );
@@ -176,6 +178,14 @@ async fn graphql_subscribe_to_perps_events2() -> anyhow::Result<()> {
                         fill.data.to_string().contains("2000"),
                         "fill should reference price 2000: {}",
                         fill.data
+                    );
+
+                    // The order_id is extracted to a top-level field (not only
+                    // buried in `data`), so clients can filter/read it directly.
+                    assert!(
+                        fill.order_id.is_some(),
+                        "order_filled should expose a top-level orderId: {:?}",
+                        fill.order_id
                     );
 
                     break;

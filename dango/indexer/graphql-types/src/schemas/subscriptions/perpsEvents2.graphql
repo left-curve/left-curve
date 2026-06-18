@@ -3,12 +3,16 @@ subscription SubscribePerpsEvents2(
   $eventTypes: [String!]
   $pairIds: [String!]
   $users: [String!]
+  $orderIds: [String!]
+  $clientOrderIds: [String!]
 ) {
   perpsEvents2(
     sinceBlockHeight: $sinceBlockHeight
     eventTypes: $eventTypes
     pairIds: $pairIds
     users: $users
+    orderIds: $orderIds
+    clientOrderIds: $clientOrderIds
   ) {
     blockHeight
     createdAt
@@ -17,6 +21,8 @@ subscription SubscribePerpsEvents2(
       eventType
       user
       pairId
+      orderId
+      clientOrderId
       data
     }
   }
