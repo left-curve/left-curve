@@ -888,7 +888,7 @@ query {
 
 **Encoding.** `Hash256` is parsed strictly as 64 hex characters, **uppercase, without the `0x` prefix** (see [§10.2](#102-identifiers)). EVM tooling typically displays message IDs as `0x`-prefixed lowercase — strip the prefix and uppercase the rest, otherwise the query fails with a deserialization error.
 
-For continuous monitoring, poll this query at a block interval using the `queryApp` subscription ([§8.3](#83-contract-query-polling)). Alternatively, subscribe to the event stream ([§8.5](#85-event-stream)) filtered to the `mailbox_process_id` event, which the mailbox emits upon delivery; the filter value must use the same uppercase, unprefixed format:
+For continuous monitoring, poll this query at a block interval using the `queryApp` subscription ([§8.4](#84-contract-query-polling)). Alternatively, subscribe to the event stream ([§8.6](#86-event-stream)) filtered to the `mailbox_process_id` event, which the mailbox emits upon delivery; the filter value must use the same uppercase, unprefixed format:
 
 ```graphql
 subscription {
@@ -2266,7 +2266,62 @@ subscription {
 | `tradeIdx`    | `Int`      | Index within the block                                                                                   |
 | `isMaker`     | `Boolean?` | True for the maker side of a match, false for the taker side; null for trades executed before v0.16.0    |
 
-### 8.3 Contract query polling
+### 8.3 Perps events
+
+Stream every event emitted by the perps contract — order lifecycle, fills, liquidations, and deleveraging — grouped per block. It is the richer superset of [§8.2](#82-perps-trades) (which streams fills only), and a perps-scoped, lower-latency alternative to the generic event stream ([§8.6](#86-event-stream)). It is served from an in-memory window of the most recent blocks, so deep history is not available here — use the `perpsEvents` query ([§5.5](#55-trade-history)) for that.
+
+```graphql
+subscription {
+  perpsEvents2(
+    eventTypes: ["order_filled", "liquidated"],
+    pairIds: ["perp/btcusd"],
+    users: ["0x1234...abcd"]
+  ) {
+    blockHeight
+    createdAt
+    events {
+      idx
+      eventType
+      user
+      pairId
+      data
+    }
+  }
+}
+```
+
+Each message carries one block's worth of matching events. Only blocks that contain at least one matching event are delivered.
+
+| Parameter          | Type        | Description                                                             |
+| ------------------ | ----------- | ---------------------------------------------------------------------- |
+| `sinceBlockHeight` | `Int`       | Replay retained blocks from this height on connect; omit for live-only |
+| `eventTypes`       | `[String!]` | Keep only these event types (see [§9](#9-events-reference))            |
+| `pairIds`          | `[String!]` | Keep only these trading pairs                                          |
+| `users`            | `[String!]` | Keep only events whose `user` is one of these addresses                |
+
+**Filter semantics.** The three filters AND together. Omitting a filter does not filter on that field (matches everything); passing an _empty_ list matches nothing. Addresses are matched verbatim against each event's canonical address string, so pass the same `0x`-prefixed form the API returns elsewhere.
+
+**PerpsEvent2Batch fields:**
+
+| Field         | Type            | Description                       |
+| ------------- | --------------- | --------------------------------- |
+| `blockHeight` | `Int`           | Block height                      |
+| `createdAt`   | `String`        | Block timestamp (ISO 8601)        |
+| `events`      | `[PerpsEvent2]` | The block's matching perps events |
+
+**PerpsEvent2 fields:**
+
+| Field       | Type      | Description                                                  |
+| ----------- | --------- | ----------------------------------------------------------- |
+| `idx`       | `Int`     | Ordinal of this event within the block                      |
+| `eventType` | `String`  | Event type name (see [§9](#9-events-reference))             |
+| `user`      | `String?` | The event's subject address, if it has a `user` field       |
+| `pairId`    | `String?` | The event's trading pair, if it has a `pair_id` field       |
+| `data`      | `JSON`    | Raw event payload (same shape as [§9](#9-events-reference)) |
+
+**Reconnect.** Pass `sinceBlockHeight` to replay events missed while disconnected. The in-memory window retains only recent blocks; if `sinceBlockHeight` is older than the window, the subscription fails to start with a "resync required" error — reconnect with a newer height and backfill the gap from the `perpsEvents` query ([§5.5](#55-trade-history)).
+
+### 8.4 Contract query polling
 
 Poll any contract query at a regular block interval:
 
@@ -2302,7 +2357,7 @@ Common use cases:
 - **Order book depth** — track bid/ask levels.
 - **Pair states** — monitor open interest and funding.
 
-### 8.4 Block stream
+### 8.5 Block stream
 
 Subscribe to new blocks as they are finalized:
 
@@ -2317,7 +2372,7 @@ subscription {
 }
 ```
 
-### 8.5 Event stream
+### 8.6 Event stream
 
 Subscribe to events with optional filtering:
 
@@ -2358,7 +2413,7 @@ subscription {
 
 ## 9. Events reference
 
-The perps contract emits the following events. These can be queried via `perpsEvents` ([§5.5](#55-trade-history)) or streamed via the `events` subscription ([§8.5](#85-event-stream)).
+The perps contract emits the following events. These can be queried via `perpsEvents` ([§5.5](#55-trade-history)) or streamed in real time via the `perpsEvents2` subscription ([§8.3](#83-perps-events)) or the generic `events` subscription ([§8.6](#86-event-stream)).
 
 ### Margin events
 
