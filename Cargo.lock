@@ -4155,6 +4155,7 @@ dependencies = [
  "async-stream",
  "async-trait",
  "dango-app",
+ "dango-order-book",
  "dango-primitives",
  "dango-types",
  "futures-util",
