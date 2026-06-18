@@ -1,9 +1,10 @@
 - hosts: all
   become: true
   remote_user: debian
-  vars_files:
-    - vaults/debian/root_vault.yml
+  gather_facts: false
   collections:
     - community.docker
+  pre_tasks:
+    - ansible.builtin.import_tasks: tasks/load-debian-root-secrets.yml
   roles:
     - docker

@@ -8,7 +8,7 @@ The objective is to move all chain data, indexer state, and the validator identi
 
 - **Source's tailscale IP** and **target's tailscale IP**.
 - **Source and target hostnames** (e.g. `inter1`, `hetzner5`).
-- **Vault access** and keys in agent (`just add-deploy-key && just add-debian-key`).
+- **SOPS access** and keys in agent (`just add-deploy-key && just add-debian-key`).
 - **Disk space on target**: no less than the sum of source's `~/mainnet/`, `~/psql/data/`, and `~/clickhouse/data/`.
 - **Time window**: budget ~60–90 minutes. Source is offline from step 1 onward; the chain runs on 3/4 quorum during that window, with source's proposer slot timing out every ~4 blocks.
 
