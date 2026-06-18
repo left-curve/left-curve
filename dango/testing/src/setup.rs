@@ -294,6 +294,9 @@ where
         dango_indexer_clickhouse::indexer::Indexer::new(clickhouse_context.clone());
 
     let hooked_indexer = HookedIndexer::new(indexer_cache, indexer, clickhouse_indexer);
+    // Capture the realtime reader handle before `hooked_indexer` is moved into
+    // the suite; it shares the ring + broadcast the indexer publishes to.
+    let stream_context = hooked_indexer.stream.context();
 
     let (suite, accounts, codes, contracts, validator_sets) = setup_suite_with_db_and_vm(
         MemDb::new(),
@@ -315,6 +318,7 @@ where
         indexer_cache_context.clone(),
         sql_context,
         clickhouse_context.clone(),
+        stream_context,
         Arc::new(suite.app.clone_without_indexer()),
         consensus_client,
         None,

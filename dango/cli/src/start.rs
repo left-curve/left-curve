@@ -299,6 +299,7 @@ impl StartCmd {
             indexer_cache_context,
             sql_context,
             clickhouse_context,
+            hooked_indexer.stream.context(),
             app.clone(),
             Arc::new(TendermintRpcClient::new(tendermint_rpc_addr)?),
             cfg.httpd.static_files_path.clone(),

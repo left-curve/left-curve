@@ -31,6 +31,7 @@ dango-backtrace          = { workspace = true }
 dango-indexer-cache      = { workspace = true }
 dango-indexer-clickhouse = { workspace = true, features = ["async-graphql"] }
 dango-indexer-sql        = { workspace = true, features = ["async-graphql"] }
+dango-indexer-stream     = { workspace = true }
 dango-primitives         = { workspace = true, features = ["async-graphql", "chrono", "tendermint"] }
 dango-types              = { workspace = true, features = ["async-graphql"] }
 futures                  = { workspace = true }
