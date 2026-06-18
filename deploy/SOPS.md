@@ -64,6 +64,22 @@ Team decisions:
 | `vaults/debian/debian_key.vault` | `vaults/debian/debian_key.sops` | root/debian |
 | `vaults/debian/root_vault.yml` | `vaults/debian/root_vault.sops.json` | root/debian |
 
+## File Format
+
+Vault files are stored as SOPS JSON (`*.sops.json`); the binary SSH-key files
+(`*.sops`) are unaffected. Do not create a `.sops.yml` vault.
+
+JSON is required, not cosmetic. SOPS' YAML output emits `0x`-prefixed hex
+strings (such as EVM and validator addresses) unquoted, because they exceed
+int64 and Go's YAML reader treats them as plain scalars. Ansible's YAML loader
+(PyYAML) then reads that unquoted `0x...` token as an integer, silently changing
+the value the deploy receives. JSON quotes every string, so each value
+round-trips with its intended type, and a future `0x` value cannot reintroduce
+the bug.
+
+JSON has no comment syntax, so any annotations in a vault are dropped on
+encryption; put labels in a data field instead of a comment.
+
 ## Local Setup
 
 Install local tools:
