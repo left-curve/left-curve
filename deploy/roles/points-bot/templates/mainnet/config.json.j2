@@ -1,3 +1,13 @@
+{%- set _ns = namespace(ub={}, rb={}, cp={}) -%}
+{%- for b in (points_bot_user_boosts[network] | default([])) -%}
+{%-   set _ns.ub = _ns.ub | combine({ b.user: ((_ns.ub[b.user] | default({})) | combine({ b.epoch: b.multiplier })) }) -%}
+{%- endfor -%}
+{%- for b in (points_bot_referral_boosts[network] | default([])) -%}
+{%-   set _ns.rb = _ns.rb | combine({ b.user: ((_ns.rb[b.user] | default({})) | combine({ b.epoch: b.multiplier })) }) -%}
+{%- endfor -%}
+{%- for c in (points_bot_compensation[network] | default([])) -%}
+{%-   set _ns.cp = _ns.cp | combine({ c.user: (c | dict2items | rejectattr('key', 'equalto', 'user') | items2dict) }) -%}
+{%- endfor -%}
 {
   "block_task": {
     "initial_loops": 100,
@@ -31,7 +41,7 @@
     "direct_share": "0.2",
     "indirect_share": "0.05"
   },
-  "compensation": {{ (points_bot_compensation[network] | default({})) | to_nice_json(indent=2) | indent(2) }},
+  "compensation": {{ _ns.cp | to_nice_json(indent=2) | indent(2) }},
   "boost": {
     "oat": {
       "multiplier": "1",
@@ -41,8 +51,8 @@
         "to_epoch": 6
       }
     },
-    "user": {{ (points_bot_user_boosts[network] | default({})) | to_nice_json(indent=2) | indent(4) }},
-    "referral": {{ (points_bot_referral_boosts[network] | default({})) | to_nice_json(indent=2) | indent(4) }},
+    "user": {{ _ns.ub | to_nice_json(indent=2) | indent(4) }},
+    "referral": {{ _ns.rb | to_nice_json(indent=2) | indent(4) }},
     "pair": {
       "perp/xauusd":{
         "8-": "2"

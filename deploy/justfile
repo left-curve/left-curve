@@ -34,45 +34,59 @@ lint:
   find . -name '*.yml' -o -name '*.yaml' | grep -v vault | grep -v .venv | xargs uvx yamllint -d relaxed
 
 add-deploy-key:
-  uv run ./deploy-key.sh | ssh-add - >/dev/null
+  uv run ./scripts/deploy-key.sh | ssh-add - >/dev/null
   @echo "Deploy key added to ssh-agent. You can now run ansible-playbook normally."
 
 add-debian-key:
-  uv run ./debian-key.sh | ssh-add - >/dev/null
+  uv run ./scripts/debian-key.sh | ssh-add - >/dev/null
   @echo "debian key added to ssh-agent. You can now run ansible-playbook normally."
-
-# Pre-fetch vault passwords into environment variables (memory only, no disk)
-# Spawns a new shell with passwords set. Exit the shell when done.
-add-passwords:
-  #!/bin/bash
-  VAULT=$(./vault-password.sh 2>/dev/null) || { echo "Failed to get vault password" >&2; exit 1; }
-  DEBIAN=$(./debian-password.sh 2>/dev/null) || { echo "Failed to get debian password" >&2; exit 1; }
-  export ANSIBLE_VAULT_PASSWORD="$VAULT"
-  export ANSIBLE_DEBIAN_PASSWORD="$DEBIAN"
-  exec $SHELL
 
 # ---------------------------------- Secrets -----------------------------------
 
-edit-secrets:
-  uv run ansible-vault edit group_vars/all/vault.yml
+sops-check:
+  ./scripts/sops-install-check.sh
 
-edit-hyperlane-secrets:
-  uv run ansible-vault edit group_vars/hyperlane/vault.yml
+sops-audit:
+  ./scripts/sops-audit.sh
 
-edit-points-bot-secrets:
-  uv run ansible-vault edit group_vars/points-bot/vault.yml
+sops-reencrypt *FILES:
+  ./scripts/sops-reencrypt.sh {{FILES}}
 
-edit-perps-bot-secrets:
-  uv run ansible-vault edit group_vars/perps-bot/vault.yml
+sops-collect-recipient *ARGS:
+  ./scripts/sops-collect-recipient.sh {{ARGS}}
 
-edit-dango-assistant-secrets:
-  uv run ansible-vault edit group_vars/dango-assistant/vault.yml
+sops-edit-secrets:
+  sops edit group_vars/all/vault.sops.json
 
-edit-root-key:
-  uv run ansible-vault edit vaults/debian/debian_key.vault --vault-id debian@debian-password.sh --encrypt-vault-id debian
+sops-edit-deploy-key:
+  sops edit --input-type binary --output-type binary vaults/deploy/deploy_key.sops
 
-edit-root-secrets:
-  uv run ansible-vault edit vaults/debian/root_vault.yml --vault-id debian@debian-password.sh --encrypt-vault-id debian
+sops-edit-hyperlane-secrets:
+  sops edit group_vars/hyperlane/vault.sops.json
+
+sops-edit-points-bot-secrets:
+  sops edit group_vars/points-bot/vault.sops.json
+
+sops-edit-perps-bot-secrets:
+  sops edit group_vars/perps-bot/vault.sops.json
+
+sops-edit-dango-assistant-secrets:
+  sops edit group_vars/dango-assistant/vault.sops.json
+
+sops-edit-ovh1-host-secrets:
+  sops edit host_vars/100.96.253.40/vault.sops.json
+
+sops-edit-ovh2-host-secrets:
+  sops edit host_vars/100.107.248.71/vault.sops.json
+
+sops-edit-ovh3-host-secrets:
+  sops edit host_vars/100.122.37.57/main.sops.json
+
+sops-edit-root-key:
+  sops edit --input-type binary --output-type binary vaults/debian/debian_key.sops
+
+sops-edit-root-secrets:
+  sops edit vaults/debian/root_vault.sops.json
 
 # -------------------------------- Provisioning --------------------------------
 
@@ -527,7 +541,7 @@ deploy-monitoring:
 
 deploy-uptimekuma:
   mkdir -p "{{justfile_directory()}}/logs" \
-    && ANSIBLE_VAULT_IDENTITY_LIST=default@./vault-password.sh uv run ansible-playbook uptimekuma-deploy.yml \
+    && uv run ansible-playbook uptimekuma-deploy.yml \
       2>&1 | tee "{{justfile_directory()}}/logs/$(date -u +%Y%m%d%H%M%S)-deploy-uptimekuma.log"
 
 deploy-tailscale:

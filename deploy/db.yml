@@ -8,9 +8,11 @@
 - hosts: db
   remote_user: debian
   become: true
+  gather_facts: false
   vars_files:
-    - vaults/debian/root_vault.yml
     - roles/postgres/defaults/main.yml
+  pre_tasks:
+    - ansible.builtin.import_tasks: tasks/load-debian-root-secrets.yml
   tasks:
     - name: Install systemd unit for postgres compose
       template:

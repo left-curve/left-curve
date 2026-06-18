@@ -21,11 +21,13 @@
 - hosts: all
   remote_user: debian
   become: true
+  gather_facts: false
   vars_files:
-    - vaults/debian/root_vault.yml
     - roles/node-exporter/defaults/main.yml
     - roles/promtail/defaults/main.yml
   pre_tasks:
+    - ansible.builtin.import_tasks: tasks/load-debian-root-secrets.yml
+
     - name: Get deploy user info
       getent:
         database: passwd

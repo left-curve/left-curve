@@ -9,9 +9,11 @@
 - hosts: clickhouse
   remote_user: debian
   become: true
+  gather_facts: false
   vars_files:
-    - vaults/debian/root_vault.yml
     - roles/clickhouse/defaults/main.yml
+  pre_tasks:
+    - ansible.builtin.import_tasks: tasks/load-debian-root-secrets.yml
   tasks:
     - name: Install systemd unit for clickhouse compose
       template:
