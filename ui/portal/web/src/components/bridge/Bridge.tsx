@@ -11,6 +11,7 @@ import {
 
 import {
   AssetInputWithRange,
+  AuthenticatedButton,
   ConnectWalletWithModal,
   createContext,
   DepositAddressBox,
@@ -20,17 +21,27 @@ import {
   TruncateText,
   useApp,
   useInputs,
+  useTheme,
 } from "@left-curve/applets-kit";
 
 import { Link } from "@tanstack/react-router";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
+import {
+  SwapperIframe,
+  WidgetEventName,
+  type ComponentStyles,
+  type SwapperStyles,
+} from "@swapper-finance/deposit-sdk";
 import { Decimal, formatUnits, parseUnits } from "@left-curve/utils";
 import { Image } from "~/components/foundation/Image";
 
 import {
+  Badge,
   Button,
   CoinSelector,
   IconArrowDown,
+  IconChevronRight,
+  IconConfetti,
   Input,
   ResizerContainer,
   NetworkSelector,
@@ -38,11 +49,41 @@ import {
   WarningContainer,
 } from "@left-curve/applets-kit";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type React from "react";
 import type { PropsWithChildren } from "react";
 import type { AnyCoin } from "@left-curve/store/types";
 import type { NonNullablePropertiesBy } from "@left-curve/types";
+
+const SWAPPER_DST_CHAIN_ID = "dango";
+const SWAPPER_DST_TOKEN_ADDR = "usdc";
+const SWAPPER_IFRAME_HEIGHT = "560px";
+const SWAPPER_DEPOSIT_OPTIONS = ["transferCrypto", "depositWithCash", "walletDeposit"] as const;
+const SWAPPER_BASE_COMPONENT_STYLES = {
+  width: "100%",
+  primaryColor: "#F57589",
+  accentColor: "#F57589",
+  sphereColor: "#F57589",
+  border: "0",
+  borderRadius: "12px",
+} satisfies ComponentStyles;
+
+const getCssVariableColor = (variable: string) => {
+  const color = getComputedStyle(document.documentElement).getPropertyValue(variable).trim();
+  return color || `var(${variable})`;
+};
+
+const getSwapperStyles = (theme: "light" | "dark"): SwapperStyles => ({
+  themeMode: theme,
+  componentStyles: {
+    ...SWAPPER_BASE_COMPONENT_STYLES,
+    backgroundColor: getCssVariableColor("--color-surface-secondary-rice"),
+    primaryButtonTextColor: getCssVariableColor("--color-surface-primary-rice"),
+    surfaceColor: getCssVariableColor("--color-surface-tertiary-rice"),
+    surfaceAltColor: getCssVariableColor("--color-surface-quaternary-rice"),
+    textColor: getCssVariableColor("--color-ink-primary-900"),
+  },
+});
 
 const [BridgeProvider, useBridge] = createContext<{
   state: ReturnType<typeof useBridgeState>;
@@ -86,30 +127,45 @@ const BridgeContainer: React.FC<PropsWithChildren<BridgeProps>> = ({
 const BridgeDeposit: React.FC = () => {
   const { state } = useBridge();
   const { action, network, coin, config } = state;
+  const [showSwapperDeposit, setShowSwapperDeposit] = useState(false);
+
+  useEffect(() => {
+    if (action !== "deposit") setShowSwapperDeposit(false);
+  }, [action]);
 
   if (action !== "deposit") return null;
 
+  if (showSwapperDeposit) return <SwapperDeposit onBack={() => setShowSwapperDeposit(false)} />;
+
   const isEvmNetwork = !!network && !["bitcoin", "solana"].includes(network);
   const showUnsupportedFallback = isEvmNetwork && !!coin && !config?.router;
+  const openSwapperDeposit = () => setShowSwapperDeposit(true);
 
   return (
     <>
-      <BridgeSelectors />
+      <WarningContainer description={m["bridge.rateLimitWarning"]()} />
+
+      <BridgeSelectors showCoinSelector={false} />
 
       {network === "bitcoin" && <BitcoinDeposit />}
 
-      {isEvmNetwork && config?.router && <EvmDeposit />}
+      {isEvmNetwork && config?.router && <EvmDeposit onMoreOptionsClick={openSwapperDeposit} />}
 
       {showUnsupportedFallback && (
-        <WarningContainer description="This network does not support this asset." />
+        <div className="flex flex-col gap-4">
+          <WarningContainer description={m["bridge.unsupportedAsset"]()} />
+          <MoreDepositOptionsCard onClick={openSwapperDeposit} />
+        </div>
       )}
 
-      <WarningContainer description={m["bridge.rateLimitWarning"]()} />
+      {!isEvmNetwork && network !== "bitcoin" && (
+        <MoreDepositOptionsCard onClick={openSwapperDeposit} />
+      )}
     </>
   );
 };
 
-const BridgeSelectors: React.FC = () => {
+const BridgeSelectors: React.FC<{ showCoinSelector?: boolean }> = ({ showCoinSelector = true }) => {
   const { isConnected } = useAccount();
 
   const { state } = useBridge();
@@ -117,18 +173,20 @@ const BridgeSelectors: React.FC = () => {
 
   return (
     <>
-      <CoinSelector
-        isDisabled={!isConnected}
-        label={m["bridge.selectCoin"]()}
-        placeholder={m["bridge.selectCoin"]()}
-        variant="boxed"
-        classNames={{ base: "w-full", trigger: "h-[56px]", listboxWrapper: "top-[4rem]" }}
-        value={coin?.denom}
-        onChange={changeCoin}
-        coins={coins}
-        withName
-        withPrice
-      />
+      {showCoinSelector && (
+        <CoinSelector
+          isDisabled={!isConnected}
+          label={m["bridge.selectCoin"]()}
+          placeholder={m["bridge.selectCoin"]()}
+          variant="boxed"
+          classNames={{ base: "w-full", trigger: "h-[56px]", listboxWrapper: "top-[4rem]" }}
+          value={coin?.denom}
+          onChange={changeCoin}
+          coins={coins}
+          withName
+          withPrice
+        />
+      )}
 
       <NetworkSelector
         isDisabled={!coin}
@@ -148,7 +206,142 @@ const BitcoinDeposit: React.FC = () => {
   return <DepositAddressBox address={depositAddress} network="bitcoin" />;
 };
 
-const EvmDeposit: React.FC = () => {
+const DepositFreeBadge: React.FC = () => {
+  return (
+    <Badge
+      color="green"
+      size="s"
+      className="inline-flex h-6 items-center rounded-full"
+      text={
+        <span aria-hidden="true" className="inline-flex items-center gap-1">
+          {m["bridge.deposit.free"]()}
+          <IconConfetti className="h-3 w-3" />
+        </span>
+      }
+    />
+  );
+};
+
+const DepositFeeBadge: React.FC = () => {
+  return (
+    <Badge
+      color="red"
+      size="s"
+      text={m["bridge.deposit.moreOptions.fee"]()}
+      className="shrink-0 rounded-full border"
+    />
+  );
+};
+
+const MoreDepositOptionsCard: React.FC<{ onClick: () => void }> = ({ onClick }) => {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="flex w-full flex-col gap-2 rounded-xl bg-surface-secondary-rice px-4 py-3 text-left shadow-account-card transition-colors hover:bg-surface-tertiary-rice focus:outline-none focus-visible:ring-2 focus-visible:ring-primitives-red-light-300"
+    >
+      <span className="flex w-full items-center justify-between gap-3">
+        <span className="diatype-m-bold text-ink-secondary-700">
+          {m["bridge.deposit.moreOptions.title"]()}
+        </span>
+        <DepositFeeBadge />
+      </span>
+      <span className="flex w-full items-center justify-between gap-3">
+        <span className="min-w-0 diatype-sm-regular text-ink-tertiary-500">
+          {m["bridge.deposit.moreOptions.description"]()}
+        </span>
+        <span className="inline-flex shrink-0 items-center gap-1 exposure-sm-italic text-ink-secondary-blue">
+          {m["bridge.deposit.moreOptions.cta"]()}
+          <IconChevronRight className="h-4 w-4" />
+        </span>
+      </span>
+    </button>
+  );
+};
+
+const SwapperDeposit: React.FC<{ onBack: () => void }> = ({ onBack }) => {
+  const { account, isConnected, refreshUserStatus } = useAccount();
+  const { refetch: refreshBalances } = useBalances({ address: account?.address });
+  const { theme } = useTheme();
+  const containerRef = useRef<HTMLDivElement>(null);
+  const swapperIntegratorId = import.meta.env.PUBLIC_SWAPPER_INTEGRATOR_ID?.trim();
+
+  useEffect(() => {
+    const container = containerRef.current;
+    const depositWalletAddress = account?.address;
+
+    if (!container || !isConnected || !depositWalletAddress || !swapperIntegratorId) return;
+
+    container.replaceChildren();
+
+    const swapper = new SwapperIframe({
+      container,
+      integratorId: swapperIntegratorId,
+      dstChainId: SWAPPER_DST_CHAIN_ID,
+      dstTokenAddr: SWAPPER_DST_TOKEN_ADDR,
+      depositWalletAddress,
+      supportedDepositOptions: [...SWAPPER_DEPOSIT_OPTIONS],
+      styles: getSwapperStyles(theme === "dark" ? "dark" : "light"),
+      iframeAttributes: {
+        width: "100%",
+        minWidth: "0",
+        height: SWAPPER_IFRAME_HEIGHT,
+        borderRadius: "12px",
+        allowtransparency: "true",
+      },
+      onEvent: (event) => {
+        if (event.type !== WidgetEventName.TRANSACTION_SUCCESS) return;
+        refreshBalances();
+        refreshUserStatus?.();
+      },
+    });
+
+    const iframe = swapper.getIframe();
+    iframe.style.backgroundColor = "transparent";
+    iframe.style.display = "block";
+    iframe.setAttribute("allowtransparency", "true");
+    iframe.parentElement?.style.setProperty("height", "fit-content");
+
+    return () => {
+      swapper.destroy();
+      container.replaceChildren();
+    };
+  }, [
+    account?.address,
+    isConnected,
+    refreshBalances,
+    refreshUserStatus,
+    swapperIntegratorId,
+    theme,
+  ]);
+
+  return (
+    <div className="flex flex-col gap-4">
+      <div className="flex items-center justify-between gap-3">
+        <Button variant="link" size="sm" className="m-0 p-0" onClick={onBack}>
+          <IconChevronRight className="h-4 w-4 rotate-180" />
+          {m["bridge.deposit.moreOptions.back"]()}
+        </Button>
+        <DepositFeeBadge />
+      </div>
+
+      {!isConnected || !account?.address ? (
+        <AuthenticatedButton>
+          <Button fullWidth>{m["common.signin"]()}</Button>
+        </AuthenticatedButton>
+      ) : !swapperIntegratorId ? (
+        <WarningContainer color="error" description={m["common.failedToLoad"]()} />
+      ) : (
+        <div
+          ref={containerRef}
+          className="h-fit w-full overflow-hidden rounded-xl bg-surface-secondary-rice shadow-account-card"
+        />
+      )}
+    </div>
+  );
+};
+
+const EvmDeposit: React.FC<{ onMoreOptionsClick: () => void }> = ({ onMoreOptionsClick }) => {
   const { userStatus } = useAccount();
   const { getPrice } = usePrices();
   const { showModal } = useApp();
@@ -185,7 +378,12 @@ const EvmDeposit: React.FC = () => {
   });
 
   if (!connector || !coin) {
-    return <ConnectWalletWithModal fullWidth onWalletSelected={(id) => setConnectorId(id)} />;
+    return (
+      <div className="flex w-full flex-col gap-4">
+        <ConnectWalletWithModal fullWidth onWalletSelected={(id) => setConnectorId(id)} />
+        <MoreDepositOptionsCard onClick={onMoreOptionsClick} />
+      </div>
+    );
   }
 
   const handleDeposit = () =>
@@ -287,8 +485,13 @@ const EvmDeposit: React.FC = () => {
         isDisabled={!!errors.amount || amount === "0"}
         className="mt-4"
       >
-        {m["bridge.deposit.title"]()}
+        <span className="flex items-center justify-center gap-2">
+          <span>{m["bridge.deposit.title"]()}</span>
+          <DepositFreeBadge />
+        </span>
       </Button>
+
+      <MoreDepositOptionsCard onClick={onMoreOptionsClick} />
     </div>
   );
 };

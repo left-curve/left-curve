@@ -11,7 +11,9 @@ import type { HyperlaneConfig, HyperlaneEvmChainConfig } from "@left-curve/types
 import { useAccount } from "./useAccount.js";
 
 const SUPPORTED_BRIDGE_SYMBOLS = new Set(["USDC"]);
+const DEPOSIT_COIN_SYMBOL = "USDC";
 const ETHEREUM_MAINNET_CHAIN_ID = 1;
+const ARBITRUM_CHAIN_IDS = new Set(["42161", "421614"]);
 
 type BridgeAction = "deposit" | "withdraw";
 
@@ -48,6 +50,10 @@ function hasSupportedRoute(
     if (!coin) return true;
     return routeSymbol === normalizeSymbol(coin.symbol);
   });
+}
+
+function isDepositCoin(coin: AnyCoin | undefined) {
+  return coin ? normalizeSymbol(coin.symbol) === DEPOSIT_COIN_SYMBOL : false;
 }
 
 export type UseBridgeStateParameters = {
@@ -95,20 +101,34 @@ export function useBridgeState(params: UseBridgeStateParameters) {
       }));
   }, [action, evm]);
 
+  const defaultDepositCoin = useMemo(() => {
+    return Object.values(allCoins.byDenom).find(isDepositCoin);
+  }, [allCoins.byDenom]);
+
+  const getDefaultDepositNetwork = useCallback(
+    (nextCoin: AnyCoin | undefined) => {
+      const supportedNetworks = configuredNetworks.filter(({ id }) =>
+        hasSupportedRoute("deposit", evm[id], nextCoin),
+      );
+
+      return (
+        supportedNetworks.find(({ id }) => ARBITRUM_CHAIN_IDS.has(id)) ?? supportedNetworks[0]
+      )?.id;
+    },
+    [configuredNetworks, evm],
+  );
+
   const changeCoin = useCallback(
     (denom: string) => {
       const nextCoin = allCoins.byDenom[denom];
+      if (action === "deposit" && !isDepositCoin(nextCoin)) return;
+
       setCoin(nextCoin);
 
-      // Deposit pre-selects the highest-priority supported network (lowest `order`);
-      // in production that's Arbitrum. Withdraw still requires an explicit choice.
       if (action !== "deposit") return;
-      const [defaultNetwork] = configuredNetworks.filter(({ id }) =>
-        hasSupportedRoute(action, evm[id], nextCoin),
-      );
-      setNetwork(defaultNetwork?.id);
+      setNetwork(getDefaultDepositNetwork(nextCoin));
     },
-    [action, allCoins, configuredNetworks, evm],
+    [action, allCoins, getDefaultDepositNetwork],
   );
 
   const networks = useMemo(() => {
@@ -182,6 +202,13 @@ export function useBridgeState(params: UseBridgeStateParameters) {
   useEffect(() => {
     reset();
   }, [action, isConnected]);
+
+  useEffect(() => {
+    if (action !== "deposit" || !defaultDepositCoin) return;
+
+    setCoin((currentCoin) => (isDepositCoin(currentCoin) ? currentCoin : defaultDepositCoin));
+    setNetwork((currentNetwork) => currentNetwork ?? getDefaultDepositNetwork(defaultDepositCoin));
+  }, [action, defaultDepositCoin, getDefaultDepositNetwork]);
 
   return {
     action,

@@ -354,7 +354,7 @@ describe("bridge hooks", () => {
     vi.clearAllMocks();
   });
 
-  it("exposes only supported bridge coins from the configured coin store", () => {
+  it("exposes only supported bridge coins from the configured coin store", async () => {
     const atomCoin = {
       decimals: 6,
       denom: "bridge/atom",
@@ -392,11 +392,11 @@ describe("bridge hooks", () => {
     );
 
     expect(result.current.coins).toEqual([usdcCoin]);
+    await waitFor(() => expect(result.current.coin).toEqual(usdcCoin));
 
     act(() => result.current.changeCoin(atomCoin.denom));
 
-    expect(result.current.coin).toEqual(atomCoin);
-    expect(result.current.config).toBeUndefined();
+    expect(result.current.coin).toEqual(usdcCoin);
   });
 
   it("loads native and ERC20 EVM balances for a connected external wallet address", async () => {
@@ -669,7 +669,7 @@ describe("bridge hooks", () => {
     });
   });
 
-  it("does not derive deprecated ETH router config even when backend config still has the route", async () => {
+  it("ignores deprecated ETH selection in deposit mode even when backend config still has the route", async () => {
     const controllers = {
       inputs: {},
       reset: vi.fn(),
@@ -691,9 +691,19 @@ describe("bridge hooks", () => {
 
     await waitFor(() => expect(result.current.config?.bridger).toBe(bridger));
 
-    expect(result.current.coin).toEqual(ethCoin);
+    expect(result.current.coin).toEqual(usdcCoin);
     expect(result.current.config?.chain).toEqual(expect.objectContaining({ id: 11155111 }));
-    expect(result.current.config?.router).toBeUndefined();
+    expect(result.current.config?.router).toEqual({
+      address: routerAddress,
+      coin: tokenAddress,
+      domain: bridger.domain,
+      remote: {
+        warp: {
+          contract: toAddr32(routerAddress),
+          domain: bridger.domain,
+        },
+      },
+    });
   });
 
   it("derives Arbitrum Sepolia USDC bridge routes when connected to a Dango testnet environment", async () => {
@@ -926,7 +936,7 @@ describe("bridge hooks", () => {
     });
   });
 
-  it("auto-selects the highest-priority network after choosing a coin in deposit mode", () => {
+  it("defaults deposit mode to USDC on Arbitrum", async () => {
     const controllers = {
       inputs: {},
       reset: vi.fn(),
@@ -948,11 +958,10 @@ describe("bridge hooks", () => {
       { wrapper: createQueryClientWrapper() },
     );
 
-    expect(result.current.network).toBeUndefined();
-
-    act(() => result.current.changeCoin(usdcCoin.denom));
-
-    expect(result.current.network).toBe("42161");
+    await waitFor(() => {
+      expect(result.current.coin).toEqual(usdcCoin);
+      expect(result.current.network).toBe("42161");
+    });
   });
 
   it("does not auto-select a network when choosing a coin in withdraw mode", () => {
@@ -982,7 +991,7 @@ describe("bridge hooks", () => {
     expect(result.current.network).toBeUndefined();
   });
 
-  it("keeps production Ethereum native ETH unavailable for deposits", async () => {
+  it("keeps production Ethereum native ETH unavailable for deposits by retaining USDC", async () => {
     hookMocks.useConfig.mockReturnValue({
       chain: {
         id: "dango-1",
@@ -1022,9 +1031,19 @@ describe("bridge hooks", () => {
 
     await waitFor(() => expect(result.current.config?.bridger).toBe(mainnetBridger));
 
-    expect(result.current.coin).toEqual(ethCoin);
+    expect(result.current.coin).toEqual(usdcCoin);
     expect(result.current.config?.chain).toEqual(expect.objectContaining({ id: 1 }));
-    expect(result.current.config?.router).toBeUndefined();
+    expect(result.current.config?.router).toEqual({
+      address: mainnetRouterAddress,
+      coin: mainnetTokenAddress,
+      domain: mainnetBridger.domain,
+      remote: {
+        warp: {
+          contract: toAddr32(mainnetRouterAddress),
+          domain: mainnetBridger.domain,
+        },
+      },
+    });
   });
 
   it("keeps selected EVM networks explicit when backend bridge config is missing", async () => {
