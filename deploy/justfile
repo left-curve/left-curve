@@ -56,37 +56,37 @@ sops-collect-recipient *ARGS:
   ./scripts/sops-collect-recipient.sh {{ARGS}}
 
 sops-edit-secrets:
-  sops edit group_vars/all/vault.sops.yml
+  sops edit group_vars/all/vault.sops.json
 
 sops-edit-deploy-key:
   sops edit --input-type binary --output-type binary vaults/deploy/deploy_key.sops
 
 sops-edit-hyperlane-secrets:
-  sops edit group_vars/hyperlane/vault.sops.yml
+  sops edit group_vars/hyperlane/vault.sops.json
 
 sops-edit-points-bot-secrets:
-  sops edit group_vars/points-bot/vault.sops.yml
+  sops edit group_vars/points-bot/vault.sops.json
 
 sops-edit-perps-bot-secrets:
-  sops edit group_vars/perps-bot/vault.sops.yml
+  sops edit group_vars/perps-bot/vault.sops.json
 
 sops-edit-dango-assistant-secrets:
-  sops edit group_vars/dango-assistant/vault.sops.yml
+  sops edit group_vars/dango-assistant/vault.sops.json
 
 sops-edit-ovh1-host-secrets:
-  sops edit host_vars/100.96.253.40/vault.sops.yml
+  sops edit host_vars/100.96.253.40/vault.sops.json
 
 sops-edit-ovh2-host-secrets:
-  sops edit host_vars/100.107.248.71/vault.sops.yml
+  sops edit host_vars/100.107.248.71/vault.sops.json
 
 sops-edit-ovh3-host-secrets:
-  sops edit host_vars/100.122.37.57/main.sops.yml
+  sops edit host_vars/100.122.37.57/main.sops.json
 
 sops-edit-root-key:
   sops edit --input-type binary --output-type binary vaults/debian/debian_key.sops
 
 sops-edit-root-secrets:
-  sops edit vaults/debian/root_vault.sops.yml
+  sops edit vaults/debian/root_vault.sops.json
 
 # -------------------------------- Provisioning --------------------------------
 

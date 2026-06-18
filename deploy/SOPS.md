@@ -44,7 +44,7 @@ Team decisions:
 - In phase 1, `github-ci` is included only for routine deploy files and is not
   included for root/debian files.
 - If a user loses a key, add the new public recipient and re-encrypt.
-- Hyperlane stays in `group_vars/hyperlane/vault.sops.yml` for this cutover.
+- Hyperlane stays in `group_vars/hyperlane/vault.sops.json` for this cutover.
   The per-validator custody split from PR #2170 is deferred.
 - SOPS `key_groups` are deferred to phase 2.
 
@@ -52,17 +52,17 @@ Team decisions:
 
 | Legacy Vault file | SOPS file | Recipients |
 | --- | --- | --- |
-| `group_vars/all/vault.yml` | `group_vars/all/vault.sops.yml` | routine |
+| `group_vars/all/vault.yml` | `group_vars/all/vault.sops.json` | routine |
 | `group_vars/all/deploy_key.vault` | `vaults/deploy/deploy_key.sops` | routine |
-| `group_vars/dango-assistant/vault.yml` | `group_vars/dango-assistant/vault.sops.yml` | routine |
-| `group_vars/hyperlane/vault.yml` | `group_vars/hyperlane/vault.sops.yml` | routine |
-| `group_vars/perps-bot/vault.yml` | `group_vars/perps-bot/vault.sops.yml` | routine |
-| `group_vars/points-bot/vault.yml` | `group_vars/points-bot/vault.sops.yml` | routine |
-| `host_vars/100.96.253.40/vault.yml` | `host_vars/100.96.253.40/vault.sops.yml` | routine |
-| `host_vars/100.107.248.71/vault.yml` | `host_vars/100.107.248.71/vault.sops.yml` | routine |
-| `host_vars/100.122.37.57/main.yml` | `host_vars/100.122.37.57/main.sops.yml` | routine |
+| `group_vars/dango-assistant/vault.yml` | `group_vars/dango-assistant/vault.sops.json` | routine |
+| `group_vars/hyperlane/vault.yml` | `group_vars/hyperlane/vault.sops.json` | routine |
+| `group_vars/perps-bot/vault.yml` | `group_vars/perps-bot/vault.sops.json` | routine |
+| `group_vars/points-bot/vault.yml` | `group_vars/points-bot/vault.sops.json` | routine |
+| `host_vars/100.96.253.40/vault.yml` | `host_vars/100.96.253.40/vault.sops.json` | routine |
+| `host_vars/100.107.248.71/vault.yml` | `host_vars/100.107.248.71/vault.sops.json` | routine |
+| `host_vars/100.122.37.57/main.yml` | `host_vars/100.122.37.57/main.sops.json` | routine |
 | `vaults/debian/debian_key.vault` | `vaults/debian/debian_key.sops` | root/debian |
-| `vaults/debian/root_vault.yml` | `vaults/debian/root_vault.sops.yml` | root/debian |
+| `vaults/debian/root_vault.yml` | `vaults/debian/root_vault.sops.json` | root/debian |
 
 ## Local Setup
 
@@ -211,7 +211,7 @@ decrypt time.
 
 1. Confirm all committed public recipients in `.sops.yaml`.
 2. Confirm the GitHub `deploy` environment has `SOPS_AGE_KEY`.
-3. Convert each legacy Vault file to its matching `.sops.yml` or `.sops` file.
+3. Convert each legacy Vault file to its matching `.sops.json` or `.sops` file.
 4. Remove the legacy Vault files in the same change that adds their SOPS
    replacements.
 5. Run `just sops-audit` from `deploy/`.

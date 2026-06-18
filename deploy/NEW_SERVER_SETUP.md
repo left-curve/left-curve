@@ -174,7 +174,7 @@ Expected: prints `<hostname>`.
 > ssh debian@$PUBLIC_IP 'sudo journalctl -u tailscaled -n 30'
 > ```
 >
-> A repeating "Received error: invalid key: API key does not exist" means the `tailscale_authkey` in `group_vars/all/vault.sops.yml` has been invalidated by Tailscale's control plane (revoked, or expired and pruned). Existing servers are unaffected — auth keys are only consulted during first-time registration.
+> A repeating "Received error: invalid key: API key does not exist" means the `tailscale_authkey` in `group_vars/all/vault.sops.json` has been invalidated by Tailscale's control plane (revoked, or expired and pruned). Existing servers are unaffected — auth keys are only consulted during first-time registration.
 >
 > Fix: generate a fresh auth key at <https://login.tailscale.com/admin/settings/keys>. Then update the vault:
 >
@@ -318,4 +318,4 @@ Application-level scrapes — `traefik`, `clickhouse`, `postgres`, `dango`, `com
 The host is now a fully provisioned member of the fleet but has no application services yet. From here:
 
 - **Application deploy**: run the relevant deploy recipe from `Justfile` (`just deploy-mainnet`, `just deploy-testnet`, etc.). For mainnet, also update the `--limit` list in the recipe to include the new tailscale IP.
-- **Hyperlane** (if applicable): see the `deploy-hyperlane-*` recipes — these need the new validator's KMS key set up in `group_vars/hyperlane/vault.sops.yml`.
+- **Hyperlane** (if applicable): see the `deploy-hyperlane-*` recipes — these need the new validator's KMS key set up in `group_vars/hyperlane/vault.sops.json`.

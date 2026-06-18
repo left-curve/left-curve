@@ -191,7 +191,7 @@ running ansible-playbook, else you'll get `Permission denied (publickey)`.
 
 You must rerun `ssh-add` after you rebooted.
 
-Debian-only secrets live in `vaults/debian/root_vault.sops.yml` and
+Debian-only secrets live in `vaults/debian/root_vault.sops.json` and
 `vaults/debian/debian_key.sops`. They are intentionally encrypted to the
 root/debian recipients only; deploy CI is not a root/debian recipient in phase
 1.

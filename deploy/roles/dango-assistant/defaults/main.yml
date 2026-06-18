@@ -4,7 +4,7 @@ dango_assistant_image: "ghcr.io/left-curve/dango-assistant"
 dango_assistant_tag: "latest"
 dango_assistant_container_name: "dango-assistant-mainnet"
 
-# Required secrets - define in group_vars/dango-assistant/vault.sops.yml:
+# Required secrets - define in group_vars/dango-assistant/vault.sops.json:
 #   dango_assistant_ghcr_user
 #   dango_assistant_ghcr_token
 #   dango_assistant_discord_token

@@ -11,7 +11,7 @@
   pre_tasks:
     - name: Load Hyperlane secrets
       community.sops.load_vars:
-        file: group_vars/hyperlane/vault.sops.yml
+        file: group_vars/hyperlane/vault.sops.json
       no_log: true
 
   tasks:

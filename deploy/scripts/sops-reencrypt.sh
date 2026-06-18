@@ -5,17 +5,17 @@ SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 DEPLOY_DIR="$(cd -- "$SCRIPT_DIR/.." && pwd)"
 REPO_ROOT="$(cd -- "$DEPLOY_DIR/.." && pwd)"
 
-EXPECTED_FILES='deploy/group_vars/all/vault.sops.yml
+EXPECTED_FILES='deploy/group_vars/all/vault.sops.json
 deploy/vaults/deploy/deploy_key.sops
-deploy/group_vars/dango-assistant/vault.sops.yml
-deploy/group_vars/hyperlane/vault.sops.yml
-deploy/group_vars/perps-bot/vault.sops.yml
-deploy/group_vars/points-bot/vault.sops.yml
-deploy/host_vars/100.107.248.71/vault.sops.yml
-deploy/host_vars/100.122.37.57/main.sops.yml
-deploy/host_vars/100.96.253.40/vault.sops.yml
+deploy/group_vars/dango-assistant/vault.sops.json
+deploy/group_vars/hyperlane/vault.sops.json
+deploy/group_vars/perps-bot/vault.sops.json
+deploy/group_vars/points-bot/vault.sops.json
+deploy/host_vars/100.107.248.71/vault.sops.json
+deploy/host_vars/100.122.37.57/main.sops.json
+deploy/host_vars/100.96.253.40/vault.sops.json
 deploy/vaults/debian/debian_key.sops
-deploy/vaults/debian/root_vault.sops.yml'
+deploy/vaults/debian/root_vault.sops.json'
 
 usage() {
   cat <<'EOF'
@@ -25,7 +25,7 @@ Usage:
 Re-encrypt expected SOPS files with recipients from .sops.yaml.
 With no PATH arguments, all existing expected files are processed.
 
-This script only operates on the deploy *.sops.yml/*.sops paths.
+This script only operates on the deploy *.sops.yml/*.sops.json/*.sops paths.
 EOF
 }
 
@@ -140,7 +140,7 @@ while IFS= read -r rel; do
   fi
 
   case "$rel" in
-    *.sops.yml|*.sops) ;;
+    *.sops.yml|*.sops.json|*.sops) ;;
     *)
       printf 'error: refusing non-SOPS path: %s\n' "$rel" >&2
       status=1
