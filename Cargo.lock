@@ -4037,6 +4037,7 @@ dependencies = [
  "dango-indexer-cache",
  "dango-indexer-clickhouse",
  "dango-indexer-sql",
+ "dango-indexer-stream",
  "dango-primitives",
  "tokio",
  "tracing",
@@ -4060,6 +4061,7 @@ dependencies = [
  "dango-indexer-cache",
  "dango-indexer-clickhouse",
  "dango-indexer-sql",
+ "dango-indexer-stream",
  "dango-primitives",
  "dango-types",
  "futures",
@@ -4119,6 +4121,25 @@ dependencies = [
  "tokio-stream",
  "tracing",
  "uuid",
+]
+
+[[package]]
+name = "dango-indexer-stream"
+version = "0.0.0"
+dependencies = [
+ "async-graphql",
+ "async-stream",
+ "async-trait",
+ "dango-app",
+ "dango-primitives",
+ "dango-types",
+ "futures-util",
+ "metrics",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.18",
+ "tokio",
+ "tracing",
 ]
 
 [[package]]

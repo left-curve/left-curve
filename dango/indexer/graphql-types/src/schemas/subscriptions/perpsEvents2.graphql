@@ -1,0 +1,23 @@
+subscription SubscribePerpsEvents2(
+  $sinceBlockHeight: Int
+  $eventTypes: [String!]
+  $pairIds: [String!]
+  $users: [String!]
+) {
+  perpsEvents2(
+    sinceBlockHeight: $sinceBlockHeight
+    eventTypes: $eventTypes
+    pairIds: $pairIds
+    users: $users
+  ) {
+    blockHeight
+    createdAt
+    events {
+      idx
+      eventType
+      user
+      pairId
+      data
+    }
+  }
+}
