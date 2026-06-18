@@ -9,11 +9,9 @@ export const TextLoop: React.FC<TextLoopProps> = ({ texts }) => {
   const [index, setIndex] = useState<number>(0);
 
   useEffect(() => {
-    setTimeout(() => {
-      const next = index + 1;
-      setIndex(next % texts.length);
-    }, 2 * 1000);
-  }, [index, setIndex, texts]);
+    const t = setTimeout(() => setIndex((i) => (i + 1) % texts.length), 2000);
+    return () => clearTimeout(t);
+  }, [texts.length]);
 
   return (
     <span className="overflow-hidden relative min-h-[1.56rem] w-[8rem]">
