@@ -5,15 +5,6 @@ use {
     tokio::sync::broadcast,
 };
 
-mod islands;
-mod local;
-mod remote;
-
-pub use {
-    local::LocalBlockSource,
-    remote::{RemoteBlockSource, RemoteBlockSourceConfig},
-};
-
 /// Abstract source of blocks for the historical indexer.
 ///
 /// Hides where blocks come from (live subscription, fetcher, on-disk cache,

@@ -6,15 +6,15 @@
 //! - [`BlockFetcher`] — bounded backfill abstraction; [`SentinelBlockFetcher`]
 //!   pulls from a sentinel node.
 
-mod block_fetcher;
-mod block_source;
-mod block_store;
-mod httpd_client;
-mod live_subscriber;
+mod local;
+mod remote;
+mod source;
 
 pub use {
-    block_fetcher::{BlockFetcher, FetchStream, SentinelBlockFetcher, SentinelFetcherConfig},
-    block_source::{BlockSource, LocalBlockSource, RemoteBlockSource, RemoteBlockSourceConfig},
-    block_store::{BlockStore, MemoryBlockStore},
-    live_subscriber::LiveSubscriber,
+    local::LocalBlockSource,
+    remote::{
+        BlockFetcher, BlockStore, FetchStream, LiveSubscriber, MemoryBlockStore, RemoteBlockSource,
+        RemoteBlockSourceConfig, SentinelBlockFetcher, SentinelFetcherConfig,
+    },
+    source::BlockSource,
 };

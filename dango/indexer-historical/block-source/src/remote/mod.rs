@@ -1,6 +1,17 @@
+mod fetcher;
+mod islands;
+mod store;
+mod subscriber;
+
+pub use {
+    fetcher::{BlockFetcher, FetchStream, SentinelBlockFetcher, SentinelFetcherConfig},
+    store::{BlockStore, MemoryBlockStore},
+    subscriber::LiveSubscriber,
+};
+
 use {
-    super::islands::Islands,
-    crate::{BlockFetcher, BlockSource, BlockStore, LiveSubscriber},
+    self::islands::Islands,
+    crate::BlockSource,
     anyhow::{anyhow, bail},
     async_trait::async_trait,
     dango_indexer_historical_types::{AnyResult, BlockData},
@@ -410,7 +421,6 @@ impl BlockSource for RemoteBlockSource {
 mod tests {
     use {
         super::*,
-        crate::{FetchStream, MemoryBlockStore},
         dango_primitives::{Block, BlockInfo, BlockOutcome, Hash256, Timestamp},
         futures::stream::{self, BoxStream},
         tokio::time::timeout,

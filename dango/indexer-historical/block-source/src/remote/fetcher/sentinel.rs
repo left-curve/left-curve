@@ -1,5 +1,5 @@
 use {
-    crate::{BlockFetcher, FetchStream},
+    super::{BlockFetcher, FetchStream},
     dango_indexer_historical_types::BlockData,
     dango_primitives::BlockClient,
     futures::future::join_all,

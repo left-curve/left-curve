@@ -1,5 +1,5 @@
 use {
-    crate::BlockStore,
+    super::BlockStore,
     async_trait::async_trait,
     dango_indexer_historical_types::{AnyResult, BlockData},
     std::{collections::BTreeMap, sync::Mutex},

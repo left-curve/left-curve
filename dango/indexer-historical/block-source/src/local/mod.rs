@@ -1,5 +1,8 @@
+mod httpd_client;
+
 use {
-    crate::{BlockSource, httpd_client::HttpdClient},
+    self::httpd_client::HttpdClient,
+    crate::BlockSource,
     async_trait::async_trait,
     dango_indexer_cache::{IndexerPath, cache_file::CacheFile},
     dango_indexer_historical_types::{AnyResult, BlockData},
