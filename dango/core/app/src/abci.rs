@@ -461,6 +461,8 @@ fn into_tm_code_error(code: u32) -> Code {
     }))
 }
 
+// ----------------------------------- tests -----------------------------------
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -469,10 +471,13 @@ mod tests {
     fn retain_height_works() {
         // Once past the retention window, keep exactly the most recent N blocks.
         assert_eq!(retain_height(1500, 1000).value(), 500);
+
         // Right at the boundary: nothing to prune yet.
         assert_eq!(retain_height(1000, 1000).value(), 0);
+
         // Younger than the window: retain everything.
         assert_eq!(retain_height(500, 1000).value(), 0);
+
         // Pruning disabled (`retain_recent_blocks == 0`): retain everything,
         // regardless of how tall the chain is.
         assert_eq!(retain_height(1500, 0).value(), 0);

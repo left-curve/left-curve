@@ -60,6 +60,7 @@ pub struct App<DB, VM, PP = NaiveProposalPreparer, ID = NullIndexer> {
     vm: VM,
     pp: PP,
     pub indexer: ID,
+
     /// The gas limit when serving ABCI `Query` calls.
     ///
     /// Prevents the situation where an attacker deploys a contract that
@@ -73,10 +74,13 @@ pub struct App<DB, VM, PP = NaiveProposalPreparer, ID = NullIndexer> {
     /// Related config in CosmWasm:
     /// <https://github.com/CosmWasm/wasmd/blob/v0.51.0/x/wasm/types/types.go#L322-L323>
     query_gas_limit: u64,
+
     /// The action to take to perform a chain upgrade.
     upgrade_handler: Option<UpgradeHandler<VM>>,
+
     /// Current cargo version of the app. Used in chain upgrades.
     cargo_version: String,
+
     /// If set, the app can request a graceful shutdown of the host process
     /// by sending a [`HaltReason`] through this channel (e.g. when
     /// `finalize_block` hits an upgrade height with the wrong binary).
@@ -84,6 +88,7 @@ pub struct App<DB, VM, PP = NaiveProposalPreparer, ID = NullIndexer> {
     /// `None` in tests and in the read-only `App` instance used by the HTTP
     /// server, which never finalize blocks and therefore never halt.
     shutdown_trigger: Option<ShutdownTrigger>,
+
     /// Number of most-recent blocks CometBFT should retain; older blocks are
     /// pruned. `0` disables pruning (retain all blocks).
     ///
