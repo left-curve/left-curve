@@ -60,6 +60,7 @@ pub struct App<DB, VM, PP = NaiveProposalPreparer, ID = NullIndexer> {
     vm: VM,
     pp: PP,
     pub indexer: ID,
+
     /// The gas limit when serving ABCI `Query` calls.
     ///
     /// Prevents the situation where an attacker deploys a contract that
@@ -73,10 +74,13 @@ pub struct App<DB, VM, PP = NaiveProposalPreparer, ID = NullIndexer> {
     /// Related config in CosmWasm:
     /// <https://github.com/CosmWasm/wasmd/blob/v0.51.0/x/wasm/types/types.go#L322-L323>
     query_gas_limit: u64,
+
     /// The action to take to perform a chain upgrade.
     upgrade_handler: Option<UpgradeHandler<VM>>,
+
     /// Current cargo version of the app. Used in chain upgrades.
     cargo_version: String,
+
     /// If set, the app can request a graceful shutdown of the host process
     /// by sending a [`HaltReason`] through this channel (e.g. when
     /// `finalize_block` hits an upgrade height with the wrong binary).
@@ -84,6 +88,15 @@ pub struct App<DB, VM, PP = NaiveProposalPreparer, ID = NullIndexer> {
     /// `None` in tests and in the read-only `App` instance used by the HTTP
     /// server, which never finalize blocks and therefore never halt.
     shutdown_trigger: Option<ShutdownTrigger>,
+
+    /// Number of most-recent blocks CometBFT should retain; older blocks are
+    /// pruned. `0` disables pruning (retain all blocks).
+    ///
+    /// Surfaced to CometBFT as the `retain_height` in the ABCI `Commit`
+    /// response (`retain_height = latest_height - retain_recent_blocks`).
+    /// Dango doesn't need CometBFT to keep historical blocks, as the embedded
+    /// indexer persists every block to disk independently.
+    pub(crate) retain_recent_blocks: u64,
 }
 
 impl<DB, VM, PP, ID> App<DB, VM, PP, ID> {
@@ -113,6 +126,7 @@ impl<DB, VM, PP, ID> App<DB, VM, PP, ID> {
             upgrade_handler,
             cargo_version: cargo_version.into(),
             shutdown_trigger: None,
+            retain_recent_blocks: 0,
         }
     }
 
@@ -124,6 +138,17 @@ impl<DB, VM, PP, ID> App<DB, VM, PP, ID> {
     #[must_use]
     pub fn with_shutdown_trigger(mut self, trigger: ShutdownTrigger) -> Self {
         self.shutdown_trigger = Some(trigger);
+        self
+    }
+
+    /// Set the number of most-recent blocks for CometBFT to retain; older
+    /// blocks are pruned. `0` (the default) disables pruning.
+    ///
+    /// Intended to be called by the binary's `start` command right after
+    /// `App::new`; tests and the HTTP-only `App` instance leave this unset.
+    #[must_use]
+    pub fn with_retain_recent_blocks(mut self, retain_recent_blocks: u64) -> Self {
+        self.retain_recent_blocks = retain_recent_blocks;
         self
     }
 }
@@ -162,6 +187,7 @@ where
             upgrade_handler: self.upgrade_handler,
             cargo_version: self.cargo_version.clone(),
             shutdown_trigger: self.shutdown_trigger.clone(),
+            retain_recent_blocks: self.retain_recent_blocks,
         }
     }
 }
@@ -686,7 +712,7 @@ where
         Ok(block_outcome)
     }
 
-    pub async fn do_commit(&self) -> AppResult<()> {
+    pub async fn do_commit(&self) -> AppResult<u64> {
         #[cfg(feature = "tracing")]
         {
             tracing::info!("Received Commit request");
@@ -722,7 +748,7 @@ where
                 .record(commit_duration.elapsed().as_secs_f64());
         }
 
-        Ok(())
+        Ok(version)
     }
 
     // For `CheckTx`, we only do the first two steps of the transaction
