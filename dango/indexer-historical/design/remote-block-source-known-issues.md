@@ -12,16 +12,15 @@ type, the code location, and a fix direction.
 > reviewed and are clean.
 
 Date: 2026-06-19. Resolved items (the continuous healer, channel-capacity
-config, the `select_all` task teardown, and broadcast-before-store) have been
-implemented and removed from this tracker — see git history. What remains below
-is the open work.
+config, the `select_all` task teardown, broadcast-before-store, and live-stream
+reconnect) have been implemented and removed from this tracker — see git
+history. What remains below is the open work.
 
 ## Severity index
 
 | # | Issue | Severity | Type |
 |---|---|---|---|
-| 2 | No live-stream resilience — one stream error kills the source (and the app) | **High** | Robustness |
-| 5 | Fetcher retries forever, silently, on a permanently-missing block | Medium | Robustness |
+| 5 | Fetcher retries forever, silently, on a permanently-missing block | Medium | Robustness (observability) |
 | 6 | Store errors are not retried — a transient PG blip kills everything | Medium | Robustness |
 | 7 | One wasted `store.get()` per block for the whole backfill | Low–Medium | Efficiency |
 
@@ -34,39 +33,18 @@ Not bugs, but the source cannot run in production until these land:
   queries (`LEAD`/`LAG` over `height`).
 - **No concrete `LiveSubscriber`.** Only the trait. The sentinel subscriber
   (height notification → `query_block` / `query_block_outcome` → store → signal)
-  is unwritten.
+  is unwritten. `drain_live` already owns the reconnect loop, so the concrete
+  impl only needs to open one subscription and yield blocks; reconnection is
+  handled for it.
 - **No wiring.** `cli/src/main.rs` is `fn main() {}`; `RemoteBlockSource` is
   referenced only inside its own crate. The tunables exist as
   `RemoteBlockSourceConfig` / `SentinelFetcherConfig` defaults, but nothing maps
   a `remote.*` config section onto them yet.
-- **Tests:** the coordinator + healer are covered by unit tests in `remote.rs`
-  (in-order, reorder, island-crossing, skip-heal, reconnect-heal,
-  broadcast-before-store) using `MemoryBlockStore` + mock subscriber/fetcher.
-  Still untested: the (unbuilt) Postgres store and sentinel subscriber.
-
----
-
-## 2. No live-stream resilience — **High**
-
-**Location:** `block_source/remote.rs` — `drain_live` and `run`'s `select_all`
-teardown.
-
-**Symptom.** When the live stream ends (`None`) or yields an error, `drain_live`
-returns; `run`'s `select_all` then tears the other tasks down and `run` returns
-→ `App::run` completes → **the whole indexer shuts down.** A single transient
-subscription error takes the process down; there is no reconnect.
-
-The design assigns reconnection to the subscriber ("the subscriber owns
-reconnection"), but there is no concrete subscriber yet, so today nothing
-reconnects.
-
-**Fix direction.** Either (a) the concrete `LiveSubscriber` owns reconnect +
-contiguity (preferred — keeps `RemoteBlockSource` simple), or (b) `run` wraps
-the subscribe + drain in a retry loop with backoff. With the healer in place,
-the downtime hole a reconnect leaves is repaired automatically — so what remains
-here is purely **keeping the subscription alive** (reconnect with backoff)
-instead of letting a stream end/error tear the source down. Decide where the
-responsibility sits before writing the sentinel subscriber.
+- **Tests:** the coordinator + healer + reconnect path are covered by unit tests
+  in `remote.rs` (in-order, reorder, island-crossing, skip-heal, reconnect-heal,
+  broadcast-before-store, reconnect-after-stream-end) using `MemoryBlockStore` +
+  mock subscriber/fetcher. Still untested: the (unbuilt) Postgres store and
+  sentinel subscriber.
 
 ---
 
@@ -83,9 +61,13 @@ frozen frontier, again **silently** (the healer re-detects *new* holes each
 pass, but cannot get past one it can never fill). No attempt limit, no
 escalation.
 
-**Fix direction.** A bounded retry / escalation after N attempts (surface a
-structured error up to the source), and/or the structured fetcher error model
-already noted as an open question in the design (`NotAvailable { earliest }`).
+**Mitigation (deferred — observability, not code).** There is no safe code
+workaround: every height in a gap is supposed to exist, so the fetcher *must*
+keep retrying — treating a transient 404 as "absent" would punch a permanent
+hole. The plan is to **detect** the condition instead: a future metric such as a
+"backfill made no progress for N seconds" / "healer stuck on gap" gauge that
+alerts an operator, rather than changing the retry policy. Tracked here so the
+metric is not forgotten when observability lands.
 
 ---
 

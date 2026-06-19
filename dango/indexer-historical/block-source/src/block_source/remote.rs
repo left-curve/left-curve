@@ -3,7 +3,7 @@ use {
     anyhow::{anyhow, bail},
     async_trait::async_trait,
     dango_indexer_historical_types::{AnyResult, BlockData},
-    futures::{StreamExt, future::select_all, stream::BoxStream},
+    futures::{StreamExt, future::select_all},
     std::{
         sync::{
             Arc,
@@ -43,6 +43,10 @@ pub struct RemoteBlockSourceConfig {
     /// network reorder, e.g. height 101 before 100) lands first and is not
     /// mistaken for a hole. A genuine hole outlasts it and is then filled.
     pub reorder_grace: Duration,
+    /// Backoff before re-subscribing after the live stream ends or errors (and
+    /// between failed subscribe attempts). A reconnect resumes at the chain
+    /// tip; the downtime hole below it is repaired by the healer.
+    pub reconnect_backoff: Duration,
 }
 
 impl Default for RemoteBlockSourceConfig {
@@ -52,6 +56,7 @@ impl Default for RemoteBlockSourceConfig {
             coordinator_buffer: 1_024,
             heal_poll_interval: Duration::from_secs(5),
             reorder_grace: Duration::from_millis(250),
+            reconnect_backoff: Duration::from_secs(5),
         }
     }
 }
@@ -250,42 +255,69 @@ impl RemoteBlockSource {
         Ok(())
     }
 
-    /// Drain the live block stream into the coordinator, tracking the tip and
-    /// flagging discontinuities. Runs for the source's lifetime; an error on
-    /// the stream ends it. The subscriber owns reconnection — a stream that
-    /// yields an error is fatal here.
-    async fn drain_live(
-        self: Arc<Self>,
-        mut live_blocks: BoxStream<'static, AnyResult<BlockData>>,
-        coordinator_tx: mpsc::Sender<BlockData>,
-    ) -> AnyResult<()> {
-        while let Some(block) = live_blocks.next().await {
-            let block = block?;
-            let height = block.height();
-
-            // `fetch_max` advances the tip and hands back the previous value; a
-            // delivered height beyond `prev + 1` means blocks went missing
-            // between the two (a reconnect at a higher tip, or a dropped
-            // message), so wake the healer to fill the hole. (A reorder also
-            // trips this, but the healer's grace absorbs that — see
-            // `run_healer`.)
-            let prev_tip = self.tip.fetch_max(height, Ordering::AcqRel);
-            if height > prev_tip + 1 {
-                #[cfg(feature = "tracing")]
-                tracing::warn!(
-                    from = prev_tip + 1,
-                    to = height - 1,
-                    "live stream discontinuity; waking healer"
-                );
-                self.heal_notify.notify_one();
+    /// Follow the live tail, reconnecting on every drop. Owns the subscription
+    /// lifecycle: (re)subscribe, drain blocks into the coordinator (tracking the
+    /// tip and flagging discontinuities), and on a stream end/error back off and
+    /// re-subscribe. A reconnect resumes at the chain tip; the downtime hole
+    /// below it is repaired by the healer like any other gap — which is why a
+    /// dropped stream no longer takes the source down. Runs for the source's
+    /// lifetime; returns only when the coordinator is gone.
+    async fn drain_live(self: Arc<Self>, coordinator_tx: mpsc::Sender<BlockData>) -> AnyResult<()> {
+        loop {
+            if coordinator_tx.is_closed() {
+                return Ok(()); // coordinator gone — source shutting down
             }
 
-            if coordinator_tx.send(block).await.is_err() {
-                return Ok(()); // coordinator gone
+            let (live_tip, mut live_blocks) = match self.subscriber.subscribe().await {
+                Ok(subscription) => subscription,
+                Err(_error) => {
+                    #[cfg(feature = "tracing")]
+                    tracing::warn!(error = %_error, "live subscribe failed; retrying");
+                    sleep(self.config.reconnect_backoff).await;
+                    continue;
+                },
+            };
+
+            // A (re)subscribe resumes at the new tip: raise it and wake the
+            // healer to fill whatever gap now sits below it — the initial
+            // history on first connect, a downtime hole on a reconnect.
+            self.tip.fetch_max(live_tip, Ordering::AcqRel);
+            self.heal_notify.notify_one();
+
+            loop {
+                match live_blocks.next().await {
+                    Some(Ok(block)) => {
+                        let height = block.height();
+
+                        // `fetch_max` advances the tip and hands back the
+                        // previous value; a delivered height beyond `prev + 1`
+                        // means blocks went missing (a skip, or a reconnect at a
+                        // higher tip), so wake the healer. (A reorder also trips
+                        // this; the healer's grace absorbs it — see `run_healer`.)
+                        let prev_tip = self.tip.fetch_max(height, Ordering::AcqRel);
+                        if height > prev_tip + 1 {
+                            self.heal_notify.notify_one();
+                        }
+
+                        if coordinator_tx.send(block).await.is_err() {
+                            return Ok(()); // coordinator gone
+                        }
+                    },
+                    Some(Err(_error)) => {
+                        #[cfg(feature = "tracing")]
+                        tracing::warn!(error = %_error, "live stream error; reconnecting");
+                        break;
+                    },
+                    None => {
+                        #[cfg(feature = "tracing")]
+                        tracing::warn!("live stream ended; reconnecting");
+                        break;
+                    },
+                }
             }
+
+            sleep(self.config.reconnect_backoff).await;
         }
-
-        Ok(())
     }
 }
 
@@ -298,18 +330,13 @@ impl BlockSource for RemoteBlockSource {
             self.frontier.store(resume_height, Ordering::Release);
         }
 
-        // Subscribe before spawning anything, so an early failure here leaks no
-        // tasks. The tip seeds gap detection: `[frontier + 1, tip)` is the
-        // healer's backfill target, `tip` onward is the subscriber's.
-        let (live_tip, live_blocks) = self.subscriber.subscribe().await?;
-        self.tip.store(live_tip, Ordering::Release);
-
         // Single serialized coordinator behind a bounded channel, fed by the
-        // live tail and the healer's backfill.
+        // live tail (`drain_live`, which owns its own subscription lifecycle)
+        // and the healer's backfill.
         let (coordinator_tx, coordinator_rx) = mpsc::channel(self.config.coordinator_buffer);
 
         let coordinator = tokio::spawn(self.clone().run_coordinator(coordinator_rx));
-        let drain = tokio::spawn(self.clone().drain_live(live_blocks, coordinator_tx.clone()));
+        let drain = tokio::spawn(self.clone().drain_live(coordinator_tx.clone()));
         let healer = tokio::spawn(self.clone().run_healer(coordinator_tx));
 
         // All three run for the source's lifetime. Whichever returns first (a
@@ -348,7 +375,7 @@ mod tests {
         super::*,
         crate::{FetchStream, MemoryBlockStore},
         dango_primitives::{Block, BlockInfo, BlockOutcome, Hash256, Timestamp},
-        futures::stream,
+        futures::stream::{self, BoxStream},
         tokio::time::timeout,
     };
 
@@ -414,6 +441,38 @@ mod tests {
             let scripted = stream::iter(script.into_iter().map(|h| Ok(block(h))));
             let stream = scripted.chain(stream::pending::<AnyResult<BlockData>>());
             Ok((self.live_tip, Box::pin(stream)))
+        }
+    }
+
+    /// A subscriber that yields a queue of scripted episodes — each a tip, a
+    /// height sequence, and whether the stream pends (`true`) or ends (`false`)
+    /// after it. An episode that ends makes `drain_live` reconnect to the next.
+    struct ScriptedSubscriber {
+        episodes: std::sync::Mutex<std::collections::VecDeque<(u64, Vec<u64>, bool)>>,
+    }
+
+    impl ScriptedSubscriber {
+        fn new(episodes: Vec<(u64, Vec<u64>, bool)>) -> Self {
+            Self {
+                episodes: std::sync::Mutex::new(episodes.into()),
+            }
+        }
+    }
+
+    #[async_trait]
+    impl LiveSubscriber for ScriptedSubscriber {
+        async fn subscribe(&self) -> AnyResult<(u64, BoxStream<'static, AnyResult<BlockData>>)> {
+            let (tip, heights, pend) = match self.episodes.lock().unwrap().pop_front() {
+                Some(episode) => episode,
+                None => bail!("scripted subscriber exhausted"),
+            };
+            let scripted = stream::iter(heights.into_iter().map(|h| Ok(block(h))));
+            let stream: BoxStream<'static, AnyResult<BlockData>> = if pend {
+                Box::pin(scripted.chain(stream::pending::<AnyResult<BlockData>>()))
+            } else {
+                Box::pin(scripted)
+            };
+            Ok((tip, stream))
         }
     }
 
@@ -637,5 +696,42 @@ mod tests {
 
         drop(tx);
         coordinator.await.unwrap().unwrap();
+    }
+
+    #[tokio::test]
+    async fn drain_live_reconnects_after_stream_end() {
+        let store = Arc::new(MemoryBlockStore::default());
+        for height in 1..=9 {
+            store.put(height, &block(height)).await.unwrap();
+        }
+
+        // Episode 1: tip 10, deliver 10, 11, then the stream ENDS (connection
+        // drop). Episode 2: tip 20 (12..=19 produced during the downtime),
+        // deliver 20, 21, then pend.
+        let subscriber = Arc::new(ScriptedSubscriber::new(vec![
+            (10, vec![10, 11], false),
+            (20, vec![20, 21], true),
+        ]));
+        let config = RemoteBlockSourceConfig {
+            reconnect_backoff: Duration::from_millis(10),
+            ..Default::default()
+        };
+        let source = Arc::new(RemoteBlockSource::new(
+            store,
+            subscriber,
+            Arc::new(MockFetcher),
+            config,
+        ));
+        let mut rx = source.subscribe();
+
+        let run = tokio::spawn(source.clone().run());
+
+        // 10, 11 from episode 1; the stream drops, the source reconnects, the
+        // healer fills the 12..=19 downtime hole, and 20, 21 arrive — the
+        // broadcast is contiguous 10..=21.
+        assert_broadcast(&mut rx, 10, 12).await;
+        assert_eq!(source.frontier.load(Ordering::Acquire), 21);
+
+        run.abort();
     }
 }
