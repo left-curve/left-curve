@@ -1,11 +1,11 @@
 use {
+    super::islands::Islands,
     crate::{BlockFetcher, BlockSource, BlockStore, LiveSubscriber},
     anyhow::{anyhow, bail},
     async_trait::async_trait,
     dango_indexer_historical_types::{AnyResult, BlockData},
     futures::{StreamExt, future::select_all},
     std::{
-        collections::BTreeMap,
         sync::{
             Arc,
             atomic::{AtomicU64, Ordering},
@@ -151,9 +151,9 @@ impl RemoteBlockSource {
             match self.store.max_height().await? {
                 Some(max_height) if max_height > frontier => {
                     let gaps = self.store.gaps(frontier + 1, max_height + 1).await?;
-                    islands_from_gaps(frontier + 1, max_height, &gaps)
+                    Islands::from_gaps(frontier + 1, max_height, &gaps)
                 },
-                _ => BTreeMap::new(),
+                _ => Islands::default(),
             }
         };
 
@@ -172,7 +172,7 @@ impl RemoteBlockSource {
             // broadcast when the edge reaches it.
             if height > frontier + 1 {
                 self.store.put(height, &block).await?;
-                insert_island(&mut islands, height);
+                islands.insert(height);
                 continue;
             }
 
@@ -186,11 +186,7 @@ impl RemoteBlockSource {
             // Cross any islands now contiguous with the edge. Each is crossed in
             // one step: jump the frontier to its top, broadcast only that top.
             let mut edge = height;
-            while let Some((&start, &end)) = islands.range(edge + 1..).next() {
-                if start != edge + 1 {
-                    break; // not contiguous with the edge; the gap is the healer's
-                }
-                islands.remove(&start);
+            while let Some(end) = islands.take_starting_at(edge + 1) {
                 let top = self
                     .store
                     .get(end)
@@ -406,61 +402,6 @@ impl BlockSource for RemoteBlockSource {
         let height = self.frontier.load(Ordering::Acquire);
         Ok((height != 0).then_some(height))
     }
-}
-
-// ---- island tracking ----
-
-/// Insert a single height into a start→end range map, merging with an adjacent
-/// range on either side (contiguous heights collapse into one range). A height
-/// already covered is a no-op.
-fn insert_island(islands: &mut BTreeMap<u64, u64>, height: u64) {
-    // Already inside a range? (a duplicate) — nothing to do.
-    if let Some((&start, &end)) = islands.range(..=height).next_back()
-        && (start..=end).contains(&height)
-    {
-        return;
-    }
-
-    // Extend a range ending at `height - 1`, and/or absorb one starting at
-    // `height + 1`, bridging the two when both are present.
-    let extend_from = islands
-        .range(..height)
-        .next_back()
-        .filter(|&(_, &end)| end + 1 == height)
-        .map(|(&start, _)| start);
-    let absorb_end = islands.remove(&(height + 1));
-
-    match (extend_from, absorb_end) {
-        (Some(start), Some(end)) => {
-            islands.insert(start, end);
-        },
-        (Some(start), None) => {
-            islands.insert(start, height);
-        },
-        (None, Some(end)) => {
-            islands.insert(height, end);
-        },
-        (None, None) => {
-            islands.insert(height, height);
-        },
-    }
-}
-
-/// The present ranges (islands) in `[lo, hi]` — the complement of `gaps`
-/// (ascending, disjoint, within `[lo, hi]`).
-fn islands_from_gaps(lo: u64, hi: u64, gaps: &[(u64, u64)]) -> BTreeMap<u64, u64> {
-    let mut islands = BTreeMap::new();
-    let mut cursor = lo;
-    for &(gap_start, gap_end) in gaps {
-        if cursor < gap_start {
-            islands.insert(cursor, gap_start - 1);
-        }
-        cursor = gap_end + 1;
-    }
-    if cursor <= hi {
-        islands.insert(cursor, hi);
-    }
-    islands
 }
 
 // ---- tests ----
@@ -841,44 +782,5 @@ mod tests {
         assert_eq!(source.frontier.load(Ordering::Acquire), 20);
 
         run.abort();
-    }
-
-    #[test]
-    fn island_range_merge() {
-        let mut islands = BTreeMap::new();
-        // Contiguous heights collapse into one range.
-        insert_island(&mut islands, 5);
-        insert_island(&mut islands, 6);
-        insert_island(&mut islands, 7);
-        assert_eq!(islands.len(), 1);
-        assert_eq!(islands.get(&5), Some(&7));
-        // A detached height starts a new range...
-        insert_island(&mut islands, 10);
-        insert_island(&mut islands, 9);
-        // ...and a bridge height merges both into one.
-        insert_island(&mut islands, 8);
-        assert_eq!(islands.len(), 1);
-        assert_eq!(islands.get(&5), Some(&10));
-        // A duplicate is a no-op.
-        insert_island(&mut islands, 6);
-        assert_eq!(islands.get(&5), Some(&10));
-    }
-
-    #[test]
-    fn islands_from_gaps_complement() {
-        // Store {1..=50, 200..=210}, frontier 50 → island [200, 210].
-        assert_eq!(
-            islands_from_gaps(51, 210, &[(51, 199)])
-                .into_iter()
-                .collect::<Vec<_>>(),
-            vec![(200, 210)],
-        );
-        // Two stored stretches separated by a gap.
-        assert_eq!(
-            islands_from_gaps(51, 210, &[(51, 99), (111, 199)])
-                .into_iter()
-                .collect::<Vec<_>>(),
-            vec![(100, 110), (200, 210)],
-        );
     }
 }

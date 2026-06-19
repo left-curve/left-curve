@@ -4078,6 +4078,7 @@ dependencies = [
  "dango-primitives",
  "futures",
  "metrics",
+ "rangemap",
  "reqwest 0.13.2",
  "tokio",
  "tracing",

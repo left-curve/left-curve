@@ -27,6 +27,7 @@ dango-indexer-graphql-types    = { workspace = true }
 dango-indexer-historical-types = { workspace = true }
 dango-primitives                = { workspace = true }
 metrics                  = { workspace = true, optional = true }
+rangemap                 = { workspace = true }
 reqwest                  = { workspace = true }
 tokio                    = { workspace = true }
 tracing                  = { workspace = true, optional = true }

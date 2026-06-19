@@ -5,6 +5,7 @@ use {
     tokio::sync::broadcast,
 };
 
+mod islands;
 mod local;
 mod remote;
 
