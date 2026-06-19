@@ -29,6 +29,11 @@ pub trait BlockStore: Send + Sync {
     /// if `floor` itself is missing. Seeds the frontier at boot.
     async fn max_contiguous(&self, floor: u64) -> AnyResult<Option<u64>>;
 
+    /// Highest stored height, or `None` if the store is empty. Bounds the
+    /// island scan at boot (the islands are the stored ranges between the
+    /// frontier and this).
+    async fn max_height(&self) -> AnyResult<Option<u64>>;
+
     /// Maximal missing height ranges (inclusive bounds) within `[from, to)`,
     /// ascending. Drives the per-gap backfill.
     async fn gaps(&self, from: u64, to: u64) -> AnyResult<Vec<(u64, u64)>>;

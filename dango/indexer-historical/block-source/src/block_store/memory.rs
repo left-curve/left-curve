@@ -39,6 +39,10 @@ impl BlockStore for MemoryBlockStore {
         Ok(Some(top))
     }
 
+    async fn max_height(&self) -> AnyResult<Option<u64>> {
+        Ok(self.blocks.lock().unwrap().keys().next_back().copied())
+    }
+
     async fn gaps(&self, from: u64, to: u64) -> AnyResult<Vec<(u64, u64)>> {
         let blocks = self.blocks.lock().unwrap();
         let mut gaps = Vec::new();

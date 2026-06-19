@@ -12,9 +12,11 @@ type, the code location, and a fix direction.
 > reviewed and are clean.
 
 Date: 2026-06-19. Resolved items have been implemented and removed from this
-tracker (continuous healer, channel-capacity config, `select_all` teardown,
-broadcast-before-store, live-stream reconnect); a store-write error halting the
-source was reviewed and accepted as intended (see the failure-modes table in
+tracker (continuous healer; channel-capacity config; `select_all` teardown;
+broadcast-before-store; live-stream reconnect; in-memory island ranges +
+bulk-advance, fixing both the per-block sweep `get()` and the large-island
+broadcast burst); a store-write error halting the source was reviewed and
+accepted as intended (see the failure-modes table in
 [remote-block-source.md](./remote-block-source.md)). See git history. What
 remains below is the open work.
 
@@ -23,15 +25,14 @@ remains below is the open work.
 | # | Issue | Severity | Type |
 |---|---|---|---|
 | 5 | Fetcher retries forever, silently, on a permanently-missing block | Medium | Robustness (observability) |
-| 7 | One wasted `store.get()` per block for the whole backfill | Low–Medium | Efficiency |
 
 ## Completeness — what is not built yet
 
 Not bugs, but the source cannot run in production until these land:
 
 - **No Postgres `BlockStore`** (`blocks_raw`). Only `MemoryBlockStore` exists.
-  Production needs the durable store with `max_contiguous` / `gaps` as window
-  queries (`LEAD`/`LAG` over `height`).
+  Production needs the durable store with `max_contiguous` / `gaps` /
+  `max_height` as window/aggregate queries (`LEAD`/`LAG` over `height`).
 - **No concrete `LiveSubscriber`.** Only the trait. The sentinel subscriber
   (height notification → `query_block` / `query_block_outcome` → store → signal)
   is unwritten. `drain_live` already owns the reconnect loop, so the concrete
@@ -41,11 +42,12 @@ Not bugs, but the source cannot run in production until these land:
   referenced only inside its own crate. The tunables exist as
   `RemoteBlockSourceConfig` / `SentinelFetcherConfig` defaults, but nothing maps
   a `remote.*` config section onto them yet.
-- **Tests:** the coordinator + healer + reconnect path are covered by unit tests
-  in `remote.rs` (in-order, reorder, island-crossing, skip-heal, reconnect-heal,
-  broadcast-before-store, reconnect-after-stream-end) using `MemoryBlockStore` +
-  mock subscriber/fetcher. Still untested: the (unbuilt) Postgres store and
-  sentinel subscriber.
+- **Tests:** the coordinator + healer + reconnect + island paths are covered by
+  unit tests in `remote.rs` (in-order, reorder, bulk-advance-across-island,
+  skip-heal, reconnect-heal, broadcast-before-store, reconnect-after-stream-end,
+  plus range-helper unit tests) using `MemoryBlockStore` + mock
+  subscriber/fetcher. Still untested: the (unbuilt) Postgres store and sentinel
+  subscriber.
 
 ---
 
@@ -69,19 +71,3 @@ hole. The plan is to **detect** the condition instead: a future metric such as a
 "backfill made no progress for N seconds" / "healer stuck on gap" gauge that
 alerts an operator, rather than changing the retry policy. Tracked here so the
 metric is not forgotten when observability lands.
-
----
-
-## 7. One wasted `store.get()` per block for the whole backfill — Low–Medium
-
-**Location:** `block_source/remote.rs` — `run_coordinator` sweep loop.
-
-During an in-order backfill every block is `frontier + 1`, so after advancing,
-the sweep does `store.get(height + 1)` which returns `None` (the next block is
-not in yet). That is **one wasted PG round-trip per block** — ~22M extra
-queries over a genesis backfill. Correct, but costly.
-
-**Fix direction.** Only attempt the cross-island sweep when there is reason to
-(e.g. track the known islands from `gaps()` and sweep only when the just-filled
-height reaches an island boundary), instead of probing the store after every
-single block.

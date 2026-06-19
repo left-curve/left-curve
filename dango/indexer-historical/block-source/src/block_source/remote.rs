@@ -5,6 +5,7 @@ use {
     dango_indexer_historical_types::{AnyResult, BlockData},
     futures::{StreamExt, future::select_all},
     std::{
+        collections::BTreeMap,
         sync::{
             Arc,
             atomic::{AtomicU64, Ordering},
@@ -124,9 +125,16 @@ impl RemoteBlockSource {
     /// self-heals: the un-stored height is re-fetched as a gap on restart, and
     /// any projection that already consumed it skips the replay by cursor.
     ///
-    /// A block ahead of the prefix (the live tail during backfill, or a
-    /// reordered delivery) is not contiguous yet, so it is only persisted —
-    /// its broadcast comes later, when the prefix sweep reaches it.
+    /// A block ahead of the prefix (the live tail during backfill, or a reorder)
+    /// is an **island**: persisted, with its height remembered in `islands` (a
+    /// compact start→end range map). When the prefix edge reaches an island it
+    /// is crossed in **one step** — the frontier jumps to the island's top and
+    /// only that top is broadcast, so a large catch-up backlog cannot flood the
+    /// pubsub; projections fall back to Phase-1 `get()` for the skipped heights.
+    /// The map is seeded at boot from the store, so islands left by a previous
+    /// run are crossed the same way. Tracking islands in memory is also what
+    /// lets the common edge advance with **no store probe** — the wasted
+    /// `get(frontier + 1) -> None` per block is gone.
     ///
     /// A store error is intentionally **fatal**: the store is the durability
     /// anchor, so on a write failure the source halts (the process is expected
@@ -136,33 +144,61 @@ impl RemoteBlockSource {
         self: Arc<Self>,
         mut coordinator_rx: mpsc::Receiver<BlockData>,
     ) -> AnyResult<()> {
+        // Seed the island map from blocks a previous run left above our resume
+        // frontier, as ranges (one entry per stored stretch — cheap).
+        let mut islands = {
+            let frontier = self.frontier.load(Ordering::Acquire);
+            match self.store.max_height().await? {
+                Some(max_height) if max_height > frontier => {
+                    let gaps = self.store.gaps(frontier + 1, max_height + 1).await?;
+                    islands_from_gaps(frontier + 1, max_height, &gaps)
+                },
+                _ => BTreeMap::new(),
+            }
+        };
+
         while let Some(block) = coordinator_rx.recv().await {
             let height = block.height();
+            let frontier = self.frontier.load(Ordering::Acquire);
 
-            // A block ahead of the prefix (live tail during backfill, or a
-            // reorder) is not contiguous yet: persist it and move on — it is
-            // broadcast later, when the sweep below reaches it.
-            if height != self.frontier.load(Ordering::Acquire) + 1 {
+            // Below the prefix: a duplicate/replay. Persist (idempotent) and
+            // ignore.
+            if height <= frontier {
                 self.store.put(height, &block).await?;
                 continue;
             }
 
-            // The block extends the prefix. Broadcast first (live projections
-            // need not wait on the store write), then persist, then advance the
-            // frontier — which stays behind the durable store.
+            // Ahead of the prefix: an island. Persist and remember it; it is
+            // broadcast when the edge reaches it.
+            if height > frontier + 1 {
+                self.store.put(height, &block).await?;
+                insert_island(&mut islands, height);
+                continue;
+            }
+
+            // The edge block. Broadcast first (live projections need not wait on
+            // the store write), then persist, then advance the frontier.
             let block = Arc::new(block);
             self.broadcast_tx.send(block.clone()).ok();
             self.store.put(height, &block).await?;
             self.frontier.store(height, Ordering::Release);
 
-            // Sweep over already-stored successors — islands left by a previous
-            // run, a reorder, or the live tail we are catching up. They are
-            // already durable, so here broadcast simply follows the store read.
-            let mut next_height = height + 1;
-            while let Some(next_block) = self.store.get(next_height).await? {
-                self.broadcast_tx.send(Arc::new(next_block)).ok();
-                self.frontier.store(next_height, Ordering::Release);
-                next_height += 1;
+            // Cross any islands now contiguous with the edge. Each is crossed in
+            // one step: jump the frontier to its top, broadcast only that top.
+            let mut edge = height;
+            while let Some((&start, &end)) = islands.range(edge + 1..).next() {
+                if start != edge + 1 {
+                    break; // not contiguous with the edge; the gap is the healer's
+                }
+                islands.remove(&start);
+                let top = self
+                    .store
+                    .get(end)
+                    .await?
+                    .ok_or_else(|| anyhow!("island top {end} missing from store"))?;
+                self.broadcast_tx.send(Arc::new(top)).ok();
+                self.frontier.store(end, Ordering::Release);
+                edge = end;
             }
         }
 
@@ -372,6 +408,61 @@ impl BlockSource for RemoteBlockSource {
     }
 }
 
+// ---- island tracking ----
+
+/// Insert a single height into a start→end range map, merging with an adjacent
+/// range on either side (contiguous heights collapse into one range). A height
+/// already covered is a no-op.
+fn insert_island(islands: &mut BTreeMap<u64, u64>, height: u64) {
+    // Already inside a range? (a duplicate) — nothing to do.
+    if let Some((&start, &end)) = islands.range(..=height).next_back()
+        && (start..=end).contains(&height)
+    {
+        return;
+    }
+
+    // Extend a range ending at `height - 1`, and/or absorb one starting at
+    // `height + 1`, bridging the two when both are present.
+    let extend_from = islands
+        .range(..height)
+        .next_back()
+        .filter(|&(_, &end)| end + 1 == height)
+        .map(|(&start, _)| start);
+    let absorb_end = islands.remove(&(height + 1));
+
+    match (extend_from, absorb_end) {
+        (Some(start), Some(end)) => {
+            islands.insert(start, end);
+        },
+        (Some(start), None) => {
+            islands.insert(start, height);
+        },
+        (None, Some(end)) => {
+            islands.insert(height, end);
+        },
+        (None, None) => {
+            islands.insert(height, height);
+        },
+    }
+}
+
+/// The present ranges (islands) in `[lo, hi]` — the complement of `gaps`
+/// (ascending, disjoint, within `[lo, hi]`).
+fn islands_from_gaps(lo: u64, hi: u64, gaps: &[(u64, u64)]) -> BTreeMap<u64, u64> {
+    let mut islands = BTreeMap::new();
+    let mut cursor = lo;
+    for &(gap_start, gap_end) in gaps {
+        if cursor < gap_start {
+            islands.insert(cursor, gap_start - 1);
+        }
+        cursor = gap_end + 1;
+    }
+    if cursor <= hi {
+        islands.insert(cursor, hi);
+    }
+    islands
+}
+
 // ---- tests ----
 
 #[cfg(test)]
@@ -510,6 +601,10 @@ mod tests {
             self.inner.max_contiguous(floor).await
         }
 
+        async fn max_height(&self) -> AnyResult<Option<u64>> {
+            self.inner.max_height().await
+        }
+
         async fn gaps(&self, from: u64, to: u64) -> AnyResult<Vec<(u64, u64)>> {
             self.inner.gaps(from, to).await
         }
@@ -577,13 +672,14 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn coordinator_crosses_preexisting_islands() {
+    async fn coordinator_bulk_advances_across_island() {
         let store = Arc::new(MemoryBlockStore::default());
-        // An island left by a previous run.
-        store.put(3, &block(3)).await.unwrap();
-        store.put(4, &block(4)).await.unwrap();
+        // A multi-block island left by a previous run.
+        for height in 3..=5 {
+            store.put(height, &block(height)).await.unwrap();
+        }
 
-        let source = source_with(store);
+        let source = source_with(store.clone());
         let mut rx = source.subscribe();
 
         let (tx, coordinator_rx) = mpsc::channel(64);
@@ -594,9 +690,16 @@ mod tests {
         drop(tx);
         coordinator.await.unwrap().unwrap();
 
-        // 1, 2 then the swept island 3, 4.
-        assert_broadcast(&mut rx, 1, 4).await;
-        assert_eq!(source.frontier.load(Ordering::Acquire), 4);
+        // Edges 1, 2 are pushed; the island [3, 5] is bulk-advanced, so only its
+        // top (5) is broadcast — 3 and 4 are not (projections pull them via
+        // `get()`). The frontier still reaches 5.
+        assert_eq!(rx.recv().await.unwrap().height(), 1);
+        assert_eq!(rx.recv().await.unwrap().height(), 2);
+        assert_eq!(rx.recv().await.unwrap().height(), 5);
+        assert!(rx.try_recv().is_err());
+        assert_eq!(source.frontier.load(Ordering::Acquire), 5);
+        assert!(store.get(3).await.unwrap().is_some());
+        assert!(store.get(4).await.unwrap().is_some());
     }
 
     #[tokio::test]
@@ -715,7 +818,7 @@ mod tests {
         // deliver 20, 21, then pend.
         let subscriber = Arc::new(ScriptedSubscriber::new(vec![
             (10, vec![10, 11], false),
-            (20, vec![20, 21], true),
+            (20, vec![20], true),
         ]));
         let config = RemoteBlockSourceConfig {
             reconnect_backoff: Duration::from_millis(10),
@@ -732,11 +835,50 @@ mod tests {
         let run = tokio::spawn(source.clone().run());
 
         // 10, 11 from episode 1; the stream drops, the source reconnects, the
-        // healer fills the 12..=19 downtime hole, and 20, 21 arrive — the
-        // broadcast is contiguous 10..=21.
-        assert_broadcast(&mut rx, 10, 12).await;
-        assert_eq!(source.frontier.load(Ordering::Acquire), 21);
+        // healer fills the 12..=19 downtime hole, and 20 arrives — the broadcast
+        // is contiguous 10..=20.
+        assert_broadcast(&mut rx, 10, 11).await;
+        assert_eq!(source.frontier.load(Ordering::Acquire), 20);
 
         run.abort();
+    }
+
+    #[test]
+    fn island_range_merge() {
+        let mut islands = BTreeMap::new();
+        // Contiguous heights collapse into one range.
+        insert_island(&mut islands, 5);
+        insert_island(&mut islands, 6);
+        insert_island(&mut islands, 7);
+        assert_eq!(islands.len(), 1);
+        assert_eq!(islands.get(&5), Some(&7));
+        // A detached height starts a new range...
+        insert_island(&mut islands, 10);
+        insert_island(&mut islands, 9);
+        // ...and a bridge height merges both into one.
+        insert_island(&mut islands, 8);
+        assert_eq!(islands.len(), 1);
+        assert_eq!(islands.get(&5), Some(&10));
+        // A duplicate is a no-op.
+        insert_island(&mut islands, 6);
+        assert_eq!(islands.get(&5), Some(&10));
+    }
+
+    #[test]
+    fn islands_from_gaps_complement() {
+        // Store {1..=50, 200..=210}, frontier 50 → island [200, 210].
+        assert_eq!(
+            islands_from_gaps(51, 210, &[(51, 199)])
+                .into_iter()
+                .collect::<Vec<_>>(),
+            vec![(200, 210)],
+        );
+        // Two stored stretches separated by a gap.
+        assert_eq!(
+            islands_from_gaps(51, 210, &[(51, 99), (111, 199)])
+                .into_iter()
+                .collect::<Vec<_>>(),
+            vec![(100, 110), (200, 210)],
+        );
     }
 }

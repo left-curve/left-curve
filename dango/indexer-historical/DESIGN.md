@@ -522,9 +522,12 @@ test mocks), the source must guarantee:
 1. **`contiguous_frontier()` is monotonic** — never decreases.
 2. **`h <= contiguous_frontier ⟹ get(h) == Some`** — within the
    contiguous prefix, blocks are always reachable through `get`.
-3. **Broadcast emits in strict +1 order** — every `broadcast.send(block)`
-   happens immediately after a `contiguous_frontier.store(h)` with
-   `block.height == h`. No skipping, no out-of-order.
+3. **Broadcast is strictly ascending** — heights are sent in increasing order,
+   normally `+1` (the live tail). A source MAY **skip ahead** when it
+   bulk-advances the frontier across a stored backlog (an island), emitting only
+   the top; the loop handles the jump via the Phase-2 `Greater` arm, pulling the
+   skipped — and by then durable — heights with `get()`. No out-of-order, no
+   duplicates.
 4. **`get(h) == None` is "not yet", not "definitively absent"** — the
    source must not GC a height that some projection might still try to
    reach via `get`.

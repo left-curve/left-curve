@@ -329,7 +329,7 @@ and how this impl guarantees each:
 |---|---|
 | `contiguous_frontier()` monotonic | Only the coordinator mutates it, and only ever upward (advance the contiguous prefix). Jumps over islands are fine — monotonic ≠ `+1`. |
 | `h ≤ frontier ⟹ get(h) = Some` | The frontier advances only after the block is durably in the store; the prefix it covers is contiguous by construction. |
-| broadcast strictly `+1` | The coordinator is the single broadcaster and sends a block only at the moment it advances the frontier onto it. |
+| broadcast strictly ascending (may skip) | Only the coordinator broadcasts. Normally `+1`; crossing an island it jumps the frontier to the top and broadcasts only that, which the projection loop handles via Phase-1 pull. |
 | `get(h) = None` is "not yet" | A height inside an unfilled gap returns `None`; the source never GCs a height a projection might still reach (no GC in this version at all). |
 
 The fixed ordering inside `ingest` — **store commit → frontier → broadcast** —
