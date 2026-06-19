@@ -11,17 +11,18 @@ type, the code location, and a fix direction.
 > `block_store/`). `LocalBlockSource` and the projection/committer side were
 > reviewed and are clean.
 
-Date: 2026-06-19. Resolved items (the continuous healer, channel-capacity
-config, the `select_all` task teardown, broadcast-before-store, and live-stream
-reconnect) have been implemented and removed from this tracker — see git
-history. What remains below is the open work.
+Date: 2026-06-19. Resolved items have been implemented and removed from this
+tracker (continuous healer, channel-capacity config, `select_all` teardown,
+broadcast-before-store, live-stream reconnect); a store-write error halting the
+source was reviewed and accepted as intended (see the failure-modes table in
+[remote-block-source.md](./remote-block-source.md)). See git history. What
+remains below is the open work.
 
 ## Severity index
 
 | # | Issue | Severity | Type |
 |---|---|---|---|
 | 5 | Fetcher retries forever, silently, on a permanently-missing block | Medium | Robustness (observability) |
-| 6 | Store errors are not retried — a transient PG blip kills everything | Medium | Robustness |
 | 7 | One wasted `store.get()` per block for the whole backfill | Low–Medium | Efficiency |
 
 ## Completeness — what is not built yet
@@ -68,19 +69,6 @@ hole. The plan is to **detect** the condition instead: a future metric such as a
 "backfill made no progress for N seconds" / "healer stuck on gap" gauge that
 alerts an operator, rather than changing the retry policy. Tracked here so the
 metric is not forgotten when observability lands.
-
----
-
-## 6. Store errors are not retried — Medium
-
-**Location:** `block_source/remote.rs` — `run_coordinator` `store.put` / sweep
-`store.get` (`?`-propagated).
-
-Any error from `store.put` / `store.get` bails the coordinator → kills the
-source → kills the app. A transient PG blip takes everything down.
-
-**Fix direction.** Retry store operations with backoff inside the coordinator
-(the store is the durability anchor; a transient failure should not be fatal).
 
 ---
 

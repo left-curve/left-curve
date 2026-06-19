@@ -345,6 +345,7 @@ store commit) would let a projection `get()` a height that isn't durable yet.
 | Fetcher RPC error / 404 mid-gap | Adaptive loop drops to single-block, sleeps, retries (bots pattern). A 404 inside a gap means "not yet on the sentinel" — retry, don't treat as absent. |
 | Crash mid-backfill | Restart recomputes `X` and the gaps from the store; refills. Idempotent `put` makes any partially-written block harmless. |
 | Crash between store `put` and frontier advance | On restart the block is in the store, `max_contiguous` picks it up, frontier seeds correctly. No hole. |
+| Store `put` / `get` fails (transient PG error) | Coordinator halts, source exits — intentionally fatal. A process restart recovers: idempotent `put` plus the frontier re-seeding from `max_contiguous` mean no hole. In-place retry is deliberately avoided (the store is the durability anchor; halt + supervised restart beats limping on). |
 | Corrupt payload in `blocks_raw` | `get` surfaces a borsh error via `anyhow`. Skip-vs-halt policy is an open question (probably halt — unlike V1 there is no in-process indexer cross-checking). |
 
 ## Borrowed pattern: bots `BlockFetcher`

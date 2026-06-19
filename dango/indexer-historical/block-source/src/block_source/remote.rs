@@ -127,6 +127,11 @@ impl RemoteBlockSource {
     /// A block ahead of the prefix (the live tail during backfill, or a
     /// reordered delivery) is not contiguous yet, so it is only persisted —
     /// its broadcast comes later, when the prefix sweep reaches it.
+    ///
+    /// A store error is intentionally **fatal**: the store is the durability
+    /// anchor, so on a write failure the source halts (the process is expected
+    /// to restart, re-seeding the frontier from `max_contiguous` and
+    /// re-fetching) rather than limping on with in-place retries.
     async fn run_coordinator(
         self: Arc<Self>,
         mut coordinator_rx: mpsc::Receiver<BlockData>,
