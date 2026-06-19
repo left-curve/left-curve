@@ -49,10 +49,10 @@ Four internal pieces, none exposed to the app:
 
 ```
 RemoteBlockSource (impl BlockSource)
- ├── BlockStore (PG blocks_raw)              [concrete]
- │     put(h,data) idempotent · get(h) · gaps([min..L)) · max_contiguous()
- ├── LiveSubscriber (subscription to a sentinel) [concrete]
- │     yields L at startup, then writes the tail [L..∞) to the store
+ ├── BlockStore (PG blocks_raw)              [trait, PG impl + memory for tests]
+ │     put · get · max_contiguous · max_height · gaps — idempotent put
+ ├── LiveSubscriber (subscription to a sentinel) [trait, one real impl]
+ │     yields L at startup, then yields the live tail [L..∞) as a stream
  ├── Arc<dyn BlockFetcher>                       [trait, ≥1 impl]
  │     spawn(from, to) -> FetchStream   (bounded backfill, dies at `to`)
  │       ├── SentinelBlockFetcher   ← built now
@@ -63,60 +63,66 @@ RemoteBlockSource (impl BlockSource)
 The division of labour:
 
 - **`BlockStore`** persists and serves raw blocks. It is the source of
-  truth for "where am I" (the resume point) and for gap detection. Concrete
-  (one PG impl) — not a trait, since there is only one implementation.
+  truth for "where am I" (the resume point) and for gap detection. A trait
+  (the PG impl in production, an in-memory one for tests), though there is only
+  one production backend.
 - **`LiveSubscriber`** follows the chain tip. It is *always* a sentinel
-  subscription regardless of backend, because B2 only ever serves cold
-  history — the tip always comes from a node. Hence concrete, not a trait.
+  subscription regardless of backend, because B2 only ever serves cold history
+  — the tip always comes from a node. A trait too (one real impl, mocked in
+  tests). It is a pure producer: it *yields* blocks; the coordinator is the
+  single writer to the store.
 - **`BlockFetcher`** is the **only** axis that varies between the
   sentinel-only and the future B2-layered setup. So it is the **trait**, with
   the sentinel impl built now. It does **bounded** backfill: fetch a
   contiguous `[from, to]` range and terminate.
 - **The coordinator** is the single serialized owner of `frontier` and the
   broadcast channel. Both writers (subscriber and fetcher) funnel through it
-  so the `BlockSource` invariants (monotonic frontier, strict `+1` broadcast)
-  hold by construction.
+  so the `BlockSource` invariants (monotonic frontier, ascending broadcast)
+  hold by construction. It tracks the stored-but-not-yet-contiguous blocks
+  (**islands**) in memory and jumps the frontier across them.
 
 **Fetch is decoupled from store.** The fetcher knows nothing about Postgres;
 the store knows nothing about sentinels or B2. The `RemoteBlockSource`
 consumes from the fetcher and writes to the store. Swapping the fetcher
 (sentinel → B2-layered) touches neither the store nor the projections.
 
-## Lifecycle: transient backfill, then steady state
+## Lifecycle: backfill, then steady state — healed continuously
 
-The defining property of this design: **the dual-writer phase is transient.**
+- **Backfill.** On a fresh or lagging start there are gaps below the live tip.
+  Two writers run concurrently: the **subscriber** writes the live tail
+  `[L..∞)`, and a **healer** fills the gaps `[min..L-1]`, spawning a *bounded*
+  fetcher per gap. The store holds disjoint islands until the gaps close.
+- **Steady state.** Once every gap is filled the healer goes idle and only the
+  subscriber writes, each new block being exactly `frontier + 1`. The store is
+  trivially contiguous and stays so.
+- **Re-healing.** The healer never exits — it keeps watching. If the subscriber
+  reconnects at a higher tip (a downtime hole) or drops a block, that hole is
+  just a new gap below the tip; the healer notices (a discontinuity signal, or
+  a periodic re-check) and re-fills it. The system briefly re-enters the
+  dual-writer regime and settles back.
 
-- **Backfill (transient).** On a fresh or lagging start there are gaps below
-  the live tip. Two writers run concurrently: the **subscriber** writes the
-  live tail `[L..∞)`, the **fetcher** fills the gaps `[min..L-1]`. The store
-  holds disjoint islands until the gaps close.
-- **Steady state (single-writer).** Once every gap is filled the fetcher
-  **dies**. Only the subscriber writes, each new block being exactly
-  `frontier + 1`. The store is trivially contiguous and stays so.
-
-This is why the subscriber captures `L` up front and the fetcher is
-*bounded*: the backfill is a finite job that completes, collapsing the system
-back to a single writer. (Contrast: a fetcher that chases a moving tip never
-terminates, and you never leave the dual-writer regime.)
+Each fetcher is still **bounded** (one gap, then it dies) — that is what keeps
+backfill from chasing a moving tip. The *healer* is the continuous supervisor
+that spawns one bounded fetcher per gap whenever a gap exists. The subscriber
+captures the tip up front and writes the live tail during backfill, which is
+what fixes each fetcher's target below the tip.
 
 ## Startup sequence
 
 ```
-1. X = store.max_contiguous()              // highest H with [min..H] all present
-   frontier = X                            // 0 / None on a fresh DB
-2. L = subscriber.start()                  // current tip; spawn the task that
-                                           // writes [L..) to the store + signals
-3. gaps = store.gaps(min .. L)             // e.g. [(51,199),(211,249)]
-4. for each gap, ascending:                // lowest-first — see Gap handling
-       BlockFetcher.spawn(from, to)
-       drain its FetchStream → store.put(h) + signal
-5. coordinator advances `frontier` and broadcasts as the contiguous prefix grows
-6. gaps exhausted → fetcher tasks dead → only the subscriber writes → steady state
+1. X = store.max_contiguous()   // resume point; frontier = X (0 on a fresh DB)
+2. spawn coordinator            // serialized frontier + broadcast (see below)
+3. spawn drain_live             // owns the subscription: (re)subscribe, feed
+                                //   blocks to the coordinator, track the tip
+4. spawn healer                 // loop: gaps(frontier+1, tip) → fill the lowest
+                                //   via a bounded fetcher; idle when none
 ```
 
-The resume point comes from the **store**, never from the fetcher: the
-fetcher is stateless about progress. This makes restarts trivial — recompute
-`X`, recompute the gaps, refill.
+All three run for the source's lifetime; whichever returns first tears the
+others down. The resume point comes from the **store**, never from the fetcher
+(stateless about progress), so a restart just recomputes `X` and the gaps and
+refills. There is no one-shot "backfill then stop" phase — the healer keeps
+`[min..tip)` gap-free, whether the gap is the initial history or a later hole.
 
 ## The store: `blocks_raw`
 
@@ -125,11 +131,13 @@ blocks_raw (height BIGINT PRIMARY KEY, payload BYTEA NOT NULL)
 ```
 
 - **`put(h, data)` is idempotent** (`INSERT … ON CONFLICT (height) DO
-  NOTHING`). Two writers may race at a boundary; the upsert makes overlap
-  harmless.
+  NOTHING`). The coordinator is the single writer, so the upsert is belt-and-
+  suspenders — it absorbs a re-fetched block on restart or a boundary overlap.
 - **`get(h)`** is a PK point query (sub-ms), used by projections in catch-up.
 - **`max_contiguous()`** returns the highest `H` such that `[min..H]` are all
   present — seeds the frontier at boot.
+- **`max_height()`** returns the highest stored height — bounds the in-memory
+  island scan at boot.
 - **`gaps(from, to)`** returns the maximal missing ranges in `[from, to)` via
   a window-function query (`LEAD`/`LAG` over `height`). This is where the
   "what's missing" intelligence lives — *not* in the fetcher.
@@ -144,8 +152,11 @@ Reuses the sentinel's `block` notification stream — the same GraphQL
 subscription `LocalBlockSource` speaks, pointed at a remote sentinel rather
 than an in-process `dango-httpd`. Open it, take the first delivered height as
 `L`, then for each notified height **fetch the full `BlockData` via the same
-sentinel RPC the fetcher uses** (`query_block` + `query_block_outcome`), write
-it to the store, and signal the coordinator.
+sentinel RPC the fetcher uses** (`query_block` + `query_block_outcome`) and
+yield it. It is a pure producer: `drain_live` forwards the yielded blocks to the
+coordinator (the single store writer) and tracks the tip; reconnection lives in
+`drain_live`, so the concrete subscriber only needs to open one subscription and
+yield.
 
 This is the key V1→V2 shift on the subscriber side: the notification carries
 only the height (not the payload), and there is **no local disk to read the
@@ -153,13 +164,14 @@ payload from** as in V1 — so the subscriber fetches over RPC. The chain
 produces blocks in order and the subscription delivers them in order, so
 `[L..∞)` from the subscriber is contiguous.
 
-Crucially the subscriber **writes immediately**, from `L` onward, *during*
-the backfill. This is what bounds the fetcher (fixes its target at `L-1`) and
-lets it die. If the subscriber did not write during backfill, by the time the
-fetcher reached `L` the tip would have moved and the fetcher would chase it
-forever.
+Crucially the live tail is **stored immediately**, from `L` onward, *during*
+the backfill (the coordinator persists each yielded block). This is what bounds
+the fetcher (fixes its target at `L-1`) and lets it die: if the live tail were
+not stored during backfill, by the time the fetcher reached `L` the tip would
+have moved and the fetcher would chase it forever.
 
-What the subscriber does **not** do: it never broadcasts. See
+What the subscriber does **not** do: it never writes the store or broadcasts —
+both are the coordinator's job. See
 [Write vs. broadcast](#write-vs-broadcast-the-key-distinction).
 
 ## The block fetcher
@@ -228,38 +240,49 @@ everything but `block.info`, because points only needs the header. We keep the
 
 ## The coordinator: frontier + broadcast
 
-Both writers funnel block-written signals to a **single serialized point**
-(a mutex-guarded routine or a dedicated task) that owns `frontier` and the
-broadcast sender. It is the only thing that mutates the frontier or sends on
-the broadcast, which is what makes the `BlockSource` invariants hold trivially.
+The coordinator is a single task draining a bounded channel fed by both writers
+(the subscriber via `drain_live`, the healer via its fetcher). It is the only
+thing that mutates `frontier` or sends on the broadcast. Per block it classifies
+against the frontier:
 
-On each signal it advances the contiguous prefix: while `store` contains
-`frontier + 1`, bump `frontier` and broadcast that block. In the common case
-the block was just written and is in hand (no read-back); the store is read
-only to **cross islands** left by a previous run (e.g. jumping `199 → 210`
-over a pre-existing `200..210`).
+- **edge** (`height == frontier + 1`) — extends the prefix: **broadcast →
+  persist → advance**, then cross any contiguous islands;
+- **island** (`height > frontier + 1`) — not contiguous yet: persist it and
+  remember its height in an in-memory coalesced range set (`Islands`);
+- **duplicate** (`height ≤ frontier`) — persist (idempotent) and ignore.
 
 ```rust
 // RemoteBlockSource::run, in spirit
-let x = self.store.max_contiguous().await?;          // resume from own store
+let x = self.store.max_contiguous(min).await?;        // resume from own store
 self.frontier.store(x, Ordering::Release);
-let l = self.subscriber.start().await?;              // tip; subscriber writes [l..)
-for (from, to) in self.store.gaps(min, l).await? {   // ascending, lowest-first
-    let mut s = self.fetcher.spawn(from, to);
-    while let Some(data) = s.recv().await {
-        self.ingest(data).await?;                    // put → advance frontier → broadcast
-    }
-}
-// fetchers done; only the subscriber feeds `ingest` from here on.
+let (tx, rx) = mpsc::channel(coordinator_buffer);
+let coordinator = spawn(self.run_coordinator(rx));    // the serialized point, below
+let drain       = spawn(self.drain_live(tx.clone())); // subscription + reconnect loop
+let healer      = spawn(self.run_healer(tx));         // continuous gap-filling
+select_all([coordinator, drain, healer]).await;       // first to return tears down the rest
 
-// ingest is the serialized point:
-async fn ingest(&self, data: BlockData) -> AnyResult<()> {
-    let h = data.height();
-    self.store.put(h, &data).await?;                 // 1. persist (durable)
-    // advance the contiguous prefix, broadcasting each newly-contiguous block
-    self.advance_and_broadcast().await               // 2. frontier  3. broadcast
+// run_coordinator, on an edge block (height == frontier + 1):
+self.broadcast_tx.send(block.clone()).ok();           // 1. live projections, no store wait
+self.store.put(h, &block).await?;                     // 2. persist (durable)
+self.frontier.store(h, Ordering::Release);            // 3. advance — stays behind the store
+while let Some(end) = islands.take_starting_at(frontier + 1) {  // cross islands in one step
+    self.broadcast_tx.send(store.get(end)?).ok();     // bulk-advance: broadcast only the top
+    self.frontier.store(end, Ordering::Release);
 }
 ```
+
+**Broadcast before persist (D1).** The broadcast goes out first, so live
+projections index without waiting on the `blocks_raw` write; the frontier
+advances *after* the block is durable, so `h ≤ frontier ⟹ get(h) = Some` still
+holds (in the window between, the frontier is still `h-1`). A crash in that
+window self-heals: the un-stored height is re-fetched as a gap on restart.
+
+**Islands in memory, bulk-advance.** Islands are coalesced ranges held in
+memory (seeded at boot from `store.gaps`), so an edge advances with **no store
+probe**. Crossing a large island — a restart backlog, or the live tail
+accumulated during backfill — jumps the frontier to its top and broadcasts only
+that top, so the pubsub is not flooded; projections pull the skipped heights via
+Phase-1 `get()`.
 
 ### Write vs. broadcast (the key distinction)
 
@@ -268,11 +291,11 @@ These are two different events and conflating them is the easy mistake:
 - **Write to the store** happens immediately, by whichever writer produced
   the block. The subscriber writes `[L..∞)` even while the frontier is far
   below `L`.
-- **Broadcast** happens only when the **frontier reaches** that block —
-  because the broadcast must be strictly `+1` contiguous. A block `h` is
-  physically un-broadcastable until `[min..h]` are all stored. The subscriber
-  therefore *cannot* broadcast directly: it would emit `250` while the
-  frontier is `50`, breaking the invariant and the projection loop.
+- **Broadcast** happens only when the **frontier reaches** that block — the
+  broadcast tracks the contiguous prefix. A block `h` is un-broadcastable until
+  `[min..h]` are all stored. The subscriber therefore *cannot* broadcast
+  directly: it would emit `250` while the frontier is `50`, breaking the
+  projection loop.
 
 Consequences:
 
@@ -284,16 +307,18 @@ Consequences:
   reaches the (still-climbing) frontier, `get()` returns `None`, it subscribes
   lazily, and consumes the broadcast at the rate the fetcher fills. It waits
   for the frontier to reach *it*, not for the whole backfill to finish.
-- The instant the last gap closes, the frontier rips through the live blocks
-  the subscriber had been accumulating in the store (a short catch-up burst),
-  then settles into steady state.
+- The instant the last gap closes, the frontier crosses the live-tail island
+  the subscriber accumulated in the store in **one bulk step** — broadcasting
+  only its top — and projections pull the rest via Phase-1 `get()`. Then it
+  settles into steady state.
 - In **steady state** every new subscriber block already *is* `frontier + 1`,
   so it is broadcast immediately — full push latency.
 
 ## Gap handling
 
-After a restart the store holds disjoint islands, so the backfill is a
-**multi-gap** problem, not a single range. Worked example:
+The store can hold disjoint islands (a restart, or a later reconnect hole), so
+gap-filling is a **multi-gap** problem the healer recomputes each pass, not a
+one-shot single range. Worked example:
 
 ```
 store on restart : {1..50, 200..210}
@@ -309,10 +334,12 @@ gaps(min, 250)   : [(51,199), (211,249)]
   projection could advance**. Ascending → the frontier climbs immediately and
   projections drain progressively. This is a liveness requirement, not a
   preference.
-- **Clean cut.** The subscriber owns `[L..∞)`, the fetcher owns `[min..L-1]`,
-  where `L` is the first height the subscription delivers. Using `L` as the
-  gap query's upper bound is what captures the **downtime hole** (`211..249`)
-  — blocks the subscriber will *not* backfill because it starts at the tip.
+- **Tip as the upper bound.** The healer fills `gaps(frontier + 1, tip)`, where
+  `tip` is the highest height the subscriber has delivered. Using the tip
+  captures the **downtime hole** (`211..249`) — blocks the subscriber will not
+  backfill because it resumes at the tip. The healer recomputes the gaps every
+  pass, so a hole that appears later (a reconnect, a dropped block) is filled
+  the same way.
 
 Rejected alternative: a single-range backfill from `max_contiguous` (`51..249`)
 relying on the idempotent upsert to absorb the island. It works, but if the
@@ -332,17 +359,21 @@ and how this impl guarantees each:
 | broadcast strictly ascending (may skip) | Only the coordinator broadcasts. Normally `+1`; crossing an island it jumps the frontier to the top and broadcasts only that, which the projection loop handles via Phase-1 pull. |
 | `get(h) = None` is "not yet" | A height inside an unfilled gap returns `None`; the source never GCs a height a projection might still reach (no GC in this version at all). |
 
-The fixed ordering inside `ingest` — **store commit → frontier → broadcast** —
-is what ties the first three together. Reversing it (broadcast before the
-store commit) would let a projection `get()` a height that isn't durable yet.
+The ordering inside the coordinator — **broadcast → store commit → frontier**
+(D1) — ties the first three together. The frontier advances last, only after
+the block is durable, so it never claims a height `get()` cannot serve; the
+broadcast running ahead of it is safe because no consumer validates a broadcast
+block against `contiguous_frontier()` — the projection loop consumes it directly
+and falls back to a `get()` pull on a forward jump.
 
 ## Failure modes
 
 | Failure | Behavior |
 |---|---|
-| Subscriber connection drops | Reconnect with backoff; resume from the tip. Any blocks missed during the outage become a gap below the new `L` on the next gap recomputation, filled by a fetcher. Frontier stalls at the contiguous prefix meanwhile. |
+| Subscriber connection drops | `drain_live` reconnects with backoff and resumes at the new tip. Blocks missed during the outage become a gap below the new tip; the healer detects it and fills it through a fetcher. Frontier stalls at the contiguous prefix meanwhile. |
+| Subscriber drops a block mid-stream | A discontinuity in the delivered heights signals the healer, which fills the hole from the sentinel RPC (the block exists; only the live *notification* was lost). A periodic re-check is the backstop. |
 | Sentinel down (no node reachable) | Both subscriber and fetcher retry. Frontier stalls; projections keep serving up to the old frontier. No data loss — the store is durable. |
-| Fetcher RPC error / 404 mid-gap | Adaptive loop drops to single-block, sleeps, retries (bots pattern). A 404 inside a gap means "not yet on the sentinel" — retry, don't treat as absent. |
+| Fetcher RPC error / 404 mid-gap | The fetch task backs off and retries from the failed height (fixed-size batches, no adaptive ramp). A 404 inside a gap means "not yet on the sentinel" — retry, don't treat as absent. A *permanently*-unservable block would retry forever — tracked as a future observability item (known-issues #5). |
 | Crash mid-backfill | Restart recomputes `X` and the gaps from the store; refills. Idempotent `put` makes any partially-written block harmless. |
 | Crash between store `put` and frontier advance | On restart the block is in the store, `max_contiguous` picks it up, frontier seeds correctly. No hole. |
 | Store `put` / `get` fails (transient PG error) | Coordinator halts, source exits — intentionally fatal. A process restart recovers: idempotent `put` plus the frontier re-seeding from `max_contiguous` mean no hole. In-place retry is deliberately avoided (the store is the durability anchor; halt + supervised restart beats limping on). |
@@ -385,15 +416,21 @@ with an optional `max_block`).
 
 ## Configuration
 
-Source-specific options under a `remote.*` section, as promised by
-[DESIGN.md](../DESIGN.md#configuration) (the top-level `source = remote`,
-`pubsub_buffer_size`, and `postgres.*` live there):
+The tunables exist today as Rust config structs with `Default`s; the CLI/TOML
+wiring that maps a `remote.*` section onto them is not built yet.
 
-| Field | Description |
-|---|---|
-| `remote.sentinel_url` | Base URL of the sentinel — both its `block` subscription (live tail) and its block RPC (`query_block` / `query_block_outcome`, used by the subscriber and the fetcher). |
-| `remote.fetch_batch_size` | Blocks fetched concurrently per backfill batch (clamped to the blocks left in a gap). Bounds load on the sentinel. |
-| `remote.fetch_timeout` | Per-batch RPC timeout before the batch is retried. |
+`RemoteBlockSourceConfig` — `pubsub_buffer_size` (broadcast capacity),
+`coordinator_buffer` (the coordinator's input channel), `heal_poll_interval`
+(the healer's periodic re-check), `reorder_grace` (delay after a discontinuity
+signal, to absorb an out-of-order delivery before fetching), `reconnect_backoff`
+(between live re-subscribes).
+
+`SentinelFetcherConfig` — `batch_size` (heights fetched concurrently per gap
+batch), `timeout` (per-batch RPC timeout), `channel_capacity` (fetch-ahead
+backlog — the dominant backfill-RAM knob), `retry_backoff`.
+
+Still needed: `sentinel_url` (the sentinel's `block` subscription + its block
+RPC), which lands with the concrete `LiveSubscriber` and its client.
 
 The raw-block store (`blocks_raw`) lives in the **same indexer-owned Postgres**
 as `projection_cursors` and the PG projections (`postgres.*`). The source
