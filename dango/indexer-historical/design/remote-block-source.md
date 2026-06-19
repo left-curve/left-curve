@@ -9,7 +9,9 @@ off disk) does not apply.
 > See [DESIGN.md](../DESIGN.md) for the shared contract (`BlockSource`,
 > `Projection`, app loop) and [local-block-source.md](./local-block-source.md)
 > for the co-located V1 strategy. This document covers only the
-> `RemoteBlockSource` concretions.
+> `RemoteBlockSource` concretions. Known gaps and review findings for the
+> current in-progress implementation are tracked in
+> [remote-block-source-known-issues.md](./remote-block-source-known-issues.md).
 
 ## Scope: what we build now vs. the end goal
 

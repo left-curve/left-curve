@@ -14,7 +14,7 @@ mod live_subscriber;
 
 pub use {
     block_fetcher::{BlockFetcher, FetchStream, SentinelBlockFetcher, SentinelFetcherConfig},
-    block_source::{BlockSource, LocalBlockSource, RemoteBlockSource},
+    block_source::{BlockSource, LocalBlockSource, RemoteBlockSource, RemoteBlockSourceConfig},
     block_store::{BlockStore, MemoryBlockStore},
     live_subscriber::LiveSubscriber,
 };

@@ -8,7 +8,10 @@ use {
 mod local;
 mod remote;
 
-pub use {local::LocalBlockSource, remote::RemoteBlockSource};
+pub use {
+    local::LocalBlockSource,
+    remote::{RemoteBlockSource, RemoteBlockSourceConfig},
+};
 
 /// Abstract source of blocks for the historical indexer.
 ///

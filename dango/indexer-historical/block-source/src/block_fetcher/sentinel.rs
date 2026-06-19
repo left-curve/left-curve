@@ -7,17 +7,8 @@ use {
     tokio::{sync::mpsc, time::sleep},
 };
 
-/// Upper bound on blocks fetched-ahead but not yet consumed. The fetcher can
-/// be far faster than the store writer during a backfill; a bounded channel
-/// makes a full buffer block the fetcher (backpressure) instead of letting it
-/// race hundreds of thousands of blocks ahead and balloon RAM. No throughput
-/// cost — the consumer is the bottleneck and the fetcher only needs a lead.
-const FETCH_CHANNEL_CAPACITY: usize = 10_000;
-
-/// Backoff after a failed or timed-out batch before retrying.
-const RETRY_BACKOFF: Duration = Duration::from_millis(500);
-
-/// Tuning for [`SentinelBlockFetcher`].
+/// Tuning for [`SentinelBlockFetcher`]. All fields default to the previously
+/// hardcoded values.
 #[derive(Debug, Clone)]
 pub struct SentinelFetcherConfig {
     /// Blocks fetched concurrently per batch, clamped to the blocks left in the
@@ -25,6 +16,15 @@ pub struct SentinelFetcherConfig {
     pub batch_size: u64,
     /// Per-batch timeout before retrying.
     pub timeout: Duration,
+    /// Upper bound on blocks fetched-ahead but not yet consumed. The fetcher
+    /// can be far faster than the store writer during a backfill; a bounded
+    /// channel makes a full buffer block the fetcher (backpressure) instead of
+    /// letting it race hundreds of thousands of blocks ahead and balloon RAM.
+    /// No throughput cost — the consumer is the bottleneck and the fetcher only
+    /// needs a lead, so this is the main backfill-RAM knob.
+    pub channel_capacity: usize,
+    /// Backoff after a failed or timed-out batch before retrying.
+    pub retry_backoff: Duration,
 }
 
 impl Default for SentinelFetcherConfig {
@@ -32,6 +32,8 @@ impl Default for SentinelFetcherConfig {
         Self {
             batch_size: 50,
             timeout: Duration::from_secs(30),
+            channel_capacity: 10_000,
+            retry_backoff: Duration::from_millis(500),
         }
     }
 }
@@ -67,7 +69,7 @@ where
     C::Error: Into<anyhow::Error> + Send,
 {
     fn spawn(&self, from: u64, to: u64) -> FetchStream {
-        let (tx, rx) = mpsc::channel(FETCH_CHANNEL_CAPACITY);
+        let (tx, rx) = mpsc::channel(self.config.channel_capacity);
         let handle = tokio::spawn(fetch_range(
             from,
             to,
@@ -120,7 +122,7 @@ async fn fetch_range<C>(
         let Ok(results) = tokio::time::timeout(config.timeout, join_all(tasks)).await else {
             #[cfg(feature = "tracing")]
             tracing::warn!(height, "sentinel block query timed out, retrying");
-            sleep(RETRY_BACKOFF).await;
+            sleep(config.retry_backoff).await;
             continue;
         };
 
@@ -140,7 +142,7 @@ async fn fetch_range<C>(
                 Err(_error) => {
                     #[cfg(feature = "tracing")]
                     tracing::warn!(error = %_error, height, "sentinel block query failed, retrying");
-                    sleep(RETRY_BACKOFF).await;
+                    sleep(config.retry_backoff).await;
                     break;
                 },
             }
