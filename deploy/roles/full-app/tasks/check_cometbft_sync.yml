@@ -55,8 +55,12 @@
     return_content: yes
     status_code: 200
   register: dango_up
-  retries: 6
-  delay: 5
+  # Configurable so a release can widen the window when the node needs a long
+  # time to report healthy — e.g. the one-time CometBFT block-pruning sweep on
+  # the first deploy of the pruning feature freezes block production for a long
+  # while. Defaults preserve the original 6 x 5s = 30s behaviour.
+  retries: "{{ is_running_retries | default(6) | int }}"
+  delay: "{{ is_running_delay | default(5) | int }}"
   until: (dango_up.json.is_running | default(false)) | bool
 
 - name: Show health snapshot
