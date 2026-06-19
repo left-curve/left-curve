@@ -74,8 +74,8 @@ Concrete `BlockSource` implementations are documented separately:
 
 - [`LocalBlockSource` (V1)](./design/local-block-source.md) — co-located
   with the dango node.
-- [`RemoteBlockSource` (V2, placeholder)](./design/remote-block-source.md)
-  — detached deployment, owns its own raw store.
+- [`RemoteBlockSource` (V2)](./design/remote-block-source.md)
+  — detached deployment (no co-located node), owns its own raw store.
 
 ## Wire payload
 
@@ -158,9 +158,10 @@ Concrete implementations:
   the in-process `dango-httpd` GraphQL `block` subscription for live
   notifications, reads payloads from the node's existing cache files on
   disk. No storage of its own.
-- [`RemoteBlockSource`](./design/remote-block-source.md) — V2 placeholder.
-  Owns a Postgres `blocks_raw` table; internally composes a fetcher
-  (httpd / B2 / layered) and a live subscriber.
+- [`RemoteBlockSource`](./design/remote-block-source.md) — V2. Runs on a
+  node-less host. Owns a Postgres `blocks_raw` store; internally composes a
+  bounded backfill fetcher (sentinel now, B2-layered later), a live
+  subscriber, and a coordinator that serializes the frontier + broadcast.
 
 ### `Projection`
 
@@ -572,7 +573,7 @@ between them.
 | Setup | Source impl | Notes |
 |---|---|---|
 | **V1** — Co-located | [`LocalBlockSource`](./design/local-block-source.md) | Reuses the dango node's GraphQL `block` subscription + cache files on disk. No new storage. |
-| **V2** — Detached | [`RemoteBlockSource`](./design/remote-block-source.md) | Owns its own Postgres `blocks_raw` store. Internally composes a fetcher (httpd / B2) and a live subscriber. **Not in V1.** |
+| **V2** — Detached | [`RemoteBlockSource`](./design/remote-block-source.md) | No co-located node. Owns its own Postgres `blocks_raw` store; composes a bounded backfill fetcher (sentinel now, B2-layered later), a live subscriber, and a frontier/broadcast coordinator. |
 
 Switching from V1 to V2 is a config change and (for V2) a fresh DB. The
 projections themselves are unchanged.
@@ -585,7 +586,7 @@ Surfaced through the CLI's config file (+ env overrides):
 |---|---|---|
 | `source` | `local` | Which `BlockSource` impl to instantiate. |
 | `pubsub_buffer_size` | 10_000 | Broadcast channel capacity. At 2 bps, ~83 min of buffer before a slow projection is `Lagged`. |
-| `postgres.*` | — | Connection of the indexer-owned PG (cursors + PG projections). Lands with the CLI config wiring. |
+| `postgres.*` | — | Connection of the indexer-owned PG (cursors + PG projections; also the `remote` source's `blocks_raw` store). Lands with the CLI config wiring. |
 | `clickhouse.*` | — | CH connection for CH-backed projections. Optional; lands with the CLI config wiring. |
 
 Source-specific options (`local.*`, `remote.*`) live in nested sections

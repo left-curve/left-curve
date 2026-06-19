@@ -25,6 +25,7 @@ dango-graphql-ws-client        = { workspace = true }
 dango-indexer-cache            = { workspace = true }
 dango-indexer-graphql-types    = { workspace = true }
 dango-indexer-historical-types = { workspace = true }
+dango-primitives                = { workspace = true }
 metrics                  = { workspace = true, optional = true }
 reqwest                  = { workspace = true }
 tokio                    = { workspace = true }

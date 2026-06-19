@@ -4075,6 +4075,7 @@ dependencies = [
  "dango-indexer-cache",
  "dango-indexer-graphql-types",
  "dango-indexer-historical-types",
+ "dango-primitives",
  "futures",
  "metrics",
  "reqwest 0.13.2",

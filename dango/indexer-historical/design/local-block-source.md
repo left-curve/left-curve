@@ -46,8 +46,11 @@ Why GraphQL subscription over polling or inotify:
 - **"Live from tip"** semantics come for free — the subscription naturally
   starts at the chain head and moves forward.
 - **No file enumeration** to discover what appeared.
-- **Forward-compatible** with V2: same subscriber code can connect to a
-  remote `dango-httpd` later, only the URL changes.
+- **Forward-compatible** with V2: the same `block` subscription transfers to
+  a remote sentinel (only the URL changes). What differs there is downstream —
+  V2 fetches the payload over RPC instead of from disk, and a coordinator (not
+  the subscriber) owns the frontier and broadcast. See
+  [remote-block-source.md](./remote-block-source.md).
 
 Notification-only: the subscription doesn't carry the full `Block + BlockOutcome`
 payload. The source still needs to read from disk to assemble `BlockData`.
