@@ -20,6 +20,17 @@ record two latencies per action, both anchored at that same start:
 
 So ``confirm >= mempool`` always, since both share the same start anchor.
 
+Each cycle also prints the precise **broadcast wall-clock timestamp** (UTC, to
+the millisecond) for both the place and the cancel, plus the block height each
+tx landed in. Cross-reference the timestamps against CometBFT logs to confirm a
+tx that entered the mempool between blocks N and N+1 is included in N+1 (and not
+N+2, N+3, ...). The place->cancel block gap printed each cycle is a
+clock-skew-immune version of that same check: the cancel is broadcast the
+instant the place's ``order_persisted`` arrives — i.e. right after the place's
+block committed — so its gap directly answers "does a tx broadcast just after a
+commit make the very next block?". All samples are also written to a CSV (see
+``SAMPLE_CSV_PATH``) for offline cross-referencing.
+
 Uses the native Dango API (not the Hyperliquid-compat shim) and the same
 ``example_utils.setup`` procedure as the other native mutation examples: it reads
 ``examples/.env`` for ``DANGO_SECRET_KEY`` / ``DANGO_ACCOUNT_ADDRESS`` and refuses
@@ -33,13 +44,16 @@ Run with::
 
 from __future__ import annotations
 
+import csv
 import math
 import statistics
 import threading
 import time
 from collections.abc import Callable
+from datetime import UTC, datetime
 from decimal import Decimal
-from typing import TYPE_CHECKING, Any, cast
+from pathlib import Path
+from typing import TYPE_CHECKING, Any, NamedTuple, cast
 
 import example_utils
 
@@ -60,7 +74,14 @@ if TYPE_CHECKING:
 # Target network. Testnet by default. To measure mainnet latency instead, import
 # `MAINNET_API_URL` / `PERPS_CONTRACT_MAINNET` from `dango.utils.constants` and
 # swap them in here (and make sure the account is funded on mainnet).
-API_URL = TESTNET_API_URL
+#
+# For this measurement we hit the INTERNAL url that connects directly to the
+# server, bypassing the Cloudflare load balancer / proxy, so the figures reflect
+# the node rather than the edge. Set `USE_INTERNAL_URL = False` to measure the
+# public `TESTNET_API_URL` endpoint instead.
+USE_INTERNAL_URL = True
+INTERNAL_API_URL = "https://api-testnet-internal-hetzner4.dango.zone/"
+API_URL = INTERNAL_API_URL if USE_INTERNAL_URL else TESTNET_API_URL
 PERPS_CONTRACT = PERPS_CONTRACT_TESTNET
 
 # Market and order. A BUY (positive, signed size) resting 1% BELOW the index
@@ -93,6 +114,12 @@ _METRICS = ("place_mempool", "place_confirm", "cancel_mempool", "cancel_confirm"
 # Set to False to silence the step-by-step diagnostic logging.
 VERBOSE = True
 
+# Per-action CSV dump for offline cross-referencing against CometBFT logs. Each
+# row carries the broadcast wall-clock timestamp, the measured latencies, and
+# the block the tx landed in. Set to None to disable. Written relative to the
+# CWD (i.e. `sdk/python/` when run as documented).
+SAMPLE_CSV_PATH: str | None = "native_perps_latency_samples.csv"
+
 
 def _diag(message: str) -> None:
     """Print a step-by-step diagnostic line when VERBOSE is on."""
@@ -100,7 +127,70 @@ def _diag(message: str) -> None:
         print(f"[diag] {message}")
 
 
+def _utc_ms(epoch_s: float) -> str:
+    """Format a wall-clock epoch (``time.time()``) as UTC ISO-8601 to the ms.
+
+    This is the format to grep CometBFT logs with. It is the CLIENT's wall
+    clock, so when matching against server-side log lines account for (a) any
+    client<->server clock skew (both should be NTP-synced) and (b) the ~one-way
+    network travel (~ping/2) between this call and the tx reaching the node.
+    """
+
+    dt = datetime.fromtimestamp(epoch_s, tz=UTC)
+    return f"{dt:%Y-%m-%dT%H:%M:%S}.{dt.microsecond // 1000:03d}Z"
+
+
+def _as_int(value: object) -> int | None:
+    """Coerce a wire value (str or number) to int, or None if not parseable.
+
+    ``blockHeight`` may arrive as a JSON string or a JSON number; normalise it to
+    an int so we can compute the place->cancel block gap. ``bool`` is excluded so
+    a stray ``True``/``False`` isn't silently read as 1/0.
+    """
+
+    if isinstance(value, int) and not isinstance(value, bool):
+        return value
+
+    if isinstance(value, str):
+        try:
+            return int(value)
+        except ValueError:
+            return None
+
+    return None
+
+
+def _gap_note(place_block: int | None, cancel_block: int | None) -> str:
+    """Annotate how many blocks after the place's block the cancel landed.
+
+    The cancel is broadcast the instant the place's ``order_persisted`` arrives —
+    i.e. right after the place's block committed — so this gap answers exactly
+    "does a tx broadcast just after a commit make the very next block?". +1 means
+    yes; +2 or more means it missed the immediately-following block and slipped.
+    """
+
+    if place_block is None or cancel_block is None:
+        return "[block gap unknown]"
+
+    return f"[cancel landed +{cancel_block - place_block} block(s) after place]"
+
+
 # --- Event correlation -------------------------------------------------------
+
+
+class _Match(NamedTuple):
+    """The result of awaiting a lifecycle event: when it arrived and where.
+
+    ``arrived_at`` is a ``perf_counter`` reading (for latency math);
+    ``arrived_wall`` is the wall clock at arrival (for log matching);
+    ``block_height`` / ``block_created_at`` identify the block the event was
+    emitted in, so the caller can see exactly which block included the tx.
+    """
+
+    arrived_at: float
+    arrived_wall: float
+    block_height: int | None
+    block_created_at: str | None
 
 
 class _EventAwaiter:
@@ -111,7 +201,8 @@ class _EventAwaiter:
     ``(event_type, client_order_id)`` it expects, then blocks in ``wait()``. When
     a matching event arrives, the callback timestamps it with ``perf_counter()``
     — capturing arrival as early as possible, before any main-thread scheduling
-    jitter — and wakes ``wait()``.
+    jitter — and wakes ``wait()``, which returns a ``_Match`` carrying both
+    arrival timestamps and the block the event was emitted in.
     """
 
     def __init__(self) -> None:
@@ -120,6 +211,9 @@ class _EventAwaiter:
         self._want_type: str | None = None
         self._want_coid: str | None = None
         self._arrived_at: float | None = None
+        self._arrived_wall: float | None = None
+        self._block_height: int | None = None
+        self._block_created_at: str | None = None
         # How many events we've observed since the last `arm()` — surfaced on a
         # timeout so we can tell "stream silent" from "stream busy, no match".
         self._observed = 0
@@ -131,15 +225,27 @@ class _EventAwaiter:
             self._want_type = event_type
             self._want_coid = str(client_order_id)
             self._arrived_at = None
+            self._arrived_wall = None
+            self._block_height = None
+            self._block_created_at = None
             self._observed = 0
             self._signal.clear()
 
-    def on_event(self, event_type: str, client_order_id: object, at: float) -> None:
+    def on_event(
+        self,
+        event_type: str,
+        client_order_id: object,
+        at: float,
+        wall: float,
+        block_height: int | None,
+        block_created_at: str | None,
+    ) -> None:
         """Feed one observed event in from the WS thread; record the first match.
 
         ``client_order_id`` is taken as ``object`` and stringified before the
         compare: the wire may deliver a Uint64 as either a JSON string or a JSON
-        number, and we armed with the string form.
+        number, and we armed with the string form. On a match we also stash the
+        wall-clock arrival and the block the event came in, for ``_Match``.
         """
 
         coid = None if client_order_id is None else str(client_order_id)
@@ -155,13 +261,16 @@ class _EventAwaiter:
 
             if matched:
                 self._arrived_at = at
+                self._arrived_wall = wall
+                self._block_height = block_height
+                self._block_created_at = block_created_at
                 self._signal.set()
 
         if matched:
-            _diag(f"  >>> matched {event_type} client_order_id={coid}")
+            _diag(f"  >>> matched {event_type} client_order_id={coid} block={block_height}")
 
-    def wait(self, timeout: float) -> float:
-        """Block until the armed event arrives; return its arrival perf_counter."""
+    def wait(self, timeout: float) -> _Match:
+        """Block until the armed event arrives; return its arrival info."""
 
         if not self._signal.wait(timeout):
             with self._lock:
@@ -178,18 +287,26 @@ class _EventAwaiter:
             )
 
         with self._lock:
-            # `_signal` is only ever set together with `_arrived_at`, so this is
-            # non-None here; assert for the type-checker's benefit.
+            # `_signal` is only ever set together with `_arrived_at`, so these
+            # are non-None here; assert for the type-checker's benefit.
             assert self._arrived_at is not None
-            return self._arrived_at
+            assert self._arrived_wall is not None
+            return _Match(
+                self._arrived_at,
+                self._arrived_wall,
+                self._block_height,
+                self._block_created_at,
+            )
 
 
 def _make_callback(awaiter: _EventAwaiter) -> Callable[[PerpsEvent2Batch], None]:
     """Build the perps_events2 callback that feeds events into ``awaiter``."""
 
     def _callback(batch: PerpsEvent2Batch) -> None:
-        # Stamp arrival immediately, before doing any other work.
+        # Stamp arrival immediately, before doing any other work: a monotonic
+        # reading for latency math, a wall-clock reading for log correlation.
         at = time.perf_counter()
+        wall = time.time()
 
         # Access the payload as a plain dict: it may be a server error envelope
         # (`{"_error": ...}`, see `dango.info._unwrap_node`) or a keepalive,
@@ -201,10 +318,12 @@ def _make_callback(awaiter: _EventAwaiter) -> Callable[[PerpsEvent2Batch], None]
             return
 
         events = raw.get("events") or []
+        block_height = _as_int(raw.get("blockHeight"))
+        block_created_at = raw.get("createdAt")
 
         _diag(
             f"[ws] batch block={raw.get('blockHeight')} "
-            f"createdAt={raw.get('createdAt')} events={len(events)}"
+            f"createdAt={block_created_at} events={len(events)}"
         )
 
         for event in events:
@@ -217,7 +336,14 @@ def _make_callback(awaiter: _EventAwaiter) -> Callable[[PerpsEvent2Batch], None]
                 f"client_order_id={event.get('clientOrderId')!r}"
             )
 
-            awaiter.on_event(event.get("eventType", ""), event.get("clientOrderId"), at)
+            awaiter.on_event(
+                event.get("eventType", ""),
+                event.get("clientOrderId"),
+                at,
+                wall,
+                block_height,
+                block_created_at,
+            )
 
     return _callback
 
@@ -345,6 +471,31 @@ def _print_summary(samples: dict[str, list[float]]) -> None:
         )
 
 
+def _write_samples_csv(path: str, rows: list[dict[str, object]]) -> None:
+    """Write the per-action samples to ``path`` as CSV for offline analysis."""
+
+    if not rows:
+        return
+
+    fieldnames = [
+        "cycle",
+        "action",
+        "broadcast_utc",
+        "mempool_ms",
+        "confirm_ms",
+        "landed_block",
+        "block_created_at",
+        "event_recv_utc",
+    ]
+
+    with open(path, "w", newline="") as f:
+        writer = csv.DictWriter(f, fieldnames=fieldnames)
+        writer.writeheader()
+        writer.writerows(rows)
+
+    print(f"wrote {len(rows)} samples to {Path(path).resolve()}")
+
+
 # --- Main --------------------------------------------------------------------
 
 
@@ -388,6 +539,11 @@ def main() -> None:
 
     samples: dict[str, list[float]] = {name: [] for name in _METRICS}
 
+    # Per-action rows for the CSV dump (one place + one cancel per cycle), so the
+    # broadcast timestamps and landed-block heights can be cross-referenced
+    # against CometBFT logs offline.
+    rows: list[dict[str, object]] = []
+
     # Per-run client_order_id base (ms since epoch); each cycle adds its index.
     coid_base = int(time.time() * 1000)
 
@@ -413,6 +569,10 @@ def main() -> None:
             _diag(f"cycle {i + 1}: arm order_persisted; broadcasting submit_limit_order...")
 
             awaiter.arm("order_persisted", coid)
+            # Wall clock first, then the monotonic anchor, captured back-to-back
+            # (sub-microsecond apart). `place_wall` is the timestamp to grep
+            # CometBFT logs with; `place_start` drives the latency math.
+            place_wall = time.time()
             place_start = time.perf_counter()
             place_outcome = exchange.submit_limit_order(
                 PAIR_ID,
@@ -432,13 +592,18 @@ def main() -> None:
             pending_coid = coid  # accepted; may now be resting
             _diag(f"cycle {i + 1}: waiting up to {EVENT_TIMEOUT_S:.0f}s for order_persisted...")
 
-            place_confirm = awaiter.wait(EVENT_TIMEOUT_S)
-            _diag(f"cycle {i + 1}: order_persisted received")
+            place_match = awaiter.wait(EVENT_TIMEOUT_S)
+            place_confirm = place_match.arrived_at
+            _diag(f"cycle {i + 1}: order_persisted received in block {place_match.block_height}")
 
             # --- Cancel: time broadcast return, then order_removed arrival ----
             _diag(f"cycle {i + 1}: arm order_removed; broadcasting cancel_order...")
 
             awaiter.arm("order_removed", coid)
+            # Broadcast immediately on receiving order_persisted (no pause/query),
+            # so the cancel is phase-locked to just after the place's block
+            # committed — `cancel_wall` captures that instant for the logs.
+            cancel_wall = time.time()
             cancel_start = time.perf_counter()
             cancel_outcome = exchange.cancel_order(
                 ClientOrderIdRef(value=coid),
@@ -453,9 +618,10 @@ def main() -> None:
             _check_tx(cancel_outcome, "cancel_order")
             _diag(f"cycle {i + 1}: waiting up to {EVENT_TIMEOUT_S:.0f}s for order_removed...")
 
-            cancel_confirm = awaiter.wait(EVENT_TIMEOUT_S)
+            cancel_match = awaiter.wait(EVENT_TIMEOUT_S)
+            cancel_confirm = cancel_match.arrived_at
             pending_coid = None  # confirmed removed
-            _diag(f"cycle {i + 1}: order_removed received")
+            _diag(f"cycle {i + 1}: order_removed received in block {cancel_match.block_height}")
 
             pm = (place_mempool - place_start) * 1000
             pc = (place_confirm - place_start) * 1000
@@ -471,6 +637,42 @@ def main() -> None:
                 f"place[mempool={pm:7.1f} confirm={pc:8.1f}]  "
                 f"cancel[mempool={cm:7.1f} confirm={cc:8.1f}]  (ms)"
             )
+
+            # Precise broadcast timestamps (client wall clock, UTC, ms) and the
+            # block each tx landed in — for cross-referencing against CometBFT
+            # logs. The trailing note is the place->cancel block gap.
+            place_block = place_match.block_height
+            cancel_block = cancel_match.block_height
+            print(
+                f"           place  broadcast={_utc_ms(place_wall)}  "
+                f"-> block {place_block} @ {place_match.block_created_at}"
+            )
+            print(
+                f"           cancel broadcast={_utc_ms(cancel_wall)}  "
+                f"-> block {cancel_block} @ {cancel_match.block_created_at}  "
+                f"{_gap_note(place_block, cancel_block)}"
+            )
+
+            rows.append({
+                "cycle": i + 1,
+                "action": "place",
+                "broadcast_utc": _utc_ms(place_wall),
+                "mempool_ms": f"{pm:.1f}",
+                "confirm_ms": f"{pc:.1f}",
+                "landed_block": place_block,
+                "block_created_at": place_match.block_created_at,
+                "event_recv_utc": _utc_ms(place_match.arrived_wall),
+            })
+            rows.append({
+                "cycle": i + 1,
+                "action": "cancel",
+                "broadcast_utc": _utc_ms(cancel_wall),
+                "mempool_ms": f"{cm:.1f}",
+                "confirm_ms": f"{cc:.1f}",
+                "landed_block": cancel_block,
+                "block_created_at": cancel_match.block_created_at,
+                "event_recv_utc": _utc_ms(cancel_match.arrived_wall),
+            })
 
             if PAUSE_BETWEEN_S:
                 time.sleep(PAUSE_BETWEEN_S)
@@ -491,6 +693,12 @@ def main() -> None:
         info.disconnect_websocket()
 
     _print_summary(samples)
+
+    if SAMPLE_CSV_PATH:
+        try:
+            _write_samples_csv(SAMPLE_CSV_PATH, rows)
+        except OSError as exc:
+            print(f"failed to write samples CSV to {SAMPLE_CSV_PATH}: {exc}")
 
 
 if __name__ == "__main__":
