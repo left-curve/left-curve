@@ -35,10 +35,22 @@ impl Islands {
     /// frontier reaches its bottom.
     pub(crate) fn take_starting_at(&mut self, height: u64) -> Option<u64> {
         let range = self.0.get(&height)?.clone();
-        if *range.start() != height {
+        let start = *range.start();
+        let end = *range.end();
+
+        // The coordinator only ever queries the frontier + 1, which is an
+        // island's start or a gap — never the middle of an island. A range that
+        // contains `height` without starting at it means that invariant was
+        // violated upstream: panic in debug to surface the bug, safe-stop (no
+        // cross) in release.
+        debug_assert_eq!(
+            start, height,
+            "queried height {height} inside island {start}..={end}, not at its start",
+        );
+        if start != height {
             return None;
         }
-        let end = *range.end();
+
         self.0.remove(range);
         Some(end)
     }
@@ -74,15 +86,26 @@ mod tests {
     }
 
     #[test]
-    fn takes_only_at_a_range_start() {
+    fn take_at_a_gap_is_none() {
         let mut islands = Islands::default();
         islands.insert(5);
         islands.insert(6);
-        // A point inside the range is not its start.
-        assert_eq!(islands.take_starting_at(6), None);
-        // No island there at all.
+        // Nothing starts at 8 (past [5, 6]) — a gap, returned as `None`.
         assert_eq!(islands.take_starting_at(8), None);
+        // The actual start crosses the whole range.
         assert_eq!(islands.take_starting_at(5), Some(6));
+    }
+
+    #[test]
+    #[cfg(debug_assertions)]
+    #[should_panic(expected = "not at its start")]
+    fn take_inside_a_range_is_a_contract_violation() {
+        let mut islands = Islands::default();
+        islands.insert(5);
+        islands.insert(6);
+        // Querying *inside* [5, 6] (6 is the end, not the start) violates the
+        // coordinator's contract — the debug assertion fires.
+        let _ = islands.take_starting_at(6);
     }
 
     #[test]
