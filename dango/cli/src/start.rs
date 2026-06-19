@@ -455,7 +455,8 @@ impl StartCmd {
                 Some(dango_upgrade::do_upgrade), // Important: set the upgrade handler.
                 env!("CARGO_PKG_VERSION"),
             )
-            .with_shutdown_trigger(halt_tx),
+            .with_shutdown_trigger(halt_tx)
+            .with_retain_recent_blocks(tendermint_cfg.retain_recent_blocks),
         );
 
         let (consensus, mempool, snapshot, info) = split::service(service, 1);

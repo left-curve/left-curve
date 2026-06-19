@@ -148,6 +148,10 @@ rpc_addr = "http://cometbft:26657"
 # Tendermint ABCI listening address.
 abci_addr = "0.0.0.0:26658"
 
+# Number of most-recent blocks for CometBFT to retain; older blocks are pruned.
+# 0 retains all blocks.
+retain_recent_blocks = 1000
+
 ################################################################################
 ###                        Transaction Configuration                         ###
 ################################################################################
