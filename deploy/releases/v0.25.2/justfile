@@ -1,0 +1,101 @@
+set positional-arguments
+
+# Use bash so `pipefail` propagates ansible's exit code through `| tee ...`
+# (the default `sh -cu` would silently swallow ansible failures behind tee).
+set shell := ["bash", "-uo", "pipefail", "-c"]
+
+# Always load deploy/ansible.cfg, regardless of cwd or a stray ~/.ansible.cfg.
+export ANSIBLE_CONFIG := justfile_directory() + "/../../ansible.cfg"
+
+# Tailscale IPs. Mirrors the constants in deploy/justfile.
+hetzner1 := "100.126.8.2"
+hetzner3 := "100.76.197.30"
+hetzner5 := "100.72.62.100"
+hetzner6 := "100.66.152.68"
+
+# Dango docker image tag. The build pipeline tags images with the git commit
+# SHA, so this is the commit hash for tag v0.25.2 (the CometBFT block-pruning
+# release; the same image already running on devnet and testnet).
+dango_image_tag := "8b551220baa8667ef74e3254b58256d23444c1bc"
+
+# Bot images (faucet-bot, dex-bot, perps-bot, perp-liquidator, points-bot) are
+# pinned separately from dango, since they are built from a different commit
+# that is compatible with the v0.25.2 dango API. `latest` would track main and
+# could break against v0.25.2.
+# FIXME: set to the bots commit SHA used for the v0.25.2 rollout.
+bots_image_tag := "0.3.5"
+
+# is_running health-gate timing, passed through to
+# roles/full-app/tasks/check_cometbft_sync.yml. The FIRST deploy of the pruning
+# feature triggers a one-time CometBFT prune that sweeps the entire historical
+# backlog in a single commit, freezing that node's block production for a long
+# time (tens of minutes to hours on a multi-million-block chain). The gate must
+# wait this out, otherwise full-app.yml's `any_errors_fatal` rescue stops the
+# stack mid-prune. 300 tries x 60s = 300 minutes.
+is_running_retries := "300"
+is_running_delay := "60"
+
+# List available recipes
+default:
+  @just --list
+
+# Notes for the recipes below:
+# - dango_image_tag is pinned to v0.25.2 (the const above).
+# - Upgrade ONE validator at a time. With 4 mainnet validators, the other 3
+#   keep producing blocks (>= 2/3) while the target is down for its one-time
+#   prune, so the chain stays live throughout the rolling upgrade.
+# - For each recipe, persistent_peers is set to the *other three* validators
+#   via -e cometbft_peers, so the target dials them on startup. (See
+#   deploy/NODE_MIGRATION.md step 7 for context on the cometbft_peers override.)
+# - is_running_retries/is_running_delay widen the health gate to 300 minutes so
+#   it waits out the one-time backlog prune instead of tripping the rescue.
+# - Run the next host only after the previous one has finished pruning and is
+#   producing blocks again (earliest_block_height == latest - 100000).
+
+# Upgrade mainnet only on hetzner1, pinned to v0.25.2
+deploy-mainnet-hetzner1:
+  cd ../.. \
+    && mkdir -p logs \
+    && uv run ansible-playbook full-app.yml \
+      -e '{"traefik_enabled": true, "cometbft_generate_keys": true, "dex_bot_enabled": false, "github_deployments_enabled": false, "expose_ports": false, "delete_postgres_database_at_merge": false, "delete_clickhouse_database_at_merge": false, "deploy_includes_postgres": false, "deploy_includes_clickhouse": false, "chain_id": "dango-1", "dango_network": "mainnet", "system_wide_directories": true, "deploy_env": "production", "dango_image_tag": "{{dango_image_tag}}", "frontend_image_tag": "latest", "faucet_bot_tag": "{{bots_image_tag}}", "dex_bot_tag": "{{bots_image_tag}}", "perps_bot_tag": "{{bots_image_tag}}", "perp_liquidator_tag": "{{bots_image_tag}}"}' \
+      -e cometbft_peers={{hetzner3}},{{hetzner5}},{{hetzner6}} \
+      -e is_running_retries={{is_running_retries}} \
+      -e is_running_delay={{is_running_delay}} \
+      --limit {{hetzner1}} \
+      2>&1 | tee logs/$(date -u +%Y%m%d%H%M%S)-deploy-mainnet-hetzner1.log
+
+# Upgrade mainnet only on hetzner3, pinned to v0.25.2
+deploy-mainnet-hetzner3:
+  cd ../.. \
+    && mkdir -p logs \
+    && uv run ansible-playbook full-app.yml \
+      -e '{"traefik_enabled": true, "cometbft_generate_keys": true, "dex_bot_enabled": false, "github_deployments_enabled": false, "expose_ports": false, "delete_postgres_database_at_merge": false, "delete_clickhouse_database_at_merge": false, "deploy_includes_postgres": false, "deploy_includes_clickhouse": false, "chain_id": "dango-1", "dango_network": "mainnet", "system_wide_directories": true, "deploy_env": "production", "dango_image_tag": "{{dango_image_tag}}", "frontend_image_tag": "latest", "faucet_bot_tag": "{{bots_image_tag}}", "dex_bot_tag": "{{bots_image_tag}}", "perps_bot_tag": "{{bots_image_tag}}", "perp_liquidator_tag": "{{bots_image_tag}}"}' \
+      -e cometbft_peers={{hetzner1}},{{hetzner5}},{{hetzner6}} \
+      -e is_running_retries={{is_running_retries}} \
+      -e is_running_delay={{is_running_delay}} \
+      --limit {{hetzner3}} \
+      2>&1 | tee logs/$(date -u +%Y%m%d%H%M%S)-deploy-mainnet-hetzner3.log
+
+# Upgrade mainnet only on hetzner5, pinned to v0.25.2
+deploy-mainnet-hetzner5:
+  cd ../.. \
+    && mkdir -p logs \
+    && uv run ansible-playbook full-app.yml \
+      -e '{"traefik_enabled": true, "cometbft_generate_keys": true, "dex_bot_enabled": false, "github_deployments_enabled": false, "expose_ports": false, "delete_postgres_database_at_merge": false, "delete_clickhouse_database_at_merge": false, "deploy_includes_postgres": false, "deploy_includes_clickhouse": false, "chain_id": "dango-1", "dango_network": "mainnet", "system_wide_directories": true, "deploy_env": "production", "dango_image_tag": "{{dango_image_tag}}", "frontend_image_tag": "latest", "faucet_bot_tag": "{{bots_image_tag}}", "dex_bot_tag": "{{bots_image_tag}}", "perps_bot_tag": "{{bots_image_tag}}", "perp_liquidator_tag": "{{bots_image_tag}}"}' \
+      -e cometbft_peers={{hetzner1}},{{hetzner3}},{{hetzner6}} \
+      -e is_running_retries={{is_running_retries}} \
+      -e is_running_delay={{is_running_delay}} \
+      --limit {{hetzner5}} \
+      2>&1 | tee logs/$(date -u +%Y%m%d%H%M%S)-deploy-mainnet-hetzner5.log
+
+# Upgrade mainnet only on hetzner6, pinned to v0.25.2
+deploy-mainnet-hetzner6:
+  cd ../.. \
+    && mkdir -p logs \
+    && uv run ansible-playbook full-app.yml \
+      -e '{"traefik_enabled": true, "cometbft_generate_keys": true, "dex_bot_enabled": false, "github_deployments_enabled": false, "expose_ports": false, "delete_postgres_database_at_merge": false, "delete_clickhouse_database_at_merge": false, "deploy_includes_postgres": false, "deploy_includes_clickhouse": false, "chain_id": "dango-1", "dango_network": "mainnet", "system_wide_directories": true, "deploy_env": "production", "dango_image_tag": "{{dango_image_tag}}", "frontend_image_tag": "latest", "faucet_bot_tag": "{{bots_image_tag}}", "dex_bot_tag": "{{bots_image_tag}}", "perps_bot_tag": "{{bots_image_tag}}", "perp_liquidator_tag": "{{bots_image_tag}}"}' \
+      -e cometbft_peers={{hetzner1}},{{hetzner3}},{{hetzner5}} \
+      -e is_running_retries={{is_running_retries}} \
+      -e is_running_delay={{is_running_delay}} \
+      --limit {{hetzner6}} \
+      2>&1 | tee logs/$(date -u +%Y%m%d%H%M%S)-deploy-mainnet-hetzner6.log
