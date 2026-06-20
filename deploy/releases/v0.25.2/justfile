@@ -43,12 +43,35 @@ default:
 #   the skip, that gate times out and full-app.yml's `any_errors_fatal` rescue
 #   STOPS the stack mid-prune (which also orphans state.db). So we skip the
 #   gate and verify sync MANUALLY.
-# - After each deploy, MANUALLY confirm the node finished pruning and is back at
-#   the tip and signing before starting the next one:
-#     ssh deploy@<ip> 'docker exec $(docker ps -q --filter name=cometbft | head -1) \
-#       curl -s localhost:26657/status \
-#       | grep -oE "\"(earliest_block_height|latest_block_height|catching_up)\":[^,}]*"'
-#   Want catching_up=false, latest matching the fleet, earliest == latest - 100000.
+
+# Each pruning takes ~20 minutes. Use the following to check the status in a loop:
+#
+# ```bash
+# while true; do
+#   date
+#
+#   echo "====== docker stats ======="
+#   ssh deploy@hetzner5 'docker stats --no-stream $(docker ps -q --filter name=cometbft | head -1)'
+#
+#   echo "===== cometbft status ====="
+#   ssh deploy@hetzner5 'docker exec $(docker ps -q --filter name=cometbft | head -1) curl localhost:26657/status'
+#
+#   echo "======== sleeping ========="
+#   sleep 60
+# done
+# ```
+#
+# Signs of pruning ongoing:
+#
+# - CPU usage high (200-400%)
+# - Block I/O continues increasing
+# - curl returns "Couldn't connect to server"
+#
+# Signs of pruning has completed:
+#
+# - CPU usage drops
+# - Block I/O stops increasing
+# - curl returns a valid JSON
 
 # Upgrade mainnet only on hetzner1, pinned to v0.25.2
 deploy-mainnet-hetzner1:
