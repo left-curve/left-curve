@@ -22,7 +22,6 @@ dango_image_tag := "8b551220baa8667ef74e3254b58256d23444c1bc"
 # pinned separately from dango, since they are built from a different commit
 # that is compatible with the v0.25.2 dango API. `latest` would track main and
 # could break against v0.25.2.
-# FIXME: set to the bots commit SHA used for the v0.25.2 rollout.
 bots_image_tag := "0.3.5"
 
 # is_running health-gate timing, passed through to
