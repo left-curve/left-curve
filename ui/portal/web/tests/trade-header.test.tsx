@@ -162,7 +162,7 @@ describe("DEX trade header", () => {
       (selector: (state: { prices: Record<string, { humanizedPrice: string }> }) => unknown) =>
         selector({
           prices: {
-            "bridge/btc": {
+            "perp/btcusd": {
               humanizedPrice: "100.5",
             },
           },

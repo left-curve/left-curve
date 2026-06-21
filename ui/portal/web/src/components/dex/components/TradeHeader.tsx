@@ -74,11 +74,7 @@ export const TradeHeader: React.FC = () => {
             transition={{ duration: isLg ? 0 : 0.3, ease: "easeInOut" }}
             className="lg:flex-1 lg:min-w-0 flex items-center"
           >
-            <HeaderMetricsScroller
-              baseDenom={pair.base.denom}
-              pairStatsData={pairStatsData}
-              pairId={pair.id}
-            />
+            <HeaderMetricsScroller pairStatsData={pairStatsData} pairId={pair.id} />
           </motion.div>
         ) : null}
       </AnimatePresence>
@@ -87,16 +83,11 @@ export const TradeHeader: React.FC = () => {
 };
 
 type HeaderMetricsScrollerProps = {
-  baseDenom: string;
   pairStatsData: NormalizedPerpsPairStats | null;
   pairId: string;
 };
 
-const HeaderMetricsScroller: React.FC<HeaderMetricsScrollerProps> = ({
-  baseDenom,
-  pairStatsData,
-  pairId,
-}) => {
+const HeaderMetricsScroller: React.FC<HeaderMetricsScrollerProps> = ({ pairStatsData, pairId }) => {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [{ canScrollLeft, canScrollRight }, setScrollState] = useState({
     canScrollLeft: false,
@@ -158,7 +149,7 @@ const HeaderMetricsScroller: React.FC<HeaderMetricsScrollerProps> = ({
       >
         <span className="h-[1px] w-full bg-outline-tertiary-rice col-span-3 lg:hidden mt-2" />
         <HeaderPrice pairId={pairId} />
-        <HeaderOraclePrice denom={baseDenom} />
+        <HeaderOraclePrice pairId={pairId} />
         <Header24hChange
           currentPrice={pairStatsData?.currentPrice}
           price24HAgo={pairStatsData?.price24HAgo}
@@ -207,8 +198,8 @@ const HeaderPrice: React.FC<{ pairId: string }> = ({ pairId }) => {
   );
 };
 
-const HeaderOraclePrice: React.FC<{ denom: string }> = ({ denom }) => {
-  const oraclePriceValue = useOraclePrices((s) => s.prices[denom]?.humanizedPrice ?? null);
+const HeaderOraclePrice: React.FC<{ pairId: string }> = ({ pairId }) => {
+  const oraclePriceValue = useOraclePrices((s) => s.prices[pairId]?.humanizedPrice ?? null);
   const oraclePrice = oraclePriceValue ? Number(oraclePriceValue) : null;
 
   return (
