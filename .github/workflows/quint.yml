@@ -63,13 +63,22 @@ jobs:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
         with:
           persist-credentials: false
-      - uses: actions/setup-node@3235b876344d2a9aa001b8d1453c930bba69e610 # v3
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4.3.0
         with:
-          node-version: "18"
+          version: 10.16.1
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: "24"
       # Pinned to 0.30.0: quint 0.31.0 switched the default `quint test`/`run` backend to
       # Rust (informalsystems/quint#1919), which miscomputes the unchanged JMT spec and
       # fails `bigInsertionUpdateDeleteTest`; 0.30.0's TypeScript backend passes. Keep pinned.
-      - run: npm install -g @informalsystems/quint@0.30.0
+      - name: Install Quint
+        working-directory: ${{ github.workspace }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          pnpm --filter @left-curve/jellyfish-merkle-spec install --frozen-lockfile
+          echo "$GITHUB_WORKSPACE/node_modules/.bin" >> "$GITHUB_PATH"
       - run: bash scripts/quint-forall.sh typecheck quint/**/*.qnt
 
   quint-test:
@@ -86,13 +95,22 @@ jobs:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
         with:
           persist-credentials: false
-      - uses: actions/setup-node@3235b876344d2a9aa001b8d1453c930bba69e610 # v3
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4.3.0
         with:
-          node-version: "18"
+          version: 10.16.1
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: "24"
       # Pinned to 0.30.0: quint 0.31.0 switched the default `quint test`/`run` backend to
       # Rust (informalsystems/quint#1919), which miscomputes the unchanged JMT spec and
       # fails `bigInsertionUpdateDeleteTest`; 0.30.0's TypeScript backend passes. Keep pinned.
-      - run: npm install -g @informalsystems/quint@0.30.0
+      - name: Install Quint
+        working-directory: ${{ github.workspace }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          pnpm --filter @left-curve/jellyfish-merkle-spec install --frozen-lockfile
+          echo "$GITHUB_WORKSPACE/node_modules/.bin" >> "$GITHUB_PATH"
       - run: quint test --max-samples=$MAX_SAMPLES quint/test/test_all.qnt
 
   quint-simulations-fancy:
@@ -110,13 +128,22 @@ jobs:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
         with:
           persist-credentials: false
-      - uses: actions/setup-node@3235b876344d2a9aa001b8d1453c930bba69e610 # v3
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4.3.0
         with:
-          node-version: "18"
+          version: 10.16.1
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: "24"
       # Pinned to 0.30.0: quint 0.31.0 switched the default `quint test`/`run` backend to
       # Rust (informalsystems/quint#1919), which miscomputes the unchanged JMT spec and
       # fails `bigInsertionUpdateDeleteTest`; 0.30.0's TypeScript backend passes. Keep pinned.
-      - run: npm install -g @informalsystems/quint@0.30.0
+      - name: Install Quint
+        working-directory: ${{ github.workspace }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          pnpm --filter @left-curve/jellyfish-merkle-spec install --frozen-lockfile
+          echo "$GITHUB_WORKSPACE/node_modules/.bin" >> "$GITHUB_PATH"
       - run: quint run --max-samples=$MAX_SAMPLES --max-steps=$MAX_STEPS --invariant=allInvariants --step=step_fancy apply_state_machine.qnt
 
   quint-simulations-simple:
@@ -134,13 +161,22 @@ jobs:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
         with:
           persist-credentials: false
-      - uses: actions/setup-node@3235b876344d2a9aa001b8d1453c930bba69e610 # v3
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4.3.0
         with:
-          node-version: "18"
+          version: 10.16.1
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: "24"
       # Pinned to 0.30.0: quint 0.31.0 switched the default `quint test`/`run` backend to
       # Rust (informalsystems/quint#1919), which miscomputes the unchanged JMT spec and
       # fails `bigInsertionUpdateDeleteTest`; 0.30.0's TypeScript backend passes. Keep pinned.
-      - run: npm install -g @informalsystems/quint@0.30.0
+      - name: Install Quint
+        working-directory: ${{ github.workspace }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          pnpm --filter @left-curve/jellyfish-merkle-spec install --frozen-lockfile
+          echo "$GITHUB_WORKSPACE/node_modules/.bin" >> "$GITHUB_PATH"
       - run: quint run --max-samples=$MAX_SAMPLES --max-steps=$MAX_STEPS --invariant=allInvariants --step=step_simple apply_state_machine.qnt
 
   quint-simulations-prune-simple:
@@ -158,13 +194,22 @@ jobs:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
         with:
           persist-credentials: false
-      - uses: actions/setup-node@3235b876344d2a9aa001b8d1453c930bba69e610 # v3
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4.3.0
         with:
-          node-version: "18"
+          version: 10.16.1
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: "24"
       # Pinned to 0.30.0: quint 0.31.0 switched the default `quint test`/`run` backend to
       # Rust (informalsystems/quint#1919), which miscomputes the unchanged JMT spec and
       # fails `bigInsertionUpdateDeleteTest`; 0.30.0's TypeScript backend passes. Keep pinned.
-      - run: npm install -g @informalsystems/quint@0.30.0
+      - name: Install Quint
+        working-directory: ${{ github.workspace }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          pnpm --filter @left-curve/jellyfish-merkle-spec install --frozen-lockfile
+          echo "$GITHUB_WORKSPACE/node_modules/.bin" >> "$GITHUB_PATH"
       - run: quint run --max-samples=$MAX_SAMPLES --max-steps=$MAX_STEPS --invariant=allInvariants --step=step_simple pruning_state_machine.qnt
 
   quint-simulations-prune-fancy:
@@ -182,11 +227,20 @@ jobs:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
         with:
           persist-credentials: false
-      - uses: actions/setup-node@3235b876344d2a9aa001b8d1453c930bba69e610 # v3
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4.3.0
         with:
-          node-version: "18"
+          version: 10.16.1
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: "24"
       # Pinned to 0.30.0: quint 0.31.0 switched the default `quint test`/`run` backend to
       # Rust (informalsystems/quint#1919), which miscomputes the unchanged JMT spec and
       # fails `bigInsertionUpdateDeleteTest`; 0.30.0's TypeScript backend passes. Keep pinned.
-      - run: npm install -g @informalsystems/quint@0.30.0
+      - name: Install Quint
+        working-directory: ${{ github.workspace }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          pnpm --filter @left-curve/jellyfish-merkle-spec install --frozen-lockfile
+          echo "$GITHUB_WORKSPACE/node_modules/.bin" >> "$GITHUB_PATH"
       - run: quint run --max-samples=$MAX_SAMPLES --max-steps=$MAX_STEPS --invariant=allInvariants --step=step_fancy pruning_state_machine.qnt

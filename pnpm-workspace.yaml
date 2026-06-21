@@ -1,4 +1,5 @@
 packages:
+  - dango/core/jellyfish-merkle/spec
   - sdk/typescript/*
   - sdk/docs
   - ui/applets/*
