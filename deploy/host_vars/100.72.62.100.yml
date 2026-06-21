@@ -6,3 +6,4 @@ reboot_time: "12:30"
 dango_networks:
   - mainnet
 cloudflare_lb_enabled: true
+cloudflared_metrics_enabled: true
