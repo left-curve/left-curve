@@ -33,9 +33,13 @@ pub enum Event {
     Authenticate(EvtAuthenticate),
     /// A contract backran a transaction.
     Backrun(EvtBackrun),
-    /// The taxman withheld the fee for a transaction.
+    /// The gas fee was withheld for a transaction.
     Withhold(EvtWithhold),
-    /// The taxman finalized the fee for a transaction.
+    /// FIXME: The taxman and its `finalize_fee` (gas refund) mechanism have been
+    /// removed in 0.26.0. This variant is no longer produced, and is retained
+    /// only so that historical, Borsh-serialized cached blocks still
+    /// deserialize. A future migration should rewrite cached block files to drop
+    /// it.
     Finalize(EvtFinalize),
     /// A cronjob was executed.
     Cron(EvtCron),
@@ -273,11 +277,14 @@ impl EvtBackrun {
     }
 }
 
-/// An event indicating that The taxman withheld the fee for a transaction.
+/// An event indicating that the gas fee was withheld for a transaction.
 #[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq)]
 pub struct EvtWithhold {
     pub sender: Addr,
     pub gas_limit: u64,
+    /// FIXME: The taxman has been removed in 0.26.0; the fee is now withheld
+    /// inline by the state machine, so this is always `None`. Retained so that
+    /// historical, Borsh-serialized cached blocks still deserialize.
     pub taxman: Option<Addr>,
     pub guest_event: EventStatus<EvtGuest>,
 }
@@ -294,6 +301,11 @@ impl EvtWithhold {
 }
 
 /// An event indicating that the taxman finalized the fee for a transaction.
+///
+/// FIXME: The taxman and its `finalize_fee` (gas refund) mechanism have been
+/// removed in 0.26.0. This event is no longer produced; it is retained only so
+/// that historical, Borsh-serialized cached blocks still deserialize. A future
+/// migration should rewrite cached block files to drop it.
 #[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq)]
 pub struct EvtFinalize {
     pub sender: Addr,

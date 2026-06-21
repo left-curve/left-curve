@@ -10,7 +10,7 @@ use {
         account_factory, bank,
         config::{AppAddresses, AppConfig, Hyperlane},
         constants::dango,
-        gateway, oracle, perps, taxman, vesting, warp,
+        gateway, oracle, perps, vesting, warp,
     },
     serde::Serialize,
 };
@@ -25,13 +25,6 @@ where
 {
     let mut msgs = Vec::new();
 
-    // Certain tests in `dango/testing/tests/core/taxman.rs` use an alternative
-    // taxman implementation.
-    let taxman_code = opt
-        .taxman
-        .alternative_code
-        .unwrap_or_else(|| codes.taxman.into());
-
     // Upload all the codes and compute code hashes.
     let account_code_hash = upload(&mut msgs, codes.account);
     let account_factory_code_hash = upload(&mut msgs, codes.account_factory);
@@ -42,7 +35,6 @@ where
     let hyperlane_va_code_hash = upload(&mut msgs, codes.hyperlane.va);
     let oracle_code_hash = upload(&mut msgs, codes.oracle);
     let perps_code_hash = upload(&mut msgs, codes.perps);
-    let taxman_code_hash = upload(&mut msgs, taxman_code);
     let vesting_code_hash = upload(&mut msgs, codes.vesting);
     let warp_code_hash = upload(&mut msgs, codes.warp);
 
@@ -200,18 +192,6 @@ where
         owner,
     )?;
 
-    // Instantiate the taxman contract.
-    let taxman = instantiate(
-        &mut msgs,
-        taxman_code_hash,
-        &taxman::InstantiateMsg {
-            config: opt.grug.fee_cfg,
-        },
-        "dango/taxman",
-        "dango/taxman",
-        owner,
-    )?;
-
     // Instantiate the oracle contract.
     let oracle = instantiate(
         &mut msgs,
@@ -258,7 +238,6 @@ where
         hyperlane: Hyperlane { ism, mailbox, va },
         oracle,
         perps,
-        taxman,
         vesting,
         warp,
     };
@@ -266,7 +245,12 @@ where
     let config = Config {
         owner,
         bank,
-        taxman,
+        gas_token: opt.grug.gas_token,
+        gas_fee_rate: opt.grug.gas_fee_rate,
+        // The oracle (which submits price feeds) and the account factory (which
+        // onboards new users) send protocol-level transactions and are exempt
+        // from paying gas fees.
+        gas_exemptions: btree_set! { account_factory, oracle },
         cronjobs: btree_map! {
             gateway => opt.gateway.rate_limit_refresh_period,
             perps => Duration::from_minutes(1),
@@ -285,7 +269,6 @@ where
             hyperlane: Hyperlane { ism, mailbox, va },
             oracle,
             perps,
-            taxman,
             warp,
         },
         minimum_deposit: opt.account.minimum_deposit,

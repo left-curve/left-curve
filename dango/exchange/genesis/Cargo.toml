@@ -27,7 +27,6 @@ dango-oracle            = { workspace = true }
 dango-order-book        = { workspace = true }
 dango-perps             = { workspace = true, features = ["tracing"] }
 dango-primitives        = { workspace = true }
-dango-taxman            = { workspace = true }
 dango-types             = { workspace = true }
 dango-vesting           = { workspace = true }
 dango-vm-rust           = { workspace = true }

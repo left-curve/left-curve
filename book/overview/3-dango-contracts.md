@@ -17,7 +17,6 @@ pub struct AppAddresses {
     pub hyperlane: Hyperlane<Addr>,
     pub oracle: Addr,
     pub perps: Addr,
-    pub taxman: Addr,
     pub warp: Addr,
 }
 ```
@@ -126,24 +125,21 @@ When the host receives a transaction, it calls the sender account's `authenticat
 4. Verify the signature against the signing key registered in the factory.
 5. Return `Response`.
 
-## 5. Taxman (`dango/exchange/taxman/`)
+## 5. Gas fees
 
-Handles gas fee collection.
+Gas fees are handled directly by the state machine; there is no fee contract. The
+parameters live in the chain `Config`:
 
-### State
+| Field            | Meaning                                                   |
+| ---------------- | --------------------------------------------------------- |
+| `gas_token`      | The denom in which fees are paid.                         |
+| `gas_fee_rate`   | The amount of `gas_token` charged per unit of gas.        |
+| `gas_exemptions` | Senders that pay no fee (e.g. the oracle and the account factory, which submit protocol-level transactions). |
 
-| Storage        | Key | Value                            |
-| -------------- | --- | -------------------------------- |
-| `CONFIG`       | --  | `Config { fee_denom, fee_rate }` |
-| `WITHHELD_FEE` | --  | `(Config, Uint128)`              |
-
-### Fee flow
-
-1. **`withhold_fee(tx)`** -- Called before authentication. Computes `gas_limit *
-   fee_rate` and reserves the fee from the sender's balance.
-2. **`finalize_fee(tx, outcome)`** -- Called after execution. Computes actual fee
-   based on `gas_used * fee_rate`, refunds the difference, and transfers the fee
-   to the treasury.
+Before a transaction is authenticated, the state machine withholds `ceil(gas_limit
+* gas_fee_rate)` of `gas_token` from the sender and credits it to the chain owner.
+The fee is charged even if authentication or message execution fails. There is no
+refund of unused gas.
 
 ## 6. Oracle (`dango/exchange/oracle/`)
 
@@ -449,24 +445,18 @@ new vault skew fields with zero defaults.
 ┌──────────────┐  RegisterUser ┌──────────┐  mint   ┌──────┐
 │ Account      │◄──────────────│ Account  │────────►│ Bank │
 │ (per user)   │               │ Factory  │         │      │
-└──────┬───────┘               └────┬─────┘         └──┬───┘
-       │ authenticate               │ referral         │
-       │                            ▼                  │
-       │                      ┌──────────┐             │
-       │                      │  Perps   │◄────────────┘ force_transfer
-       │                      │          │  (PnL settlement)
-       │                      └────┬─────┘
-       │                           │ query prices
-       │                           ▼
-       │                      ┌──────────┐
-       │                      │  Oracle  │
-       │                      └──────────┘
-       │
-       │ withhold/finalize fee
-       ▼
-┌──────────┐
-│  Taxman  │
-└──────────┘
+└──────────────┘               └────┬─────┘         └──┬───┘
+                                    │ referral         │
+                                    ▼                  │
+                              ┌──────────┐             │
+                              │  Perps   │◄────────────┘ force_transfer
+                              │          │  (PnL settlement)
+                              └────┬─────┘
+                                   │ query prices
+                                   ▼
+                              ┌──────────┐
+                              │  Oracle  │
+                              └──────────┘
 ```
 
 Key interaction patterns:
@@ -496,7 +486,6 @@ Key interaction patterns:
 | --------------- | ---------------------------------- | ------------------------------ |
 | Bank            | Namespace owners (unconditionally) | Everyone (for balance queries) |
 | Oracle          | Pyth signers (governance-managed)  | Perps (for price feeds)        |
-| Taxman          | --                                 | Accounts (for fee handling)    |
 | Perps           | Oracle (prices), Bank (balances)   | Users (for margin custody)     |
 | Account Factory | --                                 | Accounts (for key lookups)     |
 | Gateway         | Hyperlane validators               | Bank (for mint/burn)           |

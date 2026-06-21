@@ -40,10 +40,6 @@ pub trait QuerierExt: Querier {
         self.query_config().map(|res| res.bank)
     }
 
-    fn query_taxman(&self) -> StdResult<Addr> {
-        self.query_config().map(|res| res.taxman)
-    }
-
     fn query_bank_and_owner(&self) -> StdResult<(Addr, Addr)> {
         self.query_config().map(|res| (res.bank, res.owner))
     }

@@ -9,7 +9,6 @@ pub mod oracle;
 pub mod perps;
 mod querier;
 pub mod signer;
-pub mod taxman;
 pub mod vesting;
 pub mod warp;
 

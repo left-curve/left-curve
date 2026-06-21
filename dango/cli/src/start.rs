@@ -77,7 +77,6 @@ impl StartCmd {
             //     codes.hyperlane.mailbox.to_bytes().hash256(),
             //     codes.hyperlane.va.to_bytes().hash256(),
             //     codes.oracle.to_bytes().hash256(),
-            //     codes.taxman.to_bytes().hash256(),
             //     codes.vesting.to_bytes().hash256(),
             //     codes.warp.to_bytes().hash256(),
             // ]

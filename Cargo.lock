@@ -3688,6 +3688,7 @@ dependencies = [
  "borsh",
  "dango-backtrace",
  "dango-dyn-event",
+ "dango-math",
  "dango-primitives",
  "dango-storage",
  "data-encoding",
@@ -3756,7 +3757,7 @@ dependencies = [
 
 [[package]]
 name = "dango-cli"
-version = "0.25.1"
+version = "0.25.2"
 dependencies = [
  "anyhow",
  "clap",
@@ -3925,7 +3926,6 @@ dependencies = [
  "dango-order-book",
  "dango-perps",
  "dango-primitives",
- "dango-taxman",
  "dango-types",
  "dango-vesting",
  "dango-vm-rust",
@@ -4412,17 +4412,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "dango-taxman"
-version = "0.0.0"
-dependencies = [
- "anyhow",
- "dango-math",
- "dango-primitives",
- "dango-storage",
- "dango-types",
-]
-
-[[package]]
 name = "dango-temp-rocksdb"
 version = "0.0.0"
 dependencies = [
@@ -4488,7 +4477,6 @@ dependencies = [
  "dango-pyth-types",
  "dango-sdk",
  "dango-storage",
- "dango-taxman",
  "dango-temp-rocksdb",
  "dango-tester",
  "dango-types",
@@ -4543,8 +4531,12 @@ dependencies = [
 name = "dango-upgrade"
 version = "0.0.0"
 dependencies = [
+ "borsh",
  "dango-app",
+ "dango-math",
  "dango-primitives",
+ "dango-storage",
+ "dango-types",
  "tracing",
 ]
 

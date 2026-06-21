@@ -494,26 +494,6 @@ fn query_metadatas_works() {
 }
 
 #[tokio::test]
-async fn force_transfer_can_only_be_called_by_taxman() {
-    let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(Default::default());
-
-    // Attempt to force transfer as non-taxman. Should fail.
-    suite
-        .execute(
-            &mut accounts.user1,
-            contracts.bank,
-            &bank::ExecuteMsg::ForceTransfer {
-                from: accounts.user2.address(),
-                to: accounts.user3.address(),
-                coins: coins! { dango::DENOM.clone() => 100 },
-            },
-            Coins::new(),
-        )
-        .await
-        .should_fail_with_error("you don't have the right, O you don't have the right");
-}
-
-#[tokio::test]
 async fn top_level_denom_cannot_be_minted_or_burned_by_non_chain_owner() {
     let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(Default::default());
 
