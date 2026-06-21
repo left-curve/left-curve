@@ -350,17 +350,18 @@
           "value": "$__all"
         },
         "datasource": {
-          "type": "loki",
-          "uid": "loki"
+          "type": "prometheus",
+          "uid": "prometheus"
         },
-        "definition": "label_values({job=\"cloudflare-edge-observer\"}, network)",
+        "definition": "label_values(cloudflared_tunnel_ha_connections, dango_network)",
         "hide": 0,
+        "allValue": ".*",
         "includeAll": true,
         "label": "Network",
         "multi": true,
         "name": "network",
         "options": [],
-        "query": "label_values({job=\"cloudflare-edge-observer\"}, network)",
+        "query": "label_values(cloudflared_tunnel_ha_connections, dango_network)",
         "refresh": 1,
         "regex": "",
         "skipUrlSync": false,
@@ -378,6 +379,7 @@
         },
         "definition": "label_values({job=\"cloudflare-edge-observer\"}, service)",
         "hide": 0,
+        "allValue": ".*",
         "includeAll": true,
         "label": "Service",
         "multi": true,
