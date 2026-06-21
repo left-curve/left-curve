@@ -1,0 +1,50 @@
+{% set targets = [] %}
+{% set networks = [] %}
+{% for host in groups['cloudflared'] | default([]) %}
+{%   for net in hostvars[host].dango_networks | default([]) %}
+{%     if net not in networks %}
+{%       set _ = networks.append(net) %}
+{%     endif %}
+{%   endfor %}
+{% endfor %}
+{% for net in networks | sort %}
+{%   set net_hosts = [] %}
+{%   set lb_hosts = [] %}
+{%   for host in groups['cloudflared'] | default([]) %}
+{%     if net in (hostvars[host].dango_networks | default([])) %}
+{%       set hn = hostvars[host].hostname | default(host) %}
+{%       set _ = net_hosts.append(hn) %}
+{%       if hostvars[host].cloudflare_lb_enabled | default(false) %}
+{%         set _ = lb_hosts.append(hn) %}
+{%       endif %}
+{%     endif %}
+{%   endfor %}
+{%   for service in cloudflare_edge_observer_services %}
+{%     set mode = "load_balanced" if (lb_hosts | length > 0) else "direct_tunnel" %}
+{%     set origin_names = [] %}
+{%     for hn in lb_hosts | sort %}
+{%       set _ = origin_names.append(service ~ "-" ~ net ~ "-" ~ hn) %}
+{%     endfor %}
+{%     set _ = targets.append({
+        "network": net,
+        "service": service,
+        "host": service ~ "-" ~ net ~ "." ~ dango_domain,
+        "mode": mode,
+        "lb_name": (service ~ "-" ~ net ~ "." ~ dango_domain) if mode == "load_balanced" else "",
+        "expected_origins": origin_names,
+        "direct_hosts": net_hosts | sort
+      }) %}
+{%   endfor %}
+{% endfor %}
+{
+  "zone_name": "{{ dango_domain }}",
+  "zone_id": "{{ cloudflare_zone_id | default('') }}",
+  "loki_url": "{{ cloudflare_edge_observer_loki_url }}",
+  "metrics_port": {{ cloudflare_edge_observer_port }},
+  "poll_interval_seconds": {{ cloudflare_edge_observer_poll_interval_seconds }},
+  "lookback_seconds": {{ cloudflare_edge_observer_lookback_seconds }},
+  "status_min": {{ cloudflare_edge_observer_status_min }},
+  "status_lt": {{ cloudflare_edge_observer_status_lt }},
+  "state_path": "/data/state.json",
+  "targets": {{ targets | to_nice_json }}
+}

@@ -23,6 +23,7 @@
         state: present
   roles:
     - loki
+    - cloudflare-edge-observer
     - prometheus
     - promtail
     - node-exporter
