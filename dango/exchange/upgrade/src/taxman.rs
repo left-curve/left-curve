@@ -1,21 +1,19 @@
 use {
     dango_app::{APP_CONFIG, AppResult, CONFIG, CONTRACT_NAMESPACE, StorageProvider},
     dango_primitives::{Config, JsonDeExt, Storage, btree_set},
-    dango_storage::Item,
     dango_types::config::AppConfig,
 };
 
-/// Storage shapes as they existed before the taxman contract was removed in
-/// 0.26.0.
-mod legacy {
+/// Dango app storage shapes as they existed before the taxman contract was
+/// removed in 0.26.0.
+mod legacy_app {
     use {
         borsh::{BorshDeserialize, BorshSerialize},
-        dango_math::Udec128,
-        dango_primitives::{Addr, Denom, Duration, Permissions},
+        dango_primitives::{Addr, Duration, Permissions},
+        dango_storage::Item,
         std::collections::BTreeMap,
     };
 
-    /// The chain `Config`, before the `taxman` field was replaced by the
     /// `gas_token`, `gas_fee_rate`, and `gas_exemptions` fields.
     #[derive(BorshSerialize, BorshDeserialize)]
     pub struct Config {
@@ -27,21 +25,34 @@ mod legacy {
         pub max_orphan_age: Duration,
     }
 
+    /// The chain config is stored under the `cnfg` namespace (see `dango_app`'s
+    /// `CONFIG`).
+    pub const CONFIG: Item<Config> = Item::new("cnfg");
+}
+
+/// Taxman contract storage shapes as they existed before the contract was
+/// removed in 0.26.0.
+mod legacy_taxman {
+    use {
+        borsh::{BorshDeserialize, BorshSerialize},
+        dango_math::Udec128,
+        dango_primitives::Denom,
+        dango_storage::Item,
+    };
+
+    /// The chain `Config`, before the `taxman` field was replaced by the
+
     /// The taxman contract's stored fee configuration.
     #[derive(BorshSerialize, BorshDeserialize)]
-    pub struct TaxmanConfig {
+    pub struct Config {
         pub fee_denom: Denom,
         pub fee_rate: Udec128,
     }
+
+    /// The taxman contract stored its fee config under the `config` key in its own
+    /// substore.
+    pub const CONFIG: Item<Config> = Item::new("config");
 }
-
-/// The chain config is stored under the `cnfg` namespace (see `dango_app`'s
-/// `CONFIG`).
-const LEGACY_CONFIG: Item<legacy::Config> = Item::new("cnfg");
-
-/// The taxman contract stored its fee config under the `config` key in its own
-/// substore.
-const LEGACY_TAXMAN_CONFIG: Item<legacy::TaxmanConfig> = Item::new("config");
 
 /// Migrate the chain config from the taxman-based gas model to the inlined one.
 ///
@@ -51,13 +62,13 @@ const LEGACY_TAXMAN_CONFIG: Item<legacy::TaxmanConfig> = Item::new("config");
 /// which send protocol-level transactions and must remain fee-exempt.
 pub fn do_taxman_removal_upgrade(storage: Box<dyn Storage>) -> AppResult<()> {
     // Load the pre-upgrade chain config and app config.
-    let legacy_cfg = LEGACY_CONFIG.load(&storage)?;
+    let legacy_cfg = legacy_app::CONFIG.load(&storage)?;
     let app_cfg = APP_CONFIG.load(&storage)?.deserialize_json::<AppConfig>()?;
 
     // Read the taxman contract's fee config from its substore, then recover the
     // base storage.
     let taxman_storage = StorageProvider::new(storage, &[CONTRACT_NAMESPACE, &legacy_cfg.taxman]);
-    let taxman_cfg = LEGACY_TAXMAN_CONFIG.load(&taxman_storage)?;
+    let taxman_cfg = legacy_taxman::CONFIG.load(&taxman_storage)?;
     let mut storage = taxman_storage.into_inner();
 
     // Build and save the new chain config.
@@ -114,8 +125,8 @@ mod tests {
         let storage = Shared::new(MockStorage::new());
 
         // Seed the pre-upgrade chain config.
-        LEGACY_CONFIG
-            .save(&mut storage.clone(), &legacy::Config {
+        legacy_app::CONFIG
+            .save(&mut storage.clone(), &legacy_app::Config {
                 owner,
                 bank,
                 taxman,
@@ -153,8 +164,8 @@ mod tests {
         // Seed the taxman contract's fee config into its substore.
         let mut taxman_storage =
             StorageProvider::new(Box::new(storage.clone()), &[CONTRACT_NAMESPACE, &taxman]);
-        LEGACY_TAXMAN_CONFIG
-            .save(&mut taxman_storage, &legacy::TaxmanConfig {
+        legacy_taxman::CONFIG
+            .save(&mut taxman_storage, &legacy_taxman::Config {
                 fee_denom: "bridge/usdc".parse().unwrap(),
                 fee_rate,
             })
