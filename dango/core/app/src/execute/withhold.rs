@@ -107,7 +107,7 @@ where
 
         let msg = BankMsg {
             from: tx.sender,
-            transfers: btree_map! { cfg.owner => coins! { cfg.gas_token.clone() => fee } },
+            transfers: btree_map! { cfg.owner => coins! { cfg.gas_token => fee } },
         };
 
         catch_and_update_event! {
