@@ -1152,6 +1152,7 @@ where
         let err = err.clone();
         return finish_tx(fee_buffer, gas_tracker, events, Err(err));
     }
+
     msg_buffer.write_access().commit();
 
     // Loop through the messages and execute one by one.
@@ -1172,16 +1173,13 @@ where
     )
     .into_commitment();
 
-    match events.msgs_and_backrun.maybe_error() {
-        Some(err) => {
-            drop(msg_buffer);
-            let err = err.clone();
-            return finish_tx(fee_buffer, gas_tracker, events, Err(err));
-        },
-        None => {
-            msg_buffer.disassemble().consume();
-        },
+    if let Some(err) = events.msgs_and_backrun.maybe_error() {
+        drop(msg_buffer);
+        let err = err.clone();
+        return finish_tx(fee_buffer, gas_tracker, events, Err(err));
     }
+
+    msg_buffer.disassemble().consume();
 
     // Everything succeeded. Commit the withheld fee -- along with the
     // authentication and message state changes already merged into `fee_buffer`
