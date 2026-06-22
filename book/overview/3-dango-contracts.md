@@ -130,14 +130,14 @@ When the host receives a transaction, it calls the sender account's `authenticat
 Gas fees are handled directly by the state machine; there is no fee contract. The
 parameters live in the chain `Config`:
 
-| Field            | Meaning                                                   |
-| ---------------- | --------------------------------------------------------- |
-| `gas_token`      | The denom in which fees are paid.                         |
-| `gas_fee_rate`   | The amount of `gas_token` charged per unit of gas.        |
+| Field            | Meaning                                                                                                      |
+| ---------------- | ------------------------------------------------------------------------------------------------------------ |
+| `gas_token`      | The denom in which fees are paid.                                                                            |
+| `gas_fee_rate`   | The amount of `gas_token` charged per unit of gas.                                                           |
 | `gas_exemptions` | Senders that pay no fee (e.g. the oracle and the account factory, which submit protocol-level transactions). |
 
-Before a transaction is authenticated, the state machine withholds `ceil(gas_limit
-* gas_fee_rate)` of `gas_token` from the sender and credits it to the chain owner.
+Before a transaction is authenticated, the state machine withholds `ceil(gas_limit * gas_fee_rate)`
+of `gas_token` from the sender and credits it to the chain owner.
 The fee is charged even if authentication or message execution fails. There is no
 refund of unused gas.
 

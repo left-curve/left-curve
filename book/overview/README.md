@@ -33,7 +33,7 @@ blockchain and DeFi experience. It covers:
 │   dango/core/db  (RocksDB persistence)                       │
 │   dango/core/vm/rust (native contract execution, no sandbox) │
 │   dango/core/jellyfish-merkle (state commitment)             │
-│   dango/* system contracts (bank, accounts, etc.)           │
+│   dango/* system contracts (bank, accounts, etc.)            │
 │   dango/indexer/* (read-only; cannot affect consensus)       │
 └────────────────────── ▼ ─────────────────────────────────────┘
 
