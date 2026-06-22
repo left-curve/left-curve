@@ -76,7 +76,6 @@ dango-eth-utils             = { workspace = true }
 dango-gateway               = { workspace = true }
 dango-sdk                   = { workspace = true }
 dango-storage               = { workspace = true }
-dango-taxman                = { workspace = true }
 dango-tester                = { workspace = true, features = ["library"] }
 dango-vm-hybrid             = { workspace = true }
 dango-vm-wasm               = { workspace = true }

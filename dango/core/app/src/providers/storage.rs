@@ -28,6 +28,11 @@ impl StorageProvider {
     pub fn namespace(&self) -> &[u8] {
         &self.namespace
     }
+
+    /// Consume the provider, returning the underlying (un-prefixed) storage.
+    pub fn into_inner(self) -> Box<dyn Storage> {
+        self.storage
+    }
 }
 
 impl Storage for StorageProvider {

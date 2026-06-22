@@ -52,7 +52,9 @@ mod tests {
         Config {
             owner: OWNER,
             bank: Addr::mock(3),
-            taxman: Addr::mock(4),
+            gas_token: dango_primitives::Denom::new_unchecked(["ugas"]),
+            gas_fee_rate: Default::default(),
+            gas_exemptions: Default::default(),
             cronjobs: BTreeMap::new(),
             permissions: Permissions {
                 upload: Permission::Nobody,

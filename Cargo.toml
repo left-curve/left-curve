@@ -25,7 +25,6 @@ members = [
   "dango/exchange/order-book",
   "dango/exchange/perps",
   "dango/exchange/proposal-preparer",
-  "dango/exchange/taxman",
   "dango/exchange/types",
   "dango/exchange/upgrade",
   "dango/exchange/vesting",
@@ -222,7 +221,6 @@ dango-pyth-client           = { path = "dango/pyth/client" }
 dango-pyth-types            = { path = "dango/pyth/types" }
 dango-sdk                   = { path = "dango/sdk" }
 dango-storage               = { path = "dango/core/storage" }
-dango-taxman                = { path = "dango/exchange/taxman" }
 dango-temp-rocksdb          = { path = "dango/utils/temp-rocksdb" }
 dango-tester                = { path = "dango/core/tester" }
 dango-testing               = { path = "dango/testing" }

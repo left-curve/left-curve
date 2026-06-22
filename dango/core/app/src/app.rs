@@ -10,18 +10,18 @@ use {
         Indexer, LAST_FINALIZED_BLOCK, NEXT_CRONJOBS, NEXT_UPGRADE, NaiveProposalPreparer,
         NaiveQuerier, NullIndexer, PAST_UPGRADES, ProposalPreparer, QuerierProviderImpl,
         TraceOption, Vm, catch_and_push_event, do_authenticate, do_configure, do_cron_execute,
-        do_execute, do_finalize_fee, do_instantiate, do_migrate, do_transfer, do_upgrade,
-        do_upload, do_withhold_fee, query_app_config, query_balance, query_balances, query_code,
-        query_codes, query_config, query_contract, query_contracts, query_next_upgrade,
-        query_past_upgrades, query_status, query_supplies, query_supply, query_wasm_raw,
-        query_wasm_scan, query_wasm_smart,
+        do_execute, do_instantiate, do_migrate, do_transfer, do_upgrade, do_upload,
+        do_withhold_fee, query_app_config, query_balance, query_balances, query_code, query_codes,
+        query_config, query_contract, query_contracts, query_next_upgrade, query_past_upgrades,
+        query_status, query_supplies, query_supply, query_wasm_raw, query_wasm_scan,
+        query_wasm_smart,
     },
     dango_primitives::{
         Addr, AuthMode, Block, BlockInfo, BlockOutcome, BorshSerExt, Buffer, CheckTxEvents,
-        CheckTxOutcome, CodeStatus, CommitmentStatus, CronOutcome, Duration, Event, GENESIS_SENDER,
-        GenericResult, GenericResultExt, GenesisState, Hash256, Json, Message,
-        MsgsAndBackrunEvents, Order, Permission, QuerierWrapper, Query, QueryResponse, Shared,
-        StdResult, Storage, Timestamp, Tx, TxEvents, TxOutcome, UnsignedTx,
+        CheckTxOutcome, CodeStatus, CronOutcome, Duration, Event, GENESIS_SENDER, GenericResult,
+        GenericResultExt, GenesisState, Hash256, Json, Message, MsgsAndBackrunEvents, Order,
+        Permission, QuerierWrapper, Query, QueryResponse, Shared, StdResult, Storage, Timestamp,
+        Tx, TxEvents, TxOutcome, UnsignedTx,
     },
     dango_storage::PrefixBound,
     prost::bytes::Bytes,
@@ -753,8 +753,8 @@ where
 
     // For `CheckTx`, we only do the first two steps of the transaction
     // processing flow:
-    // 1.`withhold_fee`, where the taxman makes sure the sender has sufficient
-    //   tokens to cover the tx fee;
+    // 1. withhold the fee, making sure the sender has sufficient tokens to cover
+    //    the tx fee;
     // 2. `authenticate`, where the sender account authenticates the transaction.
     pub fn do_check_tx(&self, tx: Tx) -> AppResult<CheckTxOutcome> {
         let buffer = Shared::new(Buffer::new(
@@ -1096,7 +1096,7 @@ where
 
     // Record the events emitted during the processing of this transaction.
 
-    // Call the taxman's `withhold_fee` function.
+    // Withhold the transaction fee.
     //
     // The purpose of this step is to ensure the tx's sender has sufficient
     // token balance to cover the maximum possible fee the tx may incur.
@@ -1104,7 +1104,6 @@ where
     // If this succeeds, record the events emitted.
     //
     // If this fails, we abort the tx and return, discard all state changes.
-
     let mut events = TxEvents::new(
         do_withhold_fee(
             vm.clone(),
@@ -1135,8 +1134,8 @@ where
     // the events emitted.
     //
     // If fails, discard state changes in `msg_buffer` (but keeping those in
-    // `fee_buffer`), discard the events, and jump to `finalize_fee`.
-
+    // `fee_buffer`, so the withheld fee is still charged), discard the events,
+    // and commit the withheld fee.
     events.authenticate = do_authenticate(
         vm.clone(),
         Box::new(msg_buffer.clone()),
@@ -1151,18 +1150,9 @@ where
     if let Err((_, err)) = events.authenticate.as_result() {
         drop(msg_buffer);
         let err = err.clone();
-        return process_finalize_fee(
-            vm,
-            fee_buffer,
-            gas_tracker,
-            block,
-            tx,
-            mode,
-            events,
-            Err(err),
-            trace_opt,
-        );
+        return finish_tx(fee_buffer, gas_tracker, events, Err(err));
     }
+
     msg_buffer.write_access().commit();
 
     // Loop through the messages and execute one by one.
@@ -1171,7 +1161,8 @@ where
     // and record the events emitted.
     //
     // If anything fails, discard state changes in `msg_buffer` (but keeping those
-    // in `fee_buffer`), discard the events, and jump to `finalize_fee`.
+    // in `fee_buffer`, so the withheld fee is still charged), discard the events,
+    // and commit the withheld fee.
     events.msgs_and_backrun = process_msgs(
         vm.clone(),
         msg_buffer.clone(),
@@ -1182,49 +1173,18 @@ where
     )
     .into_commitment();
 
-    match events.msgs_and_backrun.maybe_error() {
-        Some(err) => {
-            drop(msg_buffer);
-            let err = err.clone();
-            return process_finalize_fee(
-                vm,
-                fee_buffer,
-                gas_tracker,
-                block,
-                tx,
-                mode,
-                events,
-                Err(err),
-                trace_opt,
-            );
-        },
-        None => {
-            msg_buffer.disassemble().consume();
-        },
+    if let Some(err) = events.msgs_and_backrun.maybe_error() {
+        drop(msg_buffer);
+        let err = err.clone();
+        return finish_tx(fee_buffer, gas_tracker, events, Err(err));
     }
 
-    // Everything so far succeeded. Finally, call the taxman's `finalize_fee`
-    // function.
-    //
-    // If the transaction didn't use up all the gas it has requested, it can get
-    // a refund here (if taxman is programmed to do so).
-    //
-    // Taxman should be designed such that this call always succeeds. This
-    // failing can be considered an "undefined behavior". In such a case, we
-    // discard all previous state changes and events, as if the tx never happened.
-    // Also, print a tracing message at the ERROR level to the CLI, to raise
-    // developer's awareness.
-    process_finalize_fee(
-        vm,
-        fee_buffer,
-        gas_tracker,
-        block,
-        tx,
-        mode,
-        events,
-        Ok(()),
-        trace_opt,
-    )
+    msg_buffer.disassemble().consume();
+
+    // Everything succeeded. Commit the withheld fee -- along with the
+    // authentication and message state changes already merged into `fee_buffer`
+    // -- to the underlying storage.
+    finish_tx(fee_buffer, gas_tracker, events, Ok(()))
 }
 
 #[inline]
@@ -1269,52 +1229,24 @@ where
     EventResult::Ok(evt)
 }
 
-fn process_finalize_fee<S, VM>(
-    vm: VM,
+/// Commit the fee buffer -- which holds the withheld gas fee, plus any
+/// authentication and message state changes that were merged into it -- to the
+/// underlying storage, and build the transaction outcome.
+///
+/// The withheld fee is committed regardless of whether the transaction
+/// ultimately succeeded: a sender that passes fee withholding but fails
+/// authentication or message execution still pays for the gas it requested.
+fn finish_tx<S>(
     buffer: Shared<Buffer<S>>,
     gas_tracker: GasTracker,
-    block: BlockInfo,
-    tx: Tx,
-    mode: AuthMode,
-    mut events: TxEvents,
+    events: TxEvents,
     result: GenericResult<()>,
-    trace_opt: TraceOption,
 ) -> TxOutcome
 where
     S: Storage + Clone + 'static,
-    VM: Vm + Clone + Send + Sync + 'static,
-    AppError: From<VM::Error>,
 {
-    let outcome_so_far = new_tx_outcome(gas_tracker.clone(), events.clone(), result.clone());
-
-    let evt_finalize = do_finalize_fee(
-        vm,
-        Box::new(buffer.clone()),
-        GasTracker::new_limitless(),
-        block,
-        &tx,
-        &outcome_so_far,
-        mode,
-        trace_opt,
-    )
-    .into_commitment_status();
-
-    match &evt_finalize {
-        CommitmentStatus::Committed(_) => {
-            events.finalize = evt_finalize;
-            buffer.disassemble().consume();
-            new_tx_outcome(gas_tracker, events, result)
-        },
-        CommitmentStatus::Failed { error, .. } => {
-            let error = error.clone();
-            let events = events.finalize_fails(evt_finalize, &error);
-            drop(buffer);
-            new_tx_outcome(gas_tracker, events, Err(error))
-        },
-        CommitmentStatus::NotReached | CommitmentStatus::Reverted { .. } => {
-            unreachable!("`EventResult::as_committment` can only return `Committed` or `Failed`");
-        },
-    }
+    buffer.disassemble().consume();
+    new_tx_outcome(gas_tracker, events, result)
 }
 
 pub fn process_msg<VM>(

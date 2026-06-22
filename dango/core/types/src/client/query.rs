@@ -53,10 +53,6 @@ pub trait QueryClientExt: QueryClient {
         self.query_config(height).await.map(|res| res.bank)
     }
 
-    async fn query_taxman(&self, height: Option<u64>) -> Result<Addr, Self::Error> {
-        self.query_config(height).await.map(|res| res.taxman)
-    }
-
     async fn query_app_config<T>(&self, height: Option<u64>) -> Result<T, Self::Error>
     where
         T: DeserializeOwned,

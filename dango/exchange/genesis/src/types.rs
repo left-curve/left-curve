@@ -1,6 +1,6 @@
 use {
     dango_hyperlane_types::{isms::multisig::ValidatorSet, mailbox::Domain},
-    dango_math::Uint128,
+    dango_math::{Udec128, Uint128},
     dango_order_book::PairId,
     dango_primitives::{Addr, Binary, Coin, Coins, Denom, Duration, Hash256, HashExt, Timestamp},
     dango_types::{
@@ -10,7 +10,6 @@ use {
         gateway::{Origin, RateLimit, Remote, WithdrawalFee},
         oracle::PriceConfig,
         perps::{self, PairParam},
-        taxman,
     },
     std::collections::{BTreeMap, BTreeSet, HashSet},
 };
@@ -23,7 +22,6 @@ pub struct Contracts {
     pub hyperlane: Hyperlane<Addr>,
     pub oracle: Addr,
     pub perps: Addr,
-    pub taxman: Addr,
     pub vesting: Addr,
     pub warp: Addr,
 }
@@ -37,7 +35,6 @@ pub struct Codes<T> {
     pub hyperlane: Hyperlane<T>,
     pub oracle: T,
     pub perps: T,
-    pub taxman: T,
     pub vesting: T,
     pub warp: T,
 }
@@ -57,7 +54,6 @@ where
             &self.hyperlane.va,
             &self.oracle,
             &self.perps,
-            &self.taxman,
             &self.vesting,
             &self.warp,
         ]
@@ -83,7 +79,6 @@ pub struct GenesisOption {
     pub hyperlane: HyperlaneOption,
     pub oracle: OracleOption,
     pub perps: PerpsOption,
-    pub taxman: TaxmanOption,
     pub vesting: VestingOption,
 }
 
@@ -91,8 +86,10 @@ pub struct GrugOption {
     /// A user index whose genesis account is to be appointed as the owner.
     /// We expect to transfer ownership to a multisig account afterwards.
     pub owner_index: UserIndex,
-    /// Gas fee configuration.
-    pub fee_cfg: taxman::Config,
+    /// The token in which transaction fees are denominated.
+    pub gas_token: Denom,
+    /// The amount of `gas_token` charged per unit of gas.
+    pub gas_fee_rate: Udec128,
     /// The maximum age a contract bytecode can remain orphaned (not used by any
     /// contract).
     /// Once this time is elapsed, the code is deleted and must be uploaded again.
@@ -142,12 +139,6 @@ pub struct PerpsOption {
     pub param: perps::Param,
     /// Per-pair parameters, keyed by the pair ID (e.g. "perp/ethusd").
     pub pair_params: BTreeMap<PairId, PairParam>,
-}
-
-pub struct TaxmanOption {
-    /// An alternative code to use as the taxman contract.
-    /// Exclusively for use when setting up the `dango/testing/tests/core/taxman.rs` tests.
-    pub alternative_code: Option<Binary>,
 }
 
 pub struct VestingOption {

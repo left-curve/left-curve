@@ -181,6 +181,11 @@ pub struct TxEvents {
     pub withhold: CommitmentStatus<EventStatus<EvtWithhold>>,
     pub authenticate: CommitmentStatus<EventStatus<EvtAuthenticate>>,
     pub msgs_and_backrun: CommitmentStatus<MsgsAndBackrunEvents>,
+    // NOTE: The taxman and its `finalize_fee` (gas refund) mechanism have been
+    // removed in 0.26.0. For all blocks produced since, this field is
+    // exclusively `CommitmentStatus::NotReached`. It is retained so that
+    // historical, Borsh-serialized cached blocks still deserialize. A future
+    // migration should rewrite cached block files to drop this field.
     pub finalize: CommitmentStatus<EventStatus<EvtFinalize>>,
 }
 
@@ -191,33 +196,6 @@ impl TxEvents {
             authenticate: CommitmentStatus::NotReached,
             msgs_and_backrun: CommitmentStatus::NotReached,
             finalize: CommitmentStatus::NotReached,
-        }
-    }
-
-    pub fn finalize_fails(
-        self,
-        finalize: CommitmentStatus<EventStatus<EvtFinalize>>,
-        cause: &BacktracedError<String>,
-    ) -> Self {
-        fn update<T>(
-            evt: CommitmentStatus<T>,
-            cause: &BacktracedError<String>,
-        ) -> CommitmentStatus<T> {
-            if let CommitmentStatus::Committed(event) = evt {
-                CommitmentStatus::Reverted {
-                    event,
-                    revert_by: cause.clone(),
-                }
-            } else {
-                evt
-            }
-        }
-
-        TxEvents {
-            withhold: update(self.withhold, cause),
-            authenticate: update(self.authenticate, cause),
-            msgs_and_backrun: update(self.msgs_and_backrun, cause),
-            finalize,
         }
     }
 }
@@ -239,7 +217,7 @@ impl CheckTxEvents {
 #[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq)]
 pub struct MsgsAndBackrunEvents {
     pub msgs: Vec<EventStatus<Event>>, // len of the messages in this transaction
-    // FIXME: The transaction backrunning mechanism has been removed. For all
+    // NOTE: The transaction backrunning mechanism has been removed. For all
     // historical blocks on mainnet and testnet, this field is exclusively
     // `EventStatus::NotReached`. A future migration should rewrite cached
     // block files to drop this field and remove the `MsgsAndBackrunEvents`
