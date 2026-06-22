@@ -41,7 +41,6 @@ mod legacy_taxman {
     };
 
     /// The chain `Config`, before the `taxman` field was replaced by the
-
     /// The taxman contract's stored fee configuration.
     #[derive(BorshSerialize, BorshDeserialize)]
     pub struct Config {
