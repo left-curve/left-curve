@@ -77,6 +77,8 @@ pub fn do_taxman_removal_upgrade(storage: Box<dyn Storage>) -> AppResult<()> {
 
     CONFIG.save(&mut storage, &new_cfg)?;
 
+    tracing::info!("Completed taxman-removal upgrade");
+
     Ok(())
 }
 
