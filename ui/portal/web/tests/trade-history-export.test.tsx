@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { m } from "@left-curve/foundation/paraglide/messages.js";
@@ -7,17 +7,26 @@ import {
   buildPerpsTradeHistoryCsv,
   type PerpsCsvHeaders,
 } from "../src/components/dex/components/TradeHistory/exportCsv";
-import { ExportCsvButton } from "../src/components/dex/components/TradeHistory/ExportCsvButton";
+import {
+  EXPORT_PAGE_DELAY_MS,
+  EXPORT_PAGE_SIZE,
+  ExportCsvButton,
+  fetchAllPerpsTradeHistory,
+} from "../src/components/dex/components/TradeHistory/ExportCsvButton";
 
-import type { PerpsEvent } from "@left-curve/types";
+import type { PublicClient } from "@left-curve/sdk";
+import type { GraphqlQueryResult, PageInfo, PerpsEvent } from "@left-curve/types";
 
 const tradeHistoryExportMocks = vi.hoisted(() => ({
   downloadCsv: vi.fn(),
+  queryPerpsEvents: vi.fn(),
   useAccount: vi.fn(),
+  usePublicClient: vi.fn(),
 }));
 
 vi.mock("@left-curve/store", () => ({
   useAccount: tradeHistoryExportMocks.useAccount,
+  usePublicClient: tradeHistoryExportMocks.usePublicClient,
 }));
 
 vi.mock("../src/components/dex/components/TradeHistory/exportCsv", async (importOriginal) => {
@@ -56,6 +65,33 @@ const orderFilledEvent: PerpsEvent = {
   userAddr: "0x7472616465720000000000000000000000000000",
 };
 
+const secondOrderFilledEvent: PerpsEvent = {
+  ...orderFilledEvent,
+  blockHeight: 101,
+  createdAt: "2026-06-08T10:01:00.000Z",
+  idx: 2,
+  txHash: "0x7365636f6e640000000000000000000000000000000000000000000000000000",
+};
+
+const queryRange = {
+  earlierThan: "2026-06-09T00:00:00.000Z",
+  laterThan: "2026-06-01T00:00:00.000Z",
+};
+
+function createGraphqlPage(
+  nodes: PerpsEvent[],
+  pageInfo: PageInfo,
+): GraphqlQueryResult<PerpsEvent> {
+  return {
+    edge: nodes.map((node) => ({
+      cursor: `${node.txHash}-cursor`,
+      node,
+    })),
+    nodes,
+    pageInfo,
+  };
+}
+
 function csvHeaders(overrides: Partial<PerpsCsvHeaders> = {}): PerpsCsvHeaders {
   return {
     direction: m["dex.protrade.tradeHistory.direction"](),
@@ -80,6 +116,17 @@ describe("perps trade history CSV export button", () => {
         address: "0x7472616465720000000000000000000000000000",
       },
     });
+    tradeHistoryExportMocks.usePublicClient.mockReturnValue({
+      queryPerpsEvents: tradeHistoryExportMocks.queryPerpsEvents,
+    });
+    tradeHistoryExportMocks.queryPerpsEvents.mockResolvedValue(
+      createGraphqlPage([orderFilledEvent], {
+        endCursor: "first-end",
+        hasNextPage: false,
+        hasPreviousPage: false,
+        startCursor: "first-start",
+      }),
+    );
   });
 
   afterEach(() => {
@@ -88,14 +135,14 @@ describe("perps trade history CSV export button", () => {
   });
 
   it("disables export until both an account and trade-history events are available", () => {
-    const { rerender } = render(<ExportCsvButton events={[]} />);
+    const { rerender } = render(<ExportCsvButton events={[]} queryRange={queryRange} />);
 
     expect(
       screen.getByRole("button", { name: m["dex.protrade.tradeHistory.exportCsv"]() }),
     ).toBeDisabled();
 
     tradeHistoryExportMocks.useAccount.mockReturnValue({ account: undefined });
-    rerender(<ExportCsvButton events={[orderFilledEvent]} />);
+    rerender(<ExportCsvButton events={[orderFilledEvent]} queryRange={queryRange} />);
 
     expect(
       screen.getByRole("button", { name: m["dex.protrade.tradeHistory.exportCsv"]() }),
@@ -103,14 +150,23 @@ describe("perps trade history CSV export button", () => {
     expect(tradeHistoryExportMocks.downloadCsv).not.toHaveBeenCalled();
   });
 
-  it("builds and downloads a CSV with normalized backend event fields", () => {
-    render(<ExportCsvButton events={[orderFilledEvent]} />);
+  it("builds and downloads a CSV with normalized backend event fields", async () => {
+    render(<ExportCsvButton events={[orderFilledEvent]} queryRange={queryRange} />);
 
     fireEvent.click(
       screen.getByRole("button", { name: m["dex.protrade.tradeHistory.exportCsv"]() }),
     );
 
-    expect(tradeHistoryExportMocks.downloadCsv).toHaveBeenCalledOnce();
+    await waitFor(() => expect(tradeHistoryExportMocks.downloadCsv).toHaveBeenCalledOnce());
+    expect(tradeHistoryExportMocks.queryPerpsEvents).toHaveBeenCalledWith({
+      after: undefined,
+      earlierThan: queryRange.earlierThan,
+      first: EXPORT_PAGE_SIZE,
+      laterThan: queryRange.laterThan,
+      sortBy: "BLOCK_HEIGHT_DESC",
+      userAddr: "0x7472616465720000000000000000000000000000",
+    });
+
     const [filename, csv] = tradeHistoryExportMocks.downloadCsv.mock.calls[0];
     expect(filename).toBe("trade-history-perps-test.csv");
     expect(csv).toContain(m["dex.protrade.tradeHistory.pair"]());
@@ -118,6 +174,91 @@ describe("perps trade history CSV export button", () => {
     expect(csv).toContain("0.5 BTC");
     expect(csv).toContain("10000");
     expect(csv).toContain("2026-06-08T10:00:00.000Z");
+  });
+
+  it("shows an inline spinner while export is running", async () => {
+    let resolvePage!: (page: GraphqlQueryResult<PerpsEvent>) => void;
+    const pagePromise = new Promise<GraphqlQueryResult<PerpsEvent>>((resolve) => {
+      resolvePage = resolve;
+    });
+    tradeHistoryExportMocks.queryPerpsEvents.mockReturnValueOnce(pagePromise);
+
+    render(<ExportCsvButton events={[orderFilledEvent]} queryRange={queryRange} />);
+
+    const button = screen.getByRole("button", {
+      name: m["dex.protrade.tradeHistory.exportCsv"](),
+    });
+    fireEvent.click(button);
+
+    expect(button).toBeDisabled();
+    expect(screen.getByLabelText("Exporting CSV, 0 trades")).toBeInTheDocument();
+
+    await act(async () => {
+      resolvePage(
+        createGraphqlPage([orderFilledEvent], {
+          endCursor: "first-end",
+          hasNextPage: false,
+          hasPreviousPage: false,
+          startCursor: "first-start",
+        }),
+      );
+      await pagePromise;
+    });
+
+    await waitFor(() => expect(tradeHistoryExportMocks.downloadCsv).toHaveBeenCalledOnce());
+    expect(screen.queryByLabelText(/Exporting CSV/)).not.toBeInTheDocument();
+  });
+
+  it("fetches every export page with cursor pagination and throttles between pages", async () => {
+    const queryPerpsEvents = vi
+      .fn()
+      .mockResolvedValueOnce(
+        createGraphqlPage([orderFilledEvent], {
+          endCursor: "first-end",
+          hasNextPage: true,
+          hasPreviousPage: false,
+          startCursor: "first-start",
+        }),
+      )
+      .mockResolvedValueOnce(
+        createGraphqlPage([secondOrderFilledEvent], {
+          endCursor: "second-end",
+          hasNextPage: false,
+          hasPreviousPage: true,
+          startCursor: "second-start",
+        }),
+      );
+    const onProgress = vi.fn();
+    const wait = vi.fn().mockResolvedValue(undefined);
+
+    const events = await fetchAllPerpsTradeHistory({
+      address: "0x7472616465720000000000000000000000000000",
+      client: { queryPerpsEvents } as unknown as Pick<PublicClient, "queryPerpsEvents">,
+      onProgress,
+      queryRange,
+      wait,
+    });
+
+    expect(events).toEqual([orderFilledEvent, secondOrderFilledEvent]);
+    expect(queryPerpsEvents).toHaveBeenNthCalledWith(1, {
+      after: undefined,
+      earlierThan: queryRange.earlierThan,
+      first: EXPORT_PAGE_SIZE,
+      laterThan: queryRange.laterThan,
+      sortBy: "BLOCK_HEIGHT_DESC",
+      userAddr: "0x7472616465720000000000000000000000000000",
+    });
+    expect(queryPerpsEvents).toHaveBeenNthCalledWith(2, {
+      after: "first-end",
+      earlierThan: queryRange.earlierThan,
+      first: EXPORT_PAGE_SIZE,
+      laterThan: queryRange.laterThan,
+      sortBy: "BLOCK_HEIGHT_DESC",
+      userAddr: "0x7472616465720000000000000000000000000000",
+    });
+    expect(wait).toHaveBeenCalledOnce();
+    expect(wait).toHaveBeenCalledWith(EXPORT_PAGE_DELAY_MS);
+    expect(onProgress.mock.calls).toEqual([[1], [2]]);
   });
 
   it("normalizes liquidation and ADL backend events into export rows", () => {
