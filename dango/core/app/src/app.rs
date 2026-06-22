@@ -1104,7 +1104,6 @@ where
     // If this succeeds, record the events emitted.
     //
     // If this fails, we abort the tx and return, discard all state changes.
-
     let mut events = TxEvents::new(
         do_withhold_fee(
             vm.clone(),
@@ -1137,7 +1136,6 @@ where
     // If fails, discard state changes in `msg_buffer` (but keeping those in
     // `fee_buffer`, so the withheld fee is still charged), discard the events,
     // and commit the withheld fee.
-
     events.authenticate = do_authenticate(
         vm.clone(),
         Box::new(msg_buffer.clone()),
