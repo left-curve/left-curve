@@ -14,6 +14,7 @@ mod legacy_app {
         std::collections::BTreeMap,
     };
 
+    /// The chain `Config`, before the `taxman` field was replaced by the
     /// `gas_token`, `gas_fee_rate`, and `gas_exemptions` fields.
     #[derive(BorshSerialize, BorshDeserialize)]
     pub struct Config {
@@ -40,7 +41,6 @@ mod legacy_taxman {
         dango_storage::Item,
     };
 
-    /// The chain `Config`, before the `taxman` field was replaced by the
     /// The taxman contract's stored fee configuration.
     #[derive(BorshSerialize, BorshDeserialize)]
     pub struct Config {
@@ -64,10 +64,15 @@ pub fn do_taxman_removal_upgrade(storage: Box<dyn Storage>) -> AppResult<()> {
     let legacy_cfg = legacy_app::CONFIG.load(&storage)?;
     let app_cfg = APP_CONFIG.load(&storage)?.deserialize_json::<AppConfig>()?;
 
-    // Read the taxman contract's fee config from its substore, then recover the
-    // base storage.
-    let taxman_storage = StorageProvider::new(storage, &[CONTRACT_NAMESPACE, &legacy_cfg.taxman]);
+    // Read the taxman contract's fee config from its substore.
+    let mut taxman_storage =
+        StorageProvider::new(storage, &[CONTRACT_NAMESPACE, &legacy_cfg.taxman]);
     let taxman_cfg = legacy_taxman::CONFIG.load(&taxman_storage)?;
+
+    // The taxman contract is gone, so wipe all of its now-defunct storage.
+    taxman_storage.remove_range(None, None);
+
+    // Recover the base storage.
     let mut storage = taxman_storage.into_inner();
 
     // Build and save the new chain config.
@@ -100,7 +105,7 @@ mod tests {
         super::*,
         dango_math::Udec128,
         dango_primitives::{
-            Addr, Coins, Duration, JsonSerExt, MockStorage, Permission, Permissions, Shared,
+            Addr, Coins, Duration, JsonSerExt, MockStorage, Order, Permission, Permissions, Shared,
             btree_map,
         },
         dango_types::config::{AppAddresses, Hyperlane},
@@ -188,5 +193,15 @@ mod tests {
             gateway => Duration::from_minutes(1)
         });
         assert_eq!(new_cfg.max_orphan_age, Duration::from_weeks(1));
+
+        // The taxman contract's storage must have been wiped.
+        let taxman_storage =
+            StorageProvider::new(Box::new(storage.clone()), &[CONTRACT_NAMESPACE, &taxman]);
+        assert!(
+            taxman_storage
+                .scan(None, None, Order::Ascending)
+                .next()
+                .is_none()
+        );
     }
 }
