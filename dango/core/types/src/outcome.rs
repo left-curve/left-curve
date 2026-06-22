@@ -181,7 +181,7 @@ pub struct TxEvents {
     pub withhold: CommitmentStatus<EventStatus<EvtWithhold>>,
     pub authenticate: CommitmentStatus<EventStatus<EvtAuthenticate>>,
     pub msgs_and_backrun: CommitmentStatus<MsgsAndBackrunEvents>,
-    // FIXME: The taxman and its `finalize_fee` (gas refund) mechanism have been
+    // NOTE: The taxman and its `finalize_fee` (gas refund) mechanism have been
     // removed in 0.26.0. For all blocks produced since, this field is
     // exclusively `CommitmentStatus::NotReached`. It is retained so that
     // historical, Borsh-serialized cached blocks still deserialize. A future
@@ -217,7 +217,7 @@ impl CheckTxEvents {
 #[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq)]
 pub struct MsgsAndBackrunEvents {
     pub msgs: Vec<EventStatus<Event>>, // len of the messages in this transaction
-    // FIXME: The transaction backrunning mechanism has been removed. For all
+    // NOTE: The transaction backrunning mechanism has been removed. For all
     // historical blocks on mainnet and testnet, this field is exclusively
     // `EventStatus::NotReached`. A future migration should rewrite cached
     // block files to drop this field and remove the `MsgsAndBackrunEvents`

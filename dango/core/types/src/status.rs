@@ -20,7 +20,7 @@ pub enum CommitmentStatus<T> {
     /// successful, because some other part of the transaction execution flow
     /// failed.
     ///
-    /// FIXME: This was previously produced when the taxman's `finalize_fee`
+    /// NOTE: This was previously produced when the taxman's `finalize_fee`
     /// call failed. That mechanism has been removed in 0.26.0, so this variant
     /// is no longer produced. It is retained only so that historical,
     /// Borsh-serialized cached blocks still deserialize.

@@ -35,7 +35,7 @@ pub enum Event {
     Backrun(EvtBackrun),
     /// The gas fee was withheld for a transaction.
     Withhold(EvtWithhold),
-    /// FIXME: The taxman and its `finalize_fee` (gas refund) mechanism have been
+    /// NOTE: The taxman and its `finalize_fee` (gas refund) mechanism have been
     /// removed in 0.26.0. This variant is no longer produced, and is retained
     /// only so that historical, Borsh-serialized cached blocks still
     /// deserialize. A future migration should rewrite cached block files to drop
@@ -282,7 +282,7 @@ impl EvtBackrun {
 pub struct EvtWithhold {
     pub sender: Addr,
     pub gas_limit: u64,
-    /// FIXME: The taxman has been removed in 0.26.0; the fee is now withheld
+    /// NOTE: The taxman has been removed in 0.26.0; the fee is now withheld
     /// inline by the state machine, so this is always `None`. Retained so that
     /// historical, Borsh-serialized cached blocks still deserialize.
     pub taxman: Option<Addr>,
@@ -302,7 +302,7 @@ impl EvtWithhold {
 
 /// An event indicating that the taxman finalized the fee for a transaction.
 ///
-/// FIXME: The taxman and its `finalize_fee` (gas refund) mechanism have been
+/// NOTE: The taxman and its `finalize_fee` (gas refund) mechanism have been
 /// removed in 0.26.0. This event is no longer produced; it is retained only so
 /// that historical, Borsh-serialized cached blocks still deserialize. A future
 /// migration should rewrite cached block files to drop it.
