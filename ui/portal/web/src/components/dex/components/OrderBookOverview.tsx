@@ -16,6 +16,7 @@ import { bucketSizeToFractionDigits, Decimal, formatNumber, shallowEqual } from 
 import { IconLink, ResizerContainer, Tabs, twMerge, formatDate } from "@left-curve/applets-kit";
 import { useApp } from "@left-curve/foundation";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
+import { getTopOfBookPrices } from "../helpers/orderBook";
 
 import type React from "react";
 import type { BaseCoin } from "@left-curve/store/types";
@@ -506,11 +507,9 @@ const Spread: React.FC<{
 
   const { spread, spreadPercent } = useMemo(() => {
     if (!perpsDepth) return { spread: null, spreadPercent: null };
-    const bidPrices = Object.keys(perpsDepth.bids);
-    const askPrices = Object.keys(perpsDepth.asks);
-    if (!bidPrices.length || !askPrices.length) return { spread: null, spreadPercent: null };
-    const bestBid = bidPrices.reduce((max, p) => (Decimal(p).gt(max) ? p : max), bidPrices[0]);
-    const bestAsk = askPrices.reduce((min, p) => (Decimal(p).lt(min) ? p : min), askPrices[0]);
+    const prices = getTopOfBookPrices(perpsDepth);
+    if (!prices) return { spread: null, spreadPercent: null };
+    const { bestBid, bestAsk } = prices;
     const mid = Decimal(bestBid).plus(bestAsk).div(2);
     const spreadVal = Decimal(bestAsk).minus(bestBid);
     const spreadPct = mid.gt(0) ? spreadVal.div(mid).times(100) : Decimal(0);
