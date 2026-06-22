@@ -1159,6 +1159,9 @@ jobs:
         env:
           DANGO_TAG: ${{ needs.set-image-tags.outputs.backend_tag }}
           FRONTEND_TAG: ${{ needs.changes.outputs.frontend_docker == 'true' && 'local' || 'latest' }}
+          # Pin the faucet bot to an image built against this branch's schema; the
+          # `latest` image still expects the removed `taxman` config field.
+          FAUCET_BOT_TAG: 0ae60d942bf2fd976d66e914436a8a9c905f8217
           POSTGRES_PORT: 0
           CLICKHOUSE_PORT: 0
           DANGO_PORT: 0
