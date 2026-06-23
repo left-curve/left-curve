@@ -1328,6 +1328,8 @@
         "currentPosition": "Current Position",
         "size": "Size",
         "price": "Price",
+        "priceWithQuote": "Price (USDC)",
+        "midPrice": "Mid",
         "timeInForce": "Time In Force",
         "reduceOnly": "Reduce Only",
         "tpsl": "Take Profit / Stop Loss",
