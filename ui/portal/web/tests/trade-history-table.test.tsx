@@ -57,6 +57,9 @@ vi.mock("@left-curve/store", () => ({
       address: "0x7472616465720000000000000000000000000000",
     },
   }),
+  usePublicClient: () => ({
+    queryPerpsEvents: vi.fn(),
+  }),
 }));
 
 vi.mock("../src/components/dex/components/TradeHistory/usePerpsTradeHistory", () => ({
@@ -145,12 +148,6 @@ describe("PerpsTradeHistory table", () => {
         disconnect() {}
       },
     );
-    Object.defineProperty(window, "dango", {
-      configurable: true,
-      value: {
-        enabledFeatures: [],
-      },
-    });
     tradeHistoryTableMocks.usePerpsTradeHistory.mockReturnValue({
       fetchNextPage: tradeHistoryTableMocks.fetchNextPage,
       hasNextPage: true,
@@ -168,12 +165,12 @@ describe("PerpsTradeHistory table", () => {
   });
 
   it("renders normalized backend trade rows, shares fill PnL, and routes row clicks to blocks", async () => {
-    const { container } = render(<PerpsTradeHistory />);
+    render(<PerpsTradeHistory />);
 
-    expect(tradeHistoryTableMocks.usePerpsTradeHistory).toHaveBeenCalledWith({
-      earlierThan: undefined,
-      laterThan: undefined,
-    });
+    const [queryRange] = tradeHistoryTableMocks.usePerpsTradeHistory.mock.calls.at(-1)!;
+    expect(queryRange.earlierThan).toBeUndefined();
+    expect(queryRange.laterThan).toEqual(expect.stringMatching(/^\d{4}-\d{2}-\d{2}T.*Z$/));
+    expect(Date.parse(queryRange.laterThan)).not.toBeNaN();
     await waitFor(() => {
       expect(tradeHistoryTableMocks.fetchNextPage).toHaveBeenCalledOnce();
     });
@@ -193,7 +190,9 @@ describe("PerpsTradeHistory table", () => {
     expect(getByTextContent("$5")).toBeInTheDocument();
     expect(getByTextContent("-3").closest(".text-red-500")).not.toBeNull();
 
-    const shareButton = container.querySelector("button");
+    const firstTradeRow = screen.getByText("BTCUSD").closest('[role="button"]');
+    expect(firstTradeRow).not.toBeNull();
+    const shareButton = firstTradeRow!.querySelector("button");
     expect(shareButton).not.toBeNull();
 
     fireEvent.click(shareButton!);
@@ -228,22 +227,15 @@ describe("PerpsTradeHistory table", () => {
       nodes: [historicalOrderFilledEvent],
     });
 
-    const { container } = render(<PerpsTradeHistory />);
+    render(<PerpsTradeHistory />);
 
     expect(screen.getByText("BTCUSD")).toBeInTheDocument();
     expect(screen.getAllByText("N/A")).toHaveLength(2);
     expect(screen.queryByText("7.25")).not.toBeInTheDocument();
     expect(screen.queryByText(m["dex.protrade.tradeHistory.maker"]())).not.toBeInTheDocument();
-    expect(container.querySelector("button")).toBeNull();
   });
 
-  it("enables advanced trade history range queries from normalized runtime feature flags", () => {
-    Object.defineProperty(window, "dango", {
-      configurable: true,
-      value: {
-        enabledFeatures: [" TRADE_HISTORY_EXPORT ", "unknown_feature"],
-      },
-    });
+  it("shows range controls and export by default", () => {
     tradeHistoryTableMocks.usePerpsTradeHistory.mockReturnValue({
       fetchNextPage: tradeHistoryTableMocks.fetchNextPage,
       hasNextPage: false,
@@ -259,7 +251,7 @@ describe("PerpsTradeHistory table", () => {
     expect(queryRange.laterThan).toEqual(expect.stringMatching(/^\d{4}-\d{2}-\d{2}T.*Z$/));
     expect(Date.parse(queryRange.laterThan)).not.toBeNaN();
     expect(
-      screen.getByRole("button", { name: m["dex.protrade.tradeHistory.preset.1m"]() }),
+      screen.getByRole("button", { name: m["dex.protrade.tradeHistory.preset.1d"]() }),
     ).toHaveClass("bg-surface-primary-blue");
     expect(
       screen.getByRole("button", { name: m["dex.protrade.tradeHistory.exportCsv"]() }),
