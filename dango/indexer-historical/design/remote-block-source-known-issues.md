@@ -6,19 +6,20 @@ type, the code location, and a fix direction.
 
 > See [remote-block-source.md](./remote-block-source.md) for the design and
 > [DESIGN.md](../DESIGN.md) for the shared `BlockSource` contract. Scope of this
-> review: the remote path of the `block-source` crate
-> (`block_source/remote.rs`, `block_fetcher/`, `live_subscriber/`,
-> `block_store/`). `LocalBlockSource` and the projection/committer side were
-> reviewed and are clean.
+> review: the remote path of the `block-source` crate (`remote/mod.rs`,
+> `remote/fetcher/`, `remote/subscriber.rs`, `remote/store/`). `LocalBlockSource`
+> and the projection/committer side were reviewed and are clean.
 
-Date: 2026-06-19. Resolved items have been implemented and removed from this
-tracker (continuous healer; channel-capacity config; `select_all` teardown;
-broadcast-before-store; live-stream reconnect; in-memory island ranges +
-bulk-advance, fixing both the per-block sweep `get()` and the large-island
-broadcast burst); a store-write error halting the source was reviewed and
-accepted as intended (see the failure-modes table in
-[remote-block-source.md](./remote-block-source.md)). See git history. What
-remains below is the open work.
+Date: 2026-06-23. Resolved items have been implemented and removed from this
+tracker: the continuous healer, channel-capacity config, `select_all` teardown,
+live-stream reconnect, and bulk-advance across islands. The architecture was
+then refactored so the **store owns the topology** (frontier + gaps): `put`
+reports the frontier advance, the coordinator is a thin broadcast driver with no
+atomics, ordering is **persist → broadcast**, and the durable store is built
+(`RocksdbBlockStore`, topology checkpointed atomically with each block). A
+store-write error halting the source was reviewed and accepted as intended (see
+the failure-modes table in [remote-block-source.md](./remote-block-source.md)).
+See git history. What remains below is the open work.
 
 ## Severity index
 
@@ -30,30 +31,23 @@ remains below is the open work.
 
 Not bugs, but the source cannot run in production until these land:
 
-- **No Postgres `BlockStore`** (`blocks_raw`). Only `MemoryBlockStore` exists.
-  Production needs the durable store with `max_contiguous` / `gaps` /
-  `max_height` as window/aggregate queries (`LEAD`/`LAG` over `height`).
 - **No concrete `LiveSubscriber`.** Only the trait. The sentinel subscriber
-  (height notification → `query_block` / `query_block_outcome` → store → signal)
-  is unwritten. `drain_live` already owns the reconnect loop, so the concrete
-  impl only needs to open one subscription and yield blocks; reconnection is
-  handled for it.
-- **No wiring.** `cli/src/main.rs` is `fn main() {}`; `RemoteBlockSource` is
-  referenced only inside its own crate. The tunables exist as
-  `RemoteBlockSourceConfig` / `SentinelFetcherConfig` defaults, but nothing maps
-  a `remote.*` config section onto them yet.
-- **Tests:** the coordinator + healer + reconnect + island paths are covered by
-  unit tests in `remote.rs` (in-order, reorder, bulk-advance-across-island,
-  skip-heal, reconnect-heal, broadcast-before-store, reconnect-after-stream-end,
-  plus range-helper unit tests) using `MemoryBlockStore` + mock
-  subscriber/fetcher. Still untested: the (unbuilt) Postgres store and sentinel
-  subscriber.
+  (height notification → `query_block` / `query_block_outcome` → yield) is
+  unwritten. `drain_live` already owns the reconnect loop, so the concrete impl
+  only needs to open one subscription and yield blocks.
+- **No wiring.** `cli/src/main.rs` is a stub; nothing maps a `remote.*` config
+  section onto `RemoteBlockSourceConfig` / `SentinelFetcherConfig` or the store
+  path yet.
+- **Tests:** the coordinator + healer + reconnect + bulk-advance paths and the
+  RocksDB store (put/get, topology, idempotency, reopen-from-checkpoint) are
+  covered by unit tests using `MemoryBlockStore` / a temp RocksDB + mock
+  subscriber/fetcher. Still untested: the (unbuilt) sentinel subscriber.
 
 ---
 
 ## 5. Fetcher retries forever, silently, on a permanently-missing block — Medium
 
-**Location:** `block_fetcher/sentinel.rs` — `fetch_range` (timeout + error
+**Location:** `remote/fetcher/sentinel.rs` — `fetch_range` (timeout + error
 backoff paths).
 
 On any RPC error/timeout the fetcher backs off and retries **forever** (the
