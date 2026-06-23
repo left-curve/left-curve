@@ -382,7 +382,6 @@ const BridgeWithdraw: React.FC = () => {
                 fullWidth
                 onClick={() =>
                   showModal(Modals.DestinationWallet, {
-                    network,
                     onAddressSet: handleAddressSet,
                   })
                 }

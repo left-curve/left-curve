@@ -590,7 +590,7 @@ describe("bridge UI", () => {
     expect(bridgeUiMocks.showModal).toHaveBeenCalledWith(
       "DestinationWallet",
       expect.objectContaining({
-        network: "11155111",
+        onAddressSet: expect.any(Function),
       }),
     );
 
@@ -638,7 +638,7 @@ describe("bridge UI", () => {
     const [, destinationProps] = bridgeUiMocks.showModal.mock.calls[0];
 
     await act(async () => {
-      destinationProps.onAddressSet("0x4444444444444444444444444444444444444444");
+      destinationProps.onAddressSet("0x4444444444444444444444444444444444444444", "Browser Wallet");
     });
 
     fireEvent.change(screen.getByRole("textbox", { name: m["bridge.youWithdraw"]() }), {
@@ -661,7 +661,7 @@ describe("bridge UI", () => {
     const [, destinationProps] = bridgeUiMocks.showModal.mock.calls[0];
 
     await act(async () => {
-      destinationProps.onAddressSet("0x4444444444444444444444444444444444444444");
+      destinationProps.onAddressSet("0x4444444444444444444444444444444444444444", "Browser Wallet");
     });
 
     fireEvent.change(screen.getByRole("textbox", { name: m["bridge.youWithdraw"]() }), {
@@ -693,7 +693,7 @@ describe("bridge UI", () => {
     const [, destinationProps] = bridgeUiMocks.showModal.mock.calls[0];
 
     await act(async () => {
-      destinationProps.onAddressSet("0x5555555555555555555555555555555555555555");
+      destinationProps.onAddressSet("0x5555555555555555555555555555555555555555", "Browser Wallet");
     });
 
     expect(screen.getByText("0x5555555555555555555555555555555555555555")).toBeInTheDocument();

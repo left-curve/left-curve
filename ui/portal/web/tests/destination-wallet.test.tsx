@@ -79,10 +79,13 @@ describe("destination wallet modal", () => {
     const onAddressSet = vi.fn();
     const wallet = destinationWalletMocks.connectors[0];
 
-    render(<DestinationWallet network="ethereum" onAddressSet={onAddressSet} />);
+    render(<DestinationWallet onAddressSet={onAddressSet} />);
 
     expect(screen.getByText(m["bridge.destinationWallet"]())).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Browser Wallet/ })).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: m["bridge.enterAddressManually"]() }),
+    ).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Passkey" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Session" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Privy" })).not.toBeInTheDocument();
@@ -114,7 +117,7 @@ describe("destination wallet modal", () => {
     ];
     const onAddressSet = vi.fn();
 
-    render(<DestinationWallet network="ethereum" onAddressSet={onAddressSet} />);
+    render(<DestinationWallet onAddressSet={onAddressSet} />);
 
     fireEvent.click(screen.getByRole("button", { name: "Rejecting Wallet" }));
 
@@ -138,7 +141,7 @@ describe("destination wallet modal", () => {
     ];
     const onAddressSet = vi.fn();
 
-    render(<DestinationWallet network="ethereum" onAddressSet={onAddressSet} />);
+    render(<DestinationWallet onAddressSet={onAddressSet} />);
 
     fireEvent.click(screen.getByRole("button", { name: "Unavailable Wallet" }));
 
@@ -160,7 +163,7 @@ describe("destination wallet modal", () => {
     ];
     const onAddressSet = vi.fn();
 
-    render(<DestinationWallet network="ethereum" onAddressSet={onAddressSet} />);
+    render(<DestinationWallet onAddressSet={onAddressSet} />);
 
     fireEvent.click(screen.getByRole("button", { name: "Empty Wallet" }));
 
@@ -173,59 +176,10 @@ describe("destination wallet modal", () => {
     expect(destinationWalletMocks.hideModal).not.toHaveBeenCalled();
   });
 
-  it("requires risk acknowledgement and a valid manual 0x address", () => {
+  it("closes without setting a recipient", () => {
     const onAddressSet = vi.fn();
 
-    render(<DestinationWallet network="ethereum" onAddressSet={onAddressSet} />);
-
-    fireEvent.click(screen.getByRole("button", { name: m["bridge.enterAddressManually"]() }));
-
-    expect(screen.getByText(m["bridge.riskOfFundLoss"]())).toBeInTheDocument();
-    expect(screen.getByText(m["bridge.riskOfFundLossDescription"]())).toBeInTheDocument();
-
-    fireEvent.click(screen.getByRole("button", { name: m["bridge.iUnderstandTheRisk"]() }));
-
-    expect(screen.getByText(m["bridge.withdrawAddress"]())).toBeInTheDocument();
-
-    const input = screen.getByRole("textbox");
-    const confirmButton = screen.getByRole("button", { name: m["bridge.confirm"]() });
-
-    expect(screen.getByText(m["bridge.exchangeWarning"]())).toBeInTheDocument();
-    expect(confirmButton).toBeDisabled();
-
-    fireEvent.change(input, {
-      target: { value: "not-a-wallet" },
-    });
-
-    expect(input).toHaveValue("");
-    expect(confirmButton).toBeDisabled();
-    expect(onAddressSet).not.toHaveBeenCalled();
-
-    fireEvent.change(input, {
-      target: { value: "0x123" },
-    });
-
-    expect(confirmButton).toBeDisabled();
-    expect(onAddressSet).not.toHaveBeenCalled();
-
-    fireEvent.change(input, {
-      target: { value: "0x2222222222222222222222222222222222222222" },
-    });
-    fireEvent.click(confirmButton);
-
-    expect(onAddressSet).toHaveBeenCalledWith("0x2222222222222222222222222222222222222222");
-    expect(destinationWalletMocks.hideModal).toHaveBeenCalledOnce();
-  });
-
-  it("closes the manual address flow without setting a recipient", () => {
-    const onAddressSet = vi.fn();
-
-    const { container } = render(
-      <DestinationWallet network="ethereum" onAddressSet={onAddressSet} />,
-    );
-
-    fireEvent.click(screen.getByRole("button", { name: m["bridge.enterAddressManually"]() }));
-    fireEvent.click(screen.getByRole("button", { name: m["bridge.iUnderstandTheRisk"]() }));
+    const { container } = render(<DestinationWallet onAddressSet={onAddressSet} />);
 
     const closeButton = container.querySelector("button.absolute");
     if (!closeButton) throw new Error("Expected destination wallet close button");
