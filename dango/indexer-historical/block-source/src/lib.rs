@@ -14,7 +14,7 @@ pub use {
     local::LocalBlockSource,
     remote::{
         BlockFetcher, BlockStore, FetchStream, LiveSubscriber, MemoryBlockStore, RemoteBlockSource,
-        RemoteBlockSourceConfig, SentinelBlockFetcher, SentinelFetcherConfig,
+        RemoteBlockSourceConfig, RocksdbBlockStore, SentinelBlockFetcher, SentinelFetcherConfig,
     },
     source::BlockSource,
 };

@@ -4071,15 +4071,18 @@ version = "0.0.0"
 dependencies = [
  "anyhow",
  "async-trait",
+ "borsh",
  "dango-graphql-ws-client",
  "dango-indexer-cache",
  "dango-indexer-graphql-types",
  "dango-indexer-historical-types",
  "dango-primitives",
+ "dango-temp-rocksdb",
  "futures",
  "metrics",
  "rangemap",
  "reqwest 0.13.2",
+ "rocksdb",
  "tokio",
  "tracing",
  "url",
@@ -4111,6 +4114,7 @@ name = "dango-indexer-historical-types"
 version = "0.0.0"
 dependencies = [
  "anyhow",
+ "borsh",
  "dango-indexer-graphql-types",
  "dango-primitives",
  "graphql_client",

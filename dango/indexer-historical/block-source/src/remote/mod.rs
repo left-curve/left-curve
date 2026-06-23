@@ -1,37 +1,25 @@
 mod fetcher;
-mod islands;
 mod store;
 mod subscriber;
 
 pub use {
     fetcher::{BlockFetcher, FetchStream, SentinelBlockFetcher, SentinelFetcherConfig},
-    store::{BlockStore, MemoryBlockStore},
+    store::{BlockStore, MemoryBlockStore, RocksdbBlockStore},
     subscriber::LiveSubscriber,
 };
 
 use {
-    self::islands::Islands,
     crate::BlockSource,
     anyhow::{anyhow, bail},
     async_trait::async_trait,
     dango_indexer_historical_types::{AnyResult, BlockData},
     futures::{StreamExt, future::select_all},
-    std::{
-        sync::{
-            Arc,
-            atomic::{AtomicU64, Ordering},
-        },
-        time::Duration,
-    },
+    std::{sync::Arc, time::Duration},
     tokio::{
         sync::{Notify, broadcast, mpsc},
         time::sleep,
     },
 };
-
-/// Genesis floor: block 0 does not exist, so the contiguous prefix and gap
-/// detection start at height 1.
-const GENESIS_HEIGHT: u64 = 1;
 
 /// Tuning for [`RemoteBlockSource`]. All fields default to the previously
 /// hardcoded values; surface them through the source's `remote.*` config so a
@@ -50,9 +38,9 @@ pub struct RemoteBlockSourceConfig {
     /// arrived — the safety net for a silently-dropped block that raised no
     /// signal (no reconnect, so `drain_live` saw no jump).
     pub heal_poll_interval: Duration,
-    /// After a discontinuity signal, how long the healer waits before computing
-    /// gaps, so a block still in flight from an out-of-order live delivery (a
-    /// network reorder, e.g. height 101 before 100) lands first and is not
+    /// After a discontinuity signal, how long the healer waits before checking
+    /// for a gap, so a block still in flight from an out-of-order live delivery
+    /// (a network reorder, e.g. height 101 before 100) lands first and is not
     /// mistaken for a hole. A genuine hole outlasts it and is then filled.
     pub reorder_grace: Duration,
     /// Backoff before re-subscribing after the live stream ends or errors (and
@@ -76,29 +64,23 @@ impl Default for RemoteBlockSourceConfig {
 /// V2 [`BlockSource`]: runs on a node-less host, owns its raw-block store, and
 /// pulls blocks from a sentinel. See `design/remote-block-source.md`.
 ///
-/// Three tasks feed a single serialized coordinator: the `subscriber`'s live
-/// tail (`drain_live`), and a continuous `healer` that backfills any gap below
-/// the live tip through the bounded `fetcher` — both the initial history and
-/// any later hole left by a subscriber reconnect or a dropped block. The
-/// coordinator persists each block and advances the contiguous `frontier`,
-/// broadcasting newly-contiguous blocks in strict `+1` order — which is what
-/// keeps the [`BlockSource`] invariants intact for the projection loop.
+/// Two tasks feed a single serialized coordinator: the `subscriber`'s live tail
+/// (`drain_live`), and a continuous `healer` that backfills any gap the store
+/// reports through the bounded `fetcher` — both the initial history and any
+/// later hole left by a reconnect or a dropped block. The **store owns the
+/// topology**: its `put` persists each block and reports when the contiguous
+/// frontier advances, so the coordinator does nothing but forward that top to
+/// the broadcast. Broadcasts are strictly ascending (`+1` on the live tail, a
+/// skip-to-top on a bulk-advance), which is what keeps the [`BlockSource`]
+/// invariants intact for the projection loop.
 pub struct RemoteBlockSource {
     store: Arc<dyn BlockStore>,
     subscriber: Arc<dyn LiveSubscriber>,
     fetcher: Arc<dyn BlockFetcher>,
     config: RemoteBlockSourceConfig,
-    /// Highest contiguous height; mutated only by the coordinator task, read
-    /// lock-free by `contiguous_frontier`. `0` means "nothing yet".
-    frontier: AtomicU64,
-    /// Highest height the live subscriber has delivered — the exclusive upper
-    /// bound for gap detection (`[frontier + 1, tip)` is the healer's target,
-    /// `tip` onward is still the subscriber's). Seeded to the subscription's
-    /// tip `L` and advanced by `drain_live`; never decreases.
-    tip: AtomicU64,
-    /// Wakes the healer when `drain_live` sees a discontinuity in the live
-    /// stream (a reconnect at a higher tip, or a skipped height), so the hole
-    /// is repaired promptly instead of waiting for the periodic re-check.
+    /// Wakes the healer when the live tail shows a discontinuity (a reconnect
+    /// at a higher tip, or a skipped height), so a hole is repaired promptly
+    /// rather than waiting for the periodic re-check.
     heal_notify: Notify,
     broadcast_tx: broadcast::Sender<Arc<BlockData>>,
 }
@@ -116,112 +98,68 @@ impl RemoteBlockSource {
             subscriber,
             fetcher,
             config,
-            frontier: AtomicU64::new(0),
-            tip: AtomicU64::new(0),
             heal_notify: Notify::new(),
             broadcast_tx,
         }
     }
 
-    /// The single serialized point that owns `frontier` + broadcast. Drains the
-    /// coordinator channel, persists each block, and advances the contiguous
-    /// prefix.
+    /// The single serialized writer: drain the coordinator channel, hand each
+    /// block to the store, and broadcast whenever the store reports the
+    /// frontier advanced.
     ///
-    /// Ordering for a block that extends the prefix (`height == frontier + 1`):
-    /// **broadcast → persist → advance the frontier**. The broadcast goes
-    /// out first so live projections do not wait on the store write; the
-    /// frontier is advanced last, *after* the block is durable, so it never
-    /// claims a height that `get(h)` cannot yet serve — `h <= frontier ⟹
-    /// get(h) = Some` still holds. A crash in the broadcast→persist window
-    /// self-heals: the un-stored height is re-fetched as a gap on restart, and
-    /// any projection that already consumed it skips the replay by cursor.
+    /// All topology lives in the store now: `put` decides whether the block is
+    /// a duplicate, an island above a gap, the next edge, or the bridge that
+    /// crosses a stored backlog — and returns the new contiguous frontier only
+    /// in the last two cases. We broadcast just that top: on a normal `+1` it
+    /// *is* the block we hold; on a bulk-advance the skipped heights are already
+    /// durable and projections pull them via `get()`, so a large catch-up
+    /// backlog never floods the pubsub.
     ///
-    /// A block ahead of the prefix (the live tail during backfill, or a reorder)
-    /// is an **island**: persisted, with its height remembered in `islands` (a
-    /// compact start→end range map). When the prefix edge reaches an island it
-    /// is crossed in **one step** — the frontier jumps to the island's top and
-    /// only that top is broadcast, so a large catch-up backlog cannot flood the
-    /// pubsub; projections fall back to Phase-1 `get()` for the skipped heights.
-    /// The map is seeded at boot from the store, so islands left by a previous
-    /// run are crossed the same way. Tracking islands in memory is also what
-    /// lets the common edge advance with **no store probe** — the wasted
-    /// `get(frontier + 1) -> None` per block is gone.
-    ///
-    /// A store error is intentionally **fatal**: the store is the durability
-    /// anchor, so on a write failure the source halts (the process is expected
-    /// to restart, re-seeding the frontier from `max_contiguous` and
-    /// re-fetching) rather than limping on with in-place retries.
+    /// Order is **persist → broadcast**: the block is durable before any
+    /// projection hears of it, so `h <= frontier ⟹ get(h) = Some` holds. A
+    /// store error is intentionally **fatal** — the store is the durability
+    /// anchor, so on a write failure the source halts (the process restarts and
+    /// resumes from the store) rather than limping on.
     async fn run_coordinator(
         self: Arc<Self>,
         mut coordinator_rx: mpsc::Receiver<BlockData>,
     ) -> AnyResult<()> {
-        // Seed the island map from blocks a previous run left above our resume
-        // frontier, as ranges (one entry per stored stretch — cheap).
-        let mut islands = {
-            let frontier = self.frontier.load(Ordering::Acquire);
-            match self.store.max_height().await? {
-                Some(max_height) if max_height > frontier => {
-                    let gaps = self.store.gaps(frontier + 1, max_height + 1).await?;
-                    Islands::from_gaps(frontier + 1, max_height, &gaps)
-                },
-                _ => Islands::default(),
-            }
-        };
-
         while let Some(block) = coordinator_rx.recv().await {
             let height = block.height();
-            let frontier = self.frontier.load(Ordering::Acquire);
 
-            // Below the prefix: a duplicate/replay. Persist (idempotent) and
-            // ignore.
-            if height <= frontier {
-                self.store.put(height, &block).await?;
+            let Some(frontier) = self.store.put(height, &block).await? else {
+                // Duplicate, or an island above a gap — nothing newly
+                // contiguous to broadcast.
                 continue;
-            }
+            };
 
-            // Ahead of the prefix: an island. Persist and remember it; it is
-            // broadcast when the edge reaches it.
-            if height > frontier + 1 {
-                self.store.put(height, &block).await?;
-                islands.insert(height);
-                continue;
-            }
-
-            // The edge block. Broadcast first (live projections need not wait on
-            // the store write), then persist, then advance the frontier.
-            let block = Arc::new(block);
-            self.broadcast_tx.send(block.clone()).ok();
-            self.store.put(height, &block).await?;
-            self.frontier.store(height, Ordering::Release);
-
-            // Cross any islands now contiguous with the edge. Each is crossed in
-            // one step: jump the frontier to its top, broadcast only that top.
-            let mut edge = height;
-            while let Some(end) = islands.take_starting_at(edge + 1) {
-                let top = self
-                    .store
-                    .get(end)
+            // The frontier advanced to `frontier`. Broadcast only its top: the
+            // block we just put when it is a plain `+1`, otherwise the stored
+            // top of the run we just bridged.
+            let top = if frontier == height {
+                block
+            } else {
+                self.store
+                    .get(frontier)
                     .await?
-                    .ok_or_else(|| anyhow!("island top {end} missing from store"))?;
-                self.broadcast_tx.send(Arc::new(top)).ok();
-                self.frontier.store(end, Ordering::Release);
-                edge = end;
-            }
+                    .ok_or_else(|| anyhow!("frontier {frontier} missing from store"))?
+            };
+            self.broadcast_tx.send(Arc::new(top)).ok();
         }
 
         Ok(())
     }
 
-    /// Continuously repair the contiguous prefix: find any gap below the live
-    /// `tip` and backfill it through the fetcher, lowest-first so the frontier
-    /// climbs as early as possible.
+    /// Continuously repair the contiguous prefix: ask the store for its lowest
+    /// gap and backfill it through the fetcher, so the frontier climbs
+    /// lowest-first.
     ///
-    /// This one loop subsumes both the startup backfill (on a fresh or lagging
-    /// start the gap is `[GENESIS, tip)`) and the steady-state repair of a hole
-    /// left by a subscriber reconnect or a dropped block — the same machinery
-    /// for both. The **store is the source of truth**: every iteration
-    /// recomputes the gaps from it, so a transient miss simply heals on the
-    /// next pass, and a reordered-but-present block is never mistaken for a gap.
+    /// One loop subsumes both the startup backfill (on a fresh start the gap is
+    /// the whole history below the live tail) and the steady-state repair of a
+    /// hole left by a reconnect or a dropped block. The **store is the source
+    /// of truth**: each pass re-reads its lowest gap, so a transient miss heals
+    /// on the next pass and a reordered-but-present block is never mistaken for
+    /// a hole.
     async fn run_healer(self: Arc<Self>, coordinator_tx: mpsc::Sender<BlockData>) -> AnyResult<()> {
         loop {
             // Coordinator gone ⇒ the source is tearing down; stop before doing
@@ -230,39 +168,25 @@ impl RemoteBlockSource {
                 return Ok(());
             }
 
-            let frontier = self.frontier.load(Ordering::Acquire);
-            let tip = self.tip.load(Ordering::Acquire);
-
-            // Below `frontier` everything is contiguous by construction, so
-            // holes can only sit in `[frontier + 1, tip)`. In steady state that
-            // window is empty and this is near-free; `tip` itself is excluded
-            // because it is the subscriber's, possibly still in flight.
-            let gaps = if tip > frontier {
-                self.store.gaps(frontier + 1, tip).await?
-            } else {
-                Vec::new()
-            };
-
-            if gaps.is_empty() {
-                // Nothing to fill. Sleep until a discontinuity signal, with a
-                // periodic re-check as the safety net for a silently-dropped
-                // block that raised no signal.
-                tokio::select! {
-                    _ = self.heal_notify.notified() => {
-                        // Absorb an in-flight reorder before deciding there is a
-                        // gap, so a transient out-of-order delivery does not
-                        // trigger a redundant fetch. A real hole outlasts this.
-                        sleep(self.config.reorder_grace).await;
+            match self.store.lowest_gap().await? {
+                Some((from, to)) => {
+                    #[cfg(feature = "tracing")]
+                    tracing::info!(from, to, "healer backfilling gap");
+                    self.backfill_gap(from, to, &coordinator_tx).await?;
+                },
+                None => {
+                    // Gap-free. Sleep until a discontinuity signal, with a
+                    // periodic re-check as the safety net for a silently-dropped
+                    // block that raised no signal. After a signal, a short grace
+                    // lets an out-of-order live delivery land before we re-check,
+                    // so a transient reorder does not trigger a redundant fetch.
+                    tokio::select! {
+                        _ = self.heal_notify.notified() => {
+                            sleep(self.config.reorder_grace).await;
+                        }
+                        _ = sleep(self.config.heal_poll_interval) => {}
                     }
-                    _ = sleep(self.config.heal_poll_interval) => {}
-                }
-                continue;
-            }
-
-            for (from, to) in gaps {
-                #[cfg(feature = "tracing")]
-                tracing::info!(from, to, "healer backfilling gap");
-                self.backfill_gap(from, to, &coordinator_tx).await?;
+                },
             }
         }
     }
@@ -304,12 +228,12 @@ impl RemoteBlockSource {
     }
 
     /// Follow the live tail, reconnecting on every drop. Owns the subscription
-    /// lifecycle: (re)subscribe, drain blocks into the coordinator (tracking the
-    /// tip and flagging discontinuities), and on a stream end/error back off and
-    /// re-subscribe. A reconnect resumes at the chain tip; the downtime hole
-    /// below it is repaired by the healer like any other gap — which is why a
-    /// dropped stream no longer takes the source down. Runs for the source's
-    /// lifetime; returns only when the coordinator is gone.
+    /// lifecycle: (re)subscribe, drain blocks into the coordinator (flagging
+    /// discontinuities so the healer repairs them), and on a stream end/error
+    /// back off and re-subscribe. A reconnect resumes at the chain tip; the
+    /// downtime hole below it is repaired by the healer like any other gap —
+    /// which is why a dropped stream no longer takes the source down. Runs for
+    /// the source's lifetime; returns only when the coordinator is gone.
     async fn drain_live(self: Arc<Self>, coordinator_tx: mpsc::Sender<BlockData>) -> AnyResult<()> {
         loop {
             if coordinator_tx.is_closed() {
@@ -326,26 +250,27 @@ impl RemoteBlockSource {
                 },
             };
 
-            // A (re)subscribe resumes at the new tip: raise it and wake the
-            // healer to fill whatever gap now sits below it — the initial
-            // history on first connect, a downtime hole on a reconnect.
-            self.tip.fetch_max(live_tip, Ordering::AcqRel);
+            // A (re)subscribe resumes at the new tip: wake the healer to fill
+            // whatever gap now sits below it — the initial history on first
+            // connect, a downtime hole on a reconnect.
             self.heal_notify.notify_one();
+
+            // Highest height delivered so far this subscription; a jump beyond
+            // `prev + 1` means blocks went missing.
+            let mut prev = live_tip;
 
             loop {
                 match live_blocks.next().await {
                     Some(Ok(block)) => {
                         let height = block.height();
 
-                        // `fetch_max` advances the tip and hands back the
-                        // previous value; a delivered height beyond `prev + 1`
-                        // means blocks went missing (a skip, or a reconnect at a
-                        // higher tip), so wake the healer. (A reorder also trips
-                        // this; the healer's grace absorbs it — see `run_healer`.)
-                        let prev_tip = self.tip.fetch_max(height, Ordering::AcqRel);
-                        if height > prev_tip + 1 {
+                        // A skip (or a reconnect at a higher tip, or a reorder)
+                        // leaves a hole; wake the healer. The grace in
+                        // `run_healer` absorbs a transient reorder.
+                        if height > prev + 1 {
                             self.heal_notify.notify_one();
                         }
+                        prev = prev.max(height);
 
                         if coordinator_tx.send(block).await.is_err() {
                             return Ok(()); // coordinator gone
@@ -372,13 +297,10 @@ impl RemoteBlockSource {
 #[async_trait]
 impl BlockSource for RemoteBlockSource {
     async fn run(self: Arc<Self>) -> AnyResult<()> {
-        // Resume from our own store: the frontier is the contiguous prefix we
-        // already hold.
-        if let Some(resume_height) = self.store.max_contiguous(GENESIS_HEIGHT).await? {
-            self.frontier.store(resume_height, Ordering::Release);
-        }
-
-        // Single serialized coordinator behind a bounded channel, fed by the
+        // Nothing to seed: the store owns the contiguous frontier and derives it
+        // from the heights it already holds.
+        //
+        // A single serialized coordinator behind a bounded channel, fed by the
         // live tail (`drain_live`, which owns its own subscription lifecycle)
         // and the healer's backfill.
         let (coordinator_tx, coordinator_rx) = mpsc::channel(self.config.coordinator_buffer);
@@ -410,8 +332,7 @@ impl BlockSource for RemoteBlockSource {
     }
 
     async fn contiguous_frontier(&self) -> AnyResult<Option<u64>> {
-        let height = self.frontier.load(Ordering::Acquire);
-        Ok((height != 0).then_some(height))
+        self.store.contiguous_frontier().await
     }
 }
 
@@ -523,44 +444,6 @@ mod tests {
         }
     }
 
-    /// A store whose `put` blocks until `release` is signalled, so a test can
-    /// observe the broadcast firing before the block is persisted.
-    #[derive(Default)]
-    struct GatingStore {
-        inner: MemoryBlockStore,
-        gate: Notify,
-    }
-
-    impl GatingStore {
-        fn release(&self) {
-            self.gate.notify_one();
-        }
-    }
-
-    #[async_trait]
-    impl BlockStore for GatingStore {
-        async fn put(&self, height: u64, data: &BlockData) -> AnyResult<()> {
-            self.gate.notified().await;
-            self.inner.put(height, data).await
-        }
-
-        async fn get(&self, height: u64) -> AnyResult<Option<BlockData>> {
-            self.inner.get(height).await
-        }
-
-        async fn max_contiguous(&self, floor: u64) -> AnyResult<Option<u64>> {
-            self.inner.max_contiguous(floor).await
-        }
-
-        async fn max_height(&self) -> AnyResult<Option<u64>> {
-            self.inner.max_height().await
-        }
-
-        async fn gaps(&self, from: u64, to: u64) -> AnyResult<Vec<(u64, u64)>> {
-            self.inner.gaps(from, to).await
-        }
-    }
-
     fn source_with(store: Arc<MemoryBlockStore>) -> Arc<RemoteBlockSource> {
         Arc::new(RemoteBlockSource::new(
             store,
@@ -570,18 +453,33 @@ mod tests {
         ))
     }
 
-    /// Read the next `count` broadcast heights, asserting they are `start..`.
-    async fn assert_broadcast(
-        rx: &mut broadcast::Receiver<Arc<BlockData>>,
-        start: u64,
-        count: u64,
-    ) {
-        for expected in start..start + count {
-            let block = timeout(Duration::from_secs(5), rx.recv())
-                .await
-                .expect("timed out waiting for broadcast")
-                .expect("broadcast closed");
-            assert_eq!(block.height(), expected);
+    /// Next broadcast height, with a timeout so a missed wake-up fails the test
+    /// instead of hanging.
+    async fn recv_height(rx: &mut broadcast::Receiver<Arc<BlockData>>) -> u64 {
+        timeout(Duration::from_secs(5), rx.recv())
+            .await
+            .expect("timed out waiting for broadcast")
+            .expect("broadcast closed")
+            .height()
+    }
+
+    /// Drain broadcasts up to and including `target`, asserting the sequence is
+    /// strictly ascending (the broadcast invariant: `+1` or a skip-to-top, never
+    /// out of order or duplicated). Returns the heights seen.
+    async fn drain_until(rx: &mut broadcast::Receiver<Arc<BlockData>>, target: u64) -> Vec<u64> {
+        let mut seen = Vec::new();
+        loop {
+            let height = recv_height(rx).await;
+            if let Some(&last) = seen.last() {
+                assert!(
+                    height > last,
+                    "broadcast not ascending: {last} then {height}"
+                );
+            }
+            seen.push(height);
+            if height == target {
+                return seen;
+            }
         }
     }
 
@@ -599,27 +497,32 @@ mod tests {
         drop(tx);
         coordinator.await.unwrap().unwrap();
 
-        assert_broadcast(&mut rx, 1, 3).await;
-        assert_eq!(source.frontier.load(Ordering::Acquire), 3);
+        for height in 1..=3 {
+            assert_eq!(recv_height(&mut rx).await, height);
+        }
+        assert_eq!(source.contiguous_frontier().await.unwrap(), Some(3));
     }
 
     #[tokio::test]
-    async fn coordinator_handles_out_of_order() {
-        let source = source_with(Arc::new(MemoryBlockStore::default()));
+    async fn coordinator_skips_to_top_on_out_of_order() {
+        let store = Arc::new(MemoryBlockStore::default());
+        let source = source_with(store.clone());
         let mut rx = source.subscribe();
 
         let (tx, coordinator_rx) = mpsc::channel(64);
         let coordinator = tokio::spawn(source.clone().run_coordinator(coordinator_rx));
 
-        // 2 arrives before 1: it waits as an island, then 1 unlocks both — the
-        // broadcast is still strictly +1 (1, then 2).
+        // 2 waits above the gap at 1; when 1 lands the frontier jumps to 2, so
+        // only the top (2) is broadcast — 1 is durable and pulled via get().
         tx.send(block(2)).await.unwrap();
         tx.send(block(1)).await.unwrap();
         drop(tx);
         coordinator.await.unwrap().unwrap();
 
-        assert_broadcast(&mut rx, 1, 2).await;
-        assert_eq!(source.frontier.load(Ordering::Acquire), 2);
+        assert_eq!(recv_height(&mut rx).await, 2);
+        assert!(rx.try_recv().is_err());
+        assert_eq!(source.contiguous_frontier().await.unwrap(), Some(2));
+        assert!(store.get(1).await.unwrap().is_some());
     }
 
     #[tokio::test]
@@ -641,16 +544,16 @@ mod tests {
         drop(tx);
         coordinator.await.unwrap().unwrap();
 
-        // Edges 1, 2 are pushed; the island [3, 5] is bulk-advanced, so only its
-        // top (5) is broadcast — 3 and 4 are not (projections pull them via
-        // `get()`). The frontier still reaches 5.
-        assert_eq!(rx.recv().await.unwrap().height(), 1);
-        assert_eq!(rx.recv().await.unwrap().height(), 2);
-        assert_eq!(rx.recv().await.unwrap().height(), 5);
+        // 1 advances the frontier to 1 (broadcast). 2 bridges to the [3, 5]
+        // island, jumping the frontier to 5 — only the top (5) is broadcast;
+        // 2, 3, 4 are durable and pulled via get().
+        assert_eq!(recv_height(&mut rx).await, 1);
+        assert_eq!(recv_height(&mut rx).await, 5);
         assert!(rx.try_recv().is_err());
-        assert_eq!(source.frontier.load(Ordering::Acquire), 5);
-        assert!(store.get(3).await.unwrap().is_some());
-        assert!(store.get(4).await.unwrap().is_some());
+        assert_eq!(source.contiguous_frontier().await.unwrap(), Some(5));
+        for height in 2..=4 {
+            assert!(store.get(height).await.unwrap().is_some());
+        }
     }
 
     #[tokio::test]
@@ -663,7 +566,7 @@ mod tests {
 
         // Subscriber: tip 10, delivers 10, 11, 13 (skips 12), then pends.
         let source = Arc::new(RemoteBlockSource::new(
-            store,
+            store.clone(),
             Arc::new(MockSubscriber::new(10, vec![10, 11, 13])),
             Arc::new(MockFetcher),
             RemoteBlockSourceConfig::default(),
@@ -672,9 +575,13 @@ mod tests {
 
         let run = tokio::spawn(source.clone().run());
 
-        // The hole at 12 is healed; the broadcast is contiguous 10..=13.
-        assert_broadcast(&mut rx, 10, 4).await;
-        assert_eq!(source.frontier.load(Ordering::Acquire), 13);
+        // 10, 11 push through; 13 waits above the hole at 12; the healer fills
+        // 12, the frontier jumps to 13, and only the top (13) is broadcast.
+        assert_eq!(recv_height(&mut rx).await, 10);
+        assert_eq!(recv_height(&mut rx).await, 11);
+        assert_eq!(recv_height(&mut rx).await, 13);
+        assert_eq!(source.contiguous_frontier().await.unwrap(), Some(13));
+        assert!(store.get(12).await.unwrap().is_some());
 
         run.abort();
     }
@@ -689,7 +596,7 @@ mod tests {
         // Subscriber: tip 10, delivers 10, 11, then "reconnects" at 20 (the
         // 12..=19 downtime hole), then pends.
         let source = Arc::new(RemoteBlockSource::new(
-            store,
+            store.clone(),
             Arc::new(MockSubscriber::new(10, vec![10, 11, 20])),
             Arc::new(MockFetcher),
             RemoteBlockSourceConfig::default(),
@@ -698,63 +605,25 @@ mod tests {
 
         let run = tokio::spawn(source.clone().run());
 
-        // The 12..=19 hole is healed; the broadcast is contiguous 10..=20.
-        assert_broadcast(&mut rx, 10, 11).await;
-        assert_eq!(source.frontier.load(Ordering::Acquire), 20);
+        // The 12..=19 hole is healed; the broadcast climbs ascending to 20 and
+        // every height 10..=20 ends up durable.
+        let seen = drain_until(&mut rx, 20).await;
+        assert_eq!(*seen.first().unwrap(), 10);
+        assert_eq!(source.contiguous_frontier().await.unwrap(), Some(20));
+        for height in 12..=19 {
+            assert!(store.get(height).await.unwrap().is_some());
+        }
 
         run.abort();
     }
 
     #[tokio::test]
-    async fn contiguous_frontier_none_until_advanced() {
-        let source = source_with(Arc::new(MemoryBlockStore::default()));
+    async fn contiguous_frontier_none_until_stored() {
+        let store = Arc::new(MemoryBlockStore::default());
+        let source = source_with(store.clone());
         assert_eq!(source.contiguous_frontier().await.unwrap(), None);
-        source.frontier.store(7, Ordering::Release);
-        assert_eq!(source.contiguous_frontier().await.unwrap(), Some(7));
-    }
-
-    #[tokio::test]
-    async fn broadcast_precedes_store_for_edge_block() {
-        // The store write is gated, so we can observe the order.
-        let store = Arc::new(GatingStore::default());
-        let source = Arc::new(RemoteBlockSource::new(
-            store.clone(),
-            Arc::new(MockSubscriber::new(0, vec![])),
-            Arc::new(MockFetcher),
-            RemoteBlockSourceConfig::default(),
-        ));
-        let mut rx = source.subscribe();
-
-        let (tx, coordinator_rx) = mpsc::channel(64);
-        let coordinator = tokio::spawn(source.clone().run_coordinator(coordinator_rx));
-
-        // Block 1 is at the prefix edge: the coordinator broadcasts it, then
-        // blocks on the gated store write.
-        tx.send(block(1)).await.unwrap();
-
-        // The broadcast arrives even though the store write has not run...
-        let broadcast = timeout(Duration::from_secs(5), rx.recv())
-            .await
-            .expect("broadcast should fire before the store write")
-            .expect("broadcast closed");
-        assert_eq!(broadcast.height(), 1);
-        // ...the block is not persisted yet, and the frontier stays behind it.
-        assert_eq!(store.get(1).await.unwrap(), None);
-        assert_eq!(source.frontier.load(Ordering::Acquire), 0);
-
-        // Release the write; persistence completes, then the frontier advances.
-        store.release();
-        for _ in 0..200 {
-            if source.frontier.load(Ordering::Acquire) == 1 {
-                break;
-            }
-            tokio::time::sleep(Duration::from_millis(5)).await;
-        }
-        assert_eq!(source.frontier.load(Ordering::Acquire), 1);
-        assert_eq!(store.get(1).await.unwrap().unwrap().height(), 1);
-
-        drop(tx);
-        coordinator.await.unwrap().unwrap();
+        store.put(1, &block(1)).await.unwrap();
+        assert_eq!(source.contiguous_frontier().await.unwrap(), Some(1));
     }
 
     #[tokio::test]
@@ -766,7 +635,7 @@ mod tests {
 
         // Episode 1: tip 10, deliver 10, 11, then the stream ENDS (connection
         // drop). Episode 2: tip 20 (12..=19 produced during the downtime),
-        // deliver 20, 21, then pend.
+        // deliver 20, then pend.
         let subscriber = Arc::new(ScriptedSubscriber::new(vec![
             (10, vec![10, 11], false),
             (20, vec![20], true),
@@ -776,7 +645,7 @@ mod tests {
             ..Default::default()
         };
         let source = Arc::new(RemoteBlockSource::new(
-            store,
+            store.clone(),
             subscriber,
             Arc::new(MockFetcher),
             config,
@@ -786,10 +655,13 @@ mod tests {
         let run = tokio::spawn(source.clone().run());
 
         // 10, 11 from episode 1; the stream drops, the source reconnects, the
-        // healer fills the 12..=19 downtime hole, and 20 arrives — the broadcast
-        // is contiguous 10..=20.
-        assert_broadcast(&mut rx, 10, 11).await;
-        assert_eq!(source.frontier.load(Ordering::Acquire), 20);
+        // healer fills the 12..=19 downtime hole, and the broadcast climbs to 20.
+        let seen = drain_until(&mut rx, 20).await;
+        assert_eq!(*seen.first().unwrap(), 10);
+        assert_eq!(source.contiguous_frontier().await.unwrap(), Some(20));
+        for height in 12..=19 {
+            assert!(store.get(height).await.unwrap().is_some());
+        }
 
         run.abort();
     }

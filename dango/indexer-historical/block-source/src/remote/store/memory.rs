@@ -1,63 +1,51 @@
 use {
-    super::BlockStore,
+    super::{BlockStore, ranges::StoredRanges},
     async_trait::async_trait,
     dango_indexer_historical_types::{AnyResult, BlockData},
     std::{collections::BTreeMap, sync::Mutex},
 };
 
-/// In-memory [`BlockStore`] over a `BTreeMap`. For tests and ephemeral runs;
-/// production uses the Postgres-backed store.
+/// In-memory [`BlockStore`] over a `BTreeMap` of blocks plus the
+/// [`StoredRanges`] topology, both under one lock so a `put` updates them
+/// together. For tests and ephemeral runs; a production run uses
+/// [`RocksdbBlockStore`](super::RocksdbBlockStore), which additionally
+/// checkpoints the topology to disk.
 #[derive(Default)]
 pub struct MemoryBlockStore {
-    blocks: Mutex<BTreeMap<u64, BlockData>>,
+    state: Mutex<State>,
+}
+
+#[derive(Default)]
+struct State {
+    blocks: BTreeMap<u64, BlockData>,
+    present: StoredRanges,
 }
 
 #[async_trait]
 impl BlockStore for MemoryBlockStore {
-    async fn put(&self, height: u64, data: &BlockData) -> AnyResult<()> {
-        self.blocks
-            .lock()
-            .unwrap()
-            .entry(height)
-            .or_insert_with(|| data.clone());
-        Ok(())
+    async fn put(&self, height: u64, data: &BlockData) -> AnyResult<Option<u64>> {
+        let mut state = self.state.lock().unwrap();
+
+        // Idempotent: a re-put leaves both the blocks and the topology untouched
+        // and advances nothing.
+        if state.blocks.contains_key(&height) {
+            return Ok(None);
+        }
+
+        state.blocks.insert(height, data.clone());
+        // `StoredRanges` owns the topology math and reports the frontier advance.
+        Ok(state.present.insert(height))
     }
 
     async fn get(&self, height: u64) -> AnyResult<Option<BlockData>> {
-        Ok(self.blocks.lock().unwrap().get(&height).cloned())
+        Ok(self.state.lock().unwrap().blocks.get(&height).cloned())
     }
 
-    async fn max_contiguous(&self, floor: u64) -> AnyResult<Option<u64>> {
-        let blocks = self.blocks.lock().unwrap();
-        if !blocks.contains_key(&floor) {
-            return Ok(None);
-        }
-        let mut top = floor;
-        while blocks.contains_key(&(top + 1)) {
-            top += 1;
-        }
-        Ok(Some(top))
+    async fn contiguous_frontier(&self) -> AnyResult<Option<u64>> {
+        Ok(self.state.lock().unwrap().present.contiguous_top())
     }
 
-    async fn max_height(&self) -> AnyResult<Option<u64>> {
-        Ok(self.blocks.lock().unwrap().keys().next_back().copied())
-    }
-
-    async fn gaps(&self, from: u64, to: u64) -> AnyResult<Vec<(u64, u64)>> {
-        let blocks = self.blocks.lock().unwrap();
-        let mut gaps = Vec::new();
-        let mut height = from;
-        while height < to {
-            if blocks.contains_key(&height) {
-                height += 1;
-                continue;
-            }
-            let gap_start = height;
-            while height < to && !blocks.contains_key(&height) {
-                height += 1;
-            }
-            gaps.push((gap_start, height - 1));
-        }
-        Ok(gaps)
+    async fn lowest_gap(&self) -> AnyResult<Option<(u64, u64)>> {
+        Ok(self.state.lock().unwrap().present.first_gap())
     }
 }

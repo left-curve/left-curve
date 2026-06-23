@@ -14,6 +14,7 @@ path = "src/lib.rs"
 
 [dependencies]
 anyhow                = { workspace = true }
+borsh                 = { workspace = true }
 graphql_client        = { workspace = true }
 dango-primitives            = { workspace = true }
 dango-indexer-graphql-types = { workspace = true }
