@@ -1,5 +1,9 @@
 ---
-- name: Set system wide cometbft and dango directories and overwrite s3_bucket
+# These are first-deploy defaults using the fresh timestamp. On a redeploy of an
+# existing system-wide network (testnet/mainnet), read_current_deploy.yml below
+# overwrites dango_directory/cometbft_directory/s3_path/s3_bucket with the values
+# from the live deployment's .env, so they stay stable across deploys.
+- name: Set system wide cometbft and dango directories
   set_fact:
     dango_directory: "{{ ansible_facts['env']['HOME'] }}/{{ dango_network }}/{{ timestamp }}/dango"
     cometbft_directory: "{{ ansible_facts['env']['HOME'] }}/{{ dango_network }}/{{ timestamp }}/cometbft"

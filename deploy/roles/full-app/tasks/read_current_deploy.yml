@@ -38,6 +38,10 @@
       loop: "{{ existing_env_variables.stdout_lines }}"
       when: current_deployment is defined and env_file_exists.stat.exists
 
+    # Reuse the existing deployment's data dirs and S3 bucket/path so they stay
+    # stable across redeploys (overrides the fresh-timestamp defaults set in
+    # full-app.yml / prep_after_lock.yml). This is why testnet/mainnet keep a
+    # single persistent S3 bucket instead of a new one per deploy.
     - name: Read .env values for system wide directories
       shell: |
         grep -E '^(DANGO_DIRECTORY|COMETBFT_DIRECTORY|S3_PATH|S3_BUCKET)=' {{ ansible_facts['env']['HOME'] }}/deployments/{{ current_deployment }}/.env | \

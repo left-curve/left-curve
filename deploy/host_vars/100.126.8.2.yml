@@ -7,3 +7,4 @@ dango_networks:
   - mainnet
 cloudflare_lb_enabled: true
 internal_api_enabled: true
+s3_enabled: true

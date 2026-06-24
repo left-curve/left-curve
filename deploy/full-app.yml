@@ -36,6 +36,11 @@
         commit_author: "{{ lookup('pipe', 'git log -1 --pretty=%an') }}"
       run_once: true
 
+    # s3_bucket here is only the first-deploy default. For system-wide networks
+    # (testnet/mainnet), read_current_deploy.yml later overwrites it with the
+    # bucket name stored in the existing deployment's .env, so the bucket stays
+    # stable across redeploys. Only PR/devnet (non-system-wide) keep this fresh
+    # per-deploy timestamped name.
     - name: Set timestamp and deployment name on all hosts
       set_fact:
         deployment_name: "{{ hostvars[ansible_play_hosts[0]]['timestamp'] }}"
