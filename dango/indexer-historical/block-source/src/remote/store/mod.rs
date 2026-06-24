@@ -10,8 +10,9 @@ mod ranges;
 pub use {disk::RocksdbBlockStore, memory::MemoryBlockStore};
 
 /// Genesis floor: block 0 does not exist, so the contiguous prefix and gap
-/// detection start at height 1.
-pub(crate) const GENESIS_HEIGHT: u64 = 1;
+/// detection start at height 1. Exported so the projection loop can clamp its
+/// cursor to it — a cursor below the floor would never be served by `get`.
+pub const GENESIS_HEIGHT: u64 = 1;
 
 /// The source's durable store of raw blocks **and** the stored-height topology
 /// the coordinator runs on.

@@ -13,8 +13,9 @@ mod source;
 pub use {
     local::LocalBlockSource,
     remote::{
-        BlockFetcher, BlockStore, FetchStream, LiveSubscriber, MemoryBlockStore, RemoteBlockSource,
-        RemoteBlockSourceConfig, RocksdbBlockStore, SentinelBlockFetcher, SentinelFetcherConfig,
+        BlockFetcher, BlockStore, FetchStream, GENESIS_HEIGHT, LiveSubscriber, MemoryBlockStore,
+        RemoteBlockSource, RemoteBlockSourceConfig, RocksdbBlockStore, SentinelBlockFetcher,
+        SentinelFetcherConfig,
     },
     source::BlockSource,
 };

@@ -16,12 +16,13 @@ pub struct SentinelFetcherConfig {
     pub batch_size: u64,
     /// Per-batch timeout before retrying.
     pub timeout: Duration,
-    /// Upper bound on blocks fetched-ahead but not yet consumed. The fetcher
-    /// can be far faster than the store writer during a backfill; a bounded
-    /// channel makes a full buffer block the fetcher (backpressure) instead of
-    /// letting it race hundreds of thousands of blocks ahead and balloon RAM.
-    /// No throughput cost — the consumer is the bottleneck and the fetcher only
-    /// needs a lead, so this is the main backfill-RAM knob.
+    /// Upper bound on blocks fetched-ahead but not yet consumed. The fetcher can
+    /// be far faster than the store writer during a backfill; a bounded channel
+    /// makes a full buffer block the fetcher (backpressure) instead of letting it
+    /// race ahead and balloon RAM. No throughput cost — the consumer is the
+    /// bottleneck and the fetcher only needs a small lead. This is a **RAM** knob:
+    /// at the measured payloads (median ~20 KB, p90 ~150 KB borsh) 2_000 is
+    /// ~40 MB typical / ~300 MB peak.
     pub channel_capacity: usize,
     /// Backoff after a failed or timed-out batch before retrying.
     pub retry_backoff: Duration,
@@ -32,7 +33,7 @@ impl Default for SentinelFetcherConfig {
         Self {
             batch_size: 50,
             timeout: Duration::from_secs(30),
-            channel_capacity: 10_000,
+            channel_capacity: 2_000,
             retry_backoff: Duration::from_millis(500),
         }
     }

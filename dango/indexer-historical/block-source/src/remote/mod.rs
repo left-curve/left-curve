@@ -4,7 +4,7 @@ mod subscriber;
 
 pub use {
     fetcher::{BlockFetcher, FetchStream, SentinelBlockFetcher, SentinelFetcherConfig},
-    store::{BlockStore, MemoryBlockStore, RocksdbBlockStore},
+    store::{BlockStore, GENESIS_HEIGHT, MemoryBlockStore, RocksdbBlockStore},
     subscriber::LiveSubscriber,
 };
 
@@ -26,9 +26,12 @@ use {
 /// deployment can bound backfill RAM.
 #[derive(Debug, Clone)]
 pub struct RemoteBlockSourceConfig {
-    /// Broadcast channel capacity — the live-tail fan-out to projections. Holds
-    /// up to this many `Arc<BlockData>` when a subscriber lags; at 2 bps,
-    /// 10_000 is ~83 min of buffer before a slow projection is `Lagged`.
+    /// Broadcast channel capacity — the live-tail fan-out to projections. A
+    /// tokio broadcast is a **ring**: it keeps the most-recent `capacity`
+    /// `Arc<BlockData>` resident at all times, so this is a RAM knob, not a time
+    /// one. At the measured mainnet payloads (median ~20 KB, p90 ~150 KB borsh)
+    /// 2_000 is ~40 MB typical / ~300 MB peak; a lagging projection is caught by
+    /// the Phase-1 `get()` recovery, so a larger ring buys little.
     pub pubsub_buffer_size: usize,
     /// Capacity of the channel feeding the coordinator. Bounded so the two
     /// writers (backfill + live tail) get backpressure when the coordinator's
@@ -47,16 +50,22 @@ pub struct RemoteBlockSourceConfig {
     /// between failed subscribe attempts). A reconnect resumes at the chain
     /// tip; the downtime hole below it is repaired by the healer.
     pub reconnect_backoff: Duration,
+    /// Backoff after a gap backfill fails its contiguity check (the fetcher
+    /// delivered a wrong height or ended early) before the healer retries that
+    /// gap. Keeps a misbehaving fetcher from spinning the healer in a tight
+    /// loop, while keeping the failure non-fatal to the source.
+    pub heal_retry_backoff: Duration,
 }
 
 impl Default for RemoteBlockSourceConfig {
     fn default() -> Self {
         Self {
-            pubsub_buffer_size: 10_000,
+            pubsub_buffer_size: 2_000,
             coordinator_buffer: 1_024,
             heal_poll_interval: Duration::from_secs(5),
             reorder_grace: Duration::from_millis(250),
             reconnect_backoff: Duration::from_secs(5),
+            heal_retry_backoff: Duration::from_secs(1),
         }
     }
 }
@@ -172,7 +181,24 @@ impl RemoteBlockSource {
                 Some((from, to)) => {
                     #[cfg(feature = "tracing")]
                     tracing::info!(from, to, "healer backfilling gap");
-                    self.backfill_gap(from, to, &coordinator_tx).await?;
+                    // A fetcher that violates the contiguity contract (wrong
+                    // height, or a stream that ends before `to`) fails this one
+                    // gap — but it must not take the whole source (and every
+                    // projection) down. Log, back off, and retry the gap on the
+                    // next pass; a *persistent* failure stays visible as a frozen
+                    // frontier (known issue #5), not a crash loop. Genuine
+                    // store-write errors remain fatal (they surface from the
+                    // coordinator, not here).
+                    if let Err(_err) = self.backfill_gap(from, to, &coordinator_tx).await {
+                        #[cfg(feature = "tracing")]
+                        tracing::warn!(
+                            from,
+                            to,
+                            error = %_err,
+                            "gap backfill failed; retrying after backoff"
+                        );
+                        sleep(self.config.heal_retry_backoff).await;
+                    }
                 },
                 None => {
                     // Gap-free. Sleep until a discontinuity signal, with a

@@ -4,10 +4,13 @@ use {
     async_trait::async_trait,
     dango_indexer_historical_types::{AnyResult, BlockData},
     rocksdb::{
-        BlockBasedOptions, Cache, ColumnFamily, DB, DBCompressionType, IteratorMode, Options,
-        WriteBatch,
+        BlockBasedIndexType, BlockBasedOptions, Cache, ColumnFamily, DB, DBCompressionType,
+        Options, WriteBatch,
     },
-    std::{path::Path, sync::Mutex},
+    std::{
+        path::Path,
+        sync::{Arc, Mutex},
+    },
 };
 
 /// The default CF holds metadata only (the topology checkpoint); named here
@@ -35,7 +38,9 @@ const TOPOLOGY_KEY: &[u8] = b"topology";
 /// coordinator is the only writer, and the query service reaches blocks through
 /// the same in-process source — so an embedded store is reachable, not a limit.
 pub struct RocksdbBlockStore {
-    db: DB,
+    /// `Arc` so each `put`/`get` can hand a cheap clone to `spawn_blocking`,
+    /// keeping the synchronous RocksDB I/O off the async workers.
+    db: Arc<DB>,
     /// In-RAM mirror of the durable topology; authoritative for queries.
     ///
     /// `std::sync::Mutex` is correct in this async store: the critical sections
@@ -65,14 +70,26 @@ impl RocksdbBlockStore {
         ])?;
 
         let ranges = match db.get(TOPOLOGY_KEY)? {
-            Some(bytes) => {
-                StoredRanges::from_ranges(&borsh::from_slice::<Vec<(u64, u64)>>(&bytes)?)
+            // A present checkpoint is the fast path. If it fails to decode
+            // (corruption), fall back to the rebuild rather than failing boot
+            // forever — the blocks are the source of truth, the checkpoint is
+            // only an optimization.
+            Some(bytes) => match borsh::from_slice::<Vec<(u64, u64)>>(&bytes) {
+                Ok(checkpoint) => StoredRanges::from_ranges(&checkpoint),
+                Err(_err) => {
+                    #[cfg(feature = "tracing")]
+                    tracing::warn!(
+                        error = %_err,
+                        "topology checkpoint is corrupt; rebuilding from block keys"
+                    );
+                    Self::rebuild_topology(&db)?
+                },
             },
             None => Self::rebuild_topology(&db)?,
         };
 
         Ok(Self {
-            db,
+            db: Arc::new(db),
             ranges: Mutex::new(ranges),
         })
     }
@@ -81,15 +98,26 @@ impl RocksdbBlockStore {
     /// when no checkpoint is present (a fresh DB is empty; a populated one
     /// without a checkpoint is a one-off rebuild).
     fn rebuild_topology(db: &DB) -> AnyResult<StoredRanges> {
+        // Key-only scan: a `raw_iterator` resolves a blob only when `value()` is
+        // called, so reading just the 8-byte height keys never touches the block
+        // payloads. The high-level `iterator_cf` materializes `(key, value)`
+        // pairs — with BlobDB that would fetch every payload off the blob files
+        // (the whole archive, tens of TB at 100M blocks) only to discard it.
         let mut ranges = StoredRanges::default();
-        for item in db.iterator_cf(blocks_cf(db), IteratorMode::Start) {
-            let (key, _) = item?;
+        let mut iter = db.raw_iterator_cf(blocks_cf(db));
+        iter.seek_to_first();
+        while iter.valid() {
+            let key = iter
+                .key()
+                .ok_or_else(|| anyhow!("block iterator is valid but returned no key"))?;
             let bytes: [u8; 8] = key
-                .as_ref()
                 .try_into()
-                .map_err(|_| anyhow!("block key is not 8 bytes: {:?}", key))?;
+                .map_err(|_| anyhow!("block key is not 8 bytes: {key:?}"))?;
             ranges.insert(u64::from_be_bytes(bytes));
+            iter.next();
         }
+        // Surface an I/O error that ended the iteration (vs. a clean end).
+        iter.status()?;
         Ok(ranges)
     }
 }
@@ -112,15 +140,20 @@ impl BlockStore for RocksdbBlockStore {
 
         // Persist block + topology checkpoint atomically and durably, *before*
         // the advance is exposed — so `h <= frontier ⟹ get(h) = Some` holds even
-        // across a crash.
-        let mut batch = WriteBatch::default();
-        batch.put_cf(
-            blocks_cf(&self.db),
-            height.to_be_bytes(),
-            borsh::to_vec(data)?,
-        );
-        batch.put(TOPOLOGY_KEY, borsh::to_vec(&next.to_ranges())?);
-        self.db.write(batch)?;
+        // across a crash. The RocksDB write runs on the blocking pool so it does
+        // not stall an async worker; the block encode stays here because the
+        // coordinator is the only writer, so at most one encode is in flight.
+        let db = self.db.clone();
+        let block_bytes = borsh::to_vec(data)?;
+        let topology_bytes = borsh::to_vec(&next.to_ranges())?;
+        tokio::task::spawn_blocking(move || -> AnyResult<()> {
+            let mut batch = WriteBatch::default();
+            batch.put_cf(blocks_cf(&db), height.to_be_bytes(), block_bytes);
+            batch.put(TOPOLOGY_KEY, topology_bytes);
+            db.write(batch)?;
+            Ok(())
+        })
+        .await??;
 
         // The block is now durable; commit the advanced topology to RAM.
         *self.ranges.lock().unwrap() = next;
@@ -128,10 +161,19 @@ impl BlockStore for RocksdbBlockStore {
     }
 
     async fn get(&self, height: u64) -> AnyResult<Option<BlockData>> {
-        match self.db.get_cf(blocks_cf(&self.db), height.to_be_bytes())? {
-            Some(bytes) => Ok(Some(borsh::from_slice(&bytes)?)),
-            None => Ok(None),
-        }
+        // Read + decode on the blocking pool: both the RocksDB point read (a
+        // blob fetch under BlobDB) and the borsh decode of a large payload are
+        // synchronous and CPU-bound, and `get` is called concurrently by every
+        // projection during catch-up — keeping them off the async workers is
+        // what stops a backfill read storm from starving the coordinator.
+        let db = self.db.clone();
+        tokio::task::spawn_blocking(move || -> AnyResult<Option<BlockData>> {
+            match db.get_cf(blocks_cf(&db), height.to_be_bytes())? {
+                Some(bytes) => Ok(Some(borsh::from_slice(&bytes)?)),
+                None => Ok(None),
+            }
+        })
+        .await?
     }
 
     async fn contiguous_frontier(&self) -> AnyResult<Option<u64>> {
@@ -149,23 +191,28 @@ fn blocks_cf(db: &DB) -> &ColumnFamily {
         .expect("blocks column family must exist")
 }
 
-/// Tuning for the blocks CF, shaped by the workload: keys are fixed 8-byte
-/// big-endian heights, values are large, immutable, compressible [`BlockData`],
-/// written append-mostly and never overwritten or deleted. (The fixed key size
-/// is not where the wins are — the layout is already ideal for ordered point
-/// reads; the tuning targets the large values and the append-only writes.)
+/// Tuning for the blocks CF, shaped by the **measured** mainnet workload
+/// (2026-06-24: ~32.5M blocks, growing at ~2.79 blk/s → ~100M in ~9 months;
+/// `BlockData` payloads median ~15-25 KB, p90 ~150 KB borsh). Keys are fixed
+/// 8-byte big-endian heights; values are large, immutable, compressible, and
+/// written append-only. The fixed key size is not where the wins are — the
+/// tuning targets the large values, the read path at 100M keys, and the writes.
 fn blocks_cf_options() -> Options {
     let mut opts = Options::default();
 
-    // Key-value separation (BlobDB): the large block payloads live in blob
-    // files, leaving the LSM tiny (key → blob pointer). Compaction then does not
-    // rewrite the big values — low write-amplification on a multi-million-block
-    // backfill — and key scans (e.g. the topology rebuild) stay cheap. Blocks
-    // below the threshold stay inline, so small cron-only blocks pay no
-    // indirection.
+    // Key-value separation (BlobDB): the large payloads live in blob files,
+    // leaving the LSM tiny (key → blob pointer). Compaction then does not
+    // rewrite the big values, and key scans (the topology rebuild) stay cheap.
+    // At the measured sizes essentially every block exceeds `min_blob_size`, so
+    // ~all payloads go to blobs and the LSM holds little beyond the pointers.
     opts.set_enable_blob_files(true);
     opts.set_min_blob_size(4 * 1024);
     opts.set_blob_compression_type(DBCompressionType::Zstd);
+    // The payloads are ~95% of the bytes and were otherwise uncached. A
+    // dedicated blob cache helps the query service and any projection that
+    // re-reads recent blocks; a purely sequential backfill barely uses it (no
+    // downside). Separate from the block cache so the two do not contend.
+    opts.set_blob_cache(&Cache::new_lru_cache(512 * 1024 * 1024));
 
     // SST compression: fast lz4 on the churny upper levels, max-ratio zstd at the
     // stable bottom level where ~all of the archive settles.
@@ -178,15 +225,30 @@ fn blocks_cf_options() -> Options {
 
     // Larger memtable → fewer flushes during the backfill burst.
     opts.set_write_buffer_size(64 * 1024 * 1024);
+    // Backfill writes far faster than the ~2.79 blk/s live rate; give compaction
+    // and flushing enough threads to keep up and avoid L0 write stalls.
+    opts.set_max_background_jobs(6);
+    opts.set_max_subcompactions(4);
 
-    // Read path: a whole-key bloom for the occasional miss, larger blocks to
-    // suit large values, and index/filter kept hot in a dedicated cache.
+    // Read path. With BlobDB the SST data blocks are just pointers, so this
+    // cache is almost entirely index+filter — and at 100M keys those alone are
+    // ~350-450 MB (a 10-bit/key bloom is ~125 MB), so the old 256 MB would
+    // thrash. 1 GiB gives headroom; raise it if the host has spare RAM.
     let mut block_opts = BlockBasedOptions::default();
     block_opts.set_block_size(16 * 1024);
     block_opts.set_bloom_filter(10.0, true);
-    block_opts.set_block_cache(&Cache::new_lru_cache(256 * 1024 * 1024));
+    block_opts.set_block_cache(&Cache::new_lru_cache(1024 * 1024 * 1024));
     block_opts.set_cache_index_and_filter_blocks(true);
-    block_opts.set_pin_l0_filter_and_index_blocks_in_cache(true);
+    // Partitioned index + filter: a monolithic per-SST filter at 100M keys is
+    // huge; partitioning loads only the relevant slices per lookup. Pinning the
+    // top level keeps the small upper index/filter resident while the partitions
+    // stay cached on demand — so data blocks no longer evict them (this replaces
+    // the unavailable `..._with_high_priority`). `format_version >= 5` is
+    // required for partitioned filters.
+    block_opts.set_index_type(BlockBasedIndexType::TwoLevelIndexSearch);
+    block_opts.set_partition_filters(true);
+    block_opts.set_format_version(5);
+    block_opts.set_pin_top_level_index_and_filter(true);
     opts.set_block_based_table_factory(&block_opts);
 
     opts
@@ -279,5 +341,42 @@ mod tests {
         assert_eq!(store.lowest_gap().await.unwrap(), Some((4, 4)));
         assert_eq!(store.get(2).await.unwrap().unwrap().height(), 2);
         assert_eq!(store.get(5).await.unwrap().unwrap().height(), 5);
+    }
+
+    #[tokio::test]
+    async fn rebuilds_topology_when_checkpoint_absent() {
+        let dir = TempDataDir::new("_blockstore_rebuild_absent");
+        {
+            let store = RocksdbBlockStore::open(&dir).unwrap();
+            for height in [1, 2, 3, 5, 6] {
+                store.put(height, &block(height)).await.unwrap();
+            }
+            // Drop the checkpoint so the next open must rebuild from the keys
+            // (the key-only scan path).
+            store.db.delete(TOPOLOGY_KEY).unwrap();
+        }
+
+        let store = RocksdbBlockStore::open(&dir).unwrap();
+        assert_eq!(store.contiguous_frontier().await.unwrap(), Some(3));
+        assert_eq!(store.lowest_gap().await.unwrap(), Some((4, 4)));
+        assert_eq!(store.get(6).await.unwrap().unwrap().height(), 6);
+    }
+
+    #[tokio::test]
+    async fn rebuilds_topology_when_checkpoint_is_corrupt() {
+        let dir = TempDataDir::new("_blockstore_rebuild_corrupt");
+        {
+            let store = RocksdbBlockStore::open(&dir).unwrap();
+            for height in 1..=3 {
+                store.put(height, &block(height)).await.unwrap();
+            }
+            // Garble the checkpoint: the next open must fall back to the rebuild,
+            // not fail boot.
+            store.db.put(TOPOLOGY_KEY, b"not valid borsh").unwrap();
+        }
+
+        let store = RocksdbBlockStore::open(&dir).unwrap();
+        assert_eq!(store.contiguous_frontier().await.unwrap(), Some(3));
+        assert_eq!(store.lowest_gap().await.unwrap(), None);
     }
 }
