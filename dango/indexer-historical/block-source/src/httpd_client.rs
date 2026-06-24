@@ -13,11 +13,15 @@ use {
 /// boot-time queries without letting a stuck connection hang the indexer.
 const HTTP_TIMEOUT: Duration = Duration::from_secs(30);
 
-/// Thin GraphQL client against a `dango-httpd` instance — HTTP for queries,
+/// Thin GraphQL client against a dango node's `httpd` — HTTP for queries,
 /// WebSocket for subscriptions.
 ///
-/// Used by [`LocalBlockSource`] for the boot-time frontier query and the live
-/// tail.
+/// Shared by both block sources, which speak the same `block` subscription
+/// protocol — only the target differs: [`LocalBlockSource`] points it at the
+/// co-located in-process `dango-httpd`, while the remote sentinel subscriber
+/// points it at a remote sentinel node. It supplies the live block-height
+/// notifications and the boot-time frontier query; a detached remote source
+/// fetches the block payloads separately over RPC (it has no local disk).
 ///
 /// [`LocalBlockSource`]: crate::LocalBlockSource
 #[derive(Debug, Clone)]

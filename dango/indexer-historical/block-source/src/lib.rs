@@ -6,6 +6,7 @@
 //! - [`BlockFetcher`] — bounded backfill abstraction; [`SentinelBlockFetcher`]
 //!   pulls from a sentinel node.
 
+mod httpd_client;
 mod local;
 mod remote;
 mod source;
