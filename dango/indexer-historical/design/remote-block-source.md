@@ -276,6 +276,31 @@ moved and the fetcher would chase it forever.
 the healer (a skip, a reconnect at a higher tip, or a reorder all trip this; the
 healer's grace absorbs a transient reorder). There is no shared `tip` state.
 
+### Payload fetch: two calls today, a single-call endpoint later
+
+Both the subscriber (per live height) and the `SentinelBlockFetcher` (per
+backfilled height) assemble a `BlockData` with **two** sentinel calls,
+`query_block` + `query_block_outcome`. At 100M blocks that is ~200M calls for a
+full backfill. On the indexer-REST path it is worse than it looks: the two
+endpoints that expose the halves — `/block/info/{h}` (`block`) and
+`/block/result/{h}` (`block_outcome`) — load the **same** node cache file
+*twice*, each returning one half of `cache_file.data`.
+
+**Proposed (not built — we keep the two calls for now):** add one route to the
+node's indexer httpd, e.g. `GET /block/{h}`, that loads the cache file once and
+returns `block` + `outcome` together. Since the historical `BlockData` already
+derives `borsh` and is the *same on-disk shape* the node caches, the route can
+answer in **borsh** and the client does `borsh::from_slice::<BlockData>`
+directly — one call, one disk read, zero conversion. (A JSON variant would need
+a serde wire-type, since the cache field is `block_outcome`, not `outcome`.)
+This halves the subscriber's per-block calls, and the backfill's too if the
+fetcher adopts the same route.
+
+Deferred because it touches `dango/indexer/httpd` (the node/sentinel), so a
+sentinel must ship the route before the source can depend on it; adopting it
+would also revise this section and [the fetcher](#the-block-fetcher). Recorded
+so the option is not re-discovered from scratch later.
+
 ## The block fetcher
 
 The fetcher does **bounded** backfill of one contiguous range and then
@@ -491,6 +516,10 @@ re-fetchable, never reported as permanently absent.
 
 - **Subscriber wire protocol** — reuse the GraphQL `block` subscription, or a
   dedicated block stream? Trade-offs on backpressure and reconnection.
+- **Combined block endpoint** — one sentinel call for `block` + `outcome`
+  instead of `query_block` + `query_block_outcome`; deferred (we keep the two
+  calls for now), see
+  [Payload fetch](#payload-fetch-two-calls-today-a-single-call-endpoint-later).
 - **Fetcher error model** — structured errors (e.g.
   `NotAvailable { earliest }`, needed once B2 lands) vs. plain 404s for the
   sentinel-only version.
