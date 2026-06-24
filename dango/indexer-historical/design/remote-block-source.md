@@ -225,9 +225,16 @@ ideal for ordered point reads. The tuning targets the values and the writes.)
 - **SST compression** — lz4 on the churny upper levels, zstd on the bottommost
   level where ~all of the archive settles (max ratio for the cold bulk).
 - **Append-only compaction** — leveled with `dynamic_level_bytes` (minimal space
-  amplification), larger memtable (fewer flushes during the backfill burst).
-- **Read path** — whole-key bloom filter, larger block size (suits large
-  values), index/filter pinned in a dedicated LRU block cache.
+  amplification), larger memtable, and `max_background_jobs=6` /
+  `max_subcompactions=4` so compaction keeps up with the backfill burst (which
+  writes far faster than the ~2.79 blk/s live rate) and avoids L0 write stalls.
+- **Read path** — whole-key bloom filter, larger block size, and a **1 GiB block
+  cache** holding **partitioned** index+filter (`TwoLevelIndexSearch` +
+  `partition_filters`, top level pinned): at 100M keys index+filter alone are
+  ~350–450 MB, so a small cache or a monolithic per-SST filter would thrash.
+- **Blob cache** — a dedicated 512 MiB cache for the payloads (the ~95% of bytes
+  that live in blob files, otherwise uncached); helps the query service and any
+  projection that re-reads recent blocks.
 
 The WAL is left **un-synced** (default): a process crash is survived (RocksDB
 recovers from the WAL on restart), and a power-loss tail loss is safe because
@@ -235,9 +242,12 @@ the lost blocks and their checkpoint are dropped together (atomic batch) →
 consistent, just behind → the healer re-fetches. The re-fetchable property buys
 fast writes for free.
 
-> The thresholds (`min_blob_size`, cache size, write buffer) are sane starting
-> points, not measured against real dango block sizes yet. Making them
-> configurable from `remote.*` is a future knob.
+> The thresholds are tuned against the **measured** mainnet workload (2026-06-24:
+> ~32.5M blocks at ~2.79 blk/s → ~100M in ~9 months; `BlockData` payloads median
+> ~15–25 KB, p90 ~150 KB, max ~0.5 MB borsh). `min_blob_size` stays 4 KB — the
+> payloads are well above it, so ~all go to blobs. Surfacing the knobs under
+> `remote.*`, and re-checking the cache against the live cache-hit-rate once
+> deployed, is a future task.
 
 ## The live subscriber
 
