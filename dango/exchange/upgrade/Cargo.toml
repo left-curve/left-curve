@@ -9,16 +9,10 @@ repository    = { workspace = true }
 rust-version  = { workspace = true }
 
 [dependencies]
-anyhow           = { workspace = true }
+borsh            = { workspace = true }
 dango-app        = { workspace = true }
-dango-bank       = { workspace = true }
 dango-math       = { workspace = true }
-dango-order-book = { workspace = true }
-dango-perps      = { workspace = true }
 dango-primitives = { workspace = true }
+dango-storage    = { workspace = true }
 dango-types      = { workspace = true }
 tracing          = { workspace = true }
-
-[dev-dependencies]
-# Reads the gitignored JSON fixtures in the `#[ignore]`d real-data tests.
-serde_json = { workspace = true }

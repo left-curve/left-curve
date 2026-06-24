@@ -39,12 +39,6 @@ pub enum ExecuteMsg {
     /// Burn tokens of the specified amount from an account.
     /// Can only be called by the namespace owner.
     Burn { from: Addr, coins: Coins },
-    /// Forcily transfer coins from an account to a receiver.
-    /// Can only be called by the chain's taxman contract.
-    /// Used by taxman to withhold pending transaction fees.
-    ///
-    /// Note: The `receive` method isn't invoked when calling this.
-    ForceTransfer { from: Addr, to: Addr, coins: Coins },
     /// Retrieve funds sent to a non-existing recipient.
     /// Can only be called by the transfer's sender, recipient, or the chain owner.
     RecoverTransfer { sender: Addr, recipient: Addr },

@@ -6,7 +6,9 @@ src         = "book/"
 title       = "The Dango Book"
 
 [output.html]
+additional-js      = ["book/mermaid-init.js"]
 git-repository-url = "https://github.com/left-curve/left-curve"
+theme              = "book/theme"
 
 [build]
 build-dir = "target/book/"
@@ -16,3 +18,7 @@ edition = "2024"
 
 # This is for Latex support, install with: `cargo install mdbook-katex@0.10.0-alpha`.
 [preprocessor.katex]
+
+# This is for Mermaid diagram support, install with: `cargo install mdbook-mermaid@0.17.0`.
+[preprocessor.mermaid]
+command = "mdbook-mermaid"

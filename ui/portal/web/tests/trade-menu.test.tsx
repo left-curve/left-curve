@@ -19,6 +19,23 @@ const tradeMenuMocks = vi.hoisted(() => ({
   isConnected: true,
   isGeoblocked: false,
   isPending: false,
+  liquidityDepth: {
+    asks: {
+      "50010": {
+        notional: "50010",
+        size: "1",
+      },
+    },
+    bids: {
+      "49990": {
+        notional: "49990",
+        size: "1",
+      },
+    },
+  } as {
+    asks: Record<string, { notional: string; size: string }>;
+    bids: Record<string, { notional: string; size: string }>;
+  } | null,
   marginModeByPair: {} as Record<string, "cross" | "isolated">,
   maxSize: 1000,
   maxSlippage: "0.0125",
@@ -165,9 +182,11 @@ vi.mock("@left-curve/store", () => {
   const appConfig = {
     perpsPairs: {
       "perp/btcusd": {
+        bucketSizes: ["1"],
         initialMarginRatio: "0.02",
         maintenanceMarginRatio: "0.01",
         minOrderSize: "10",
+        tickSize: "1",
       },
     },
     perpsParam: {
@@ -234,6 +253,12 @@ vi.mock("@left-curve/store", () => {
       availToTrade: tradeMenuMocks.availToTrade,
       maxSize: tradeMenuMocks.maxSize,
     }),
+    usePerpsLiquidityDepth: (
+      selector: (state: { liquidityDepth: typeof tradeMenuMocks.liquidityDepth }) => unknown,
+    ) =>
+      selector({
+        liquidityDepth: tradeMenuMocks.liquidityDepth,
+      }),
     usePerpsSubmission: tradeMenuMocks.usePerpsSubmission,
     usePerpsUserState: (
       selector: (state: {
@@ -345,6 +370,20 @@ describe("DEX trade menu", () => {
     tradeMenuMocks.isConnected = true;
     tradeMenuMocks.isGeoblocked = false;
     tradeMenuMocks.isPending = false;
+    tradeMenuMocks.liquidityDepth = {
+      asks: {
+        "50010": {
+          notional: "50010",
+          size: "1",
+        },
+      },
+      bids: {
+        "49990": {
+          notional: "49990",
+          size: "1",
+        },
+      },
+    };
     tradeMenuMocks.marginModeByPair = {};
     tradeMenuMocks.maxSize = 1000;
     tradeMenuMocks.maxSlippage = "0.0125";
@@ -507,26 +546,26 @@ describe("DEX trade menu", () => {
     );
   });
 
-  it("keeps limit orders disabled until price is present and forwards time in force", async () => {
+  it("auto-fills limit price from the top-of-book midpoint and forwards time in force", async () => {
     tradeMenuMocks.orderType = "limit";
 
     renderTradeMenu();
 
+    await waitFor(() => expect(getInput("price")).toHaveValue("50000"));
+    expect(screen.getByRole("button", { name: m["dex.protrade.perps.midPrice"]() })).toBeEnabled();
+
     const submitButton = screen.getByRole("button", { name: submitLabel() });
     fireEvent.change(getInput("size"), { target: { value: "500" } });
 
-    await waitFor(() => expect(submitButton).toBeDisabled());
-
     fireEvent.click(screen.getByRole("button", { name: "GTC" }));
     fireEvent.click(screen.getByText("Post Only"));
-    fireEvent.change(getInput("price"), { target: { value: "51000" } });
 
     await waitFor(() => expect(submitButton).not.toBeDisabled());
     await waitFor(() =>
       expect(tradeMenuMocks.submissionParameters).toEqual(
         expect.objectContaining({
           operation: "limit",
-          priceValue: "51000",
+          priceValue: "50000",
           sizeValue: "0.010000",
           timeInForce: "POST",
         }),
@@ -537,6 +576,40 @@ describe("DEX trade menu", () => {
     fireEvent.click(submitButton);
 
     expect(mutateAsync).toHaveBeenCalledTimes(1);
+  });
+
+  it("preserves a manually typed limit price until the Mid shortcut is clicked again", async () => {
+    tradeMenuMocks.orderType = "limit";
+
+    const { rerender } = renderTradeMenu();
+
+    const priceInput = getInput("price");
+    await waitFor(() => expect(priceInput).toHaveValue("50000"));
+
+    fireEvent.change(priceInput, { target: { value: "51000" } });
+    expect(priceInput).toHaveValue("51000");
+
+    tradeMenuMocks.liquidityDepth = {
+      asks: {
+        "50110": {
+          notional: "50110",
+          size: "1",
+        },
+      },
+      bids: {
+        "50090": {
+          notional: "50090",
+          size: "1",
+        },
+      },
+    };
+    rerender(<TradeMenuHarness />);
+
+    expect(getInput("price")).toHaveValue("51000");
+
+    fireEvent.click(screen.getByRole("button", { name: m["dex.protrade.perps.midPrice"]() }));
+
+    await waitFor(() => expect(getInput("price")).toHaveValue("50100"));
   });
 
   it("shows TP/SL direction errors and blocks the order before submission", async () => {

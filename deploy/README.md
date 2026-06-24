@@ -167,33 +167,23 @@ flowchart TD
 
 See [`NEW_SERVER_SETUP.md`](NEW_SERVER_SETUP.md).
 
-### Setup Ansible Vault
+### Setup SOPS Secrets
 
-#### First time setup (recommended: pass)
-
-If you have [pass](https://www.passwordstore.org/) installed, store the vault password:
+Install the local tools:
 
 ```bash
-pass insert dango/deploy-vault
-# Enter the password when prompted (ASK_TEAM_FOR_PASSWORD)
+brew install sops age age-plugin-yubikey
 ```
 
-#### First time setup (macOS Keychain fallback)
+Each teammate needs an age identity file that points to their YubiKey slot.
+Keep that identity file local; only the public `age1yubikey1...` recipient is
+committed in `.sops.yaml`.
 
-If you don't have `pass`, you can use macOS Keychain. Add vault password to Keychain:
-
-```bash
-security add-generic-password \
-  -a ansible \
-  -s ansible-vault/default \
-  -w 'ASK_TEAM_FOR_PASSWORD'
-```
-
-This shows you have the right password:
+Check the local SOPS setup:
 
 ```bash
-❯ ./vault-password.sh | sha256
-2f919beb6554c5149ebfdbf03076bed7796fb6853e1d9993bfa259622c7a84e0
+just sops-check
+just sops-audit
 ```
 
 Make also sure you have ssh-agent and added your key with ssh-add before
@@ -201,46 +191,25 @@ running ansible-playbook, else you'll get `Permission denied (publickey)`.
 
 You must rerun `ssh-add` after you rebooted.
 
-Debian-only secrets live in `vaults/debian/root_vault.yml`. You should not
-need the debian password for normal deploy workflows; only debian/root
-playbooks will try to decrypt that vault, and no extra CLI flags are needed.
+Debian-only secrets live in `vaults/debian/root_vault.sops.json` and
+`vaults/debian/debian_key.sops`. They are intentionally encrypted to the
+root/debian recipients only; deploy CI is not a root/debian recipient in phase
+1.
 
 #### Root access
 
 No one should need debian/sudo access to the servers, this is a critical
-access. But here is the process.
-
-If you have [pass](https://www.passwordstore.org/) installed, store the debian password:
-
-```bash
-pass insert dango/debian-vault
-# Enter the password when prompted (ASK_TEAM_FOR_PASSWORD)
-```
-
-If you don't have `pass`, you can use macOS Keychain. Add debian password to Keychain:
-
-```bash
-security add-generic-password \
-  -a ansible \
-  -s ansible-debian/default \
-  -w 'ASK_TEAM_FOR_PASSWORD'
-```
-
-This shows you have the right password:
-
-```bash
-❯ ./debian-password.sh | sha256
-b82a3865821fb1c7072cf58ca641811fd814c892109963f54fce675e7e9cfca5
-```
+access. Only root/debian SOPS recipients can decrypt the debian SSH key and
+root variables.
 
 Make also sure you have ssh-agent and added your key with ssh-add before
 running ansible-playbook, else you'll get `Permission denied (publickey)`.
 
 You must rerun `ssh-add` after you rebooted.
 
-### Using the deploy key (vaulted)
+### Using the deploy key
 
-The private key is encrypted in `group_vars/all/deploy_key.vault`, load it
+The private key is encrypted in `vaults/deploy/deploy_key.sops`, load it
 directly into ssh-agent without writing to disk:
 
 `just add-deploy-key`

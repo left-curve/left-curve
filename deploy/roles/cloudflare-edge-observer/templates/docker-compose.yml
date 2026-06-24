@@ -1,0 +1,27 @@
+services:
+  cloudflare-edge-observer:
+    image: python:3.13-alpine
+    container_name: cloudflare-edge-observer
+    command: python /app/cloudflare_edge_observer.py --config /config/config.json
+    env_file:
+      - .env
+    ports:
+      - "{{ tailscale_ip }}:{{ cloudflare_edge_observer_port }}:{{ cloudflare_edge_observer_port }}"
+      - "{{ wireguard_ip }}:{{ cloudflare_edge_observer_port }}:{{ cloudflare_edge_observer_port }}"
+    volumes:
+      - ./cloudflare_edge_observer.py:/app/cloudflare_edge_observer.py:ro
+      - ./config/config.json:/config/config.json:ro
+      - ./data:/data
+    networks:
+      - monitoring
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:{{ cloudflare_edge_observer_port }}/health', timeout=3).read()"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+networks:
+  monitoring:
+    name: monitoring
+    external: true

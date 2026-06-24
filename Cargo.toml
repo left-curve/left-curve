@@ -25,7 +25,6 @@ members = [
   "dango/exchange/order-book",
   "dango/exchange/perps",
   "dango/exchange/proposal-preparer",
-  "dango/exchange/taxman",
   "dango/exchange/types",
   "dango/exchange/upgrade",
   "dango/exchange/vesting",
@@ -46,6 +45,7 @@ members = [
   "dango/indexer/httpd",
   "dango/indexer/metrics",
   "dango/indexer/sql",
+  "dango/indexer/stream",
   "dango/pyth/client",
   "dango/pyth/types",
   "dango/sdk",
@@ -61,7 +61,7 @@ members = [
   "dango/utils/identity",
   "dango/utils/temp-rocksdb",
 ]
-resolver = "2"
+resolver = "3"
 
 [workspace.package]
 authors       = ["Left Curve Software Limited"]
@@ -86,7 +86,7 @@ actix-test                  = "0.1"
 actix-web                   = "4"
 actix-web-metrics           = "0.4"
 aes-gcm                     = "0.10"
-alloy                       = "1.1"
+alloy                       = "2"
 anyhow                      = "1"
 assert-json-diff            = "2"
 assertor                    = "0.0.4"
@@ -108,7 +108,7 @@ borsh                       = "1"
 byteorder                   = "1"
 chrono                      = "0.4"
 clap                        = { version = "4", features = ["derive"] }
-clickhouse                  = "0.14"
+clickhouse                  = "0.15"
 clru                        = "0.6"
 colored                     = "3"
 colored_json                = "5"
@@ -124,7 +124,7 @@ ed25519-dalek               = "2"
 elsa                        = "1"
 futures                     = "0.3"
 futures-util                = "0.3"
-graphql_client              = "0.14"
+graphql_client              = "0.16"
 hex                         = "0.4"
 hex-literal                 = "1"
 home                        = "0.5"
@@ -135,9 +135,9 @@ lzma-rs                     = "0.3"
 metrics                     = "0.24"
 metrics-exporter-prometheus = "0.18"
 num_cpus                    = "1"
-opentelemetry               = "0.31"
-opentelemetry-otlp          = { version = "0.31", features = ["grpc-tonic", "trace"] }
-opentelemetry_sdk           = { version = "0.31", features = ["rt-tokio"] }
+opentelemetry               = "0.32"
+opentelemetry-otlp          = { version = "0.32", features = ["grpc-tonic", "trace"] }
+opentelemetry_sdk           = { version = "0.32", features = ["rt-tokio"] }
 ouroboros                   = "0.18"
 p256                        = "0.13"
 parking_lot                 = { version = "0.12", features = ["arc_lock", "send_guard"] }
@@ -145,8 +145,8 @@ paste                       = "1"
 pbkdf2                      = "0.12"
 proptest                    = "1"
 prost                       = "0.14"
-pyth-lazer-client           = "22.0.0"
-pyth-lazer-protocol         = "0.35.0"
+pyth-lazer-client           = "25.0.0"
+pyth-lazer-protocol         = "0.40.0"
 quote                       = "1"
 rand                        = "0.8" # FIXME: can't bump to 0.10 because RustCrypto requires 0.8
 rangemap                    = "1"
@@ -156,15 +156,15 @@ roaring                     = "0.11"
 rocksdb                     = "0.24"
 sea-orm                     = { version = "1", features = ["runtime-tokio-rustls", "sea-orm-internal", "sqlx-postgres", "sqlx-sqlite", "with-bigdecimal", "with-chrono", "with-json", "with-time", "with-uuid"] }
 sea-orm-migration           = { version = "1", features = ["runtime-tokio-rustls", "sqlx-postgres", "sqlx-sqlite", "with-chrono", "with-json", "with-uuid"] }
-sentry                      = { version = "0.47", features = ["log", "logs", "tracing"] }
-sentry-actix                = "0.47"
+sentry                      = { version = "0.48", features = ["log", "logs", "tracing"] }
+sentry-actix                = "0.48"
 serde                       = "1"
 serde_json                  = "1"
 serde_with                  = "3"
 sha2                        = "0.10"
 sha3                        = "0.10"
 signature                   = "2"
-sqlx                        = "0.8"
+sqlx                        = "0.8" # FIXME: can't bump to 0.9 because sea-orm 1.x requires 0.8
 strum                       = "0.28"
 strum_macros                = "0.28"
 syn                         = "2"
@@ -175,11 +175,11 @@ test-case                   = "3"
 thiserror                   = "2"
 tokio                       = { version = "1", features = ["full"] }
 tokio-stream                = { version = "0.1", features = ["sync"] }
-tokio-tungstenite           = { version = "0.28", features = ["native-tls"] }
+tokio-tungstenite           = { version = "0.29", features = ["native-tls"] }
 tower                       = "0.5"
 tower-abci                  = "0.19"
 tracing                     = { version = "0.1" }
-tracing-opentelemetry       = "0.32"
+tracing-opentelemetry       = "0.33"
 tracing-subscriber          = { version = "0.3", features = ["env-filter", "fmt", "json"] }
 typenum                     = "1"
 url                         = "2.5.4"
@@ -220,6 +220,7 @@ dango-indexer-hooked        = { path = "dango/indexer/hooked" }
 dango-indexer-httpd         = { path = "dango/indexer/httpd", features = ["tracing"] }
 dango-indexer-metrics       = { path = "dango/indexer/metrics" }
 dango-indexer-sql           = { path = "dango/indexer/sql" }
+dango-indexer-stream        = { path = "dango/indexer/stream" }
 dango-jmt                   = { path = "dango/core/jellyfish-merkle" }
 dango-macros                = { path = "dango/core/macros" }
 dango-math                  = { path = "dango/core/math" }
@@ -232,7 +233,6 @@ dango-pyth-client           = { path = "dango/pyth/client" }
 dango-pyth-types            = { path = "dango/pyth/types" }
 dango-sdk                   = { path = "dango/sdk" }
 dango-storage               = { path = "dango/core/storage" }
-dango-taxman                = { path = "dango/exchange/taxman" }
 dango-temp-rocksdb          = { path = "dango/utils/temp-rocksdb" }
 dango-tester                = { path = "dango/core/tester" }
 dango-testing               = { path = "dango/testing" }

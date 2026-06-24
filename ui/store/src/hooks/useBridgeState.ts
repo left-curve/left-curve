@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useConnectors } from "./useConnectors.js";
 import { useConfig } from "./useConfig.js";
 import { useStorage } from "./useStorage.js";
@@ -7,14 +7,52 @@ import { chains } from "../hyperlane.js";
 import { toAddr32 } from "@left-curve/sdk/hyperlane";
 
 import type { AnyCoin } from "../types/coin.js";
-import type { HyperlaneConfig } from "@left-curve/types";
+import type { HyperlaneConfig, HyperlaneEvmChainConfig } from "@left-curve/types";
 import { useAccount } from "./useAccount.js";
 
+const SUPPORTED_BRIDGE_SYMBOLS = new Set(["USDC"]);
+const ETHEREUM_MAINNET_CHAIN_ID = 1;
+
+type BridgeAction = "deposit" | "withdraw";
+
+function normalizeSymbol(symbol: string) {
+  return symbol.toUpperCase();
+}
+
+function isSupportedRoute(
+  action: BridgeAction,
+  bridger: HyperlaneEvmChainConfig,
+  route: HyperlaneEvmChainConfig["routes"][number],
+) {
+  const routeSymbol = normalizeSymbol(route.symbol);
+  if (SUPPORTED_BRIDGE_SYMBOLS.has(routeSymbol)) return true;
+
+  return (
+    action === "withdraw" &&
+    bridger.chainId === ETHEREUM_MAINNET_CHAIN_ID &&
+    route.type === "native" &&
+    routeSymbol === "ETH"
+  );
+}
+
+function hasSupportedRoute(
+  action: BridgeAction,
+  bridger: HyperlaneEvmChainConfig | undefined,
+  coin?: AnyCoin,
+) {
+  if (!bridger) return false;
+
+  return bridger.routes.some((route) => {
+    const routeSymbol = normalizeSymbol(route.symbol);
+    if (!isSupportedRoute(action, bridger, route)) return false;
+    if (!coin) return true;
+    return routeSymbol === normalizeSymbol(coin.symbol);
+  });
+}
+
 export type UseBridgeStateParameters = {
-  config: {
-    evm: Record<string, HyperlaneConfig>;
-  };
-  action: "deposit" | "withdraw";
+  config: HyperlaneConfig;
+  action: BridgeAction;
   controllers: {
     inputs: Record<string, { value: string }>;
     reset: () => void;
@@ -23,7 +61,7 @@ export type UseBridgeStateParameters = {
 };
 
 export function useBridgeState(params: UseBridgeStateParameters) {
-  const { coins: allCoins, chain: dangoChain } = useConfig();
+  const { coins: allCoins } = useConfig();
   const { isConnected } = useAccount();
 
   const {
@@ -32,22 +70,9 @@ export function useBridgeState(params: UseBridgeStateParameters) {
     config: { evm },
   } = params;
 
-  const isTestnet = ["Devnet", "Testnet"].includes(dangoChain.name);
-
-  const { current: networks } = useRef([
-    ...(isTestnet
-      ? [{ name: "Sepolia Network", id: "11155111", time: "5-30 mins" }]
-      : [{ name: "Ethereum Network", id: "1", time: "6 blocks | 1-3 mins" }]),
-    /*   { name: "Base Network", id: "8453", time: "5-30 mins" },
-    { name: "Arbitrum Network", id: "42161", time: "5-30 mins" },
-    { name: "Bitcoin Network", id: "bitcoin", time: "10-60 mins" },
-    { name: "Solana Network", id: "solana", time: "2-10 mins" }, */
-  ]);
-
   const [network, setNetwork] = useState<string>();
 
   const [coin, setCoin] = useState<AnyCoin>();
-  const changeCoin = useCallback((denom: string) => setCoin(allCoins.byDenom[denom]), [allCoins]);
 
   const connectors = useConnectors();
   const [connectorId, setConnectorId] = useStorage<string | null>("bridge_connector", {
@@ -59,9 +84,58 @@ export function useBridgeState(params: UseBridgeStateParameters) {
     [connectorId, connectors],
   );
 
+  const configuredNetworks = useMemo(() => {
+    return Object.entries(evm)
+      .filter(([, bridger]) => hasSupportedRoute(action, bridger))
+      .sort(([, left], [, right]) => left.order - right.order)
+      .map(([id, bridger]) => ({
+        id,
+        name: bridger.name,
+        time: bridger.estimatedTime,
+      }));
+  }, [action, evm]);
+
+  const changeCoin = useCallback(
+    (denom: string) => {
+      const nextCoin = allCoins.byDenom[denom];
+      setCoin(nextCoin);
+
+      // Deposit pre-selects the highest-priority supported network (lowest `order`);
+      // in production that's Arbitrum. Withdraw still requires an explicit choice.
+      if (action !== "deposit") return;
+      const [defaultNetwork] = configuredNetworks.filter(({ id }) =>
+        hasSupportedRoute(action, evm[id], nextCoin),
+      );
+      setNetwork(defaultNetwork?.id);
+    },
+    [action, allCoins, configuredNetworks, evm],
+  );
+
+  const networks = useMemo(() => {
+    return configuredNetworks.filter(({ id }) => hasSupportedRoute(action, evm[id], coin));
+  }, [action, coin, configuredNetworks, evm]);
+
   const coins = useMemo(() => {
-    return Object.values(allCoins.byDenom).filter((c) => ["USDC", "ETH"].includes(c.symbol));
-  }, [allCoins]);
+    const selectedNetworks = network
+      ? configuredNetworks.filter(({ id }) => id === network)
+      : configuredNetworks;
+
+    const supportedSymbols = selectedNetworks.reduce((symbols, { id }) => {
+      const bridger = evm[id];
+      if (!bridger) return symbols;
+
+      for (const route of bridger.routes) {
+        const routeSymbol = normalizeSymbol(route.symbol);
+        if (isSupportedRoute(action, bridger, route)) symbols.add(routeSymbol);
+      }
+
+      return symbols;
+    }, new Set<string>());
+
+    return Object.values(allCoins.byDenom).filter((c) =>
+      supportedSymbols.has(normalizeSymbol(c.symbol)),
+    );
+  }, [action, allCoins, configuredNetworks, evm, network]);
 
   const config = useMemo(() => {
     if (!network || !coin) return undefined;
@@ -73,31 +147,30 @@ export function useBridgeState(params: UseBridgeStateParameters) {
     })();
 
     const router = (() => {
-      if (bridger && "hyperlane_domain" in bridger) {
-        const router = bridger.warp_routes.find((r) =>
-          r.symbol.toLowerCase().includes(coin.symbol.toLowerCase()),
+      if (bridger) {
+        const router = bridger.routes.find(
+          (route) =>
+            isSupportedRoute(action, bridger, route) &&
+            normalizeSymbol(route.symbol) === normalizeSymbol(coin.symbol),
         );
         if (!router) return undefined;
 
         return {
           remote: {
             warp: {
-              domain: bridger.hyperlane_domain,
-              contract: toAddr32(router.proxy_address),
+              domain: bridger.domain,
+              contract: toAddr32(router.routerAddress),
             },
           },
-          domain: bridger.hyperlane_domain,
-          address: router.proxy_address,
-          coin:
-            typeof router.warp_route_type === "string"
-              ? ("native" as const)
-              : router.warp_route_type.erc20_collateral,
+          domain: bridger.domain,
+          address: router.routerAddress,
+          coin: router.tokenAddress,
         };
       }
     })();
 
     return { chain, bridger, router };
-  }, [network, coin]);
+  }, [action, coin, evm, network]);
 
   const reset = useCallback(() => {
     setConnectorId(null);

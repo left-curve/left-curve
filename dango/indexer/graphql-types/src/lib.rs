@@ -53,7 +53,16 @@ pub struct PageInfo {
 // ----------------------------------- Types -----------------------------------
 
 macro_rules! generate_types {
-    ($({name: $name:ident, path: $path:literal $(,)?}), * $(,)? ) => {
+    // The query path is captured as `:tt` (a single token tree), not
+    // `:literal`, on purpose. Since `graphql_client` 0.16, the
+    // `GraphQLQuery` derive parses the `#[graphql(...)]` attribute by
+    // manually walking the raw token stream, and requires the value of
+    // `query_path` to be a bare literal token. A `:literal` metavariable is
+    // interpolated wrapped in an invisible `Delimiter::None` group, which
+    // that walker does not see through, so it reports `Attribute query_path
+    // not found`. A `:tt` capture is interpolated transparently, so the
+    // string literal arrives as the bare token the derive expects.
+    ($({name: $name:ident, path: $path:tt $(,)?}), * $(,)? ) => {
         $(
             #[derive(graphql_client::GraphQLQuery)]
             #[graphql(
@@ -159,7 +168,9 @@ generate_types! {
 // ---------------------------- Subscription types -----------------------------
 
 macro_rules! generate_subscription_types {
-    ($({name: $name:ident, path: $path:literal $(,)?}), * $(,)? ) => {
+    // `path` is captured as `:tt` rather than `:literal` for the same reason
+    // as in `generate_types!` above (graphql_client 0.16 attribute parsing).
+    ($({name: $name:ident, path: $path:tt $(,)?}), * $(,)? ) => {
         $(
             #[derive(graphql_client::GraphQLQuery)]
             #[graphql(
@@ -218,6 +229,10 @@ generate_subscription_types! {
         path: "src/schemas/subscriptions/perpsTrades.graphql",
     },
     {
+        name: SubscribePerpsEvents2,
+        path: "src/schemas/subscriptions/perpsEvents2.graphql",
+    },
+    {
         name: SubscribeQueryApp,
         path: "src/schemas/subscriptions/queryApp.graphql",
     },
@@ -235,8 +250,9 @@ generate_subscription_types! {
 pub mod subscriptions {
     pub use super::{
         subscribe_accounts, subscribe_block, subscribe_event_by_addresses, subscribe_events,
-        subscribe_messages, subscribe_perps_candles, subscribe_perps_trades, subscribe_query_app,
-        subscribe_query_status, subscribe_query_store, subscribe_transactions, subscribe_transfers,
+        subscribe_messages, subscribe_perps_candles, subscribe_perps_events2,
+        subscribe_perps_trades, subscribe_query_app, subscribe_query_status, subscribe_query_store,
+        subscribe_transactions, subscribe_transfers,
     };
 }
 

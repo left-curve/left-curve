@@ -501,6 +501,16 @@ describe("Transfer applet behavior", () => {
     expect(getInputByName("amount")).toHaveValue("");
   });
 
+  it("uses the available perps margin as the withdrawable USD max balance", () => {
+    renderTransfer("spot-perp");
+
+    fireEvent.click(screen.getByTestId("flip-direction"));
+    fireEvent.click(screen.getByRole("button", { name: m["common.max"]() }));
+
+    expect(getInputByName("from")).toHaveValue(transferLabels.perpAccount);
+    expect(getInputByName("amount")).toHaveValue("3.5");
+  });
+
   it("does not submit spot-perp transfers or reset the amount without a signing client", async () => {
     mocks.hasSigningClient = false;
 

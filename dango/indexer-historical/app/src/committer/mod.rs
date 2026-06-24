@@ -121,7 +121,7 @@ impl Committer for PgChCommitter {
 
             for (seq, write) in ch_writes.into_iter().enumerate() {
                 let token = format!("{projection_id}/{height}/{seq}");
-                let client = ch.clone().with_option("insert_deduplication_token", token);
+                let client = ch.clone().with_setting("insert_deduplication_token", token);
                 write(client).await?;
             }
         }

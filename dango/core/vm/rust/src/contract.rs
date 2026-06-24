@@ -1,15 +1,14 @@
 use {
     crate::{
         AuthenticateFn, BankExecuteFn, BankQueryFn, Contract, CronExecuteFn, ExecuteFn,
-        FinalizeFeeFn, InstantiateFn, MigrateFn, QueryFn, ReceiveFn, ReplyFn, VmError, VmResult,
-        WithholdFeeFn,
+        InstantiateFn, MigrateFn, QueryFn, ReceiveFn, ReplyFn, VmError, VmResult,
     },
     dango_backtrace::Backtraceable,
     dango_primitives::{
         Api, AuthCtx, BankMsg, BankQuery, BankQueryResponse, Binary, BorshDeExt, Context, Empty,
         GenericResult, GenericResultExt, ImmutableCtx, Json, JsonDeExt, MutableCtx, Querier,
-        QuerierWrapper, Response, StdError, Storage, SubMsgResult, SudoCtx, Tx, TxOutcome,
-        make_auth_ctx, make_immutable_ctx, make_mutable_ctx, make_sudo_ctx,
+        QuerierWrapper, Response, StdError, Storage, SubMsgResult, SudoCtx, Tx, make_auth_ctx,
+        make_immutable_ctx, make_mutable_ctx, make_sudo_ctx,
     },
     elsa::sync::FrozenVec,
     serde::de::DeserializeOwned,
@@ -73,8 +72,6 @@ pub struct ContractBuilder<
     E7 = StdError,
     E8 = StdError,
     E9 = StdError,
-    E10 = StdError,
-    E11 = StdError,
     E12 = StdError,
 > {
     instantiate_fn: InstantiateFn<M1, E1>,
@@ -86,8 +83,6 @@ pub struct ContractBuilder<
     authenticate_fn: Option<AuthenticateFn<E7>>,
     bank_execute_fn: Option<BankExecuteFn<E8>>,
     bank_query_fn: Option<BankQueryFn<E9>>,
-    withhold_fee_fn: Option<WithholdFeeFn<E10>>,
-    finalize_fee_fn: Option<FinalizeFeeFn<E11>>,
     cron_execute_fn: Option<CronExecuteFn<E12>>,
 }
 
@@ -107,15 +102,13 @@ where
             authenticate_fn: None,
             bank_execute_fn: None,
             bank_query_fn: None,
-            withhold_fee_fn: None,
-            finalize_fee_fn: None,
             cron_execute_fn: None,
         }
     }
 }
 
-impl<M1, E1, M2, M3, M5, M6, E2, E3, E4, E5, E6, E7, E8, E9, E10, E11, E12>
-    ContractBuilder<M1, E1, M2, M3, M5, M6, E2, E3, E4, E5, E6, E7, E8, E9, E10, E11, E12>
+impl<M1, E1, M2, M3, M5, M6, E2, E3, E4, E5, E6, E7, E8, E9, E12>
+    ContractBuilder<M1, E1, M2, M3, M5, M6, E2, E3, E4, E5, E6, E7, E8, E9, E12>
 where
     M1: DeserializeOwned + 'static,
     M2: DeserializeOwned + 'static,
@@ -131,14 +124,12 @@ where
     E7: Backtraceable + 'static,
     E8: Backtraceable + 'static,
     E9: Backtraceable + 'static,
-    E10: Backtraceable + 'static,
-    E11: Backtraceable + 'static,
     E12: Backtraceable + 'static,
 {
     pub fn with_execute<M2A, E2A>(
         self,
         execute_fn: ExecuteFn<M2A, E2A>,
-    ) -> ContractBuilder<M1, E1, M2A, M3, M5, M6, E2A, E3, E4, E5, E6, E7, E8, E9, E10, E11, E12>
+    ) -> ContractBuilder<M1, E1, M2A, M3, M5, M6, E2A, E3, E4, E5, E6, E7, E8, E9, E12>
     where
         M2A: DeserializeOwned + 'static,
         E2A: Backtraceable + 'static,
@@ -153,8 +144,6 @@ where
             authenticate_fn: self.authenticate_fn,
             bank_execute_fn: self.bank_execute_fn,
             bank_query_fn: self.bank_query_fn,
-            withhold_fee_fn: self.withhold_fee_fn,
-            finalize_fee_fn: self.finalize_fee_fn,
             cron_execute_fn: self.cron_execute_fn,
         }
     }
@@ -162,7 +151,7 @@ where
     pub fn with_migrate<M3A, E3A>(
         self,
         migrate_fn: MigrateFn<M3A, E3A>,
-    ) -> ContractBuilder<M1, E1, M2, M3A, M5, M6, E2, E3A, E4, E5, E6, E7, E8, E9, E10, E11, E12>
+    ) -> ContractBuilder<M1, E1, M2, M3A, M5, M6, E2, E3A, E4, E5, E6, E7, E8, E9, E12>
     where
         M3A: DeserializeOwned + 'static,
         E3A: Backtraceable + 'static,
@@ -177,8 +166,6 @@ where
             authenticate_fn: self.authenticate_fn,
             bank_execute_fn: self.bank_execute_fn,
             bank_query_fn: self.bank_query_fn,
-            withhold_fee_fn: self.withhold_fee_fn,
-            finalize_fee_fn: self.finalize_fee_fn,
             cron_execute_fn: self.cron_execute_fn,
         }
     }
@@ -186,7 +173,7 @@ where
     pub fn with_receive<E4A>(
         self,
         receive_fn: ReceiveFn<E4A>,
-    ) -> ContractBuilder<M1, E1, M2, M3, M5, M6, E2, E3, E4A, E5, E6, E7, E8, E9, E10, E11, E12>
+    ) -> ContractBuilder<M1, E1, M2, M3, M5, M6, E2, E3, E4A, E5, E6, E7, E8, E9, E12>
     where
         E4A: Backtraceable + 'static,
     {
@@ -200,8 +187,6 @@ where
             authenticate_fn: self.authenticate_fn,
             bank_execute_fn: self.bank_execute_fn,
             bank_query_fn: self.bank_query_fn,
-            withhold_fee_fn: self.withhold_fee_fn,
-            finalize_fee_fn: self.finalize_fee_fn,
             cron_execute_fn: self.cron_execute_fn,
         }
     }
@@ -209,7 +194,7 @@ where
     pub fn with_reply<M5A, E5A>(
         self,
         reply_fn: ReplyFn<M5A, E5A>,
-    ) -> ContractBuilder<M1, E1, M2, M3, M5A, M6, E2, E3, E4, E5A, E6, E7, E8, E9, E10, E11, E12>
+    ) -> ContractBuilder<M1, E1, M2, M3, M5A, M6, E2, E3, E4, E5A, E6, E7, E8, E9, E12>
     where
         M5A: DeserializeOwned + 'static,
         E5A: Backtraceable + 'static,
@@ -224,8 +209,6 @@ where
             authenticate_fn: self.authenticate_fn,
             bank_execute_fn: self.bank_execute_fn,
             bank_query_fn: self.bank_query_fn,
-            withhold_fee_fn: self.withhold_fee_fn,
-            finalize_fee_fn: self.finalize_fee_fn,
             cron_execute_fn: self.cron_execute_fn,
         }
     }
@@ -233,7 +216,7 @@ where
     pub fn with_query<M6A, E6A>(
         self,
         query_fn: QueryFn<M6A, E6A>,
-    ) -> ContractBuilder<M1, E1, M2, M3, M5, M6A, E2, E3, E4, E5, E6A, E7, E8, E9, E10, E11, E12>
+    ) -> ContractBuilder<M1, E1, M2, M3, M5, M6A, E2, E3, E4, E5, E6A, E7, E8, E9, E12>
     where
         M6A: DeserializeOwned + 'static,
         E6A: Backtraceable + 'static,
@@ -248,8 +231,6 @@ where
             authenticate_fn: self.authenticate_fn,
             bank_execute_fn: self.bank_execute_fn,
             bank_query_fn: self.bank_query_fn,
-            withhold_fee_fn: self.withhold_fee_fn,
-            finalize_fee_fn: self.finalize_fee_fn,
             cron_execute_fn: self.cron_execute_fn,
         }
     }
@@ -257,8 +238,7 @@ where
     pub fn with_authenticate<E7A>(
         self,
         authenticate_fn: AuthenticateFn<E7A>,
-    ) -> ContractBuilder<M1, E1, M2, M3, M5, M6, E2, E3, E4, E5, E6, E7A, E8, E9, E10, E11, E12>
-    {
+    ) -> ContractBuilder<M1, E1, M2, M3, M5, M6, E2, E3, E4, E5, E6, E7A, E8, E9, E12> {
         ContractBuilder {
             instantiate_fn: self.instantiate_fn,
             execute_fn: self.execute_fn,
@@ -269,8 +249,6 @@ where
             authenticate_fn: Some(authenticate_fn),
             bank_execute_fn: self.bank_execute_fn,
             bank_query_fn: self.bank_query_fn,
-            withhold_fee_fn: self.withhold_fee_fn,
-            finalize_fee_fn: self.finalize_fee_fn,
             cron_execute_fn: self.cron_execute_fn,
         }
     }
@@ -278,8 +256,7 @@ where
     pub fn with_bank_execute<E8A>(
         self,
         bank_execute_fn: BankExecuteFn<E8A>,
-    ) -> ContractBuilder<M1, E1, M2, M3, M5, M6, E2, E3, E4, E5, E6, E7, E8A, E9, E10, E11, E12>
-    {
+    ) -> ContractBuilder<M1, E1, M2, M3, M5, M6, E2, E3, E4, E5, E6, E7, E8A, E9, E12> {
         ContractBuilder {
             instantiate_fn: self.instantiate_fn,
             execute_fn: self.execute_fn,
@@ -290,8 +267,6 @@ where
             authenticate_fn: self.authenticate_fn,
             bank_execute_fn: Some(bank_execute_fn),
             bank_query_fn: self.bank_query_fn,
-            withhold_fee_fn: self.withhold_fee_fn,
-            finalize_fee_fn: self.finalize_fee_fn,
             cron_execute_fn: self.cron_execute_fn,
         }
     }
@@ -299,8 +274,7 @@ where
     pub fn with_bank_query<E9A>(
         self,
         bank_query_fn: BankQueryFn<E9A>,
-    ) -> ContractBuilder<M1, E1, M2, M3, M5, M6, E2, E3, E4, E5, E6, E7, E8, E9A, E10, E11, E12>
-    {
+    ) -> ContractBuilder<M1, E1, M2, M3, M5, M6, E2, E3, E4, E5, E6, E7, E8, E9A, E12> {
         ContractBuilder {
             instantiate_fn: self.instantiate_fn,
             execute_fn: self.execute_fn,
@@ -311,50 +285,6 @@ where
             authenticate_fn: self.authenticate_fn,
             bank_execute_fn: self.bank_execute_fn,
             bank_query_fn: Some(bank_query_fn),
-            withhold_fee_fn: self.withhold_fee_fn,
-            finalize_fee_fn: self.finalize_fee_fn,
-            cron_execute_fn: self.cron_execute_fn,
-        }
-    }
-
-    pub fn with_withhold_fee<E10A>(
-        self,
-        withhold_fee_fn: WithholdFeeFn<E10A>,
-    ) -> ContractBuilder<M1, E1, M2, M3, M5, M6, E2, E3, E4, E5, E6, E7, E8, E9, E10A, E11, E12>
-    {
-        ContractBuilder {
-            instantiate_fn: self.instantiate_fn,
-            execute_fn: self.execute_fn,
-            migrate_fn: self.migrate_fn,
-            receive_fn: self.receive_fn,
-            reply_fn: self.reply_fn,
-            query_fn: self.query_fn,
-            authenticate_fn: self.authenticate_fn,
-            bank_execute_fn: self.bank_execute_fn,
-            bank_query_fn: self.bank_query_fn,
-            withhold_fee_fn: Some(withhold_fee_fn),
-            finalize_fee_fn: self.finalize_fee_fn,
-            cron_execute_fn: self.cron_execute_fn,
-        }
-    }
-
-    pub fn with_finalize_fee<E11A>(
-        self,
-        finalize_fee_fn: FinalizeFeeFn<E11A>,
-    ) -> ContractBuilder<M1, E1, M2, M3, M5, M6, E2, E3, E4, E5, E6, E7, E8, E9, E10, E11A, E12>
-    {
-        ContractBuilder {
-            instantiate_fn: self.instantiate_fn,
-            execute_fn: self.execute_fn,
-            migrate_fn: self.migrate_fn,
-            receive_fn: self.receive_fn,
-            reply_fn: self.reply_fn,
-            query_fn: self.query_fn,
-            authenticate_fn: self.authenticate_fn,
-            bank_execute_fn: self.bank_execute_fn,
-            bank_query_fn: self.bank_query_fn,
-            withhold_fee_fn: self.withhold_fee_fn,
-            finalize_fee_fn: Some(finalize_fee_fn),
             cron_execute_fn: self.cron_execute_fn,
         }
     }
@@ -362,8 +292,7 @@ where
     pub fn with_cron_execute<E12A>(
         self,
         cron_execute_fn: CronExecuteFn<E12A>,
-    ) -> ContractBuilder<M1, E1, M2, M3, M5, M6, E2, E3, E4, E5, E6, E7, E8, E9, E10, E11, E12A>
-    {
+    ) -> ContractBuilder<M1, E1, M2, M3, M5, M6, E2, E3, E4, E5, E6, E7, E8, E9, E12A> {
         ContractBuilder {
             instantiate_fn: self.instantiate_fn,
             execute_fn: self.execute_fn,
@@ -374,8 +303,6 @@ where
             authenticate_fn: self.authenticate_fn,
             bank_execute_fn: self.bank_execute_fn,
             bank_query_fn: self.bank_query_fn,
-            withhold_fee_fn: self.withhold_fee_fn,
-            finalize_fee_fn: self.finalize_fee_fn,
             cron_execute_fn: Some(cron_execute_fn),
         }
     }
@@ -393,8 +320,6 @@ where
                 authenticate_fn: self.authenticate_fn,
                 bank_execute_fn: self.bank_execute_fn,
                 bank_query_fn: self.bank_query_fn,
-                withhold_fee_fn: self.withhold_fee_fn,
-                finalize_fee_fn: self.finalize_fee_fn,
                 cron_execute_fn: self.cron_execute_fn,
             }));
 
@@ -404,7 +329,7 @@ where
 
 // ----------------------------------- impl ------------------------------------
 
-struct ContractImpl<M1, M2, M3, M5, M6, E1, E2, E3, E4, E5, E6, E7, E8, E9, E10, E11, E12> {
+struct ContractImpl<M1, M2, M3, M5, M6, E1, E2, E3, E4, E5, E6, E7, E8, E9, E12> {
     instantiate_fn: InstantiateFn<M1, E1>,
     execute_fn: Option<ExecuteFn<M2, E2>>,
     migrate_fn: Option<MigrateFn<M3, E3>>,
@@ -414,13 +339,11 @@ struct ContractImpl<M1, M2, M3, M5, M6, E1, E2, E3, E4, E5, E6, E7, E8, E9, E10,
     authenticate_fn: Option<AuthenticateFn<E7>>,
     bank_execute_fn: Option<BankExecuteFn<E8>>,
     bank_query_fn: Option<BankQueryFn<E9>>,
-    withhold_fee_fn: Option<WithholdFeeFn<E10>>,
-    finalize_fee_fn: Option<FinalizeFeeFn<E11>>,
     cron_execute_fn: Option<CronExecuteFn<E12>>,
 }
 
-impl<M1, M2, M3, M5, M6, E1, E2, E3, E4, E5, E6, E7, E8, E9, E10, E11, E12> Contract
-    for ContractImpl<M1, M2, M3, M5, M6, E1, E2, E3, E4, E5, E6, E7, E8, E9, E10, E11, E12>
+impl<M1, M2, M3, M5, M6, E1, E2, E3, E4, E5, E6, E7, E8, E9, E12> Contract
+    for ContractImpl<M1, M2, M3, M5, M6, E1, E2, E3, E4, E5, E6, E7, E8, E9, E12>
 where
     M1: DeserializeOwned,
     M2: DeserializeOwned,
@@ -436,8 +359,6 @@ where
     E7: Backtraceable,
     E8: Backtraceable,
     E9: Backtraceable,
-    E10: Backtraceable,
-    E11: Backtraceable,
     E12: Backtraceable,
 {
     fn instantiate(
@@ -599,43 +520,6 @@ where
 
         let immutable_ctx = make_immutable_ctx!(ctx, storage, api, querier);
         let res = bank_query_fn(immutable_ctx, msg);
-
-        Ok(res.into_generic_result())
-    }
-
-    fn withhold_fee(
-        &self,
-        ctx: Context,
-        storage: &mut dyn Storage,
-        api: &dyn Api,
-        querier: &dyn Querier,
-        tx: Tx,
-    ) -> VmResult<GenericResult<Response>> {
-        let Some(withhold_fee_fn) = &self.withhold_fee_fn else {
-            return Err(VmError::function_not_found("withhold_fee"));
-        };
-
-        let auth_ctx = make_auth_ctx!(ctx, storage, api, querier);
-        let res = withhold_fee_fn(auth_ctx, tx);
-
-        Ok(res.into_generic_result())
-    }
-
-    fn finalize_fee(
-        &self,
-        ctx: Context,
-        storage: &mut dyn Storage,
-        api: &dyn Api,
-        querier: &dyn Querier,
-        tx: Tx,
-        outcome: TxOutcome,
-    ) -> VmResult<GenericResult<Response>> {
-        let Some(finalize_fee_fn) = &self.finalize_fee_fn else {
-            return Err(VmError::function_not_found("finalize_fee"));
-        };
-
-        let auth_ctx = make_auth_ctx!(ctx, storage, api, querier);
-        let res = finalize_fee_fn(auth_ctx, tx, outcome);
 
         Ok(res.into_generic_result())
     }

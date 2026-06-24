@@ -55,7 +55,6 @@ pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
         ExecuteMsg::SetMetadata { denom, metadata } => set_metadata(ctx, denom, metadata),
         ExecuteMsg::Mint { to, coins } => mint(ctx, to, coins),
         ExecuteMsg::Burn { from, coins } => burn(ctx, from, coins),
-        ExecuteMsg::ForceTransfer { from, to, coins } => force_transfer(ctx, from, to, coins),
         ExecuteMsg::RecoverTransfer { sender, recipient } => {
             recover_transfer(ctx, sender, recipient)
         },
@@ -166,34 +165,6 @@ fn ensure_namespace_owner(ctx: &MutableCtx, denom: &Denom) -> anyhow::Result<()>
     }
 
     Ok(())
-}
-
-/// Note: we don't handle orphaned transfers here. This function can only be
-/// called by the taxman contract. We assume the taxman is properly programmed
-/// to never force an orphaned transfer.
-fn force_transfer(ctx: MutableCtx, from: Addr, to: Addr, coins: Coins) -> anyhow::Result<Response> {
-    // Only taxman can force transfer.
-    ensure!(
-        ctx.sender == ctx.querier.query_taxman()?,
-        "you don't have the right, O you don't have the right"
-    );
-
-    for coin in &coins {
-        decrease_balance(ctx.storage, &from, coin.denom, *coin.amount)?;
-        increase_balance(ctx.storage, &to, coin.denom, *coin.amount)?;
-    }
-
-    Ok(Response::new()
-        .add_event(Sent {
-            user: from,
-            to,
-            coins: coins.clone(),
-        })?
-        .add_event(Received {
-            user: to,
-            from,
-            coins,
-        })?)
 }
 
 fn recover_transfer(ctx: MutableCtx, sender: Addr, recipient: Addr) -> anyhow::Result<Response> {

@@ -75,12 +75,12 @@ impl GenesisCodes for RustVm {
             .with_query(Box::new(dango_oracle::query))
             .build();
 
-        let taxman = ContractBuilder::new(Box::new(dango_taxman::instantiate))
-            .with_execute(Box::new(dango_taxman::execute))
-            .with_query(Box::new(dango_taxman::query))
-            .with_withhold_fee(Box::new(dango_taxman::withhold_fee))
-            .with_finalize_fee(Box::new(dango_taxman::finalize_fee))
-            .build();
+        // Previously this was the taxman code hash, now removed. Gas fees are
+        // handled directly by the state machine.
+        let _taxman = ContractBuilder::new(Box::new(|_, _: Empty| -> StdResult<_> {
+            unreachable!("the taxman contract has been deleted");
+        }))
+        .build();
 
         let vesting = ContractBuilder::new(Box::new(dango_vesting::instantiate))
             .with_execute(Box::new(dango_vesting::execute))
@@ -114,7 +114,6 @@ impl GenesisCodes for RustVm {
             hyperlane: Hyperlane { ism, mailbox, va },
             oracle,
             perps,
-            taxman,
             vesting,
             warp,
         }

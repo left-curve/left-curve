@@ -3,6 +3,7 @@ collections:
   - name: community.postgresql
   - name: community.general
   - name: community.clickhouse
+  - name: community.sops
   - name: amazon.aws
   - name: artis3n.tailscale
     version: "1.2.1"

@@ -200,9 +200,11 @@ pub enum FlatEvent {
     Authenticate(FlatEvtAuthenticate),
     /// A contract backran a transaction.
     Backrun(FlatEvtBackrun),
-    /// The taxman withheld the fee for a transaction.
+    /// The gas fee was withheld for a transaction.
     Withhold(FlatEvtWithhold),
-    /// The taxman finalized the fee for a transaction.
+    /// NOTE: The taxman and its `finalize_fee` (gas refund) mechanism have been
+    /// removed in 0.26.0. This variant is no longer produced; it is retained
+    /// only so that historical, Borsh-serialized cached blocks still deserialize.
     Finalize(FlatEvtFinalize),
     /// A cronjob was executed.
     Cron(FlatEvtCron),
@@ -266,9 +268,15 @@ pub struct FlatEvtBackrun {
 pub struct FlatEvtWithhold {
     pub sender: Addr,
     pub gas_limit: u64,
+    /// NOTE: The taxman has been removed in 0.26.0; the fee is now withheld
+    /// inline by the state machine, so this is always `None`. Retained so that
+    /// historical, Borsh-serialized cached blocks still deserialize.
     pub taxman: Option<Addr>,
 }
 
+/// NOTE: The taxman and its `finalize_fee` (gas refund) mechanism have been
+/// removed in 0.26.0. This event is no longer produced; it is retained only so
+/// that historical, Borsh-serialized cached blocks still deserialize.
 #[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq)]
 pub struct FlatEvtFinalize {
     pub sender: Addr,

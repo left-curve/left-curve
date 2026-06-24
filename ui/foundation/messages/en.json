@@ -958,7 +958,8 @@
           "network=11155111": "Ethereum Sepolia",
           "network=1": "Ethereum",
           "network=8453": "Base",
-          "network=42161": "Arbitrum"
+          "network=42161": "Arbitrum",
+          "network=421614": "Arbitrum Sepolia"
         }
       }
     ],
@@ -970,7 +971,8 @@
           "network=11155111": "6 blocks | 1-2 minutes",
           "network=1": "6 blocks | 3-6 minutes",
           "network=8453": "3-6 minutes",
-          "network=42161": "3-6 minutes"
+          "network=42161": "1 block | <1 second",
+          "network=421614": "1 block | <1 second"
         }
       }
     ],
@@ -982,7 +984,8 @@
           "network=11155111": "1 block | 0.4 second",
           "network=1": "1 block | 0.4 second",
           "network=8453": "1 block | 0.4 second",
-          "network=42161": "1 block | 0.4 second"
+          "network=42161": "1 block | <1 second",
+          "network=421614": "1 block | <1 second"
         }
       }
     ],
@@ -1272,8 +1275,8 @@
         "price": "Price",
         "lastPrice": "Last",
         "lastPriceTooltip": "Price of the last filled order",
-        "oraclePrice": "Oracle",
-        "oraclePriceTooltip": "Price reported by offchain oracle. Used for computing margin requirement, unrealized PnL, liquidation and TP/SL trigger.",
+        "oraclePrice": "Index",
+        "oraclePriceTooltip": "Index price reported by offchain oracle. Used for computing margin requirement, unrealized PnL, liquidation and TP/SL trigger.",
         "24hChange": "24h Change",
         "volume": "24h Volume",
         "openInterest": "Open Interest",
@@ -1325,6 +1328,8 @@
         "currentPosition": "Current Position",
         "size": "Size",
         "price": "Price",
+        "priceWithQuote": "Price (USDC)",
+        "midPrice": "Mid",
         "timeInForce": "Time In Force",
         "reduceOnly": "Reduce Only",
         "tpsl": "Take Profit / Stop Loss",

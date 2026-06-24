@@ -5,7 +5,6 @@ import {
   useBridgeEvmDeposit,
   useBridgeState,
   useBridgeWithdraw,
-  useConfig,
   useEvmBalances,
   usePrices,
 } from "@left-curve/store";
@@ -112,10 +111,9 @@ const BridgeDeposit: React.FC = () => {
 
 const BridgeSelectors: React.FC = () => {
   const { isConnected } = useAccount();
-  const { chain } = useConfig();
 
   const { state } = useBridge();
-  const { coin, changeCoin, coins, network, setNetwork, networks, action } = state;
+  const { coin, changeCoin, coins, network, setNetwork, networks } = state;
 
   return (
     <>
@@ -127,11 +125,7 @@ const BridgeSelectors: React.FC = () => {
         classNames={{ base: "w-full", trigger: "h-[56px]", listboxWrapper: "top-[4rem]" }}
         value={coin?.denom}
         onChange={changeCoin}
-        coins={coins.filter(
-          (c) =>
-            (chain.id === "dango-1" && c.name !== "Ether" && action === "deposit") ||
-            action === "withdraw",
-        )}
+        coins={coins}
         withName
         withPrice
       />
@@ -187,6 +181,7 @@ const EvmDeposit: React.FC = () => {
   const { data: balances = {}, refetch: refreshBalances } = useEvmBalances({
     chain: config.chain,
     address: evmAddress,
+    rpcUrl: config.bridger?.rpcUrl,
   });
 
   if (!connector || !coin) {
@@ -387,7 +382,6 @@ const BridgeWithdraw: React.FC = () => {
                 fullWidth
                 onClick={() =>
                   showModal(Modals.DestinationWallet, {
-                    network,
                     onAddressSet: handleAddressSet,
                   })
                 }

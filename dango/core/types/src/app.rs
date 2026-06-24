@@ -1,6 +1,7 @@
 use {
-    crate::{Addr, Duration, Hash256, Json, Label, Message, Timestamp, Tx},
+    crate::{Addr, Denom, Duration, Hash256, Json, Label, Message, Timestamp, Tx},
     borsh::{BorshDeserialize, BorshSerialize},
+    dango_math::Udec128,
     hex_literal::hex,
     serde::{Deserialize, Serialize},
     serde_with::skip_serializing_none,
@@ -56,8 +57,15 @@ pub struct Config {
     pub owner: Addr,
     /// The contract the manages fungible token transfers.
     pub bank: Addr,
-    /// The contract that handles transaction fees.
-    pub taxman: Addr,
+    /// The token in which transaction fees are denominated.
+    pub gas_token: Denom,
+    /// The amount of `gas_token` charged per unit of gas.
+    pub gas_fee_rate: Udec128,
+    /// Senders that are exempt from paying transaction fees. This includes
+    /// contracts that send protocol-level transactions, such as the oracle
+    /// (which submits price feeds) and the account factory (which onboards new
+    /// users).
+    pub gas_exemptions: BTreeSet<Addr>,
     /// A list of contracts that are to be called at regular time intervals.
     pub cronjobs: BTreeMap<Addr, Duration>,
     /// Permissions for certain gated actions.

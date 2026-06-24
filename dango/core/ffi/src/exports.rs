@@ -4,8 +4,8 @@ use {
     dango_primitives::{
         AuthCtx, BankMsg, BankQuery, BankQueryResponse, BorshDeExt, BorshSerExt, Context,
         GenericResult, GenericResultExt, ImmutableCtx, Json, JsonDeExt, MutableCtx, QuerierWrapper,
-        Response, SubMsgResult, SudoCtx, Tx, TxOutcome, make_auth_ctx, make_immutable_ctx,
-        make_mutable_ctx, make_sudo_ctx,
+        Response, SubMsgResult, SudoCtx, Tx, make_auth_ctx, make_immutable_ctx, make_mutable_ctx,
+        make_sudo_ctx,
     },
     serde::de::DeserializeOwned,
 };
@@ -288,57 +288,6 @@ where
         let msg = unwrap_into_generic_result!(msg_bytes.deserialize_borsh());
 
         query_fn(ctx, msg).into_generic_result()
-    })();
-
-    let res_bytes = res.to_borsh_vec().unwrap();
-
-    Region::release_buffer(res_bytes) as usize
-}
-
-pub fn do_withhold_fee<E>(
-    withhold_fee_fn: &dyn Fn(AuthCtx, Tx) -> Result<Response, E>,
-    ctx_ptr: usize,
-    tx_ptr: usize,
-) -> usize
-where
-    E: Backtraceable,
-{
-    let ctx_bytes = unsafe { Region::consume(ctx_ptr as *mut Region) };
-    let tx_bytes = unsafe { Region::consume(tx_ptr as *mut Region) };
-
-    let res = (|| {
-        let ctx: Context = unwrap_into_generic_result!(ctx_bytes.deserialize_borsh());
-        let auth_ctx = make_auth_ctx!(ctx, &mut ExternalStorage, &ExternalApi, &ExternalQuerier);
-        let tx = unwrap_into_generic_result!(tx_bytes.deserialize_borsh());
-
-        withhold_fee_fn(auth_ctx, tx).into_generic_result()
-    })();
-
-    let res_bytes = res.to_borsh_vec().unwrap();
-
-    Region::release_buffer(res_bytes) as usize
-}
-
-pub fn do_finalize_fee<E>(
-    finalize_fee_fn: &dyn Fn(AuthCtx, Tx, TxOutcome) -> Result<Response, E>,
-    ctx_ptr: usize,
-    tx_ptr: usize,
-    outcome_ptr: usize,
-) -> usize
-where
-    E: Backtraceable,
-{
-    let ctx_bytes = unsafe { Region::consume(ctx_ptr as *mut Region) };
-    let tx_bytes = unsafe { Region::consume(tx_ptr as *mut Region) };
-    let outcome_bytes = unsafe { Region::consume(outcome_ptr as *mut Region) };
-
-    let res = (|| {
-        let ctx: Context = unwrap_into_generic_result!(ctx_bytes.deserialize_borsh());
-        let auth_ctx = make_auth_ctx!(ctx, &mut ExternalStorage, &ExternalApi, &ExternalQuerier);
-        let tx = unwrap_into_generic_result!(tx_bytes.deserialize_borsh());
-        let outcome = unwrap_into_generic_result!(outcome_bytes.deserialize_borsh());
-
-        finalize_fee_fn(auth_ctx, tx, outcome).into_generic_result()
     })();
 
     let res_bytes = res.to_borsh_vec().unwrap();

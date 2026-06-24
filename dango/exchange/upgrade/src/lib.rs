@@ -1,4 +1,5 @@
 mod perps;
+mod taxman;
 
 use {
     dango_app::AppResult,
@@ -6,7 +7,6 @@ use {
 };
 
 pub fn do_upgrade<VM>(storage: Box<dyn Storage>, _vm: VM, _block: BlockInfo) -> AppResult<()> {
-    perps::do_perps_upgrades(storage)?;
-
-    Ok(())
+    // Inline the gas-fee logic that previously lived in the taxman contract.
+    taxman::do_taxman_removal_upgrade(storage)
 }

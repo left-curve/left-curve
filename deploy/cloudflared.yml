@@ -2,8 +2,7 @@
   become: true
   become_user: "{{ deploy_user }}"
   remote_user: debian
-  vars_files:
-    - vaults/debian/root_vault.yml
+  gather_facts: false
   vars:
     monitor_defs:
       - { name: "api",         path: "/up",     expect: "200" }
@@ -16,6 +15,8 @@
       testnet:
         - faucet
   pre_tasks:
+    - ansible.builtin.import_tasks: tasks/load-debian-root-secrets.yml
+
     - name: Get deploy user info
       getent:
         database: passwd

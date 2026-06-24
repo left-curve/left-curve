@@ -77,7 +77,6 @@ impl StartCmd {
             //     codes.hyperlane.mailbox.to_bytes().hash256(),
             //     codes.hyperlane.va.to_bytes().hash256(),
             //     codes.oracle.to_bytes().hash256(),
-            //     codes.taxman.to_bytes().hash256(),
             //     codes.vesting.to_bytes().hash256(),
             //     codes.warp.to_bytes().hash256(),
             // ]
@@ -299,6 +298,7 @@ impl StartCmd {
             indexer_cache_context,
             sql_context,
             clickhouse_context,
+            hooked_indexer.stream.context(),
             app.clone(),
             Arc::new(TendermintRpcClient::new(tendermint_rpc_addr)?),
             cfg.httpd.static_files_path.clone(),
@@ -454,7 +454,8 @@ impl StartCmd {
                 Some(dango_upgrade::do_upgrade), // Important: set the upgrade handler.
                 env!("CARGO_PKG_VERSION"),
             )
-            .with_shutdown_trigger(halt_tx),
+            .with_shutdown_trigger(halt_tx)
+            .with_retain_recent_blocks(tendermint_cfg.retain_recent_blocks),
         );
 
         let (consensus, mempool, snapshot, info) = split::service(service, 1);

@@ -36,7 +36,7 @@ jobs:
       # We should consider using: https://github.com/peaceiris/actions-mdbook
       # but it doesn't support the katex preprocessor.
       - name: Install mdbook and preprocessors
-        run: cargo install mdbook@0.5.2 mdbook-katex@0.10.0-alpha
+        run: cargo install mdbook@0.5.2 mdbook-katex@0.10.0-alpha mdbook-mermaid@0.17.0
 
       - name: Build book
         run: mdbook build

@@ -1,10 +1,15 @@
 /// <reference types="@rsbuild/core/types" />
 
-interface ImportMetaEnv {
-  readonly GIT_COMMIT: string;
-  readonly CONFIG_ENVIRONMENT: string;
-}
+import type { HyperlaneConfig } from "@left-curve/types";
 
-interface ImportMeta {
-  readonly env: ImportMetaEnv;
+declare global {
+  interface ImportMetaEnv {
+    readonly GIT_COMMIT: string;
+    readonly CONFIG_ENVIRONMENT: string;
+    readonly HYPERLANE_CONFIG: HyperlaneConfig;
+  }
+
+  interface ImportMeta {
+    readonly env: ImportMetaEnv;
+  }
 }

@@ -1,6 +1,8 @@
 - name: Prepare host for GitHub runners
   hosts: github_runners
   become: yes
+  vars:
+    sops_version: "3.13.1"
   roles:
     - rust
   tasks:
@@ -47,6 +49,39 @@
         curl -sL https://just.systems/install.sh | bash -s -- --to /usr/local/bin
       args:
         creates: /usr/local/bin/just
+
+    - name: Install SOPS CLI
+      ansible.builtin.shell: |
+        set -euo pipefail
+
+        case "$(uname -m)" in
+          x86_64|amd64) arch="amd64" ;;
+          arm64|aarch64) arch="arm64" ;;
+          *)
+            echo "Unsupported architecture: $(uname -m)" >&2
+            exit 1
+            ;;
+        esac
+
+        asset="sops-v{{ sops_version }}.linux.${arch}"
+        base_url="https://github.com/getsops/sops/releases/download/v{{ sops_version }}"
+        tmp_dir="$(mktemp -d)"
+        trap 'rm -rf "$tmp_dir"' EXIT
+
+        curl -fsSL -o "$tmp_dir/$asset" "$base_url/$asset"
+        curl -fsSL -o "$tmp_dir/checksums.txt" "$base_url/sops-v{{ sops_version }}.checksums.txt"
+        checksum_line="$(awk -v asset="$asset" '$2 == asset { print $0 }' "$tmp_dir/checksums.txt")"
+        if [ -z "$checksum_line" ]; then
+          echo "Missing checksum for $asset" >&2
+          exit 1
+        fi
+        (cd "$tmp_dir" && printf '%s\n' "$checksum_line" | sha256sum -c -)
+
+        install -m 0755 "$tmp_dir/$asset" /usr/local/bin/sops
+        /usr/local/bin/sops --version
+      args:
+        creates: /usr/local/bin/sops
+        executable: /bin/bash
 
     - name: Install zizmor
       ansible.builtin.shell: |

@@ -24,8 +24,6 @@ lifecycle. Each entry point receives a typed context and returns a typed respons
 | Entry Point    | Context        | Signature                                                  | Purpose                               |
 | -------------- | -------------- | ---------------------------------------------------------- | ------------------------------------- |
 | `authenticate` | `AuthCtx`      | `fn(AuthCtx, Tx) -> Result<Response>`                      | Tx authentication (account contracts) |
-| `withhold_fee` | `AuthCtx`      | `fn(AuthCtx, Tx) -> Result<Response>`                      | Fee withholding (taxman only)         |
-| `finalize_fee` | `AuthCtx`      | `fn(AuthCtx, Tx, TxOutcome) -> Result<Response>`           | Fee settlement (taxman only)          |
 | `bank_execute` | `SudoCtx`      | `fn(SudoCtx, BankMsg) -> Result<Response>`                 | Token ops (bank only)                 |
 | `bank_query`   | `ImmutableCtx` | `fn(ImmutableCtx, BankQuery) -> Result<BankQueryResponse>` | Balance queries (bank only)           |
 | `cron_execute` | `SudoCtx`      | `fn(SudoCtx) -> Result<Response>`                          | Periodic automation                   |
@@ -75,7 +73,7 @@ pub struct SudoCtx<'a> {
     pub contract: Addr,
 }
 
-// Authentication context (authenticate, withhold_fee, finalize_fee)
+// Authentication context (authenticate)
 pub struct AuthCtx<'a> {
     pub storage:  &'a mut dyn Storage,
     pub api:      &'a dyn Api,
@@ -498,8 +496,8 @@ storage and execution paths as production.
 ### Dango-specific test suite
 
 `dango/testing/` extends the base suite with helpers for deploying the full Dango
-contract system (bank, taxman, accounts, oracle, perps) in a single genesis
-block. This enables end-to-end tests that exercise inter-contract interactions.
+contract system (bank, accounts, oracle, perps) in a single genesis block. This
+enables end-to-end tests that exercise inter-contract interactions.
 
 ## 10. Procedural Macros
 

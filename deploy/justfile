@@ -34,45 +34,59 @@ lint:
   find . -name '*.yml' -o -name '*.yaml' | grep -v vault | grep -v .venv | xargs uvx yamllint -d relaxed
 
 add-deploy-key:
-  uv run ./deploy-key.sh | ssh-add - >/dev/null
+  uv run ./scripts/deploy-key.sh | ssh-add - >/dev/null
   @echo "Deploy key added to ssh-agent. You can now run ansible-playbook normally."
 
 add-debian-key:
-  uv run ./debian-key.sh | ssh-add - >/dev/null
+  uv run ./scripts/debian-key.sh | ssh-add - >/dev/null
   @echo "debian key added to ssh-agent. You can now run ansible-playbook normally."
-
-# Pre-fetch vault passwords into environment variables (memory only, no disk)
-# Spawns a new shell with passwords set. Exit the shell when done.
-add-passwords:
-  #!/bin/bash
-  VAULT=$(./vault-password.sh 2>/dev/null) || { echo "Failed to get vault password" >&2; exit 1; }
-  DEBIAN=$(./debian-password.sh 2>/dev/null) || { echo "Failed to get debian password" >&2; exit 1; }
-  export ANSIBLE_VAULT_PASSWORD="$VAULT"
-  export ANSIBLE_DEBIAN_PASSWORD="$DEBIAN"
-  exec $SHELL
 
 # ---------------------------------- Secrets -----------------------------------
 
-edit-secrets:
-  uv run ansible-vault edit group_vars/all/vault.yml
+sops-check:
+  ./scripts/sops-install-check.sh
 
-edit-hyperlane-secrets:
-  uv run ansible-vault edit group_vars/hyperlane/vault.yml
+sops-audit:
+  ./scripts/sops-audit.sh
 
-edit-points-bot-secrets:
-  uv run ansible-vault edit group_vars/points-bot/vault.yml
+sops-reencrypt *FILES:
+  ./scripts/sops-reencrypt.sh {{FILES}}
 
-edit-perps-bot-secrets:
-  uv run ansible-vault edit group_vars/perps-bot/vault.yml
+sops-collect-recipient *ARGS:
+  ./scripts/sops-collect-recipient.sh {{ARGS}}
 
-edit-dango-assistant-secrets:
-  uv run ansible-vault edit group_vars/dango-assistant/vault.yml
+sops-edit-secrets:
+  sops edit group_vars/all/vault.sops.json
 
-edit-root-key:
-  uv run ansible-vault edit vaults/debian/debian_key.vault --vault-id debian@debian-password.sh --encrypt-vault-id debian
+sops-edit-deploy-key:
+  sops edit --input-type binary --output-type binary vaults/deploy/deploy_key.sops
 
-edit-root-secrets:
-  uv run ansible-vault edit vaults/debian/root_vault.yml --vault-id debian@debian-password.sh --encrypt-vault-id debian
+sops-edit-hyperlane-secrets:
+  sops edit group_vars/hyperlane/vault.sops.json
+
+sops-edit-points-bot-secrets:
+  sops edit group_vars/points-bot/vault.sops.json
+
+sops-edit-perps-bot-secrets:
+  sops edit group_vars/perps-bot/vault.sops.json
+
+sops-edit-dango-assistant-secrets:
+  sops edit group_vars/dango-assistant/vault.sops.json
+
+sops-edit-ovh1-host-secrets:
+  sops edit host_vars/100.96.253.40/vault.sops.json
+
+sops-edit-ovh2-host-secrets:
+  sops edit host_vars/100.107.248.71/vault.sops.json
+
+sops-edit-ovh3-host-secrets:
+  sops edit host_vars/100.122.37.57/main.sops.json
+
+sops-edit-root-key:
+  sops edit --input-type binary --output-type binary vaults/debian/debian_key.sops
+
+sops-edit-root-secrets:
+  sops edit vaults/debian/root_vault.sops.json
 
 # -------------------------------- Provisioning --------------------------------
 
@@ -309,6 +323,20 @@ remove-deploy-lock-testnet:
       --limit {{hetzner2}},{{hetzner4}} \
       2>&1 | tee "{{justfile_directory()}}/logs/$(date -u +%Y%m%d%H%M%S)-remove-deploy-lock-testnet.log"
 
+# Pull testnet docker images on every host without restarting anything.
+# Layers already present locally are not re-downloaded, so this is cheap to
+# re-run and safe to use as a warm-up before `deploy-testnet`.
+pull-docker-images-testnet dango_image_tag bots_image_tag:
+  mkdir -p "{{justfile_directory()}}/logs" \
+    && uv run ansible-playbook pull-docker-images.yml \
+      -e dango_network=testnet \
+      -e dango_image_tag={{dango_image_tag}} \
+      -e faucet_bot_tag={{bots_image_tag}} \
+      -e perps_bot_tag={{bots_image_tag}} \
+      -e perp_liquidator_tag={{bots_image_tag}} \
+      --limit {{hetzner2}},{{hetzner4}} \
+      2>&1 | tee "{{justfile_directory()}}/logs/$(date -u +%Y%m%d%H%M%S)-pull-docker-images-testnet.log"
+
 # ---------------------------------- Mainnet -----------------------------------
 
 # Note: the `reset-and-deploy-mainnet` command has been deleted.
@@ -347,6 +375,20 @@ remove-deploy-lock-mainnet:
       --limit {{hetzner5}},{{hetzner6}},{{hetzner1}},{{hetzner3}} \
       2>&1 | tee "{{justfile_directory()}}/logs/$(date -u +%Y%m%d%H%M%S)-remove-deploy-lock-mainnet.log"
 
+# Pull mainnet docker images on every host without restarting anything.
+# Layers already present locally are not re-downloaded, so this is cheap to
+# re-run and safe to use as a warm-up before `deploy-mainnet`.
+pull-docker-images-mainnet dango_image_tag bots_image_tag:
+  mkdir -p "{{justfile_directory()}}/logs" \
+    && uv run ansible-playbook pull-docker-images.yml \
+      -e dango_network=mainnet \
+      -e dango_image_tag={{dango_image_tag}} \
+      -e faucet_bot_tag={{bots_image_tag}} \
+      -e perps_bot_tag={{bots_image_tag}} \
+      -e perp_liquidator_tag={{bots_image_tag}} \
+      --limit {{hetzner5}},{{hetzner6}},{{hetzner1}},{{hetzner3}} \
+      2>&1 | tee "{{justfile_directory()}}/logs/$(date -u +%Y%m%d%H%M%S)-pull-docker-images-mainnet.log"
+
 # ---------------------------------- Preview -----------------------------------
 
 deploy-preview-latest:
@@ -360,11 +402,37 @@ deploy-preview-latest:
       --limit {{ovh1}},{{ovh2}},{{ovh3}} \
       2>&1 | tee "{{justfile_directory()}}/logs/$(date -u +%Y%m%d%H%M%S)-deploy-preview-latest.log"
 
+# List all PR deployments with age on ovh1 and ovh2
+list-pr-deploys:
+  mkdir -p {{justfile_directory()}}/logs \
+    && uv run ansible-playbook list-pr-deploys.yml \
+      --limit {{ovh1}},{{ovh2}} \
+      2>&1 | tee {{justfile_directory()}}/logs/$(date -u +%Y%m%d%H%M%S)-list-pr-deploys.log
+
+# Delete the deploy of a specific PR
 delete-pr number:
   mkdir -p "{{justfile_directory()}}/logs" \
     && uv run ansible-playbook delete-full-app.yml \
       -e deployment_name=pr-{{number}} \
-      2>&1 | tee "{{justfile_directory()}}/logs/$(date -u +%Y%m%d%H%M%S)-delete-pr.log"
+      --limit {{ovh1}},{{ovh2}} \
+      2>&1 | tee {{justfile_directory()}}/logs/$(date -u +%Y%m%d%H%M%S)-delete-pr.log
+
+# Delete a specific devnet deploy by timestamp (e.g. just delete-devnet-deploy 20260122064234)
+delete-devnet-deploy timestamp:
+  mkdir -p {{justfile_directory()}}/logs \
+    && uv run ansible-playbook delete-old-devnet-deploys.yml \
+      -e deployment_name={{timestamp}} \
+      --limit {{ovh1}},{{ovh2}} \
+      2>&1 | tee {{justfile_directory()}}/logs/$(date -u +%Y%m%d%H%M%S)-delete-devnet-deploy.log
+
+# Delete a specific devnet deploy AND its data directory under ~/devnet/<timestamp>
+delete-devnet-deploy-with-data timestamp:
+  mkdir -p {{justfile_directory()}}/logs \
+    && uv run ansible-playbook delete-old-devnet-deploys.yml \
+      -e deployment_name={{timestamp}} \
+      -e remove_devnet_data=true \
+      --limit {{ovh1}},{{ovh2}} \
+      2>&1 | tee {{justfile_directory()}}/logs/$(date -u +%Y%m%d%H%M%S)-delete-devnet-deploy-with-data.log
 
 # --------------------------------- Hyperlane ----------------------------------
 
@@ -389,6 +457,9 @@ deploy-hyperlane-mainnet:
   just deploy-hyperlane mainnet validator {{hetzner6}} 2
   just deploy-hyperlane mainnet validator {{hetzner1}} 3
   just deploy-hyperlane mainnet validator {{hetzner3}} 4
+  just deploy-hyperlane mainnet relayer {{hetzner3}}
+
+deploy-hyperlane-relayer-mainnet:
   just deploy-hyperlane mainnet relayer {{hetzner3}}
 
 deploy-hyperlane-testnet:
@@ -470,7 +541,7 @@ deploy-monitoring:
 
 deploy-uptimekuma:
   mkdir -p "{{justfile_directory()}}/logs" \
-    && ANSIBLE_VAULT_IDENTITY_LIST=default@./vault-password.sh uv run ansible-playbook uptimekuma-deploy.yml \
+    && uv run ansible-playbook uptimekuma-deploy.yml \
       2>&1 | tee "{{justfile_directory()}}/logs/$(date -u +%Y%m%d%H%M%S)-deploy-uptimekuma.log"
 
 deploy-tailscale:
