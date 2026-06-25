@@ -1,69 +1,58 @@
 use {
+    crate::remote::BlockRangeClient,
     anyhow::{Context, bail},
+    async_trait::async_trait,
     dango_graphql_ws_client::WsClient,
-    dango_indexer_graphql_types::{SubscribeFullBlock, block, subscribe_full_block},
-    dango_indexer_historical_types::{AnyResult, BlockData, post_graphql},
+    dango_indexer_graphql_types::{SubscribeFullBlock, subscribe_full_block},
+    dango_indexer_historical_types::{AnyResult, BlockData},
     futures::{StreamExt, stream::BoxStream},
     reqwest::IntoUrl,
     std::time::Duration,
     url::Url,
 };
 
-/// Per-request timeout for HTTP calls to `dango-httpd`. Picked to cover slow
-/// boot-time queries without letting a stuck connection hang the indexer.
+/// Per-request timeout for the REST range calls. The subscription is long-lived
+/// and sets none; the fetcher loop additionally wraps each range call in its own
+/// timeout.
 const HTTP_TIMEOUT: Duration = Duration::from_secs(30);
 
-/// Thin GraphQL client against a dango node's `httpd` — HTTP for queries,
-/// WebSocket for subscriptions.
+/// Thin client against a dango node's `httpd` — WebSocket for the `full_block`
+/// subscription, HTTP for the `/block/full/range` backfill endpoint.
 ///
-/// Shared by both block sources, which speak the same `block` subscription
-/// protocol — only the target differs: [`LocalBlockSource`] points it at the
-/// co-located in-process `dango-httpd`, while the remote sentinel subscriber
-/// points it at a remote sentinel node. It supplies the live block-height
-/// notifications and the boot-time frontier query; a detached remote source
-/// fetches the block payloads separately over RPC (it has no local disk).
+/// Used directly by both block sources (no trait): there is one node-backed
+/// implementation. The local source points it at the in-process `dango-httpd`,
+/// the remote source at a sentinel — only the base URL differs. It is the live
+/// path (`subscribe_full_blocks`) and, via [`BlockRangeClient`], the backfill
+/// path the [`SentinelBlockFetcher`] drives.
 ///
-/// [`LocalBlockSource`]: crate::LocalBlockSource
+/// [`SentinelBlockFetcher`]: crate::SentinelBlockFetcher
 #[derive(Debug, Clone)]
-pub(crate) struct HttpdClient {
+pub struct HttpdClient {
     inner: reqwest::Client,
-    graphql_url: Url,
+    /// `{base}/block/full/range`, joined once at construction.
+    range_url: Url,
     ws: WsClient,
 }
 
 impl HttpdClient {
-    /// Construct from the dango-httpd base URL (e.g. `http://localhost:8080`).
-    /// The `/graphql` suffix is joined internally; the WebSocket URL is derived
-    /// by switching the scheme (`http` → `ws`, `https` → `wss`).
-    pub(crate) fn new<U>(base_url: U) -> AnyResult<Self>
+    /// Construct from the node's base URL (e.g. `http://localhost:8080`). The
+    /// `/graphql` and `/block/full/range` paths are joined internally; the
+    /// WebSocket URL is derived from the GraphQL one.
+    pub fn new<U>(base_url: U) -> AnyResult<Self>
     where
         U: IntoUrl,
     {
-        let graphql_url = base_url.into_url()?.join("graphql")?;
+        let base = base_url.into_url()?;
+        let graphql_url = base.join("graphql")?;
+        let range_url = base.join("block/full/range")?;
         let ws = WsClient::from_http_url(graphql_url.as_str())?;
         let inner = reqwest::Client::builder().timeout(HTTP_TIMEOUT).build()?;
 
         Ok(Self {
             inner,
-            graphql_url,
+            range_url,
             ws,
         })
-    }
-
-    /// Returns the latest indexed block height, or `None` if the indexer is
-    /// at genesis (no blocks yet).
-    ///
-    /// Reuses the existing `block(height: None)` query from
-    /// `dango-indexer-graphql-types`: it carries a heavier payload than strictly
-    /// needed (transactions, events), but is called once at boot — the
-    /// overhead is acceptable.
-    pub(crate) async fn latest_block_height(&self) -> AnyResult<Option<u64>> {
-        let data = post_graphql(&self.inner, &self.graphql_url, block::Variables {
-            height: None,
-        })
-        .await?;
-
-        Ok(data.block.map(|b| b.block_height as u64))
     }
 
     /// Open a WebSocket subscription to the `full_block` channel and return a
@@ -72,9 +61,8 @@ impl HttpdClient {
     /// only blocks newer than the current tip. Each item is the sentinel's
     /// `BlockAndOutcome` as a JSON scalar, decoded here.
     ///
-    /// This is the **shared live path**: both block sources call it — the local
-    /// one against the in-process `dango-httpd`, the remote one against a
-    /// sentinel — so the live-tail logic lives in exactly one place.
+    /// The **shared live path**: both block sources call it — the local one
+    /// against the in-process `dango-httpd`, the remote one against a sentinel.
     pub(crate) async fn subscribe_full_blocks(
         &self,
         since: Option<u64>,
@@ -104,5 +92,30 @@ impl HttpdClient {
         });
 
         Ok(Box::pin(mapped))
+    }
+}
+
+#[async_trait]
+impl BlockRangeClient for HttpdClient {
+    async fn fetch_block_range(&self, from: u64, to: u64) -> AnyResult<Vec<BlockData>> {
+        // GET /block/full/range?from=&to=. The query string is built with the
+        // `url` crate (this reqwest build has no RequestBuilder::query) and the
+        // body decoded with serde_json (no `json` feature). `BlockData` decodes
+        // the `{ block, block_outcome }` items directly.
+        let mut url = self.range_url.clone();
+        url.query_pairs_mut()
+            .append_pair("from", &from.to_string())
+            .append_pair("to", &to.to_string());
+
+        let bytes = self
+            .inner
+            .get(url)
+            .send()
+            .await?
+            .error_for_status()?
+            .bytes()
+            .await?;
+
+        Ok(serde_json::from_slice::<Vec<BlockData>>(&bytes)?)
     }
 }

@@ -1,18 +1,16 @@
 mod fetcher;
 mod store;
-mod subscriber;
 
 pub use {
     fetcher::{
         BlockFetcher, BlockRangeClient, FetchStream, MAX_BLOCK_RANGE, SentinelBlockFetcher,
-        SentinelFetcherConfig, SentinelRangeClient,
+        SentinelFetcherConfig,
     },
     store::{BlockStore, GENESIS_HEIGHT, MemoryBlockStore, RocksdbBlockStore},
-    subscriber::{FullBlockSubscriber, LiveSubscriber},
 };
 
 use {
-    crate::BlockSource,
+    crate::{BlockSource, httpd_client::HttpdClient},
     anyhow::{anyhow, bail},
     async_trait::async_trait,
     dango_indexer_historical_types::{AnyResult, BlockData},
@@ -76,8 +74,9 @@ impl Default for RemoteBlockSourceConfig {
 /// V2 [`BlockSource`]: runs on a node-less host, owns its raw-block store, and
 /// pulls blocks from a sentinel. See `design/remote-block-source.md`.
 ///
-/// Two tasks feed a single serialized coordinator: the `subscriber`'s live tail
-/// (`drain_live`), and a continuous `healer` that backfills any gap the store
+/// Two tasks feed a single serialized coordinator: the live tail
+/// (`drain_live`, the node's `full_block` subscription), and a continuous
+/// `healer` that backfills any gap the store
 /// reports through the bounded `fetcher` — both the initial history and any
 /// later hole left by a reconnect or a dropped block. The **store owns the
 /// topology**: its `put` persists each block and reports when the contiguous
@@ -87,7 +86,9 @@ impl Default for RemoteBlockSourceConfig {
 /// invariants intact for the projection loop.
 pub struct RemoteBlockSource {
     store: Arc<dyn BlockStore>,
-    subscriber: Arc<dyn LiveSubscriber>,
+    /// The node connection: `drain_live` opens its `full_block` subscription for
+    /// the live tail. The fetcher is backed by the same client type.
+    httpd_client: HttpdClient,
     fetcher: Arc<dyn BlockFetcher>,
     config: RemoteBlockSourceConfig,
     /// Wakes the healer when the live tail shows a discontinuity (a reconnect
@@ -100,14 +101,14 @@ pub struct RemoteBlockSource {
 impl RemoteBlockSource {
     pub fn new(
         store: Arc<dyn BlockStore>,
-        subscriber: Arc<dyn LiveSubscriber>,
+        httpd_client: HttpdClient,
         fetcher: Arc<dyn BlockFetcher>,
         config: RemoteBlockSourceConfig,
     ) -> Self {
         let (broadcast_tx, _) = broadcast::channel(config.pubsub_buffer_size);
         Self {
             store,
-            subscriber,
+            httpd_client,
             fetcher,
             config,
             heal_notify: Notify::new(),
@@ -277,7 +278,7 @@ impl RemoteBlockSource {
                 .contiguous_frontier()
                 .await?
                 .map(|frontier| frontier + 1);
-            let mut live_blocks = match self.subscriber.subscribe(since).await {
+            let mut live_blocks = match self.httpd_client.subscribe_full_blocks(since).await {
                 Ok(stream) => stream,
                 Err(_error) => {
                     #[cfg(feature = "tracing")]
@@ -387,7 +388,6 @@ mod tests {
     use {
         super::*,
         dango_primitives::{Block, BlockInfo, BlockOutcome, Hash256, Timestamp},
-        futures::stream::{self, BoxStream},
         tokio::time::timeout,
     };
 
@@ -430,72 +430,15 @@ mod tests {
         }
     }
 
-    /// A subscriber that yields a scripted height sequence (to simulate skips
-    /// and reconnects), then pends forever so the source keeps running.
-    struct MockSubscriber {
-        script: std::sync::Mutex<Option<Vec<u64>>>,
-    }
-
-    impl MockSubscriber {
-        fn new(script: Vec<u64>) -> Self {
-            Self {
-                script: std::sync::Mutex::new(Some(script)),
-            }
-        }
-    }
-
-    #[async_trait]
-    impl LiveSubscriber for MockSubscriber {
-        async fn subscribe(
-            &self,
-            _since: Option<u64>,
-        ) -> AnyResult<BoxStream<'static, AnyResult<BlockData>>> {
-            let script = self.script.lock().unwrap().take().unwrap_or_default();
-            let scripted = stream::iter(script.into_iter().map(|h| Ok(block(h))));
-            let stream = scripted.chain(stream::pending::<AnyResult<BlockData>>());
-            Ok(Box::pin(stream))
-        }
-    }
-
-    /// A subscriber that yields a queue of scripted episodes — each a height
-    /// sequence and whether the stream pends (`true`) or ends (`false`) after
-    /// it. An episode that ends makes `drain_live` reconnect to the next.
-    struct ScriptedSubscriber {
-        episodes: std::sync::Mutex<std::collections::VecDeque<(Vec<u64>, bool)>>,
-    }
-
-    impl ScriptedSubscriber {
-        fn new(episodes: Vec<(Vec<u64>, bool)>) -> Self {
-            Self {
-                episodes: std::sync::Mutex::new(episodes.into()),
-            }
-        }
-    }
-
-    #[async_trait]
-    impl LiveSubscriber for ScriptedSubscriber {
-        async fn subscribe(
-            &self,
-            _since: Option<u64>,
-        ) -> AnyResult<BoxStream<'static, AnyResult<BlockData>>> {
-            let (heights, pend) = match self.episodes.lock().unwrap().pop_front() {
-                Some(episode) => episode,
-                None => bail!("scripted subscriber exhausted"),
-            };
-            let scripted = stream::iter(heights.into_iter().map(|h| Ok(block(h))));
-            let stream: BoxStream<'static, AnyResult<BlockData>> = if pend {
-                Box::pin(scripted.chain(stream::pending::<AnyResult<BlockData>>()))
-            } else {
-                Box::pin(scripted)
-            };
-            Ok(Box::pin(stream))
-        }
-    }
-
+    /// Build a source over the given store with a dummy node client (the
+    /// coordinator tests drive `run_coordinator` directly and never open the
+    /// subscription, so the client is only a placeholder) and the always-serves
+    /// [`MockFetcher`].
     fn source_with(store: Arc<MemoryBlockStore>) -> Arc<RemoteBlockSource> {
+        let httpd_client = HttpdClient::new("http://localhost:1").expect("dummy httpd client");
         Arc::new(RemoteBlockSource::new(
             store,
-            Arc::new(MockSubscriber::new(vec![])),
+            httpd_client,
             Arc::new(MockFetcher),
             RemoteBlockSourceConfig::default(),
         ))
@@ -509,26 +452,6 @@ mod tests {
             .expect("timed out waiting for broadcast")
             .expect("broadcast closed")
             .height()
-    }
-
-    /// Drain broadcasts up to and including `target`, asserting the sequence is
-    /// strictly ascending (the broadcast invariant: `+1` or a skip-to-top, never
-    /// out of order or duplicated). Returns the heights seen.
-    async fn drain_until(rx: &mut broadcast::Receiver<Arc<BlockData>>, target: u64) -> Vec<u64> {
-        let mut seen = Vec::new();
-        loop {
-            let height = recv_height(rx).await;
-            if let Some(&last) = seen.last() {
-                assert!(
-                    height > last,
-                    "broadcast not ascending: {last} then {height}"
-                );
-            }
-            seen.push(height);
-            if height == target {
-                return seen;
-            }
-        }
     }
 
     #[tokio::test]
@@ -605,112 +528,11 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn healer_fills_skipped_block() {
-        let store = Arc::new(MemoryBlockStore::default());
-        // Resume point: 1..=9 already contiguous.
-        for height in 1..=9 {
-            store.put(height, &block(height)).await.unwrap();
-        }
-
-        // Subscriber: tip 10, delivers 10, 11, 13 (skips 12), then pends.
-        let source = Arc::new(RemoteBlockSource::new(
-            store.clone(),
-            Arc::new(MockSubscriber::new(vec![10, 11, 13])),
-            Arc::new(MockFetcher),
-            RemoteBlockSourceConfig::default(),
-        ));
-        let mut rx = source.subscribe();
-
-        let run = tokio::spawn(source.clone().run());
-
-        // 10, 11 push through; 13 waits above the hole at 12; the healer fills
-        // 12, the frontier jumps to 13, and only the top (13) is broadcast.
-        assert_eq!(recv_height(&mut rx).await, 10);
-        assert_eq!(recv_height(&mut rx).await, 11);
-        assert_eq!(recv_height(&mut rx).await, 13);
-        assert_eq!(source.contiguous_frontier().await.unwrap(), Some(13));
-        assert!(store.get(12).await.unwrap().is_some());
-
-        run.abort();
-    }
-
-    #[tokio::test]
-    async fn healer_fills_reconnect_hole() {
-        let store = Arc::new(MemoryBlockStore::default());
-        for height in 1..=9 {
-            store.put(height, &block(height)).await.unwrap();
-        }
-
-        // Subscriber: tip 10, delivers 10, 11, then "reconnects" at 20 (the
-        // 12..=19 downtime hole), then pends.
-        let source = Arc::new(RemoteBlockSource::new(
-            store.clone(),
-            Arc::new(MockSubscriber::new(vec![10, 11, 20])),
-            Arc::new(MockFetcher),
-            RemoteBlockSourceConfig::default(),
-        ));
-        let mut rx = source.subscribe();
-
-        let run = tokio::spawn(source.clone().run());
-
-        // The 12..=19 hole is healed; the broadcast climbs ascending to 20 and
-        // every height 10..=20 ends up durable.
-        let seen = drain_until(&mut rx, 20).await;
-        assert_eq!(*seen.first().unwrap(), 10);
-        assert_eq!(source.contiguous_frontier().await.unwrap(), Some(20));
-        for height in 12..=19 {
-            assert!(store.get(height).await.unwrap().is_some());
-        }
-
-        run.abort();
-    }
-
-    #[tokio::test]
     async fn contiguous_frontier_none_until_stored() {
         let store = Arc::new(MemoryBlockStore::default());
         let source = source_with(store.clone());
         assert_eq!(source.contiguous_frontier().await.unwrap(), None);
         store.put(1, &block(1)).await.unwrap();
         assert_eq!(source.contiguous_frontier().await.unwrap(), Some(1));
-    }
-
-    #[tokio::test]
-    async fn drain_live_reconnects_after_stream_end() {
-        let store = Arc::new(MemoryBlockStore::default());
-        for height in 1..=9 {
-            store.put(height, &block(height)).await.unwrap();
-        }
-
-        // Episode 1: tip 10, deliver 10, 11, then the stream ENDS (connection
-        // drop). Episode 2: tip 20 (12..=19 produced during the downtime),
-        // deliver 20, then pend.
-        let subscriber = Arc::new(ScriptedSubscriber::new(vec![
-            (vec![10, 11], false),
-            (vec![20], true),
-        ]));
-        let config = RemoteBlockSourceConfig {
-            reconnect_backoff: Duration::from_millis(10),
-            ..Default::default()
-        };
-        let source = Arc::new(RemoteBlockSource::new(
-            store.clone(),
-            subscriber,
-            Arc::new(MockFetcher),
-            config,
-        ));
-        let mut rx = source.subscribe();
-
-        let run = tokio::spawn(source.clone().run());
-
-        // 10, 11 from episode 1; the stream drops, the source reconnects, the
-        // healer fills the 12..=19 downtime hole, and the broadcast climbs to 20.
-        let seen = drain_until(&mut rx, 20).await;
-        assert_eq!(*seen.first().unwrap(), 10);
-        assert_eq!(source.contiguous_frontier().await.unwrap(), Some(20));
-        for height in 12..=19 {
-            assert!(store.get(height).await.unwrap().is_some());
-        }
-
-        run.abort();
     }
 }

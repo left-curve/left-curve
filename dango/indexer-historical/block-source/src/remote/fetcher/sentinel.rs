@@ -2,7 +2,6 @@ use {
     super::{BlockFetcher, FetchStream},
     async_trait::async_trait,
     dango_indexer_historical_types::{AnyResult, BlockData},
-    reqwest::{IntoUrl, Url},
     std::{cmp::min, time::Duration},
     tokio::{sync::mpsc, time::sleep},
 };
@@ -12,13 +11,12 @@ use {
 /// next request.
 pub const MAX_BLOCK_RANGE: u64 = 20;
 
-/// Fetches contiguous runs of full blocks from a sentinel's indexer-httpd
+/// Fetches contiguous runs of full blocks from a node's indexer-httpd
 /// `/block/full/range` endpoint (`?from=&to=`).
 ///
-/// Abstracted as a trait so the crate depends on the shape, not a concrete HTTP
-/// client, and so the [`SentinelBlockFetcher`] loop can be driven by a mock in
-/// tests. The concrete impl (reqwest against the route, decoding the returned
-/// `BlockAndOutcome` JSON into [`BlockData`]) lands with the CLI wiring.
+/// A trait so the [`SentinelBlockFetcher`] loop can be driven by a mock in
+/// tests; the production impl is the crate's `HttpdClient`, which the fetcher
+/// shares with the live subscriber.
 #[async_trait]
 pub trait BlockRangeClient: Send + Sync {
     /// Fetch the contiguous run of full blocks `[from, to]` (inclusive). The
@@ -27,54 +25,6 @@ pub trait BlockRangeClient: Send + Sync {
     /// but may be **shorter** than requested — and empty if `from` itself is not
     /// yet available.
     async fn fetch_block_range(&self, from: u64, to: u64) -> AnyResult<Vec<BlockData>>;
-}
-
-/// Concrete [`BlockRangeClient`] over a sentinel's indexer-httpd REST API:
-/// `GET /block/full/range?from=&to=`, returning a JSON array of full blocks.
-#[derive(Clone)]
-pub struct SentinelRangeClient {
-    http: reqwest::Client,
-    /// `{base}/block/full/range`, joined once at construction.
-    range_url: Url,
-}
-
-impl SentinelRangeClient {
-    /// Build from the sentinel's base URL (e.g. `http://sentinel:8080`).
-    pub fn new<U>(base_url: U) -> AnyResult<Self>
-    where
-        U: IntoUrl,
-    {
-        Ok(Self {
-            http: reqwest::Client::new(),
-            range_url: base_url.into_url()?.join("block/full/range")?,
-        })
-    }
-}
-
-#[async_trait]
-impl BlockRangeClient for SentinelRangeClient {
-    async fn fetch_block_range(&self, from: u64, to: u64) -> AnyResult<Vec<BlockData>> {
-        // Build `?from=&to=` via the `url` crate (this reqwest build exposes no
-        // `RequestBuilder::query`), then decode the body with serde_json (no
-        // `json` feature either). The per-request timeout is applied by the
-        // fetcher loop, so this client sets none of its own.
-        let mut url = self.range_url.clone();
-        url.query_pairs_mut()
-            .append_pair("from", &from.to_string())
-            .append_pair("to", &to.to_string());
-
-        let bytes = self
-            .http
-            .get(url)
-            .send()
-            .await?
-            .error_for_status()?
-            .bytes()
-            .await?;
-
-        // `BlockData` decodes the `{ block, block_outcome }` items directly.
-        Ok(serde_json::from_slice::<Vec<BlockData>>(&bytes)?)
-    }
 }
 
 /// Tuning for [`SentinelBlockFetcher`].

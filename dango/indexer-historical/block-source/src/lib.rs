@@ -2,7 +2,8 @@
 //!
 //! - [`LocalBlockSource`] — V1 impl, co-located with the dango node.
 //! - [`RemoteBlockSource`] — V2 impl, detached host; composes a
-//!   [`BlockStore`], a [`LiveSubscriber`], and a [`BlockFetcher`].
+//!   [`BlockStore`], a node `HttpdClient` for the live tail, and a
+//!   [`BlockFetcher`].
 //! - [`BlockFetcher`] — bounded backfill abstraction; [`SentinelBlockFetcher`]
 //!   pulls from a sentinel node.
 
@@ -12,12 +13,12 @@ mod remote;
 mod source;
 
 pub use {
+    httpd_client::HttpdClient,
     local::LocalBlockSource,
     remote::{
-        BlockFetcher, BlockRangeClient, BlockStore, FetchStream, FullBlockSubscriber,
-        GENESIS_HEIGHT, LiveSubscriber, MAX_BLOCK_RANGE, MemoryBlockStore, RemoteBlockSource,
-        RemoteBlockSourceConfig, RocksdbBlockStore, SentinelBlockFetcher, SentinelFetcherConfig,
-        SentinelRangeClient,
+        BlockFetcher, BlockRangeClient, BlockStore, FetchStream, GENESIS_HEIGHT, MAX_BLOCK_RANGE,
+        MemoryBlockStore, RemoteBlockSource, RemoteBlockSourceConfig, RocksdbBlockStore,
+        SentinelBlockFetcher, SentinelFetcherConfig,
     },
     source::BlockSource,
 };

@@ -53,15 +53,6 @@ impl LocalBlockSource {
             broadcast_tx,
         })
     }
-
-    /// Query `dango-httpd` for the latest indexed block height and seed the
-    /// frontier accordingly. Called once from `run()` at startup.
-    async fn init_frontier(&self) -> AnyResult<()> {
-        if let Some(h) = self.httpd_client.latest_block_height().await? {
-            self.frontier.store(h, Ordering::Release);
-        }
-        Ok(())
-    }
 }
 
 #[async_trait]
@@ -70,33 +61,11 @@ impl BlockSource for LocalBlockSource {
         #[cfg(feature = "tracing")]
         tracing::info!("LocalBlockSource starting");
 
-        // Init frontier — retry on transient failure (e.g. dango-httpd not
-        // yet up when we start).
-        loop {
-            match self.init_frontier().await {
-                Ok(()) => break,
-                Err(_e) => {
-                    #[cfg(feature = "tracing")]
-                    tracing::warn!(
-                        error = %_e,
-                        backoff_secs = RECONNECT_BACKOFF.as_secs(),
-                        "init_frontier failed, retrying"
-                    );
-                    tokio::time::sleep(RECONNECT_BACKOFF).await;
-                },
-            }
-        }
-
-        #[cfg(feature = "tracing")]
-        tracing::info!(
-            frontier = self.frontier.load(Ordering::Acquire),
-            "frontier initialised"
-        );
-
         // Outer loop: keep the `full_block` subscription open across transient
-        // disconnects. Each (re)connect resumes from `frontier + 1`, so the node
-        // replays any downtime hole before streaming the live tail — the same
-        // shared path the remote source uses.
+        // disconnects. The first connect resumes from `None` (the live tip) and
+        // the frontier is set from the first block that arrives; each reconnect
+        // then resumes from `frontier + 1`, so the node replays any downtime hole
+        // before the live tail — the same shared path the remote source uses.
         loop {
             let since = match self.frontier.load(Ordering::Acquire) {
                 0 => None,
@@ -127,13 +96,14 @@ impl BlockSource for LocalBlockSource {
                         let current = self.frontier.load(Ordering::Acquire);
 
                         // The feed delivers in order from `since`. Skip a
-                        // re-delivered block at/under the frontier; on a gap (a
-                        // dropped block) reconnect to replay from `frontier + 1`
-                        // rather than broadcasting a hole.
+                        // re-delivered block at/under the frontier. The first
+                        // block (frontier still 0) sets the baseline; after that
+                        // a gap (a dropped block) reconnects to replay from
+                        // `frontier + 1` rather than broadcasting a hole.
                         if height <= current {
                             continue;
                         }
-                        if height > current + 1 {
+                        if current != 0 && height > current + 1 {
                             #[cfg(feature = "tracing")]
                             tracing::warn!(current, height, "gap in full_block feed; reconnecting");
                             break;
