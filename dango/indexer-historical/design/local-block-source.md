@@ -11,115 +11,110 @@ dango node and reuses the data the node already persists.
 
 The dango node, through its in-process indexer (`indexer/sql/`,
 `indexer/clickhouse/`), already writes every finalized block to disk and
-exposes a GraphQL subscription for new-block notifications. V1 piggy-backs
-on both — no duplicate storage, no new wire protocol.
+exposes a GraphQL `full_block` subscription that streams each new block with its
+full payload. V1 piggy-backs on both — the subscription for the live tail, the
+on-disk cache files for catch-up reads — no duplicate storage, no new wire
+protocol.
 
 ## Inputs the source relies on
 
-1. **GraphQL subscription** at `dango-httpd` — `block { block_height }`. Notifies
-   when a new block has been indexed and is reachable on disk.
+1. **GraphQL `full_block` subscription** at `dango-httpd` — streams each newly
+   indexed block as a complete `BlockData` (block + outcome) in one event. This
+   is the live tail; the source reads nothing from disk to serve it.
 2. **Cache files on disk** — written by the node's `dango-indexer-cache` crate at:
    ```
    <dir>/blocks/<last-3-digits-of-height-reversed>/<height>.borsh[.xz]
    ```
    Each file is a borsh-serialized
    `CacheFile { data: BlockAndBlockOutcomeWithHttpDetails { block, block_outcome, http_request_details }, .. }`,
-   optionally lzma-compressed (`.xz`). The historical indexer drops
-   `http_request_details` after deserialization — the wire `BlockData` only
-   carries `block` + `block_outcome`.
+   optionally lzma-compressed (`.xz`). Used only for **catch-up** (`get(h)`), not
+   the live tail. The historical indexer drops `http_request_details` after
+   deserialization — the wire `BlockData` only carries `block` + `block_outcome`.
 
 Both inputs come from the same dango node process. If the node is down,
 both are down — single failure domain, no consistency issues to worry about.
 
-## Live tail — GraphQL subscription, not file watching
+## Live tail — the `full_block` subscription
 
-The subscriber half of the source opens a WebSocket to `dango-httpd` and
-subscribes to `block { block_height }`. For each event it loads the
-corresponding cache file from disk, decodes it into a `BlockData`, advances
-the frontier, and broadcasts.
+The live half of the source opens a WebSocket to `dango-httpd` and subscribes to
+`full_block`. Each event carries the whole `BlockData`, so the source decodes it,
+advances the frontier, and broadcasts — **no disk read on the live path**. This
+is the *same* `subscribe_full_blocks` call the `RemoteBlockSource` uses; only the
+base URL differs (in-process `dango-httpd` here, a remote sentinel there), so the
+two sources share one live-tail implementation (`HttpdClient`).
 
-Why GraphQL subscription over polling or inotify:
+Why a GraphQL subscription over polling or inotify:
 
 - **API contractual** — depends on the GraphQL schema (stable, versioned)
   instead of the on-disk file layout.
-- **Reconnection** is solved by the WS client; no custom retry loop.
-- **"Live from tip"** semantics come for free — the subscription naturally
+- **Reconnection** is solved by the WS client wrapped in the source's own
+  resume loop (see [Frontier](#frontier--from-the-live-feed-not-a-boot-query)).
+- **"Live from tip"** semantics come for free — `subscribe_full_blocks(None)`
   starts at the chain head and moves forward.
 - **No file enumeration** to discover what appeared.
-- **Forward-compatible** with V2: the same `block` subscription transfers to
-  a remote sentinel (only the URL changes). What differs there is downstream —
-  V2 fetches the payload over RPC instead of from disk, and a coordinator (not
-  the subscriber) owns the frontier and broadcast. See
+- **Shared with V2** — the same subscription transfers to a remote sentinel
+  unchanged; only the base URL differs. What differs downstream is that V2 also
+  owns a store and a coordinator, where V1 broadcasts directly. See
   [remote-block-source.md](./remote-block-source.md).
 
-Notification-only: the subscription doesn't carry the full `Block + BlockOutcome`
-payload. The source still needs to read from disk to assemble `BlockData`.
-This is fine — the file is local and almost always in the OS page cache (the
-node just wrote it).
+The subscription carries the full `Block + BlockOutcome`, so the live path never
+touches disk. The cache files matter only for catch-up `get(h)` — a projection
+reaching for a height below the live tip.
 
 ## Catch-up — disk read on demand
 
 When a projection lags behind the frontier, it calls `source.get(h)`. In V1
-that's a single-file read:
+that's a single-file read off the node's cache:
 
 ```
-path = <dir>/blocks/<height % 1000 reversed>/<height>.borsh[.xz]
-load CacheFile via disk_saver::DiskPersistence
-drop http_request_details
-return BlockData
+path = cache_path.block_path(h)        // <dir>/blocks/<…>/<h>.borsh[.xz]
+if !CacheFile::exists(path) → Ok(None)  // "not yet", not an error
+CacheFile::load_from_disk_async(path)
+return BlockData { block, outcome }     // drops http_request_details
 ```
 
-`DiskPersistence` already handles both compressed (`.xz`) and uncompressed
-files transparently — see `utils/disk-saver/src/persistence.rs`.
+`CacheFile` handles both compressed (`.xz`) and uncompressed files
+transparently. A missing file maps to `Ok(None)` — the `get(h) == None` is
+"not yet" contract — so a projection that has outrun the node's on-disk writes
+simply retries.
 
 No batching in V1: the projection loop reads one block at a time. A future
 optimization could expose `get_range(from, max_count)` if profiling shows
 disk read overhead matters; for now, page cache hides it.
 
-## Frontier — queried at boot, advanced at runtime
+## Frontier — from the live feed, not a boot query
 
-The source holds `contiguous_frontier: AtomicU64` in memory.
+The source holds `frontier: AtomicU64` in memory, mutated only by the `run()`
+task; reads are lock-free.
 
-**At boot**: a single GraphQL query against `dango-httpd` asks for the
-latest indexed block height (`latestBlock { blockHeight }` or equivalent —
-the entity helper `indexer_sql::entity::blocks::latest_block_height`
-already exists; whether it's already wired to a GraphQL query field or
-needs to be is an implementation detail). Frontier ← that height. Sub-ms,
-one round-trip.
+**At boot** there is no separate query. `run()` opens the subscription at the
+live tip (`subscribe_full_blocks(None)`) and the **first block that arrives sets
+the baseline** — the frontier jumps straight to it. No walk of the on-disk
+blocks, no `latest_block_height` round-trip; the feed itself tells the source
+where the tip is.
 
-**At runtime**: on every new-block notification from the GraphQL
-subscription, if the new height is `frontier + 1`, advance the frontier
-and broadcast. If it's ≤ frontier (already seen), skip. If it skips ahead
-(should never happen in V1, since the node writes blocks strictly in
-order), hold and log a warning.
+**At runtime** each delivered block is checked against the frontier:
 
-### Why query the indexer instead of walking the disk
+- `height <= frontier` — already seen (a re-delivery after a reconnect); skip.
+- `height == frontier + 1` — advance the frontier and broadcast.
+- `height > frontier + 1` while `frontier != 0` — a gap (a dropped live event).
+  Break and reconnect, resuming the feed from `frontier + 1` so the node replays
+  the hole in order, rather than broadcasting past it. (The first block, with
+  `frontier` still 0, is the baseline and never counts as a gap.)
 
-The cache files on disk are written by the node *before* `indexer-sql`
-indexes them on Postgres. So the indexer's "latest indexed" is up to
-1–2 blocks behind the highest file on disk. That's harmless:
+This is **identical** to the `RemoteBlockSource` live-tail logic — the same
+`since`/reconnect dance over the same `subscribe_full_blocks` stream. The only
+difference is that V1 has no store of its own to heal a gap from, so it
+reconnects and lets the node replay instead.
 
-- Projections in catch-up call `source.get(h)`, which reads from disk
-  directly — they see files above the frontier without trouble.
-- Notifications for heights ≤ frontier are filtered (not broadcast) by
-  the `h == frontier + 1` check, so no duplicate processing.
-- The frontier is monotonically increasing; the small initial offset is
-  absorbed as soon as the next `frontier + 1` notification arrives.
+### Why not query the indexer for the boot frontier
 
-Querying the indexer is strictly faster than walking 22M files at boot,
-and explicitly defers to the in-process indexer as the source of truth
-for "what's indexed" — which is what a projection consumer cares about.
-
-### Alternative considered: reuse the subscription's first event
-
-The existing `block` GraphQL subscription emits the latest indexed block
-as its first event (via `once(last_block)` — see
-`indexer/httpd/src/graphql/subscription/block.rs`). We could skip the
-separate query and initialize the frontier from that first event.
-
-Rejected for V1: an implicit "the first event is special" invariant is
-harder to read than a deliberate query. Reconsider if the extra
-round-trip ever matters.
+An earlier design queried `dango-httpd` for the latest indexed height at boot.
+With the `full_block` feed carrying the payload, that round-trip buys nothing:
+the first event delivers the height *and* the block, so the source baselines and
+broadcasts in one step. Dropping the query also removes an implicit ordering
+dependency on a separate GraphQL query field being wired up, and a class of
+"frontier is 1–2 blocks ahead of / behind the feed" skew.
 
 ## Internal architecture (informal)
 
@@ -127,10 +122,9 @@ round-trip ever matters.
                   ┌──────────────────────────────────┐
                   │ LocalBlockSource                 │
                   │                                  │
-   dango-httpd ──→│  WS sub task:                    │
-   (GraphQL sub)  │    recv height                   │
-                  │      → read file from disk       │
-                  │      → advance frontier          │
+   dango-httpd ──→│  WS sub task (full_block):       │
+   (full_block    │    recv BlockData                │
+    subscription) │      → advance frontier          │
                   │      → broadcast Arc<BlockData>  │
                   │                                  │
                   │  get(h) call:                    │
@@ -142,18 +136,19 @@ round-trip ever matters.
                   └──────────────────────────────────┘
 ```
 
-One internal task (the GraphQL subscriber loop). `get` is synchronous from
-the source's point of view — no shared state beyond the frontier atomic and
-the broadcast sender.
+One internal task (the subscription loop). `get` is synchronous from the
+source's point of view — no shared state beyond the frontier atomic and the
+broadcast sender.
 
 ## Failure modes
 
 | Failure | Behavior |
 |---|---|
-| WS connection drops | GraphQL client reconnects internally; on reconnect the sub yields from the new tip. Any block missed during downtime is still on disk and reachable via `get` for projections in catch-up. The frontier may stall briefly. |
-| `dango-httpd` down but node up | Same as WS drop — subscriber retries. Files on disk keep growing but the source doesn't see them until httpd comes back. Frontier stalls. Projections keep processing up to the old frontier. |
-| Cache file missing for a notified height | Shouldn't happen — the node writes the file before publishing on pubsub. If it does (race, corruption), log + skip + leave frontier unchanged; next notification will retry. |
-| File present but corrupt | `DiskPersistence::load` returns a borsh error. Bubbled up via `anyhow`. Operational decision (skip vs halt) deferred — TBD. |
+| WS connection drops | The source reconnects with backoff and resumes the feed from `frontier + 1`, so the node replays anything produced during the outage in order. The frontier stalls until the feed is back. |
+| `dango-httpd` down but node up | Same as a WS drop — the source retries. Files on disk keep growing but the source doesn't see them until httpd comes back. Frontier stalls. Projections keep processing up to the old frontier. |
+| Gap in the live feed (a dropped event) | A delivered height beyond `frontier + 1` is treated as a gap: the source reconnects and replays from `frontier + 1` rather than broadcasting past the hole. |
+| Cache file missing for a `get(h)` | Maps to `Ok(None)` — "not yet"; a projection that outran the node's on-disk writes retries. |
+| Cache file present but corrupt | `CacheFile::load` returns a borsh error, bubbled up via `anyhow`. Operational decision (skip vs halt) deferred — TBD. |
 
 ## Coupling with `dango-indexer-cache`
 
@@ -171,8 +166,8 @@ fails to build.
   projections in catch-up batch disk reads? Marginal until profiled.
 - Behavior on corrupt-file detection: skip + alert vs halt. Probably skip
   in V1 (the in-process indexer would also catch it) but needs a config knob.
-- Reconnection backoff for the GraphQL subscription: rely on the client
-  library defaults, or override? Defer to implementation.
+- Reconnection backoff is a fixed `RECONNECT_BACKOFF` (5 s) today; surfacing
+  it as config is a later knob.
 - `dango-httpd` startup ordering: if the historical indexer starts before
   `dango-httpd` is reachable, the source should retry rather than fail
   hard. Standard pattern, but make sure it's exercised in tests.

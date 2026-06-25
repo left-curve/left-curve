@@ -56,8 +56,9 @@ RemoteBlockSource (impl BlockSource)
  ├── BlockStore                                  [trait; RocksDB impl + memory for tests]
  │     put → Option<frontier> · get · contiguous_frontier · lowest_gap
  │     owns the stored-height topology (frontier + gaps), persisted
- ├── LiveSubscriber (subscription to a sentinel) [trait, one real impl]
- │     yields L at startup, then the live tail [L..∞) as a stream
+ ├── HttpdClient (node `httpd` connection)        [concrete; one node-backed impl]
+ │     subscribe_full_blocks(since) → live tail [since..∞) as a stream of BlockData
+ │     also backs the fetcher via BlockRangeClient (the `/block/full/range` call)
  ├── BlockFetcher                                [trait, ≥1 impl]
  │     spawn(from, to) -> FetchStream   (bounded backfill, dies at `to`)
  │       ├── SentinelBlockFetcher   ← built now
@@ -72,19 +73,24 @@ The division of labour:
   reports when the frontier advances, so the coordinator stays a thin broadcast
   driver and the resume point is a checkpoint read. A trait (the RocksDB impl in
   production, an in-memory one for tests).
-- **`LiveSubscriber`** follows the chain tip. It is *always* a sentinel
-  subscription regardless of backend, because B2 only ever serves cold history —
-  the tip always comes from a node. A pure producer: it *yields* blocks; the
-  coordinator is the single writer to the store.
+- **The live tail** follows the chain tip through the node's `full_block`
+  subscription, opened on the shared `HttpdClient` (`subscribe_full_blocks`) —
+  the *same* path `LocalBlockSource` uses, only pointed at a remote sentinel. It
+  is *always* a sentinel subscription regardless of backend, because B2 only ever
+  serves cold history — the tip always comes from a node. The subscription
+  *yields* fully-assembled `BlockData`; `drain_live` forwards them and the
+  coordinator is the single writer to the store. There is no `LiveSubscriber`
+  trait: there is one node-backed implementation, so the source holds the
+  `HttpdClient` directly.
 - **`BlockFetcher`** is the **only** axis that varies between the sentinel-only
   and the future B2-layered setup, so it is the trait that varies. It does
   **bounded** backfill: fetch a contiguous `[from, to]` and terminate.
 - **The coordinator** is the single serialized writer + broadcaster. Both
-  writers (subscriber and fetcher) funnel through it; it calls `store.put` and
-  broadcasts whenever the store reports the frontier advanced. It holds **no
+  writers (the live tail and the fetcher) funnel through it; it calls `store.put`
+  and broadcasts whenever the store reports the frontier advanced. It holds **no
   topology of its own** — no frontier/tip atomics, no in-memory island map; all
-  of that lives in the store. The live `tip` is a local variable in `drain_live`
-  (used only to spot discontinuities), never shared or persisted.
+  of that lives in the store. The live `prev` height is a local variable in
+  `drain_live` (used only to spot discontinuities), never shared or persisted.
 
 **Fetch is decoupled from store.** The fetcher knows nothing about RocksDB; the
 store knows nothing about sentinels or B2. Swapping the fetcher (sentinel →
@@ -249,23 +255,31 @@ fast writes for free.
 > `remote.*`, and re-checking the cache against the live cache-hit-rate once
 > deployed, is a future task.
 
-## The live subscriber
+## The live tail
 
-Reuses the sentinel's `block` notification stream — the same GraphQL
-subscription `LocalBlockSource` speaks, pointed at a remote sentinel rather than
-an in-process `dango-httpd`. For each block the subscriber assembles the full
-`BlockData` and yields it, so `subscribe` hands back just a **stream of blocks**
-— the first delivered block is the resume point, with **no separate tip to
-return** (it is just `first.height()`, so plumbing it out-of-band is redundant).
-It is a pure producer: `drain_live` forwards the yielded blocks to the
-coordinator (the single store writer) and reconnects on drop; the concrete
-subscriber only opens one subscription and yields.
+The live tail is the node's **`full_block`** subscription, opened on the
+`HttpdClient` via `subscribe_full_blocks(since)` — the same shared path
+`LocalBlockSource` uses, only pointed at a remote sentinel rather than an
+in-process `dango-httpd`. Each event carries the **whole `BlockData`** (block +
+outcome) as a JSON scalar, decoded directly, so the call hands back just a
+**stream of blocks** — the first delivered block is the resume point, with **no
+separate tip to return** (it is just `first.height()`, so plumbing it out-of-band
+is redundant). `drain_live` forwards the yielded blocks to the coordinator (the
+single store writer) and reconnects on drop; `subscribe_full_blocks` only opens
+the one subscription and yields. There is no `LiveSubscriber` trait — one
+node-backed implementation, so the source holds the `HttpdClient` directly.
 
-This is the key V1→V2 shift on the subscriber side: the notification carries
-only the height (not the payload), and there is **no local disk to read the
-payload from** as in V1 — so the subscriber fetches over RPC. The chain produces
-blocks in order and the subscription delivers them in order, so `[L..∞)` is
-contiguous.
+`since` resumes the feed: `None` (a fresh, empty store) starts at the live tip;
+otherwise it replays from `frontier + 1`, so a reconnect re-delivers the downtime
+hole rather than leaving a gap. The chain produces blocks in order and the
+subscription delivers them in order, so `[since..∞)` is contiguous.
+
+Because the subscription **carries the payload**, the live tail needs no
+follow-up read — neither the V1 disk read nor a per-height RPC. That is the V1→V2
+simplification the `full_block` channel buys: V1 read the payload from the node's
+local cache file; V2 has no local disk, but the sentinel now ships the payload
+inline, so both sources share one subscription that yields complete blocks (see
+[Payload delivery](#payload-delivery-one-call-via-full_block)).
 
 Crucially the live tail is **stored immediately**, from the first delivered block
 onward, *during* the backfill (the coordinator persists each yielded block). That
@@ -279,30 +293,26 @@ baseline; thereafter a jump beyond `prev + 1` wakes the healer (a skip, a
 reconnect at a higher tip, or a reorder all trip this; the healer's grace absorbs
 a transient reorder). There is no shared or out-of-band tip state.
 
-### Payload fetch: two calls today, a single-call endpoint later
+### Payload delivery: one call via `full_block`
 
-Both the subscriber (per live height) and the `SentinelBlockFetcher` (per
-backfilled height) assemble a `BlockData` with **two** sentinel calls,
-`query_block` + `query_block_outcome`. At 100M blocks that is ~200M calls for a
-full backfill. On the indexer-REST path it is worse than it looks: the two
-endpoints that expose the halves — `/block/info/{h}` (`block`) and
-`/block/result/{h}` (`block_outcome`) — load the **same** node cache file
-*twice*, each returning one half of `cache_file.data`.
+Both the live tail (per live height) and the `SentinelBlockFetcher` (per
+backfilled height) get a complete `BlockData` in **one** call against the
+sentinel's `httpd`, which loads its cache file once and returns `block` +
+`outcome` together:
 
-**Proposed (not built — we keep the two calls for now):** add one route to the
-node's indexer httpd, e.g. `GET /block/{h}`, that loads the cache file once and
-returns `block` + `outcome` together. Since the historical `BlockData` already
-derives `borsh` and is the *same on-disk shape* the node caches, the route can
-answer in **borsh** and the client does `borsh::from_slice::<BlockData>`
-directly — one call, one disk read, zero conversion. (A JSON variant would need
-a serde wire-type, since the cache field is `block_outcome`, not `outcome`.)
-This halves the subscriber's per-block calls, and the backfill's too if the
-fetcher adopts the same route.
+- **Live tail** — the `full_block` GraphQL subscription; each event is a
+  `BlockAndOutcome` JSON scalar that `BlockData` deserializes directly.
+- **Backfill** — `GET /block/full/range?from=&to=`, a JSON array of the same
+  shape (see [the fetcher](#the-block-fetcher)).
 
-Deferred because it touches `dango/indexer/httpd` (the node/sentinel), so a
-sentinel must ship the route before the source can depend on it; adopting it
-would also revise this section and [the fetcher](#the-block-fetcher). Recorded
-so the option is not re-discovered from scratch later.
+This replaces the earlier two-call assembly (`query_block` +
+`query_block_outcome`, which at 100M blocks was ~200M calls for a full backfill
+and loaded the *same* node cache file twice per height — once per half). The
+combined routes live in the node's `dango/indexer` httpd and shipped there first;
+the historical source depends on a sentinel exposing them. The wire shape is
+`{ block, block_outcome }` decoded with **serde** — `BlockData` derives
+`Serialize`/`Deserialize` with `#[serde(rename = "block_outcome")]` on `outcome`,
+so no separate wire type is needed (borsh stays the on-disk format only).
 
 ## The block fetcher
 
@@ -344,12 +354,16 @@ Design notes:
 
 ### `SentinelBlockFetcher` (built now)
 
-A background task that pulls blocks from a sentinel over RPC in **fixed-size
-batches** (`batch_size` heights concurrently, clamped to the blocks left), sends
-them through the bounded channel ascending, and stops after `to`. No adaptive
-ramp: every height in a gap is below the live tip and therefore exists, so a
-plain fixed batch suffices. It keeps the **full `Block`** (not just
-`block.info`), since projections need txs and events.
+A background task that pulls blocks from a sentinel's `GET /block/full/range`
+endpoint in **contiguous runs** of up to `range_size` heights per call (the
+endpoint caps a response at `MAX_BLOCK_RANGE` = 20). Each request starts one past
+the **last block actually received**, so a short run — the sentinel not yet
+holding the next height — simply re-requests from there rather than assuming a
+fixed stride. It sends the assembled `BlockData` through the bounded channel
+ascending and stops after `to`. No adaptive ramp: every height in a gap is below
+the live tip and therefore exists, so a plain sequential pull suffices. The
+endpoint returns the **full `Block`** (not just `block.info`), since projections
+need txs and events.
 
 ## The coordinator: forward the advance to the broadcast
 
@@ -456,12 +470,13 @@ store on restart : {1..50, 200..210}   live subscribe resumes at L = 250
 ## Borrowed pattern: bots `BlockFetcher`
 
 `bots/types/src/block_fetcher.rs` already solves the hard part and we lift it:
-the background task + `AbortOnDrop` + bounded channel + `recv()` interface;
-concurrent batches (essential for a genesis backfill of millions of blocks);
-ordered output despite parallel fetch (send `block, block+1, …` in sequence,
-`break` on the first error to retry from there). We drop the adaptive ramp (it
-exists to follow the tip, which a bounded gap never reaches), emit the full
-`Block` (not `block.info`), and add the `from/to` bound so the task terminates.
+the background task + `AbortOnDrop` + bounded channel + `recv()` interface, and
+the ordered-output discipline (send `block, block+1, …` in sequence, resume from
+the last height actually received). We drop the adaptive ramp (it exists to
+follow the tip, which a bounded gap never reaches) and the per-height concurrent
+fetch (the `/block/full/range` endpoint returns a whole run in one call, so the
+loop is a sequential walk of ranges), emit the full `Block` (not `block.info`),
+and add the `from/to` bound so the task terminates.
 
 ## Configuration
 
@@ -474,13 +489,16 @@ that maps a `remote.*` section onto them is not built yet.
 signal, to absorb an out-of-order delivery before fetching), `reconnect_backoff`
 (between live re-subscribes).
 
-`SentinelFetcherConfig` — `batch_size` (heights fetched concurrently per gap
-batch), `timeout` (per-batch RPC timeout), `channel_capacity` (fetch-ahead
-backlog — the dominant backfill-RAM knob), `retry_backoff`.
+`SentinelFetcherConfig` — `range_size` (heights requested per `/block/full/range`
+call, clamped to the gap and capped at `MAX_BLOCK_RANGE` = 20), `timeout`
+(per-request RPC timeout), `channel_capacity` (fetch-ahead backlog — the dominant
+backfill-RAM knob), `retry_backoff`.
 
-Still needed: `sentinel_url` (the sentinel's `block` subscription + block RPC),
-which lands with the concrete `LiveSubscriber`; and `store_path` — the **local
-directory** for the source's RocksDB. Unlike the projections' Postgres, the raw
+Still needed: `sentinel_url` — the sentinel's base `httpd` URL, from which
+`HttpdClient::new` derives both the `full_block` subscription and the
+`/block/full/range` endpoint; it feeds the live tail and the fetcher's client
+alike. And `store_path` — the **local directory** for the source's RocksDB.
+Unlike the projections' Postgres, the raw
 store is a private on-disk store owned by this source; nothing else reads it
 (the query service reaches blocks through the same in-process `source.get`), so
 each indexer host owns its own store. The blocks-CF tuning is currently
@@ -517,12 +535,11 @@ re-fetchable, never reported as permanently absent.
 
 ## Open questions
 
-- **Subscriber wire protocol** — reuse the GraphQL `block` subscription, or a
-  dedicated block stream? Trade-offs on backpressure and reconnection.
-- **Combined block endpoint** — one sentinel call for `block` + `outcome`
-  instead of `query_block` + `query_block_outcome`; deferred (we keep the two
-  calls for now), see
-  [Payload fetch](#payload-fetch-two-calls-today-a-single-call-endpoint-later).
+- **Subscriber wire protocol / combined block endpoint** — *resolved.* The live
+  tail is the node's `full_block` subscription and the backfill is
+  `GET /block/full/range`; each delivers the whole `BlockData` in one call, so the
+  two-call `query_block` + `query_block_outcome` assembly is gone (see
+  [Payload delivery](#payload-delivery-one-call-via-full_block)).
 - **Fetcher error model** — structured errors (e.g.
   `NotAvailable { earliest }`, needed once B2 lands) vs. plain 404s for the
   sentinel-only version.

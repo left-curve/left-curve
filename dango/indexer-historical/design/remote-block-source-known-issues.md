@@ -7,7 +7,7 @@ type, the code location, and a fix direction.
 > See [remote-block-source.md](./remote-block-source.md) for the design and
 > [DESIGN.md](../DESIGN.md) for the shared `BlockSource` contract. Scope of this
 > review: the remote path of the `block-source` crate (`remote/mod.rs`,
-> `remote/fetcher/`, `remote/subscriber.rs`, `remote/store/`) **combined with the
+> `remote/fetcher/`, `httpd_client.rs`, `remote/store/`) **combined with the
 > `RocksdbBlockStore` disk store**. `LocalBlockSource` and the
 > projection/committer side were reviewed and are clean; the one cross-cutting
 > genesis-floor interaction with the projection loop that this review surfaced
@@ -70,6 +70,16 @@ design's 9.5 KB/block historical average (the chain is busier now).
   vs multi-GB before); the doc-comments now size in bytes. Lagged projections are
   caught by the Phase-1 `get()` recovery, so the smaller ring costs nothing.
 
+**Updated 2026-06-25 — live tail built, `LiveSubscriber` removed.** The live path
+is now the node's `full_block` subscription (added in PR 2197: the `full_block`
+GraphQL subscription plus the `/block/full/{h}` and `/block/full/range` REST
+routes), which carries the whole `BlockData` in one call. Both sources hold a
+concrete `HttpdClient` and call `subscribe_full_blocks` directly — the
+`LiveSubscriber` trait and `remote/subscriber.rs` are gone — and the
+`SentinelBlockFetcher` pulls backfill from `/block/full/range` (≤ `MAX_BLOCK_RANGE`
+= 20 per call). The two-call `query_block` + `query_block_outcome` assembly the
+earlier draft described no longer exists.
+
 ## Severity index
 
 | # | Issue | Severity | Type |
@@ -83,17 +93,16 @@ design's 9.5 KB/block historical average (the chain is busier now).
 
 Not bugs, but the source cannot run in production until these land:
 
-- **No concrete `LiveSubscriber`.** Only the trait. The sentinel subscriber
-  (height notification → `query_block` / `query_block_outcome` → yield) is
-  unwritten. `drain_live` already owns the reconnect loop, so the concrete impl
-  only needs to open one subscription and yield blocks.
 - **No wiring.** `cli/src/main.rs` is a stub; nothing maps a `remote.*` config
   section onto `RemoteBlockSourceConfig` / `SentinelFetcherConfig` or the store
-  path yet.
-- **Tests:** the coordinator + healer + reconnect + bulk-advance paths and the
-  RocksDB store (put/get, topology, idempotency, reopen-from-checkpoint) are
-  covered by unit tests using `MemoryBlockStore` / a temp RocksDB + mock
-  subscriber/fetcher. Still untested: the (unbuilt) sentinel subscriber.
+  path yet, and nothing constructs the `HttpdClient`, fetcher, and store.
+- **Live-tail tests.** The live path (`HttpdClient::subscribe_full_blocks` and
+  `drain_live`'s reconnect/gap handling) has no automated coverage yet: the
+  earlier mock-subscriber tests were removed with the `LiveSubscriber` trait and
+  will be redone against `mock_httpd` (a real test chain) from dango testing.
+  The coordinator + healer + bulk-advance paths and the RocksDB store (put/get,
+  topology, idempotency, reopen-from-checkpoint) stay covered by unit tests over
+  `MemoryBlockStore` / a temp RocksDB and a mock fetcher.
 
 ---
 

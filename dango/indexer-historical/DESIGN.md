@@ -154,15 +154,16 @@ pub trait BlockSource: Send + Sync {
 
 Concrete implementations:
 
-- [`LocalBlockSource`](./design/local-block-source.md) — V1. Subscribes to
-  the in-process `dango-httpd` GraphQL `block` subscription for live
-  notifications, reads payloads from the node's existing cache files on
-  disk. No storage of its own.
+- [`LocalBlockSource`](./design/local-block-source.md) — V1. Follows the
+  in-process `dango-httpd` GraphQL `full_block` subscription for the live tail
+  (each event carries the whole block), and reads the node's existing cache
+  files on disk only for catch-up `get(h)`. No storage of its own.
 - [`RemoteBlockSource`](./design/remote-block-source.md) — V2. Runs on a
   node-less host. Owns a local embedded RocksDB store, which also owns the
   contiguous-frontier/gap topology; internally composes a bounded backfill
-  fetcher (sentinel now, B2-layered later), a live subscriber, and a thin
-  coordinator that forwards the store's frontier advances to the broadcast.
+  fetcher (sentinel now, B2-layered later), the node's `full_block` subscription
+  for the live tail, and a thin coordinator that forwards the store's frontier
+  advances to the broadcast.
 
 ### `Projection`
 
@@ -576,8 +577,8 @@ between them.
 
 | Setup | Source impl | Notes |
 |---|---|---|
-| **V1** — Co-located | [`LocalBlockSource`](./design/local-block-source.md) | Reuses the dango node's GraphQL `block` subscription + cache files on disk. No new storage. |
-| **V2** — Detached | [`RemoteBlockSource`](./design/remote-block-source.md) | No co-located node. Owns a local embedded RocksDB store (which also tracks the frontier/gap topology); composes a bounded backfill fetcher (sentinel now, B2-layered later), a live subscriber, and a thin broadcast coordinator. |
+| **V1** — Co-located | [`LocalBlockSource`](./design/local-block-source.md) | Reuses the dango node's GraphQL `full_block` subscription (live tail) + cache files on disk (catch-up). No new storage. |
+| **V2** — Detached | [`RemoteBlockSource`](./design/remote-block-source.md) | No co-located node. Owns a local embedded RocksDB store (which also tracks the frontier/gap topology); composes a bounded backfill fetcher (sentinel now, B2-layered later), the node's `full_block` subscription (live tail), and a thin broadcast coordinator. |
 
 Switching from V1 to V2 is a config change and (for V2) a fresh raw store. The
 projections themselves are unchanged.
@@ -589,7 +590,7 @@ Surfaced through the CLI's config file (+ env overrides):
 | Field | Default | Description |
 |---|---|---|
 | `source` | `local` | Which `BlockSource` impl to instantiate. |
-| `pubsub_buffer_size` | 10_000 | Broadcast channel capacity. At 2 bps, ~83 min of buffer before a slow projection is `Lagged`. |
+| `pubsub_buffer_size` | 2_000 | Broadcast ring capacity — a RAM knob (the most-recent N `Arc<BlockData>` stay resident, not a time window). A lagged projection is caught by Phase-1 `get()` recovery, so it need not buffer for long. |
 | `postgres.*` | — | Connection of the indexer-owned PG (cursors + PG projections). Lands with the CLI config wiring. |
 | `remote.store_path` | — | Local directory for the `remote` source's RocksDB raw-block store. Source-specific; see the [`RemoteBlockSource`](./design/remote-block-source.md) sub-spec. |
 | `clickhouse.*` | — | CH connection for CH-backed projections. Optional; lands with the CLI config wiring. |
@@ -603,29 +604,28 @@ and are documented in the corresponding sub-spec.
 t=0   Chain at 1.0M. Indexer fresh.
       → committer.migrate(projections): PG migrations under the shared
         `seaql_migrations` history, then the projections' CH DDL.
-      → LocalBlockSource boots: queries dango-httpd for latest indexed
-        block → 1.0M.
-      → contiguous_frontier = 1.0M.
-      → WS subscribe to dango-httpd `block` opens.
+      → LocalBlockSource boots: opens the `full_block` subscription at the
+        live tip (since = None); the first delivered block baselines the
+        frontier → contiguous_frontier ≈ 1.0M.
       → Projections boot with cursor = their `projection_cursors` row
         (or min_height).
 
 t=k₁  Projections still in catch-up via source.get(h), reading files
-      from disk one at a time. Frontier unchanged at 1.0M.
+      from disk one at a time. Frontier unchanged at ~1.0M.
 
-t=k₂  New block 1.0M+1 finalized by node. Subscription notifies.
-      Source reads file, advances frontier → 1.0M+1, broadcasts.
+t=k₂  New block finalized by node. The `full_block` event delivers it;
+      the source advances the frontier and broadcasts — no disk read.
       Projections still in catch-up don't see this directly; when they
       reach the frontier, they hit Phase 2 and pick up via broadcast.
 
 t=k₃  All projections at the frontier, sitting on rx.recv().
 
 t=k₄  Indexer crashes. Restart.
-      Source re-queries dango-httpd → latest indexed block is now 1.2M.
-      contiguous_frontier = 1.2M.
-      WS reconnects, starts streaming from 1.2M+1.
-      Projections resume from their `projection_cursors` row → catch-up
-      via get until they reach 1.2M, then push-live.
+      Source re-opens the `full_block` subscription (since = None) and
+      baselines the frontier from the first delivered block (chain now ~1.2M).
+      Projections resume from their `projection_cursors` row → catch-up via
+      get() against the on-disk cache files until they reach the live tail,
+      then push-live.
 ```
 
 ## What this design does NOT cover
