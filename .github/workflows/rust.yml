@@ -18,6 +18,7 @@ on:
     branches:
       - "main"
       - "develop"
+      - "v0.25"
       # - "ui/testnet"
       # - "ui/release"
     paths:
