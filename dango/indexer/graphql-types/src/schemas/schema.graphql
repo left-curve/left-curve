@@ -939,6 +939,22 @@ type Subscription {
 	`perpsEvents` query on the indexer node).
 	"""
 	perpsEvents2(sinceBlockHeight: Int, eventTypes: [String!], pairIds: [String!], users: [String!], orderIds: [String!], clientOrderIds: [String!]): PerpsEvent2Batch!
+	"""
+	Stream every finalized block in real time — the full `Block` (header +
+	transactions) together with its `BlockOutcome` (every tx/cron outcome,
+	hence every event) — as a single JSON scalar per block.
+	
+	The feed is served from an in-memory window on the validator (lowest
+	latency, in-process). With `sinceBlockHeight` it first replays the
+	retained blocks from that height, then streams the live tail; without it,
+	it streams only blocks newer than the current tip. If `sinceBlockHeight`
+	predates the retained window the subscription fails to start with a
+	"resync required" error — reconnect with a newer height (deep history is
+	available via the REST `/block/full/{block_height}` and
+	`/block/full/range` routes on the indexer node, which return the same
+	shape).
+	"""
+	fullBlock(sinceBlockHeight: Int): JSON!
 }
 
 type Transaction {
