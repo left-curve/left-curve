@@ -16,3 +16,12 @@ rules:
       - portal-deployment.yaml
       - frontend-docker.yaml
       - cleanup-pr.yaml
+  adhoc-packages:
+    ignore:
+      # quint is installed ad-hoc via `npm install -g` in quint.yml on this
+      # release branch. `main` installs it from a pnpm lockfile instead
+      # (`pnpm --filter ... install --frozen-lockfile`), but that refactor is
+      # not backported to v0.25. The finding is low severity and the quint
+      # workflow is unrelated to the dango image build, so suppress it for this
+      # file only.
+      - quint.yml
