@@ -20,9 +20,10 @@
 //!   no silent drops). It fixes the `event_by_addresses` failure modes; see its
 //!   module docs. It is instantiated twice: over [`PerpsEventBlock`] and over
 //!   [`BlockAndOutcome`].
-//! - [`Indexer`] — appends to both rings in height order: the full block in
-//!   `index_block`, and the per-block perps events in `post_indexing` (the perps
-//!   address it needs only arrives with `app_cfg` there).
+//! - [`Indexer`] — stashes each block at `index_block` (FinalizeBlock) and
+//!   publishes both rings from `post_indexing`, in height order, once the
+//!   block is committed (the perps address it also needs only arrives with
+//!   `app_cfg` there).
 //! - [`Context`] — the reader handle the httpd holds; the `perps_events2` and
 //!   `full_block` resolvers live in the httpd crate and drive
 //!   [`RecentStream::subscribe`].
