@@ -10,13 +10,15 @@ mod httpd_client;
 mod local;
 mod remote;
 mod source;
+mod wire;
 
 pub use {
     local::LocalBlockSource,
     remote::{
-        BlockFetcher, BlockStore, FetchStream, GENESIS_HEIGHT, LiveSubscriber, MemoryBlockStore,
-        RemoteBlockSource, RemoteBlockSourceConfig, RocksdbBlockStore, SentinelBlockFetcher,
-        SentinelFetcherConfig,
+        BlockFetcher, BlockRangeClient, BlockStore, FetchStream, FullBlockSubscriber,
+        GENESIS_HEIGHT, LiveSubscriber, MAX_BLOCK_RANGE, MemoryBlockStore, RemoteBlockSource,
+        RemoteBlockSourceConfig, RocksdbBlockStore, SentinelBlockFetcher, SentinelFetcherConfig,
+        SentinelRangeClient,
     },
     source::BlockSource,
 };

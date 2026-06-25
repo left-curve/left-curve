@@ -1,8 +1,9 @@
 use {
+    crate::wire::FullBlock,
     anyhow::{Context, bail},
     dango_graphql_ws_client::WsClient,
-    dango_indexer_graphql_types::{SubscribeBlock, block, subscribe_block},
-    dango_indexer_historical_types::{AnyResult, post_graphql},
+    dango_indexer_graphql_types::{SubscribeFullBlock, block, subscribe_full_block},
+    dango_indexer_historical_types::{AnyResult, BlockData, post_graphql},
     futures::{StreamExt, stream::BoxStream},
     reqwest::IntoUrl,
     std::time::Duration,
@@ -66,31 +67,40 @@ impl HttpdClient {
         Ok(data.block.map(|b| b.block_height as u64))
     }
 
-    /// Open a WebSocket subscription to the `block` channel and return a
-    /// stream of block heights as the indexer commits them.
+    /// Open a WebSocket subscription to the `full_block` channel and return a
+    /// stream of fully-assembled [`BlockData`]. With `since`, the feed replays
+    /// from that height and then streams the live tail; without it, it streams
+    /// only blocks newer than the current tip. Each item is the sentinel's
+    /// `BlockAndOutcome` as a JSON scalar, decoded here.
     ///
-    /// The underlying subscription emits the full block (transactions,
-    /// events) — we project to just `block_height`. Reusing the existing
-    /// `SubscribeBlock` query avoids touching `dango-indexer-graphql-types`; if the
-    /// payload size becomes a concern, we can add a dedicated lightweight
-    /// subscription later.
-    pub(crate) async fn subscribe_blocks(&self) -> AnyResult<BoxStream<'static, AnyResult<u64>>> {
+    /// This is the **shared live path**: both block sources call it — the local
+    /// one against the in-process `dango-httpd`, the remote one against a
+    /// sentinel — so the live-tail logic lives in exactly one place.
+    pub(crate) async fn subscribe_full_blocks(
+        &self,
+        since: Option<u64>,
+    ) -> AnyResult<BoxStream<'static, AnyResult<BlockData>>> {
         let stream = self
             .ws
-            .subscribe::<SubscribeBlock>(subscribe_block::Variables {})
+            .subscribe::<SubscribeFullBlock>(subscribe_full_block::Variables {
+                since_block_height: since.map(|height| height as i64),
+            })
             .await?;
 
-        let mapped = stream.map(|res| -> AnyResult<u64> {
+        let mapped = stream.map(|res| -> AnyResult<BlockData> {
             let response = res?;
 
             if let Some(errors) = response.errors
                 && !errors.is_empty()
             {
-                bail!("subscription returned errors: {errors:?}");
+                bail!("full_block subscription returned errors: {errors:?}");
             }
 
-            let data = response.data.context("subscription returned no data")?;
-            Ok(data.block.block_height as u64)
+            let data = response
+                .data
+                .context("full_block subscription returned no data")?;
+            // `full_block` is the JSON scalar — the sentinel's `BlockAndOutcome`.
+            Ok(serde_json::from_value::<FullBlock>(data.full_block)?.into())
         });
 
         Ok(Box::pin(mapped))

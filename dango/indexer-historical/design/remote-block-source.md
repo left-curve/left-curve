@@ -253,12 +253,13 @@ fast writes for free.
 
 Reuses the sentinel's `block` notification stream — the same GraphQL
 subscription `LocalBlockSource` speaks, pointed at a remote sentinel rather than
-an in-process `dango-httpd`. Open it, take the first delivered height as `L`,
-then for each notified height **fetch the full `BlockData` via the same sentinel
-RPC the fetcher uses** (`query_block` + `query_block_outcome`) and yield it. It
-is a pure producer: `drain_live` forwards the yielded blocks to the coordinator
-(the single store writer) and reconnects on drop; the concrete subscriber only
-opens one subscription and yields.
+an in-process `dango-httpd`. For each block the subscriber assembles the full
+`BlockData` and yields it, so `subscribe` hands back just a **stream of blocks**
+— the first delivered block is the resume point, with **no separate tip to
+return** (it is just `first.height()`, so plumbing it out-of-band is redundant).
+It is a pure producer: `drain_live` forwards the yielded blocks to the
+coordinator (the single store writer) and reconnects on drop; the concrete
+subscriber only opens one subscription and yields.
 
 This is the key V1→V2 shift on the subscriber side: the notification carries
 only the height (not the payload), and there is **no local disk to read the
@@ -266,15 +267,17 @@ payload from** as in V1 — so the subscriber fetches over RPC. The chain produc
 blocks in order and the subscription delivers them in order, so `[L..∞)` is
 contiguous.
 
-Crucially the live tail is **stored immediately**, from `L` onward, *during* the
-backfill (the coordinator persists each yielded block). This is what bounds the
-fetcher (fixes its target at `L-1`) and lets it die: if the live tail were not
-stored during backfill, by the time the fetcher reached `L` the tip would have
-moved and the fetcher would chase it forever.
+Crucially the live tail is **stored immediately**, from the first delivered block
+onward, *during* the backfill (the coordinator persists each yielded block). That
+first block raises the store's max height, so everything below it is a bounded
+gap the healer fills lowest-first — which keeps each fetcher's target finite and
+lets it die. Without storing the live tail during backfill, the fetcher would
+chase a moving tip forever.
 
-`drain_live` keeps a local `prev` height and, on a jump beyond `prev + 1`, wakes
-the healer (a skip, a reconnect at a higher tip, or a reorder all trip this; the
-healer's grace absorbs a transient reorder). There is no shared `tip` state.
+`drain_live` tracks a local `prev` height — `None` until the first block sets the
+baseline; thereafter a jump beyond `prev + 1` wakes the healer (a skip, a
+reconnect at a higher tip, or a reorder all trip this; the healer's grace absorbs
+a transient reorder). There is no shared or out-of-band tip state.
 
 ### Payload fetch: two calls today, a single-call endpoint later
 

@@ -3,9 +3,12 @@ mod store;
 mod subscriber;
 
 pub use {
-    fetcher::{BlockFetcher, FetchStream, SentinelBlockFetcher, SentinelFetcherConfig},
+    fetcher::{
+        BlockFetcher, BlockRangeClient, FetchStream, MAX_BLOCK_RANGE, SentinelBlockFetcher,
+        SentinelFetcherConfig, SentinelRangeClient,
+    },
     store::{BlockStore, GENESIS_HEIGHT, MemoryBlockStore, RocksdbBlockStore},
-    subscriber::LiveSubscriber,
+    subscriber::{FullBlockSubscriber, LiveSubscriber},
 };
 
 use {
@@ -266,8 +269,16 @@ impl RemoteBlockSource {
                 return Ok(()); // coordinator gone — source shutting down
             }
 
-            let (live_tip, mut live_blocks) = match self.subscriber.subscribe().await {
-                Ok(subscription) => subscription,
+            // Resume the feed just above the contiguous frontier, so a reconnect
+            // replays the downtime hole with no gap; `None` (fresh, empty store)
+            // starts at the live tip.
+            let since = self
+                .store
+                .contiguous_frontier()
+                .await?
+                .map(|frontier| frontier + 1);
+            let mut live_blocks = match self.subscriber.subscribe(since).await {
+                Ok(stream) => stream,
                 Err(_error) => {
                     #[cfg(feature = "tracing")]
                     tracing::warn!(error = %_error, "live subscribe failed; retrying");
@@ -281,22 +292,29 @@ impl RemoteBlockSource {
             // connect, a downtime hole on a reconnect.
             self.heal_notify.notify_one();
 
-            // Highest height delivered so far this subscription; a jump beyond
-            // `prev + 1` means blocks went missing.
-            let mut prev = live_tip;
+            // Highest height delivered so far this subscription. `None` until the
+            // first block arrives, which sets the baseline; after that a jump
+            // beyond `prev + 1` means blocks went missing.
+            let mut prev: Option<u64> = None;
 
             loop {
                 match live_blocks.next().await {
                     Some(Ok(block)) => {
                         let height = block.height();
 
-                        // A skip (or a reconnect at a higher tip, or a reorder)
-                        // leaves a hole; wake the healer. The grace in
-                        // `run_healer` absorbs a transient reorder.
-                        if height > prev + 1 {
-                            self.heal_notify.notify_one();
+                        match prev {
+                            // First block of this subscription: just the baseline.
+                            None => prev = Some(height),
+                            // A skip (or a reconnect at a higher tip, or a
+                            // reorder) leaves a hole; wake the healer. The grace
+                            // in `run_healer` absorbs a transient reorder.
+                            Some(p) => {
+                                if height > p + 1 {
+                                    self.heal_notify.notify_one();
+                                }
+                                prev = Some(height.max(p));
+                            },
                         }
-                        prev = prev.max(height);
 
                         if coordinator_tx.send(block).await.is_err() {
                             return Ok(()); // coordinator gone
@@ -415,14 +433,12 @@ mod tests {
     /// A subscriber that yields a scripted height sequence (to simulate skips
     /// and reconnects), then pends forever so the source keeps running.
     struct MockSubscriber {
-        live_tip: u64,
         script: std::sync::Mutex<Option<Vec<u64>>>,
     }
 
     impl MockSubscriber {
-        fn new(live_tip: u64, script: Vec<u64>) -> Self {
+        fn new(script: Vec<u64>) -> Self {
             Self {
-                live_tip,
                 script: std::sync::Mutex::new(Some(script)),
             }
         }
@@ -430,23 +446,26 @@ mod tests {
 
     #[async_trait]
     impl LiveSubscriber for MockSubscriber {
-        async fn subscribe(&self) -> AnyResult<(u64, BoxStream<'static, AnyResult<BlockData>>)> {
+        async fn subscribe(
+            &self,
+            _since: Option<u64>,
+        ) -> AnyResult<BoxStream<'static, AnyResult<BlockData>>> {
             let script = self.script.lock().unwrap().take().unwrap_or_default();
             let scripted = stream::iter(script.into_iter().map(|h| Ok(block(h))));
             let stream = scripted.chain(stream::pending::<AnyResult<BlockData>>());
-            Ok((self.live_tip, Box::pin(stream)))
+            Ok(Box::pin(stream))
         }
     }
 
-    /// A subscriber that yields a queue of scripted episodes — each a tip, a
-    /// height sequence, and whether the stream pends (`true`) or ends (`false`)
-    /// after it. An episode that ends makes `drain_live` reconnect to the next.
+    /// A subscriber that yields a queue of scripted episodes — each a height
+    /// sequence and whether the stream pends (`true`) or ends (`false`) after
+    /// it. An episode that ends makes `drain_live` reconnect to the next.
     struct ScriptedSubscriber {
-        episodes: std::sync::Mutex<std::collections::VecDeque<(u64, Vec<u64>, bool)>>,
+        episodes: std::sync::Mutex<std::collections::VecDeque<(Vec<u64>, bool)>>,
     }
 
     impl ScriptedSubscriber {
-        fn new(episodes: Vec<(u64, Vec<u64>, bool)>) -> Self {
+        fn new(episodes: Vec<(Vec<u64>, bool)>) -> Self {
             Self {
                 episodes: std::sync::Mutex::new(episodes.into()),
             }
@@ -455,8 +474,11 @@ mod tests {
 
     #[async_trait]
     impl LiveSubscriber for ScriptedSubscriber {
-        async fn subscribe(&self) -> AnyResult<(u64, BoxStream<'static, AnyResult<BlockData>>)> {
-            let (tip, heights, pend) = match self.episodes.lock().unwrap().pop_front() {
+        async fn subscribe(
+            &self,
+            _since: Option<u64>,
+        ) -> AnyResult<BoxStream<'static, AnyResult<BlockData>>> {
+            let (heights, pend) = match self.episodes.lock().unwrap().pop_front() {
                 Some(episode) => episode,
                 None => bail!("scripted subscriber exhausted"),
             };
@@ -466,14 +488,14 @@ mod tests {
             } else {
                 Box::pin(scripted)
             };
-            Ok((tip, stream))
+            Ok(Box::pin(stream))
         }
     }
 
     fn source_with(store: Arc<MemoryBlockStore>) -> Arc<RemoteBlockSource> {
         Arc::new(RemoteBlockSource::new(
             store,
-            Arc::new(MockSubscriber::new(0, vec![])),
+            Arc::new(MockSubscriber::new(vec![])),
             Arc::new(MockFetcher),
             RemoteBlockSourceConfig::default(),
         ))
@@ -593,7 +615,7 @@ mod tests {
         // Subscriber: tip 10, delivers 10, 11, 13 (skips 12), then pends.
         let source = Arc::new(RemoteBlockSource::new(
             store.clone(),
-            Arc::new(MockSubscriber::new(10, vec![10, 11, 13])),
+            Arc::new(MockSubscriber::new(vec![10, 11, 13])),
             Arc::new(MockFetcher),
             RemoteBlockSourceConfig::default(),
         ));
@@ -623,7 +645,7 @@ mod tests {
         // 12..=19 downtime hole), then pends.
         let source = Arc::new(RemoteBlockSource::new(
             store.clone(),
-            Arc::new(MockSubscriber::new(10, vec![10, 11, 20])),
+            Arc::new(MockSubscriber::new(vec![10, 11, 20])),
             Arc::new(MockFetcher),
             RemoteBlockSourceConfig::default(),
         ));
@@ -663,8 +685,8 @@ mod tests {
         // drop). Episode 2: tip 20 (12..=19 produced during the downtime),
         // deliver 20, then pend.
         let subscriber = Arc::new(ScriptedSubscriber::new(vec![
-            (10, vec![10, 11], false),
-            (20, vec![20], true),
+            (vec![10, 11], false),
+            (vec![20], true),
         ]));
         let config = RemoteBlockSourceConfig {
             reconnect_backoff: Duration::from_millis(10),

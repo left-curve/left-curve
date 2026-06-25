@@ -3934,6 +3934,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "dango-graphql-ws-client"
+version = "0.0.0"
+dependencies = [
+ "anyhow",
+ "futures",
+ "graphql_client",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.18",
+ "tokio",
+ "tokio-tungstenite 0.29.0",
+ "tracing",
+ "url",
+]
+
+[[package]]
 name = "dango-hyperlane-ism"
 version = "0.0.0"
 dependencies = [
@@ -4046,10 +4062,91 @@ dependencies = [
 name = "dango-indexer-graphql-types"
 version = "0.0.0"
 dependencies = [
+ "anyhow",
+ "dango-graphql-ws-client",
  "graphql_client",
  "paste",
  "serde",
  "serde_json",
+]
+
+[[package]]
+name = "dango-indexer-historical-app"
+version = "0.0.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "chrono",
+ "clickhouse",
+ "dango-indexer-historical-block-source",
+ "dango-indexer-historical-projection",
+ "dango-indexer-historical-types",
+ "futures",
+ "metrics",
+ "sea-orm",
+ "sea-orm-migration",
+ "tokio",
+ "tracing",
+]
+
+[[package]]
+name = "dango-indexer-historical-block-source"
+version = "0.0.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "borsh",
+ "dango-graphql-ws-client",
+ "dango-indexer-cache",
+ "dango-indexer-graphql-types",
+ "dango-indexer-historical-types",
+ "dango-primitives",
+ "dango-temp-rocksdb",
+ "futures",
+ "metrics",
+ "rangemap",
+ "reqwest 0.13.4",
+ "rocksdb",
+ "serde",
+ "serde_json",
+ "tokio",
+ "tracing",
+ "url",
+]
+
+[[package]]
+name = "dango-indexer-historical-cli"
+version = "0.0.0"
+dependencies = [
+ "dango-indexer-historical-app",
+]
+
+[[package]]
+name = "dango-indexer-historical-projection"
+version = "0.0.0"
+dependencies = [
+ "async-trait",
+ "clickhouse",
+ "dango-indexer-historical-types",
+ "futures",
+ "metrics",
+ "sea-orm",
+ "sea-orm-migration",
+ "tracing",
+]
+
+[[package]]
+name = "dango-indexer-historical-types"
+version = "0.0.0"
+dependencies = [
+ "anyhow",
+ "borsh",
+ "dango-indexer-graphql-types",
+ "dango-primitives",
+ "graphql_client",
+ "reqwest 0.13.4",
+ "serde",
+ "url",
 ]
 
 [[package]]
@@ -4353,6 +4450,7 @@ dependencies = [
  "dango-auth",
  "dango-backtrace",
  "dango-eth-utils",
+ "dango-graphql-ws-client",
  "dango-identity",
  "dango-indexer-graphql-types",
  "dango-order-book",
@@ -4367,9 +4465,7 @@ dependencies = [
  "serde",
  "serde_json",
  "sha2 0.10.9",
- "thiserror 2.0.18",
  "tokio",
- "tokio-tungstenite 0.29.0",
  "tracing",
  "url",
 ]

@@ -20,9 +20,10 @@ const RECONNECT_BACKOFF: Duration = Duration::from_secs(5);
 
 /// V1 [`BlockSource`] implementation.
 ///
-/// Runs on the same host as the dango node; obtains blocks from the node's
-/// in-process GraphQL subscription and from the cache files the node already
-/// writes to disk. See `design/local-block-source.md` for the full design.
+/// Runs on the same host as the dango node. The **live tail** comes from the
+/// node's in-process `full_block` subscription (the same shared path the remote
+/// source uses); **historical** blocks come from the cache files the node
+/// already writes to disk, served by `get`. See `design/local-block-source.md`.
 pub struct LocalBlockSource {
     cache_path: IndexerPath,
     httpd_client: HttpdClient,
@@ -61,46 +62,6 @@ impl LocalBlockSource {
         }
         Ok(())
     }
-
-    /// Catch up the frontier to `height`, loading any missing blocks from
-    /// the on-disk cache and broadcasting them in order.
-    async fn consume_height(&self, height: u64) -> AnyResult<()> {
-        let mut current = self.frontier.load(Ordering::Acquire);
-
-        // Subscription re-emits the last indexed block as its first event;
-        // skip anything we already passed.
-        if height <= current {
-            return Ok(());
-        }
-
-        // Normally `height == current + 1`, but a race between the boot-time
-        // query and the subscription open (or a temporary disconnect) can
-        // leave a gap that we close here one block at a time.
-        while current < height {
-            let next = current + 1;
-            match self.get(next).await? {
-                Some(block) => {
-                    self.frontier.store(next, Ordering::Release);
-                    let _ = self.broadcast_tx.send(Arc::new(block));
-                    current = next;
-                },
-                None => {
-                    // The node writes the cache file before publishing on
-                    // pubsub, so this should be vanishingly rare. Bail out of
-                    // the catch-up loop and let the next subscription event
-                    // retry.
-                    #[cfg(feature = "tracing")]
-                    tracing::warn!(
-                        height = next,
-                        "cache file not yet on disk; will retry on next event"
-                    );
-                    break;
-                },
-            }
-        }
-
-        Ok(())
-    }
 }
 
 #[async_trait]
@@ -132,19 +93,24 @@ impl BlockSource for LocalBlockSource {
             "frontier initialised"
         );
 
-        // Outer loop: keep the subscription open across transient
-        // disconnects. Any gap accumulated during a disconnect is closed
-        // automatically by the catch-up greedy logic in `consume_height`,
-        // which fires off the first re-emitted event after reconnect.
+        // Outer loop: keep the `full_block` subscription open across transient
+        // disconnects. Each (re)connect resumes from `frontier + 1`, so the node
+        // replays any downtime hole before streaming the live tail — the same
+        // shared path the remote source uses.
         loop {
-            let mut stream = match self.httpd_client.subscribe_blocks().await {
+            let since = match self.frontier.load(Ordering::Acquire) {
+                0 => None,
+                frontier => Some(frontier + 1),
+            };
+
+            let mut stream = match self.httpd_client.subscribe_full_blocks(since).await {
                 Ok(s) => s,
                 Err(_e) => {
                     #[cfg(feature = "tracing")]
                     tracing::warn!(
                         error = %_e,
                         backoff_secs = RECONNECT_BACKOFF.as_secs(),
-                        "subscribe_blocks failed, retrying"
+                        "subscribe_full_blocks failed, retrying"
                     );
                     tokio::time::sleep(RECONNECT_BACKOFF).await;
                     continue;
@@ -156,7 +122,26 @@ impl BlockSource for LocalBlockSource {
 
             loop {
                 match stream.next().await {
-                    Some(Ok(height)) => self.consume_height(height).await?,
+                    Some(Ok(block)) => {
+                        let height = block.height();
+                        let current = self.frontier.load(Ordering::Acquire);
+
+                        // The feed delivers in order from `since`. Skip a
+                        // re-delivered block at/under the frontier; on a gap (a
+                        // dropped block) reconnect to replay from `frontier + 1`
+                        // rather than broadcasting a hole.
+                        if height <= current {
+                            continue;
+                        }
+                        if height > current + 1 {
+                            #[cfg(feature = "tracing")]
+                            tracing::warn!(current, height, "gap in full_block feed; reconnecting");
+                            break;
+                        }
+
+                        self.frontier.store(height, Ordering::Release);
+                        let _ = self.broadcast_tx.send(Arc::new(block));
+                    },
                     Some(Err(_e)) => {
                         #[cfg(feature = "tracing")]
                         tracing::warn!(error = %_e, "subscription error, reconnecting");

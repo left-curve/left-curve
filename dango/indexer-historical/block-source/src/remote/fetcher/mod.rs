@@ -5,7 +5,10 @@ use {
 
 mod sentinel;
 
-pub use sentinel::{SentinelBlockFetcher, SentinelFetcherConfig};
+pub use sentinel::{
+    BlockRangeClient, MAX_BLOCK_RANGE, SentinelBlockFetcher, SentinelFetcherConfig,
+    SentinelRangeClient,
+};
 
 /// A spawned task that is aborted when this guard is dropped.
 ///
