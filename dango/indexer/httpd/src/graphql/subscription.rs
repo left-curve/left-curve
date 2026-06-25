@@ -1,9 +1,9 @@
 use {
     account::AccountSubscription, async_graphql::*, block::BlockSubscription,
     clickhouse::ClickhouseSubscription, core::CoreSubscription, event::EventSubscription,
-    message::MessageSubscription, perps_events2::PerpsEvents2Subscription,
-    perps_trade::PerpsTradeSubscription, transaction::TransactionSubscription,
-    transfer::TransferSubscription,
+    full_block::FullBlockSubscription, message::MessageSubscription,
+    perps_events2::PerpsEvents2Subscription, perps_trade::PerpsTradeSubscription,
+    transaction::TransactionSubscription, transfer::TransferSubscription,
 };
 
 pub mod account;
@@ -11,6 +11,7 @@ pub mod block;
 pub mod clickhouse;
 pub mod core;
 pub mod event;
+pub mod full_block;
 pub mod message;
 pub mod perps_events2;
 pub mod perps_trade;
@@ -37,4 +38,5 @@ pub struct FullSubscription(
     TransferSubscription,
     PerpsTradeSubscription,
     PerpsEvents2Subscription,
+    FullBlockSubscription,
 );

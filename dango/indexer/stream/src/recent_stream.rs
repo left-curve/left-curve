@@ -24,6 +24,7 @@
 //!   lives on the indexer node), rather than a silent hole.
 
 use {
+    dango_primitives::FullBlock,
     futures_util::stream::Stream,
     std::{
         collections::VecDeque,
@@ -40,6 +41,12 @@ use {
 /// to. One value per block height.
 pub trait HasHeight: Send + Sync + 'static {
     fn height(&self) -> u64;
+}
+
+impl HasHeight for FullBlock {
+    fn height(&self) -> u64 {
+        self.block.info.height
+    }
 }
 
 /// Returned when a subscriber requests — or falls behind to — a block height

@@ -1,0 +1,3 @@
+subscription SubscribeFullBlock($sinceBlockHeight: Int) {
+  fullBlock(sinceBlockHeight: $sinceBlockHeight)
+}
