@@ -62,7 +62,10 @@ impl HookedIndexer {
             file,
             sql,
             clickhouse,
-            stream: dango_indexer_stream::Indexer::new(dango_indexer_stream::DEFAULT_RING_CAPACITY),
+            stream: dango_indexer_stream::Indexer::new(
+                dango_indexer_stream::DEFAULT_RING_CAPACITY,
+                dango_indexer_stream::DEFAULT_BLOCK_RING_CAPACITY,
+            ),
             is_running: Arc::new(AtomicBool::new(false)),
             post_indexing_tasks: Arc::new(Mutex::new(HashMap::new())),
         }
