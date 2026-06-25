@@ -14,11 +14,13 @@
 //! See `DESIGN.md` § Commit protocol and § Schema migrations for the
 //! full contract.
 
+mod activity;
 mod committer;
 mod ctx;
 mod projection;
 
 pub use {
+    activity::{ActivityConfig, ActivityProjection, EventType},
     committer::Committer,
     ctx::{ChWrite, Ctx},
     projection::Projection,

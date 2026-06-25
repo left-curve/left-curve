@@ -4125,14 +4125,20 @@ dependencies = [
 name = "dango-indexer-historical-projection"
 version = "0.0.0"
 dependencies = [
+ "anyhow",
  "async-trait",
+ "borsh",
  "clickhouse",
  "dango-indexer-historical-types",
+ "dango-primitives",
  "futures",
  "metrics",
  "sea-orm",
  "sea-orm-migration",
+ "serde",
+ "tokio",
  "tracing",
+ "zstd",
 ]
 
 [[package]]

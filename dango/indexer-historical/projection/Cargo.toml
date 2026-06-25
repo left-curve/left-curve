@@ -18,11 +18,19 @@ metrics = ["dep:metrics"]
 tracing = ["dep:tracing"]
 
 [dependencies]
+anyhow                   = { workspace = true }
 async-trait              = { workspace = true }
+borsh                    = { workspace = true }
 clickhouse               = { workspace = true }
 futures                  = { workspace = true }
+dango-primitives               = { workspace = true }
 dango-indexer-historical-types = { workspace = true }
 metrics                  = { workspace = true, optional = true }
 sea-orm                  = { workspace = true }
 sea-orm-migration        = { workspace = true }
+serde                    = { workspace = true, features = ["derive"] }
 tracing                  = { workspace = true, optional = true }
+zstd                     = { workspace = true }
+
+[dev-dependencies]
+tokio = { workspace = true }
