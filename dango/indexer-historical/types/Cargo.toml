@@ -19,5 +19,5 @@ graphql_client        = { workspace = true }
 dango-primitives            = { workspace = true }
 dango-indexer-graphql-types = { workspace = true }
 reqwest               = { workspace = true, features = ["json"] }
-serde                 = { workspace = true }
+serde                 = { workspace = true, features = ["derive"] }
 url                   = { workspace = true }

@@ -72,12 +72,8 @@ impl BlockRangeClient for SentinelRangeClient {
             .bytes()
             .await?;
 
-        let blocks = serde_json::from_slice::<Vec<crate::wire::FullBlock>>(&bytes)?
-            .into_iter()
-            .map(BlockData::from)
-            .collect();
-
-        Ok(blocks)
+        // `BlockData` decodes the `{ block, block_outcome }` items directly.
+        Ok(serde_json::from_slice::<Vec<BlockData>>(&bytes)?)
     }
 }
 

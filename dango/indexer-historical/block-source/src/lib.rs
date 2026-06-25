@@ -10,7 +10,6 @@ mod httpd_client;
 mod local;
 mod remote;
 mod source;
-mod wire;
 
 pub use {
     local::LocalBlockSource,

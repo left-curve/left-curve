@@ -1,5 +1,4 @@
 use {
-    crate::wire::FullBlock,
     anyhow::{Context, bail},
     dango_graphql_ws_client::WsClient,
     dango_indexer_graphql_types::{SubscribeFullBlock, block, subscribe_full_block},
@@ -99,8 +98,9 @@ impl HttpdClient {
             let data = response
                 .data
                 .context("full_block subscription returned no data")?;
-            // `full_block` is the JSON scalar — the sentinel's `BlockAndOutcome`.
-            Ok(serde_json::from_value::<FullBlock>(data.full_block)?.into())
+            // `full_block` is the JSON scalar — the sentinel's `BlockAndOutcome`,
+            // which `BlockData` deserializes directly (`block_outcome` → `outcome`).
+            Ok(serde_json::from_value::<BlockData>(data.full_block)?)
         });
 
         Ok(Box::pin(mapped))
