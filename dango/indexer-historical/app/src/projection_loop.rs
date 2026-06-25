@@ -2,7 +2,7 @@ use {
     anyhow::bail,
     dango_indexer_historical_block_source::{BlockSource, GENESIS_HEIGHT},
     dango_indexer_historical_projection::{Committer, Projection},
-    dango_indexer_historical_types::{AnyResult, BlockData},
+    dango_indexer_historical_types::{AnyResult, BlockData, BlockDataExt},
     std::{cmp::Ordering, sync::Arc},
     tokio::sync::broadcast,
 };

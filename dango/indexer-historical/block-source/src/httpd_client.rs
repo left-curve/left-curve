@@ -59,7 +59,7 @@ impl HttpdClient {
     /// stream of fully-assembled [`BlockData`]. With `since`, the feed replays
     /// from that height and then streams the live tail; without it, it streams
     /// only blocks newer than the current tip. Each item is the sentinel's
-    /// `BlockAndOutcome` as a JSON scalar, decoded here.
+    /// `FullBlock` as a JSON scalar, decoded here.
     ///
     /// The **shared live path**: both block sources call it — the local one
     /// against the in-process `dango-httpd`, the remote one against a sentinel.
@@ -86,8 +86,8 @@ impl HttpdClient {
             let data = response
                 .data
                 .context("full_block subscription returned no data")?;
-            // `full_block` is the JSON scalar — the sentinel's `BlockAndOutcome`,
-            // which `BlockData` deserializes directly (`block_outcome` → `outcome`).
+            // `full_block` is the JSON scalar — the sentinel's `FullBlock`, which
+            // `BlockData` (an alias of it) deserializes directly.
             Ok(serde_json::from_value::<BlockData>(data.full_block)?)
         });
 
@@ -101,7 +101,7 @@ impl BlockRangeClient for HttpdClient {
         // GET /block/full/range?from=&to=. The query string is built with the
         // `url` crate (this reqwest build has no RequestBuilder::query) and the
         // body decoded with serde_json (no `json` feature). `BlockData` decodes
-        // the `{ block, block_outcome }` items directly.
+        // the `{ block, outcome }` items directly.
         let mut url = self.range_url.clone();
         url.query_pairs_mut()
             .append_pair("from", &from.to_string())

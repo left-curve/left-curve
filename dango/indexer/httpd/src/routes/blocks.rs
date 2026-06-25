@@ -6,7 +6,7 @@ use {
         get, web,
     },
     dango_indexer_cache::cache_file::CacheFile,
-    dango_indexer_stream::BlockAndOutcome,
+    dango_primitives::FullBlock,
     serde::Deserialize,
     std::path::PathBuf,
 };
@@ -187,13 +187,13 @@ fn _full_block_by_height(block_height: u64, app_ctx: &FullContext) -> Result<Htt
 /// dropping the `http_request_details` (client IPs) the file also holds — the
 /// same projection the `/info` and `/result` routes use. Returns the same shape
 /// as the `fullBlock` GraphQL subscription.
-fn load_full_block(block_filename: PathBuf) -> Result<BlockAndOutcome, Error> {
+fn load_full_block(block_filename: PathBuf) -> Result<FullBlock, Error> {
     let cache_file = CacheFile::load_from_disk(block_filename)
         .map_err(|err| ErrorInternalServerError(format!("failed to load block file: {err}")))?;
 
-    Ok(BlockAndOutcome {
+    Ok(FullBlock {
         block: cache_file.data.block,
-        block_outcome: cache_file.data.block_outcome,
+        outcome: cache_file.data.block_outcome,
     })
 }
 

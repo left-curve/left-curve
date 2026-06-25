@@ -1,13 +1,12 @@
 use {
     crate::{
-        block_and_outcome::BlockAndOutcome,
         context::Context,
         perps_events::{PerpsEventBlock, extract_perps_event_block},
         recent_stream::RecentStream,
     },
     async_trait::async_trait,
     dango_app::IndexerResult,
-    dango_primitives::{Addr, Block, BlockOutcome, Config, Json, JsonDeExt},
+    dango_primitives::{Addr, Block, BlockOutcome, Config, FullBlock, Json, JsonDeExt},
     dango_types::config::AppConfig,
     std::{
         collections::HashMap,
@@ -15,36 +14,17 @@ use {
     },
 };
 
-/// Number of recent blocks the realtime stream retains in memory — both the
-/// reconnect/recovery window for `perps_events2` and the live broadcast buffer.
-///
-/// Bounds memory (one `PerpsEventBlock` per height, including empty ones) and
-/// the maximum reconnect depth. Deeper history is the indexer node's job (the
-/// durable `perps_events` table / `perpsEvents` query), not this ephemeral,
-/// validator-side feed. Promote to a config field if ops needs to tune it.
-pub const DEFAULT_RING_CAPACITY: usize = 1000;
-
-/// Number of recent full blocks the `full_block` stream retains in memory — both
-/// the reconnect/recovery window and the live broadcast buffer.
-///
-/// Smaller than [`DEFAULT_RING_CAPACITY`] on purpose: a `BlockAndOutcome` (every
-/// transaction + every event of a block) is far larger than a `PerpsEventBlock`,
-/// and one is retained per height whether or not anyone is subscribed. Deeper
-/// history is the indexer node's job (the on-disk block files and the REST
-/// `/block/*` routes), not this ephemeral validator-side window. Promote to a
-/// config field if ops needs to tune it.
+/// Number of recent blocks the `full_block` stream retains in memory.
 pub const DEFAULT_BLOCK_RING_CAPACITY: usize = 100;
+
+/// Number of recent blocks the `perps_events2` stream retains in memory.
+pub const DEFAULT_PERPS_RING_CAPACITY: usize = 1000;
 
 /// The validator-side realtime indexer. Despite implementing
 /// [`dango_app::Indexer`], it does no durable indexing: it maintains an
 /// in-memory ring of recent perps-contract events and broadcasts them to
 /// `perps_events2` subscribers, entirely in-process (lowest latency, no
 /// validator -> indexer-node hop).
-///
-/// FUTURE: this crate will gain a second [`RecentStream`] — `RecentStream<..>`
-/// over full blocks — to serve a "new blocks" subscription consumed by the
-/// indexer node. The [`RecentStream`] primitive is generic precisely so that
-/// drops onto the same machinery.
 ///
 /// FUTURE: once block files / Postgres / ClickHouse move to a dedicated indexer
 /// node, this indexer will REPLACE `HookedIndexer` as the validator's sole,
@@ -56,13 +36,6 @@ pub struct Indexer {
 }
 
 struct Inner {
-    perps: RecentStream<PerpsEventBlock>,
-
-    /// In-memory ring + live broadcast of full blocks (`Block` + `BlockOutcome`)
-    /// backing the `full_block` subscription. Fed in `post_indexing`
-    /// (post-commit), in strict height order; see the crate docs.
-    blocks: RecentStream<BlockAndOutcome>,
-
     /// `index_block` -> `post_indexing` hand-off. `index_block` runs at
     /// FinalizeBlock — before the block is committed — and is the only place the
     /// full `Block` + `BlockOutcome` are in hand; `post_indexing` runs after
@@ -72,12 +45,16 @@ struct Inner {
     /// a block the app then fails to commit. At most one entry is in flight:
     /// CometBFT runs FinalizeBlock(N) then Commit(N) before FinalizeBlock(N+1).
     /// The lock is held only for the map op, never across an `.await`.
-    pending: Mutex<HashMap<u64, PendingBlock>>,
-}
+    pending: Mutex<HashMap<u64, FullBlock>>,
 
-struct PendingBlock {
-    block: Block,
-    outcome: BlockOutcome,
+    /// In-memory ring + live broadcast of full blocks (`Block` + `BlockOutcome`)
+    /// backing the `full_block` subscription. Fed in `post_indexing`
+    /// (post-commit), in strict height order; see the crate docs.
+    blocks: RecentStream<FullBlock>,
+
+    /// In-memory ring of perpetual futures-related events, backing the
+    /// `perps_events2` subscription.
+    perps: RecentStream<PerpsEventBlock>,
 }
 
 impl Indexer {
@@ -85,12 +62,12 @@ impl Indexer {
     /// rings (reconnect window + broadcast buffer) for the `perps_events2` and
     /// `full_block` subscriptions respectively. See [`DEFAULT_RING_CAPACITY`]
     /// and [`DEFAULT_BLOCK_RING_CAPACITY`].
-    pub fn new(perps_ring_capacity: usize, block_ring_capacity: usize) -> Self {
+    pub fn new(block_ring_capacity: usize, perps_ring_capacity: usize) -> Self {
         Self {
             inner: Arc::new(Inner {
-                perps: RecentStream::new(perps_ring_capacity),
-                blocks: RecentStream::new(block_ring_capacity),
                 pending: Mutex::new(HashMap::new()),
+                blocks: RecentStream::new(block_ring_capacity),
+                perps: RecentStream::new(perps_ring_capacity),
             }),
         }
     }
@@ -104,12 +81,10 @@ impl Indexer {
     /// realtime rings, in strict height order (the app awaits `post_indexing`
     /// per height). Runs after the block is committed. The full-block ring is
     /// always fed; perps events are extracted and published only when
-    /// `perps_addr` is known. A no-op if nothing is stashed — the cold `reindex`
-    /// path skips `index_block`, so there are no live subscribers to serve.
+    /// `perps_addr` is known.
     fn publish_committed_block(&self, block_height: u64, perps_addr: Option<Addr>) {
-        let Some(PendingBlock { block, outcome }) =
-            self.inner.pending.lock().unwrap().remove(&block_height)
-        else {
+        // Extract the stashed full block. No-op if noting is stashed.
+        let Some(block) = self.inner.pending.lock().unwrap().remove(&block_height) else {
             return;
         };
 
@@ -118,9 +93,13 @@ impl Indexer {
         // full-block ring below. Append every block — including empty ones — so
         // subscriber heights stay contiguous and gap detection stays exact.
         if let Some(perps_addr) = perps_addr {
-            let created_at = block.info.timestamp.to_rfc3339_string();
-            let batch =
-                extract_perps_event_block(block_height, created_at, outcome.clone(), perps_addr);
+            let created_at = block.block.info.timestamp.to_rfc3339_string();
+            let batch = extract_perps_event_block(
+                block_height,
+                created_at,
+                block.outcome.clone(),
+                perps_addr,
+            );
 
             #[cfg(feature = "metrics")]
             {
@@ -135,13 +114,12 @@ impl Indexer {
 
         // Full-block feed: the committed block + outcome, published regardless
         // of `app_cfg`.
-        self.inner.blocks.append(Arc::new(BlockAndOutcome {
-            block,
-            block_outcome: outcome,
-        }));
+        {
+            #[cfg(feature = "metrics")]
+            metrics::counter!("indexer_stream.full_blocks.published.total").increment(1);
 
-        #[cfg(feature = "metrics")]
-        metrics::counter!("indexer_stream.full_blocks.published.total").increment(1);
+            self.inner.blocks.append(Arc::new(block));
+        }
     }
 }
 
@@ -164,16 +142,14 @@ impl dango_app::Indexer for Indexer {
         // perps feed has always worked (the perps address it needs only arrives
         // with `app_cfg` at `post_indexing`). The cold `reindex` path skips
         // `index_block`, so the rings stay live-only.
-        let pending = PendingBlock {
-            block: block.clone(),
-            outcome: block_outcome.clone(),
-        };
-
         self.inner
             .pending
             .lock()
             .unwrap()
-            .insert(block.info.height, pending);
+            .insert(block.info.height, FullBlock {
+                block: block.clone(),
+                outcome: block_outcome.clone(),
+            });
 
         Ok(())
     }
@@ -250,14 +226,14 @@ mod tests {
     /// duplicates.
     #[tokio::test]
     async fn full_block_ring_is_published_in_post_indexing_in_order() {
-        let indexer = Indexer::new(DEFAULT_RING_CAPACITY, DEFAULT_BLOCK_RING_CAPACITY);
+        let indexer = Indexer::new(DEFAULT_BLOCK_RING_CAPACITY, DEFAULT_PERPS_RING_CAPACITY);
         let ctx = indexer.context();
 
         // Subscribe before any block is published (empty ring): a live feed from
         // height 1 onward.
         let stream = ctx
             .blocks()
-            .subscribe(Some(1), |b: &BlockAndOutcome| Some(b.block.info.height))
+            .subscribe(Some(1), |b: &FullBlock| Some(b.block.info.height))
             .unwrap();
 
         // `index_block` only stashes the finalized-but-uncommitted block: the

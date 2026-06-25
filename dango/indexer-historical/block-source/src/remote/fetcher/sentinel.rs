@@ -1,7 +1,7 @@
 use {
     super::{BlockFetcher, FetchStream},
     async_trait::async_trait,
-    dango_indexer_historical_types::{AnyResult, BlockData},
+    dango_indexer_historical_types::{AnyResult, BlockData, BlockDataExt},
     std::{cmp::min, time::Duration},
     tokio::{sync::mpsc, time::sleep},
 };

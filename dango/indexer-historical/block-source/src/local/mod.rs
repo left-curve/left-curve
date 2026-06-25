@@ -2,7 +2,7 @@ use {
     crate::{BlockSource, httpd_client::HttpdClient},
     async_trait::async_trait,
     dango_indexer_cache::{IndexerPath, cache_file::CacheFile},
-    dango_indexer_historical_types::{AnyResult, BlockData},
+    dango_indexer_historical_types::{AnyResult, BlockData, BlockDataExt},
     futures::StreamExt,
     reqwest::IntoUrl,
     std::{

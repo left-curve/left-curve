@@ -34,16 +34,9 @@
 //!   node, this crate will REPLACE `HookedIndexer` as the validator's sole, thin
 //!   indexer; the `full_block` ring is what that node consumes to stay in sync.
 
-mod block_and_outcome;
 mod context;
 mod indexer;
 mod perps_events;
 mod recent_stream;
 
-pub use {
-    block_and_outcome::BlockAndOutcome,
-    context::Context,
-    indexer::{DEFAULT_BLOCK_RING_CAPACITY, DEFAULT_RING_CAPACITY, Indexer},
-    perps_events::{PerpsEvent, PerpsEventBlock, extract_perps_event_block, make_perps_filter},
-    recent_stream::{HasHeight, RecentStream, ResyncRequired},
-};
+pub use {context::*, indexer::*, perps_events::*, recent_stream::*};

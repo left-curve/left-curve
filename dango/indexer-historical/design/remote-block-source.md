@@ -301,7 +301,7 @@ sentinel's `httpd`, which loads its cache file once and returns `block` +
 `outcome` together:
 
 - **Live tail** — the `full_block` GraphQL subscription; each event is a
-  `BlockAndOutcome` JSON scalar that `BlockData` deserializes directly.
+  `FullBlock` JSON scalar that `BlockData` (an alias of it) deserializes directly.
 - **Backfill** — `GET /block/full/range?from=&to=`, a JSON array of the same
   shape (see [the fetcher](#the-block-fetcher)).
 
@@ -310,9 +310,10 @@ This replaces the earlier two-call assembly (`query_block` +
 and loaded the *same* node cache file twice per height — once per half). The
 combined routes live in the node's `dango/indexer` httpd and shipped there first;
 the historical source depends on a sentinel exposing them. The wire shape is
-`{ block, block_outcome }` decoded with **serde** — `BlockData` derives
-`Serialize`/`Deserialize` with `#[serde(rename = "block_outcome")]` on `outcome`,
-so no separate wire type is needed (borsh stays the on-disk format only).
+`{ block, outcome }`, decoded with **serde**: `BlockData` *is* the node's
+`dango_primitives::FullBlock` (which derives `Serialize`/`Deserialize`), so there
+is no private wire type to keep in sync with the node — borsh stays the on-disk
+format only.
 
 ## The block fetcher
 

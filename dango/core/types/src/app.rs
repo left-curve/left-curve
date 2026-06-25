@@ -1,5 +1,5 @@
 use {
-    crate::{Addr, Denom, Duration, Hash256, Json, Label, Message, Timestamp, Tx},
+    crate::{Addr, BlockOutcome, Denom, Duration, Hash256, Json, Label, Message, Timestamp, Tx},
     borsh::{BorshDeserialize, BorshSerialize},
     dango_math::Udec128,
     hex_literal::hex,
@@ -95,6 +95,7 @@ pub enum Permission {
     Somebodies(BTreeSet<Addr>),
 }
 
+/// Metadata of a block.
 #[derive(
     Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, Copy, PartialEq, Eq,
 )]
@@ -105,11 +106,22 @@ pub struct BlockInfo {
     pub hash: Hash256,
 }
 
+/// A block created by the consensus engine, containing the metadata (`.info`)
+/// and transactions (`.txs`), but not yet executed by the Dango state machine.
 #[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq)]
 #[serde(deny_unknown_fields)]
 pub struct Block {
     pub info: BlockInfo,
     pub txs: Vec<(Tx, Hash256)>,
+}
+
+/// A block containing metadata (`.block.info`), transactions (`.block.txs`) and
+/// execution outcome (`.outcome`).
+#[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq)]
+#[serde(deny_unknown_fields)]
+pub struct FullBlock {
+    pub block: Block,
+    pub outcome: BlockOutcome,
 }
 
 #[skip_serializing_none]

@@ -28,8 +28,8 @@ protocol.
    Each file is a borsh-serialized
    `CacheFile { data: BlockAndBlockOutcomeWithHttpDetails { block, block_outcome, http_request_details }, .. }`,
    optionally lzma-compressed (`.xz`). Used only for **catch-up** (`get(h)`), not
-   the live tail. The historical indexer drops `http_request_details` after
-   deserialization — the wire `BlockData` only carries `block` + `block_outcome`.
+   the live tail. The historical indexer drops `http_request_details` and keeps
+   only `block` + `outcome` — the shape of `BlockData` (the node's `FullBlock`).
 
 Both inputs come from the same dango node process. If the node is down,
 both are down — single failure domain, no consistency issues to worry about.

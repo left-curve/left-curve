@@ -6,7 +6,10 @@
 mod block_data;
 mod graphql;
 
-pub use {block_data::BlockData, graphql::post_graphql};
+pub use {
+    block_data::{BlockData, BlockDataExt},
+    graphql::post_graphql,
+};
 
 /// Convenience alias for `anyhow::Result<T>` used across all historical
 /// indexer crates.

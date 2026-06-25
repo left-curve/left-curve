@@ -13,7 +13,7 @@ use {
     crate::{BlockSource, httpd_client::HttpdClient},
     anyhow::{anyhow, bail},
     async_trait::async_trait,
-    dango_indexer_historical_types::{AnyResult, BlockData},
+    dango_indexer_historical_types::{AnyResult, BlockData, BlockDataExt},
     futures::{StreamExt, future::select_all},
     std::{sync::Arc, time::Duration},
     tokio::{

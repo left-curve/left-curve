@@ -258,7 +258,7 @@ fn blocks_cf_options() -> Options {
 
 #[cfg(test)]
 mod tests {
-    use {super::*, dango_temp_rocksdb::TempDataDir};
+    use {super::*, dango_indexer_historical_types::BlockDataExt, dango_temp_rocksdb::TempDataDir};
 
     fn block(height: u64) -> BlockData {
         use dango_primitives::{Block, BlockInfo, BlockOutcome, Hash256, Timestamp};

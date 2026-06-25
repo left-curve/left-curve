@@ -80,16 +80,19 @@ Concrete `BlockSource` implementations are documented separately:
 ## Wire payload
 
 ```rust
-/// What flows through the source. No HTTP/sentinel metadata, only chain data.
-pub struct BlockData {
-    pub block: Block,
-    pub outcome: BlockOutcome,
-}
+/// What flows through the source: the node's own `FullBlock` (full `Block` +
+/// `BlockOutcome`), reused as the indexer's payload type.
+pub type BlockData = dango_primitives::FullBlock;
 ```
 
-Wrapping `(Block, BlockOutcome)` in a nominal type lets us add carrier
-metadata later (chunk_id, schema version, integrity hash) without
-changing trait signatures.
+`BlockData` is the node's `FullBlock` — the very type the `full_block`
+subscription and the `/block/full/*` REST routes serialize — so the wire shape
+is, by construction, exactly what we deserialize (no private wire struct to drift
+out of sync), and borsh (which `FullBlock` also derives) is the same on-disk
+format the node uses for its block cache files. Keeping the local alias name
+`BlockData` lets the `BlockSource`/`Projection` traits speak a domain term; if
+carrier metadata (chunk_id, schema version, integrity hash) is ever needed,
+`BlockData` becomes a wrapper without changing those trait signatures.
 
 ## Architecture overview
 
