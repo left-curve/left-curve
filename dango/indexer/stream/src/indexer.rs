@@ -1,13 +1,12 @@
 use {
     crate::{
-        block_and_outcome::BlockAndOutcome,
         context::Context,
         perps_events::{PerpsEventBlock, extract_perps_event_block},
         recent_stream::RecentStream,
     },
     async_trait::async_trait,
     dango_app::IndexerResult,
-    dango_primitives::{Addr, Block, BlockOutcome, Config, Json, JsonDeExt},
+    dango_primitives::{Addr, Block, BlockOutcome, Config, FullBlock, Json, JsonDeExt},
     dango_types::config::AppConfig,
     std::{
         collections::HashMap,
@@ -27,7 +26,7 @@ pub const DEFAULT_RING_CAPACITY: usize = 1000;
 /// Number of recent full blocks the `full_block` stream retains in memory — both
 /// the reconnect/recovery window and the live broadcast buffer.
 ///
-/// Smaller than [`DEFAULT_RING_CAPACITY`] on purpose: a `BlockAndOutcome` (every
+/// Smaller than [`DEFAULT_RING_CAPACITY`] on purpose: a `FullBlock` (every
 /// transaction + every event of a block) is far larger than a `PerpsEventBlock`,
 /// and one is retained per height whether or not anyone is subscribed. Deeper
 /// history is the indexer node's job (the on-disk block files and the REST
@@ -61,7 +60,7 @@ struct Inner {
     /// In-memory ring + live broadcast of full blocks (`Block` + `BlockOutcome`)
     /// backing the `full_block` subscription. Fed in `post_indexing`
     /// (post-commit), in strict height order; see the crate docs.
-    blocks: RecentStream<BlockAndOutcome>,
+    blocks: RecentStream<FullBlock>,
 
     /// `index_block` -> `post_indexing` hand-off. `index_block` runs at
     /// FinalizeBlock — before the block is committed — and is the only place the
@@ -135,10 +134,9 @@ impl Indexer {
 
         // Full-block feed: the committed block + outcome, published regardless
         // of `app_cfg`.
-        self.inner.blocks.append(Arc::new(BlockAndOutcome {
-            block,
-            block_outcome: outcome,
-        }));
+        self.inner
+            .blocks
+            .append(Arc::new(FullBlock { block, outcome }));
 
         #[cfg(feature = "metrics")]
         metrics::counter!("indexer_stream.full_blocks.published.total").increment(1);
@@ -257,7 +255,7 @@ mod tests {
         // height 1 onward.
         let stream = ctx
             .blocks()
-            .subscribe(Some(1), |b: &BlockAndOutcome| Some(b.block.info.height))
+            .subscribe(Some(1), |b: &FullBlock| Some(b.block.info.height))
             .unwrap();
 
         // `index_block` only stashes the finalized-but-uncommitted block: the

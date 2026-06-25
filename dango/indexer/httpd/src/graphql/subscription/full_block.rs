@@ -1,7 +1,7 @@
 use {
     crate::subscription_limiter::{acquire_subscription, guard_subscription_stream},
     async_graphql::{futures_util::stream::Stream, *},
-    dango_indexer_stream::BlockAndOutcome,
+    dango_primitives::FullBlock,
 };
 
 #[derive(Default)]
@@ -26,7 +26,7 @@ impl FullBlockSubscription {
         &self,
         ctx: &async_graphql::Context<'a>,
         #[graphql(name = "sinceBlockHeight")] since_block_height: Option<u64>,
-    ) -> Result<impl Stream<Item = async_graphql::Json<BlockAndOutcome>> + 'a> {
+    ) -> Result<impl Stream<Item = async_graphql::Json<FullBlock>> + 'a> {
         let sub_guard = acquire_subscription(ctx)?;
         let stream_ctx = ctx.data::<dango_indexer_stream::Context>()?;
 
@@ -34,7 +34,7 @@ impl FullBlockSubscription {
         // mirroring the shape of the REST `/block/*` payloads.
         let stream = stream_ctx
             .blocks()
-            .subscribe(since_block_height, |block: &BlockAndOutcome| {
+            .subscribe(since_block_height, |block: &FullBlock| {
                 Some(async_graphql::Json(block.clone()))
             })
             .map_err(|resync| Error::new(resync.to_string()))?;

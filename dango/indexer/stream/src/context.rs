@@ -1,5 +1,6 @@
-use crate::{
-    block_and_outcome::BlockAndOutcome, perps_events::PerpsEventBlock, recent_stream::RecentStream,
+use {
+    crate::{perps_events::PerpsEventBlock, recent_stream::RecentStream},
+    dango_primitives::FullBlock,
 };
 
 /// A cheap-to-clone reader handle to the realtime stream's in-memory state,
@@ -13,13 +14,13 @@ use crate::{
 #[derive(Clone)]
 pub struct Context {
     perps: RecentStream<PerpsEventBlock>,
-    blocks: RecentStream<BlockAndOutcome>,
+    blocks: RecentStream<FullBlock>,
 }
 
 impl Context {
     pub(crate) fn new(
         perps: RecentStream<PerpsEventBlock>,
-        blocks: RecentStream<BlockAndOutcome>,
+        blocks: RecentStream<FullBlock>,
     ) -> Self {
         Self { perps, blocks }
     }
@@ -30,7 +31,7 @@ impl Context {
     }
 
     /// The full-block stream backing the `full_block` subscription.
-    pub fn blocks(&self) -> &RecentStream<BlockAndOutcome> {
+    pub fn blocks(&self) -> &RecentStream<FullBlock> {
         &self.blocks
     }
 }
