@@ -258,21 +258,26 @@ and the top N kept. Cron units come only from the involved side (cron has no
 sender); `AND category = 1` on that side narrows to transactions only.
 
 ```sql
--- involved side (events) ...
-SELECT DISTINCT ON (block_height, category, category_index)
-       block_height, category, category_index
-FROM events
-WHERE address = $X
-ORDER BY block_height DESC, category DESC, category_index DESC, event_index DESC
-LIMIT $N
--- ... UNION the sender side (transactions; cron has no sender) ...
-SELECT block_height, kind AS category, idx AS category_index
-FROM transactions
-WHERE sender = $X
-ORDER BY block_height DESC, idx DESC
-LIMIT $N
+-- involved side (events): the distinct units X is a party to. Plain DISTINCT
+-- over the 3-column unit position; the PK (address, block_height, category,
+-- category_index, …) serves it as a backward scan.
+(SELECT DISTINCT block_height, category, category_index
+ FROM events
+ WHERE address = $X        -- [AND category = $kind]  [AND (unit) < $cursor]
+ ORDER BY block_height DESC, category DESC, category_index DESC
+ LIMIT $N)
+UNION                      -- arms MUST be parenthesised: Postgres rejects
+                           -- `SELECT … LIMIT n UNION …` without parens
+-- sender side (transactions): every row is kind = Tx (cron has no sender), so
+-- `kind` is dropped from the ORDER BY and the (sender, block_height, idx) index
+-- serves it with no sort. The keyset still compares the full unit position.
+(SELECT block_height, kind AS category, idx AS category_index
+ FROM transactions
+ WHERE sender = $X         -- [AND (block_height, kind, idx) < $cursor]
+ ORDER BY block_height DESC, idx DESC
+ LIMIT $N)
 -- ... then join `transactions` on (block_height, kind, idx), ORDER BY the unit
--- DESC, LIMIT $N. Next page: AND unit < $cursor on both sides.
+-- position DESC, LIMIT $N. Next page: AND unit < $cursor on both sides.
 ```
 
 **Q5–Q8 — events involving X**, optionally + type / contract / (contract+name) —

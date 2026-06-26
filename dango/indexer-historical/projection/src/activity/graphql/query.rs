@@ -127,7 +127,13 @@ impl ActivityQuery {
         }
 
         // Sender side: the units X sent, from `transactions`. Only transactions
-        // carry a sender (cron rows are NULL), so this is inherently tx-only.
+        // carry a sender (cron rows are NULL), so every row here is `kind = Tx`
+        // — a constant. The `ORDER BY` therefore drops `kind` and matches the
+        // `(sender, block_height, idx)` index verbatim (a clean backward scan):
+        // keeping `kind` would wedge a column the index lacks into the sort and
+        // force an Incremental Sort (`EXPLAIN`-verified). The keyset still
+        // compares the full unit position so it stays consistent with the
+        // cron-bearing involved side and the outer ordering.
         if want_sender {
             let keyset_clause = match &keyset {
                 Some((h, k, i)) => format!(" AND (block_height, kind, idx) < ({h}, {k}, {i})"),
@@ -136,7 +142,7 @@ impl ActivityQuery {
             sides.push(format!(
                 "SELECT block_height, kind AS category, idx AS category_index FROM transactions \
                  WHERE sender = {address_ph}{keyset_clause} \
-                 ORDER BY block_height DESC, kind DESC, idx DESC LIMIT {fetch}"
+                 ORDER BY block_height DESC, idx DESC LIMIT {fetch}"
             ));
         }
 
@@ -146,7 +152,14 @@ impl ActivityQuery {
             Vec::new()
         } else {
             // Merge (dedup is the UNION), join the unit rows, take the newest N.
-            let units = sides.join(" UNION ");
+            // Each arm carries its own `ORDER BY` / `LIMIT`, so it MUST be
+            // parenthesised — Postgres rejects `SELECT … LIMIT n UNION …`
+            // without parens (syntax error). A lone arm is just `(SELECT …)`.
+            let units = sides
+                .iter()
+                .map(|side| format!("({side})"))
+                .collect::<Vec<_>>()
+                .join(" UNION ");
             let sql = format!(
                 "WITH unit AS ({units}) \
                  SELECT t.* FROM unit u JOIN transactions t \
