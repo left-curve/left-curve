@@ -34,7 +34,7 @@ use {
     },
     sea_orm::{
         ColumnTrait, DatabaseConnection, DbBackend, EntityTrait, FromQueryResult, QueryFilter,
-        Statement,
+        QueryOrder, Statement,
     },
 };
 
@@ -53,18 +53,28 @@ pub struct ActivityQuery;
 
 #[Object]
 impl ActivityQuery {
-    /// A single transaction by its content hash — the un-paginated point lookup
-    /// behind the detail view. Returns the indexed summary row (whose on-demand
-    /// `tx` / `outcome` fields hydrate the full payload from the block); `None`
-    /// if no transaction has that hash. Cron units carry no hash, so this only
-    /// ever resolves transactions. Served by the partial `(hash)` index.
-    async fn transaction(&self, ctx: &Context<'_>, hash: Hash) -> Result<Option<Transaction>> {
+    /// Every transaction with a given content hash, newest-first — the
+    /// un-paginated lookup behind the detail view. The hash is **not unique**
+    /// (see `DESIGN.md` § Identity): identical tx bytes can be re-included in a
+    /// later block (a failed tx doesn't consume its nonce; a contract sender has
+    /// none), so one hash may map to several units. Returns every match ordered
+    /// by position DESC (each row's on-demand `tx` / `outcome` fields hydrate the
+    /// full payload from its block); empty if none. Cron units carry no hash, so
+    /// this only ever resolves transactions. Served by the partial `(hash)`
+    /// index.
+    async fn transactions_by_hash(
+        &self,
+        ctx: &Context<'_>,
+        hash: Hash,
+    ) -> Result<Vec<Transaction>> {
         let db = ctx.data::<DatabaseConnection>()?;
-        let row = transactions::Entity::find()
+        let rows = transactions::Entity::find()
             .filter(transactions::Column::Hash.eq(hash.bytes()))
-            .one(db)
+            .order_by_desc(transactions::Column::BlockHeight)
+            .order_by_desc(transactions::Column::Idx)
+            .all(db)
             .await?;
-        row.map(Transaction::try_from).transpose()
+        rows.into_iter().map(Transaction::try_from).collect()
     }
 
     /// Query 1 — transactions (and cronjobs) **involving** an address: by
@@ -208,7 +218,15 @@ impl ActivityQuery {
              FROM events WHERE event_type = {type_ph}{keyset} \
              ORDER BY {POS_DESC}, address DESC LIMIT {fetch}"
         );
-        run_event_feed(db, sql, binder, limit, after.is_some()).await
+        run_event_feed(
+            db,
+            sql,
+            binder,
+            limit,
+            after.is_some(),
+            wants_event_data(ctx),
+        )
+        .await
     }
 
     /// Queries 3 / 4 — contract events emitted by a contract, optionally
@@ -235,7 +253,15 @@ impl ActivityQuery {
              FROM events WHERE contract = {contract_ph}{names}{keyset} \
              ORDER BY {POS_DESC}, address DESC LIMIT {fetch}"
         );
-        run_event_feed(db, sql, binder, limit, after.is_some()).await
+        run_event_feed(
+            db,
+            sql,
+            binder,
+            limit,
+            after.is_some(),
+            wants_event_data(ctx),
+        )
+        .await
     }
 
     /// Queries 5 / 6 — events **involving** an address, optionally of a given
@@ -264,7 +290,15 @@ impl ActivityQuery {
             "SELECT * FROM events WHERE address = {address_ph}{type_filter}{keyset} \
              ORDER BY {POS_DESC} LIMIT {fetch}"
         );
-        run_event_feed(db, sql, binder, limit, after.is_some()).await
+        run_event_feed(
+            db,
+            sql,
+            binder,
+            limit,
+            after.is_some(),
+            wants_event_data(ctx),
+        )
+        .await
     }
 
     /// Queries 7 / 8 — contract events of a contract **involving** an address,
@@ -293,7 +327,15 @@ impl ActivityQuery {
              WHERE address = {address_ph} AND contract = {contract_ph}{names}{keyset} \
              ORDER BY {POS_DESC} LIMIT {fetch}"
         );
-        run_event_feed(db, sql, binder, limit, after.is_some()).await
+        run_event_feed(
+            db,
+            sql,
+            binder,
+            limit,
+            after.is_some(),
+            wants_event_data(ctx),
+        )
+        .await
     }
 }
 
@@ -308,17 +350,40 @@ impl ActivityQuery {
 /// whole `event_data` (verified: it does so on small tables). The inner `LIMIT`
 /// blocks subquery flattening, so the inner's backward-scan (no-sort) plan is
 /// left untouched; `data` is `NULL` for non-priority events not stored there.
-fn with_event_data(inner: &str) -> String {
+///
+/// When the client did **not** select the `data` field (`wants_data` false), the
+/// per-row probe is skipped and the column is bound to `NULL` — the feed keeps
+/// its shape ([`EventRow`] still maps `data`) at zero payload cost. (Even a
+/// missed detection is safe: [`Event::data`] would just hydrate from the block.)
+fn with_event_data(inner: &str, wants_data: bool) -> String {
+    let data_expr = if wants_data {
+        "( SELECT ed.data FROM event_data ed \
+          WHERE ed.block_height = sub.block_height AND ed.category = sub.category \
+          AND ed.category_index = sub.category_index AND ed.event_index = sub.event_index )"
+    } else {
+        "NULL::bytea"
+    };
     format!(
-        "SELECT sub.*, ( \
-         SELECT ed.data FROM event_data ed \
-         WHERE ed.block_height = sub.block_height AND ed.category = sub.category \
-         AND ed.category_index = sub.category_index AND ed.event_index = sub.event_index \
-         ) AS data \
+        "SELECT sub.*, {data_expr} AS data \
          FROM ({inner}) sub \
          ORDER BY sub.block_height DESC, sub.category DESC, sub.category_index DESC, \
          sub.event_index DESC"
     )
+}
+
+/// Whether the client selected the event `data` field under this feed — through
+/// either Relay shape (`edges { node { data } }` or `nodes { data }`). Drives
+/// [`with_event_data`]'s eager payload probe: skip it when `data` is absent.
+/// Conservative by construction — an undetected selection only costs a later
+/// per-row block hydration in [`Event::data`], never correctness.
+fn wants_event_data(ctx: &Context<'_>) -> bool {
+    let look_ahead = ctx.look_ahead();
+    look_ahead
+        .field("edges")
+        .field("node")
+        .field("data")
+        .exists()
+        || look_ahead.field("nodes").field("data").exists()
 }
 
 /// Run an event feed's statement and shape the rows into a connection. Every
@@ -331,10 +396,11 @@ async fn run_event_feed(
     binder: Binder,
     limit: u64,
     has_prev: bool,
+    wants_data: bool,
 ) -> Result<Connection<OpaqueCursor<EventCursor>, Event>> {
     let stmt = Statement::from_sql_and_values(
         DbBackend::Postgres,
-        with_event_data(&sql),
+        with_event_data(&sql, wants_data),
         binder.into_values(),
     );
     let rows = EventRow::find_by_statement(stmt).all(db).await?;
@@ -405,7 +471,8 @@ mod tests {
             "scalar Address",
             "scalar Hash",
             "scalar Tx",
-            "transaction(hash: Hash!)",
+            // The hash lookup returns a list — the hash is not unique.
+            "transactionsByHash(hash: Hash!): [Transaction!]!",
             "transactionsInvolving(",
             "eventsByType(",
             "contractEventsInvolving(",

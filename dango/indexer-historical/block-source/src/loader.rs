@@ -43,23 +43,35 @@ impl Loader<u64> for BlockLoader {
     type Value = Arc<BlockData>;
 
     async fn load(&self, heights: &[u64]) -> Result<HashMap<u64, Self::Value>, Self::Error> {
-        // The DataLoader hands us distinct keys; fetch them concurrently. A
-        // height the source can't supply is simply absent from the map, so
-        // `load_one` yields `None` rather than an error.
+        // The DataLoader hands us distinct keys; fetch them concurrently. Each
+        // height is isolated: one the source can't supply (`Ok(None)`) or that
+        // *errors* is simply absent from the map, so `load_one` yields `None`
+        // rather than sinking the whole batch — one unreadable block can't fail
+        // the sibling rows of a page (the affected row sees the same "not
+        // available" as a miss). A hard error is logged so it stays visible.
         let loads = heights.iter().map(|&height| {
             let source = Arc::clone(&self.source);
-            async move {
-                anyhow::Ok(
-                    source
-                        .get(height)
-                        .await?
-                        .map(|block| (height, Arc::new(block))),
-                )
-            }
+            async move { (height, source.get(height).await) }
         });
-        let blocks = futures::future::try_join_all(loads)
-            .await
-            .map_err(Arc::new)?;
-        Ok(blocks.into_iter().flatten().collect())
+        let results = futures::future::join_all(loads).await;
+
+        let mut blocks = HashMap::with_capacity(results.len());
+        for (height, result) in results {
+            match result {
+                Ok(Some(block)) => {
+                    blocks.insert(height, Arc::new(block));
+                },
+                Ok(None) => { /* missing — absent from the map, resolves to None */ },
+                Err(_err) => {
+                    #[cfg(feature = "tracing")]
+                    tracing::warn!(
+                        height,
+                        error = %_err,
+                        "block load failed; treating as unavailable",
+                    );
+                },
+            }
+        }
+        Ok(blocks)
     }
 }

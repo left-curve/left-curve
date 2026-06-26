@@ -234,15 +234,23 @@ impl Event {
             return Ok(None);
         };
         let flat = flatten_unit(&block, self.category.code(), self.category_index as usize);
-        let info = flat.get(self.event_index as usize).ok_or_else(|| {
-            Error::new(format!(
-                "event {} missing from unit ({}, {}) of block {}",
-                self.event_index,
-                self.category.code(),
-                self.category_index,
-                self.block_height
-            ))
-        })?;
+        // Match on the stored `event_index` *value*, not the Vec position. The
+        // two coincide today (the flatten numbers a unit's events `0..n`
+        // contiguously — the same value the write path stored), but looking it
+        // up by id keeps this correct even if that numbering ever changes. `n`
+        // is the unit's event count, so the scan is tiny.
+        let info = flat
+            .iter()
+            .find(|info| info.id.event_index == self.event_index)
+            .ok_or_else(|| {
+                Error::new(format!(
+                    "event {} missing from unit ({}, {}) of block {}",
+                    self.event_index,
+                    self.category.code(),
+                    self.category_index,
+                    self.block_height
+                ))
+            })?;
         Ok(Some(Json(info.event.clone())))
     }
 }

@@ -1,5 +1,7 @@
 use {
-    crate::activity::idens::ActivityEvents, sea_orm::ConnectionTrait, sea_orm_migration::prelude::*,
+    crate::activity::idens::ActivityEvents,
+    sea_orm::{ConnectionTrait, DatabaseBackend},
+    sea_orm_migration::prelude::*,
 };
 
 #[derive(DeriveMigrationName)]
@@ -77,6 +79,16 @@ impl MigrationTrait for Migration {
         // indexes both work on Postgres and SQLite, so one raw statement per
         // index serves every backend.
         let conn = manager.get_connection();
+        // Postgres-only: leave slack in the index leaf pages. Every index here is
+        // address- / contract- / type-prefixed (a near-random prefix), so a
+        // sustained insert stream scatters across the key space; a lower
+        // fillfactor reduces page splits when the index is built or extended —
+        // most valuable when an offline backfill (re)builds these on already
+        // loaded data. Harmless otherwise; SQLite has no such storage knob.
+        let storage = match manager.get_database_backend() {
+            DatabaseBackend::Postgres => "WITH (fillfactor = 85)",
+            _ => "",
+        };
         let indexes: [(&str, &str, &str); 4] = [
             (
                 "idx_activity_events_addr_type",
@@ -101,7 +113,7 @@ impl MigrationTrait for Migration {
         ];
         for (name, cols, filter) in indexes {
             conn.execute_unprepared(&format!(
-                "CREATE INDEX IF NOT EXISTS {name} ON activity_events ({cols}) {filter}"
+                "CREATE INDEX IF NOT EXISTS {name} ON activity_events ({cols}) {storage} {filter}"
             ))
             .await?;
         }

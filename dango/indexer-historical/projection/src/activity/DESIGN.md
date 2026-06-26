@@ -102,6 +102,17 @@ so the cost center is **storage and write throughput**, addressed by: the
 blacklist, the payload split (below), the involvement blacklist (below),
 `block_height`-range partitioning, and offline backfill.
 
+A write-side caveat: `activity_events`' indexes are address- / contract-prefixed
+(a near-random prefix), so a sustained insert stream scatters across the key
+space and splits B-tree pages — unlike `transactions` / `event_data`, whose
+`block_height`-led keys append at the right. The lever is the **offline
+backfill**: bulk-load with the secondary indexes dropped, then build them on the
+populated table (a packed build, not incremental splits). The migrations set a
+`fillfactor` of 85 on those indexes (Postgres only) so that build — and later
+right-extension — leaves slack; for a live, index-present load the gain is
+smaller. (`fillfactor` is the documented knob; partitioning is the structural
+one.)
+
 **ClickHouse is the documented escape hatch.** If volume outgrows Postgres, the
 `events` read-path moves to ClickHouse: the filter columns are low-cardinality
 and compress ~an order of magnitude better columnar, alternate sort orders are
@@ -290,7 +301,7 @@ WHERE address = $X
   -- AND event_type = $T                      (Q6, via idx_…_addr_type)
   -- AND contract = $C                         (Q7, via idx_…_addr_contract)
   -- AND contract = $C
-  --     AND contract_event_name = ANY($names) (Q8, name filtered in-index)
+  --     AND contract_event_name IN ($names…)   (Q8, name filtered in-index)
 ORDER BY block_height DESC, category DESC, category_index DESC, event_index DESC
 LIMIT $N;
 ```
@@ -306,12 +317,12 @@ backward index scan verbatim (Index Scan → Unique → Limit, no sort node);
 SELECT DISTINCT ON (block_height, category, category_index, event_index) *
 FROM events
 WHERE contract = $C                             -- or event_type = $T (Q2)
-  -- AND contract_event_name = ANY($names)      (Q4)
+  -- AND contract_event_name IN ($names…)        (Q4)
 ORDER BY block_height DESC, category DESC, category_index DESC, event_index DESC, address DESC
 LIMIT $N;
 ```
 
-The **name list** (Q4/Q8) is a plain `contract_event_name = ANY($names)`, never
+The **name list** (Q4/Q8) is a plain `contract_event_name IN ($names…)`, never
 a per-name UNION: the column lives in the contract indexes (at the tail), so the
 filter is index-resident and rejects stay **off the heap**. The planner then
 picks one of two shapes by selectivity (both bounded by the ~15-name
@@ -402,7 +413,20 @@ contract from *participation* never hides its emitted contract events.
 | `event_type_blacklist` | `[guest, withhold, authenticate, finalize, backrun, reply]` | event types dropped entirely (no `events` row, no payload) — the address-less system noise (~81% of the raw stream) |
 | `event_data_types`     | `[transfer, contract_event]`     | event types whose payload is stored in `event_data`; others lazy-load from the raw block |
 | `involvement_types`    | `[transfer, contract_event]`     | among kept events, which fan out by participant (others get one empty-address row) |
-| `involvement_blacklist`| system contracts                 | addresses excluded from participation at write time (perps, taxman, oracle, bank, dex, account_factory, gateway, warp, hyperlane.*) |
+| `involvement_blacklist`| **empty** (filled from deployment config) | addresses excluded from participation at write time — the deployment's system contracts (perps, taxman, oracle, bank, dex, account_factory, gateway, warp, hyperlane.*) |
+
+Caveat — the default `involvement_blacklist` is **empty** (it is deployment-
+specific, so the CLI populates it from config). This matters because
+`CheckedContractEvent::extract_addresses` inserts the
+**emitting contract** itself as a participant. So until the system-contract
+blacklist is wired, every contract event fans out to the contract *and* the user
+(fan-out K ≥ 2, not the ~1 assumed in § "Why one merged `events` table"), and a
+contract appears as a *party* to its own events — i.e. `eventsInvolving(<system
+contract>)` returns everything it emitted. The contract feeds are unaffected
+(they read `events.contract`, a different axis). Because the blacklist is applied
+at write time, **populate it before the first full backfill** — adding entries
+later only stops *new* rows; the already-written contract-as-participant rows
+need a targeted `DELETE` (or a re-backfill).
 
 Maintenance note: all applied at **write time**, so changes are not retroactive.
 *Narrowing* `event_type_blacklist`, adding to `event_data_types`, broadening
@@ -436,10 +460,15 @@ keyset). Adds `dango-primitives` to the
 
 Flattening note: tx units use the canonical `flatten_tx_events`; cron units use
 `flatten_commitment_status` on a fresh per-unit `EventId`. Both number
-`event_index` from 0 within the unit, and every leaf self-advances the index
-(`next_id.event_index += 1`), so a unit's commitment groups stay contiguous and
-never collide — no explicit `increment_idx` normalization is needed at this
-layer. Encoding note: `category` / `kind` store the canonical `FlatCategory`
+`event_index` from 0 within the unit, contiguously: most leaves self-advance the
+index (`next_id.event_index += 1`), the few that don't (`Configure` / `Upgrade`
+/ `Upload`) are re-synced by their parent's `increment_idx` after each child, so
+a unit's commitment groups stay contiguous and never collide. The invariant the
+projection leans on is that the `event_index` values are a dense `0..n` matching
+the flattened Vec position — the write path stores `id.event_index`, the read
+path (`Event::data`'s non-priority fallback) finds an event **by that value**,
+and a `debug_assert` in `push_events` pins the equality so a flatten change
+can't silently desync them. Encoding note: `category` / `kind` store the canonical `FlatCategory`
 discriminant (cron = 0, tx = 1) directly; the integer value is immaterial to the
 queries as long as `events.category` and `transactions.kind` agree on it for the
 join.
@@ -448,12 +477,13 @@ join.
 
 The eight feeds are served by the GraphQL resolvers in `graphql/query.rs`
 (`ActivityQuery`), folded into **five fields** — each "+ optional filter" pair
-(name list, type, kind) becomes one resolver argument — plus a `transaction`
-point lookup by hash (un-paginated):
+(name list, type, kind) becomes one resolver argument — plus a
+`transactionsByHash` lookup (un-paginated; the hash is non-unique, so it returns
+a **list**, newest-first):
 
 | field | queries | filters |
 |-------|---------|---------|
-| `transaction` | — | hash (single unit, un-paginated) |
+| `transactionsByHash` | — | hash (all matching units, un-paginated; hash non-unique) |
 | `transactionsInvolving` | 1 | address (+ optional `role`, `kind`) |
 | `eventsByType` | 2 | type |
 | `contractEvents` | 3 / 4 | contract (+ optional `names`) |

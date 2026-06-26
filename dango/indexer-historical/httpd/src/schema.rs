@@ -10,14 +10,23 @@ use {
 /// Assemble the read-only schema's shape — no context data, so it can be
 /// introspected in tests without a live database. The query root (and, when a
 /// projection contributes one, the subscription root) are built and merged by
-/// the composition root; this only adds the server-wide conventions (no
-/// mutations; complexity / depth caps land here later).
+/// the composition root; this only adds the server-wide conventions: no
+/// mutations, and initial depth / complexity caps.
+///
+/// The caps are a coarse abuse guard, deliberately generous — the read surface
+/// is shallow (connection → edges → node → `tx` / `outcome` / `data`) and every
+/// list is `LIMIT`-bounded, so legitimate queries and introspection sit well
+/// under them while pathological deep / wide documents are rejected before they
+/// reach the resolvers (and their per-row block hydration). Tune as the schema
+/// grows; per-field complexity weights can refine the breadth cap later.
 fn assemble<Q, S>(query: Q, subscription: S) -> SchemaBuilder<Q, EmptyMutation, S>
 where
     Q: ObjectType + 'static,
     S: SubscriptionType + 'static,
 {
     Schema::build(query, EmptyMutation, subscription)
+        .limit_depth(20)
+        .limit_complexity(1_000)
 }
 
 /// Build the read-only schema from the roots the composition root assembled,
@@ -67,7 +76,7 @@ mod tests {
         let sdl = schema.sdl();
 
         for field in [
-            "transaction",
+            "transactionsByHash",
             "transactionsInvolving",
             "eventsByType",
             "contractEvents",

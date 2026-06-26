@@ -194,7 +194,16 @@ impl Projection for ActivityProjection {
 impl ActivityProjection {
     /// Stage every flattened event of one unit.
     fn push_events(&self, rows: &mut Rows, flat: &[FlatEventInfo], height: i64) -> AnyResult<()> {
-        for info in flat {
+        for (position, info) in flat.iter().enumerate() {
+            // The read path (`Event::data`'s non-priority fallback) re-flattens
+            // the unit and finds an event by its `event_index`; the write path
+            // stores that same `id.event_index`. The numbering is dense `0..n`
+            // matching the flattened Vec position — pin that here so a flatten
+            // change can't silently desync the two sides.
+            debug_assert_eq!(
+                info.id.event_index as usize, position,
+                "flattened event_index must equal its position within the unit"
+            );
             self.push_event(rows, info, height)?;
         }
 

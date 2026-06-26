@@ -26,11 +26,13 @@ pub(crate) const DEFAULT_LIMIT: u64 = 50;
 /// Hard ceiling on `first` — a page never returns more than this many rows.
 pub(crate) const MAX_LIMIT: u64 = 200;
 
-/// The effective page size for a `first` argument, clamped to `[1, MAX_LIMIT]`
-/// (and defaulted when absent or non-positive).
+/// The effective page size for a `first` argument, clamped to `[0, MAX_LIMIT]`.
+/// `first: 0` is honored as an explicit empty page (Relay semantics — the edges
+/// come back empty, `hasNextPage` still reports whether more exist); only an
+/// absent or negative `first` falls back to [`DEFAULT_LIMIT`].
 pub(crate) fn page_limit(first: Option<i32>) -> u64 {
     match first {
-        Some(n) if n > 0 => (n as u64).min(MAX_LIMIT),
+        Some(n) if n >= 0 => (n as u64).min(MAX_LIMIT),
         _ => DEFAULT_LIMIT,
     }
 }

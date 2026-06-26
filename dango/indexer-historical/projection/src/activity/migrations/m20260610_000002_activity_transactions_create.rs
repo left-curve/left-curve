@@ -51,10 +51,11 @@ impl MigrationTrait for Migration {
             )
             .await?;
 
-        // `(sender, block_height, idx)` partial — query 2 (txs where X is the
-        // sender), recency pagination via backward index scan, excludes cron.
-        // `(hash)` partial — hash lookup. Postgres expresses the partials with
-        // raw SQL; other backends get the plain (non-partial) index.
+        // `(sender, block_height, idx)` partial — the sender side of query 1
+        // (txs where X is the sender), recency pagination via backward index
+        // scan, excludes cron. `(hash)` partial — hash lookup. Postgres
+        // expresses the partials with raw SQL; other backends get the plain
+        // (non-partial) index.
         match manager.get_database_backend() {
             DatabaseBackend::Postgres => {
                 let conn = manager.get_connection();
