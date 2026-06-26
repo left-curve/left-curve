@@ -4119,7 +4119,16 @@ dependencies = [
 name = "dango-indexer-historical-cli"
 version = "0.0.0"
 dependencies = [
+ "anyhow",
+ "clap",
+ "dango-config-parser",
  "dango-indexer-historical-app",
+ "dango-primitives",
+ "home",
+ "serde",
+ "tokio",
+ "tracing",
+ "tracing-subscriber",
 ]
 
 [[package]]

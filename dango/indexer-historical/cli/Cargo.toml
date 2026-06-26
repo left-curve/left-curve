@@ -14,4 +14,13 @@ name = "indexer-historical"
 path = "src/main.rs"
 
 [dependencies]
+anyhow                       = { workspace = true }
+clap                         = { workspace = true, features = ["wrap_help"] }
+dango-config-parser          = { workspace = true }
 dango-indexer-historical-app = { workspace = true }
+dango-primitives             = { workspace = true }
+home                         = { workspace = true }
+serde                        = { workspace = true, features = ["derive"] }
+tokio                        = { workspace = true }
+tracing                      = { workspace = true }
+tracing-subscriber           = { workspace = true }
