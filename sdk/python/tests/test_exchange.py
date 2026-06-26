@@ -6,7 +6,7 @@ import pytest
 
 from dango.exchange import Exchange
 from dango.utils.constants import PERPS_CONTRACT_MAINNET, SETTLEMENT_DENOM
-from dango.utils.types import Addr
+from dango.utils.types import Addr, PairId
 from tests._helpers import FakeInfo
 from tests._helpers import exchange as _exchange
 from tests._helpers import wallet as _wallet
@@ -215,3 +215,57 @@ class TestLocalAccountWallet:
         # Confirm we can still drive the pipeline end-to-end.
         ex.deposit_margin(1_000_000)
         assert len(info.broadcasted) == 1
+
+
+class TestExplicitGasLimit:
+    def test_explicit_gas_limit_skips_simulation(self) -> None:
+        """Passing gas_limit bypasses simulate and uses the value verbatim."""
+
+        info = FakeInfo()
+        ex = _exchange(info)
+        ex.deposit_margin(1_000_000, gas_limit=200_000)
+        # No simulate round-trip, and the signed tx carries exactly the supplied
+        # limit — DEFAULT_GAS_OVERHEAD is NOT added on top of a caller value.
+        assert len(info.simulated) == 0
+        assert len(info.broadcasted) == 1
+        assert info.broadcasted[-1]["gas_limit"] == 200_000
+
+    def test_default_still_simulates(self) -> None:
+        """Without gas_limit the pipeline still simulates to discover gas."""
+
+        info = FakeInfo()
+        ex = _exchange(info)
+        ex.deposit_margin(1_000_000)
+        assert len(info.simulated) == 1
+
+    def test_rejects_zero_or_negative_gas_limit(self) -> None:
+        """gas_limit must be strictly positive."""
+
+        info = FakeInfo()
+        ex = _exchange(info)
+        with pytest.raises(ValueError, match="positive"):
+            ex.deposit_margin(1_000_000, gas_limit=0)
+        with pytest.raises(ValueError, match="positive"):
+            ex.deposit_margin(1_000_000, gas_limit=-1)
+
+    def test_rejects_bool_gas_limit(self) -> None:
+        """gas_limit rejects bool (an int subclass) to catch an accidental True/False."""
+
+        info = FakeInfo()
+        ex = _exchange(info)
+        with pytest.raises(TypeError, match="int"):
+            ex.deposit_margin(1_000_000, gas_limit=True)
+
+    def test_propagates_through_submit_limit_order(self) -> None:
+        """The convenience helpers forward gas_limit down through _send_action."""
+
+        info = FakeInfo()
+        ex = _exchange(info)
+        ex.submit_limit_order(
+            PairId("perp/btcusd"),
+            size="0.001",
+            limit_price="50000",
+            gas_limit=123_456,
+        )
+        assert len(info.simulated) == 0
+        assert info.broadcasted[-1]["gas_limit"] == 123_456
