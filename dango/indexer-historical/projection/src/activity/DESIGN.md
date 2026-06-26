@@ -393,9 +393,9 @@ For each `tx_outcome[i]` aligned with `block.txs[i] = (tx, hash)`:
    `timestamp`) — this row is also the **sender side** of query 1, read back
    from `transactions.sender`;
 2. for each flattened event of the tx:
-   - **skip it entirely** if its type is in `event_type_blacklist`;
-   - if its type is a priority type, write its `event_data` row;
-   - extract participants for the `involvement_types` (the chain's
+   - **skip it entirely** if `event_type_filter` rejects its type;
+   - write its `event_data` row if `event_data_filter` allows its type;
+   - extract participants if `involvement_filter` allows its type (the chain's
      `Extractable::extract_addresses`, **minus the blacklist**); write one
      `events` row per participant, each carrying `event_type` / `contract` /
      `contract_event_name`. If there is **no** participant, write a single
@@ -406,25 +406,31 @@ For each `cron_outcome` (same block): the same, with `kind = cron` and
 of query 1 — only to the participation side (which is why cron units reach query
 1 through "involved", and the optional `kind` filter can drop them).
 
-Why two separate scopes — `event_type_blacklist` (drop the event) vs
-`involvement_types` (extract participants): the blacklist removes the
-address-less system *noise* (guest/withhold/authenticate/finalize) that nobody
-queries; `involvement_types` decides, among the **kept** events, which ones fan
-out by participant (the rest get one empty-address row). The contract feeds read
+Why two separate scopes — `event_type_filter` (keep the event at all) vs
+`involvement_filter` (extract participants): the first drops the address-less
+system *noise* (guest/withhold/authenticate/finalize) that nobody queries;
+`involvement_filter` decides, among the **kept** events, which ones fan out by
+participant (the rest get one empty-address row). The contract feeds read
 `events.contract`, a different axis from participation — so blacklisting a
 contract from *participation* never hides its emitted contract events.
 
 ## Configuration
 
+The three event-type filters are each a `WhiteOrBlackList<EventType>` — config
+picks `{ whitelist = [...] }` or `{ blacklist = [...] }`; the table shows the
+default polarity.
+
 | key                    | default                          | effect                                                          |
 |------------------------|----------------------------------|-----------------------------------------------------------------|
-| `event_type_blacklist` | `[guest, withhold, authenticate, finalize, backrun, reply]` | event types dropped entirely (no `events` row, no payload) — the address-less system noise (~81% of the raw stream) |
-| `event_data_types`     | `[transfer, contract_event]`     | event types whose payload is stored in `event_data`; others lazy-load from the raw block |
-| `involvement_types`    | `[transfer, contract_event]`     | among kept events, which fan out by participant (others get one empty-address row) |
-| `involvement_blacklist`| **empty** (filled from deployment config) | addresses excluded from participation at write time — the deployment's system contracts (perps, taxman, oracle, bank, dex, account_factory, gateway, warp, hyperlane.*) |
+| `event_type_filter`    | blacklist `[guest, withhold, authenticate, finalize, backrun, reply]` | which event types are kept (others: no `events` row, no payload) — the default drops the address-less system noise (~81% of the raw stream) |
+| `event_data_filter`    | whitelist `[transfer, contract_event]` | which event types' payload is stored in `event_data`; others lazy-load from the raw block |
+| `involvement_filter`   | whitelist `[transfer, contract_event]` | among kept events, which fan out by participant (others get one empty-address row) |
+| `involvement_blacklist`| **empty**; the CLI fills it from the node's `app_config` | addresses excluded from participation at write time — the deployment's system contracts (perps, taxman, oracle, bank, dex, account_factory, gateway, warp, hyperlane.*) |
 
-Caveat — the default `involvement_blacklist` is **empty** (it is deployment-
-specific, so the CLI populates it from config). This matters because
+Caveat — the default `involvement_blacklist` is **empty**, but the CLI fills it
+at startup by querying the node's `app_config` and extracting every address in
+it (the system contracts) via `Extractable`, merged with any from config. This
+matters because
 `CheckedContractEvent::extract_addresses` inserts the
 **emitting contract** itself as a participant. So until the system-contract
 blacklist is wired, every contract event fans out to the contract *and* the user
@@ -437,8 +443,8 @@ later only stops *new* rows; the already-written contract-as-participant rows
 need a targeted `DELETE` (or a re-backfill).
 
 Maintenance note: all applied at **write time**, so changes are not retroactive.
-*Narrowing* `event_type_blacklist`, adding to `event_data_types`, broadening
-`involvement_types`, or *removing* a `involvement_blacklist` entry requires a
+*Loosening* `event_type_filter`, adding to `event_data_filter`, broadening
+`involvement_filter`, or *removing* a `involvement_blacklist` entry requires a
 re-backfill (drop tables + cursor, bump the projection id, re-run) to populate
 the now-wanted rows; *widening* the blacklist leaves already-written rows until a
 targeted `DELETE`. Prefer settling them before the first full backfill.

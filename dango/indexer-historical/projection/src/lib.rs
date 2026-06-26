@@ -18,10 +18,12 @@ mod activity;
 mod committer;
 mod ctx;
 mod projection;
+mod white_or_black_list;
 
 pub use {
     activity::{ActivityConfig, ActivityProjection, ActivityQuery, EventType},
     committer::Committer,
     ctx::{ChWrite, Ctx},
     projection::Projection,
+    white_or_black_list::WhiteOrBlackList,
 };

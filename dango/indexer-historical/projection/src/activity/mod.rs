@@ -24,7 +24,7 @@ mod migrations;
 #[cfg(feature = "tracing")]
 use tracing::instrument;
 use {
-    crate::{Ctx, Projection},
+    crate::{Ctx, Projection, WhiteOrBlackList},
     async_trait::async_trait,
     dango_indexer_historical_types::{AnyResult, BlockData},
     dango_primitives::{
@@ -54,20 +54,21 @@ const ZSTD_LEVEL: i32 = 3;
 /// Configuration): re-populating already-written rows needs a re-backfill.
 #[derive(Clone, Debug)]
 pub struct ActivityConfig {
-    /// Event types dropped entirely — no `events` row, no payload. The
-    /// address-less system noise (guest/withhold/authenticate/finalize/…) that
-    /// dominates the raw stream and is not user-facing activity.
-    pub event_type_blacklist: HashSet<EventType>,
-    /// Event types whose payload (`zstd(borsh(event))`) is stored in
-    /// `event_data`; others are hydrated from the raw block on demand.
-    pub event_data_types: HashSet<EventType>,
-    /// Event types whose participants are extracted into the `events` rows
-    /// (one row per participant). Other kept types get a single empty-address
-    /// row.
-    pub involvement_types: HashSet<EventType>,
+    /// Which event types are **kept** (indexed at all). An event whose type the
+    /// filter rejects gets no `events` row and no payload. Default: a blacklist
+    /// of the address-less system noise (guest/withhold/authenticate/finalize/…)
+    /// that dominates the raw stream and is not user-facing activity.
+    pub event_type_filter: WhiteOrBlackList<EventType>,
+    /// Which event types have their payload (`zstd(borsh(event))`) stored in
+    /// `event_data`; others are hydrated from the raw block on demand. Default:
+    /// a whitelist of the priority types.
+    pub event_data_filter: WhiteOrBlackList<EventType>,
+    /// Which event types have their participants extracted into the `events`
+    /// rows (one row per participant); other kept types get a single
+    /// empty-address row. Default: a whitelist of the priority types.
+    pub involvement_filter: WhiteOrBlackList<EventType>,
     /// Addresses excluded from participation at write time — the deployment's
-    /// system contracts. Deployment-specific, so empty by default and
-    /// populated from config once the CLI is wired.
+    /// system contracts, merged in by the cli from the node's `app_config`.
     pub involvement_blacklist: HashSet<Addr>,
 }
 
@@ -77,16 +78,16 @@ impl Default for ActivityConfig {
         Self {
             // The pure plumbing: emitted on every call/tx, never carries a
             // meaningful participant. Measured ~81% of the raw mainnet stream.
-            event_type_blacklist: HashSet::from([
+            event_type_filter: WhiteOrBlackList::Blacklist(HashSet::from([
                 EventType::Guest,
                 EventType::Withhold,
                 EventType::Authenticate,
                 EventType::Finalize,
                 EventType::Backrun,
                 EventType::Reply,
-            ]),
-            event_data_types: priority.clone(),
-            involvement_types: priority,
+            ])),
+            event_data_filter: WhiteOrBlackList::Whitelist(priority.clone()),
+            involvement_filter: WhiteOrBlackList::Whitelist(priority),
             involvement_blacklist: HashSet::new(),
         }
     }
@@ -218,7 +219,7 @@ impl ActivityProjection {
         let event = &info.event;
         let event_type = EventType::from(event);
 
-        if self.config.event_type_blacklist.contains(&event_type) {
+        if !self.config.event_type_filter.allows(&event_type) {
             return Ok(());
         }
 
@@ -230,7 +231,7 @@ impl ActivityProjection {
         let contract_event_name = contract_event_name(event);
 
         // Payload into the side-table, only for priority types.
-        if self.config.event_data_types.contains(&event_type) {
+        if self.config.event_data_filter.allows(&event_type) {
             rows.event_data.push(event_data::ActiveModel {
                 block_height: Set(height),
                 category: Set(category),
@@ -243,7 +244,7 @@ impl ActivityProjection {
         // Participants for the configured involvement types, minus the
         // blacklist. An event with no participant still gets one row, keyed by
         // the empty address, so the attribute feeds never lose it.
-        let mut addresses: Vec<Vec<u8>> = if self.config.involvement_types.contains(&event_type) {
+        let mut addresses: Vec<Vec<u8>> = if self.config.involvement_filter.allows(&event_type) {
             let mut set = HashSet::new();
             event.extract_addresses(&mut set);
             set.into_iter()
@@ -413,14 +414,14 @@ mod tests {
     fn default_config_prioritises_signal_and_blacklists_noise() {
         let cfg = ActivityConfig::default();
         for ty in [EventType::Transfer, EventType::ContractEvent] {
-            assert!(cfg.event_data_types.contains(&ty));
-            assert!(cfg.involvement_types.contains(&ty));
-            assert!(!cfg.event_type_blacklist.contains(&ty));
+            assert!(cfg.event_data_filter.allows(&ty));
+            assert!(cfg.involvement_filter.allows(&ty));
+            assert!(cfg.event_type_filter.allows(&ty));
         }
         // The plumbing is dropped; the meaningful types are kept.
-        assert!(cfg.event_type_blacklist.contains(&EventType::Guest));
-        assert!(cfg.event_type_blacklist.contains(&EventType::Withhold));
-        assert!(!cfg.event_type_blacklist.contains(&EventType::Execute));
+        assert!(!cfg.event_type_filter.allows(&EventType::Guest));
+        assert!(!cfg.event_type_filter.allows(&EventType::Withhold));
+        assert!(cfg.event_type_filter.allows(&EventType::Execute));
         assert!(cfg.involvement_blacklist.is_empty());
     }
 
