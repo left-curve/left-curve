@@ -10,6 +10,7 @@
 mod config;
 mod db;
 mod home_directory;
+mod read_api;
 mod source;
 mod start;
 

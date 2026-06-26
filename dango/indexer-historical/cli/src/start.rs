@@ -1,5 +1,5 @@
 use {
-    crate::{config::Config, db, home_directory::HomeDirectory, source},
+    crate::{config::Config, db, home_directory::HomeDirectory, read_api, source},
     clap::Parser,
     dango_config_parser::parse_config,
     dango_indexer_historical_app::{App, PgChCommitter},
@@ -53,7 +53,7 @@ impl StartCmd {
         // Step 3: open Postgres and assemble the shared committer + the
         // compiled-in set of projections (ClickHouse deferred → `None`).
         let db = db::connect(&cfg.postgres).await?;
-        let committer: Arc<dyn Committer> = Arc::new(PgChCommitter::new(db, None));
+        let committer: Arc<dyn Committer> = Arc::new(PgChCommitter::new(db.clone(), None));
         let projections: Vec<Arc<dyn Projection>> =
             vec![Arc::new(ActivityProjection::new(ActivityConfig::default()))];
         tracing::info!(
@@ -61,10 +61,14 @@ impl StartCmd {
             "committer and projections ready"
         );
 
-        // The read API (httpd) is wired next; until then run ingest-only
-        // (`httpd = None`). `App::run` migrates, then supervises the source and
-        // one loop per projection until a task ends.
-        let app = App::new(block_source, committer, projections, None);
+        // Step 4-5: the GraphQL read API over the shared pool + block source —
+        // `None` when disabled, which runs the indexer ingest-only.
+        let httpd = read_api::task(&cfg.httpd, db, block_source.clone());
+        tracing::info!(read_api = httpd.is_some(), "read API task assembled");
+
+        // Step 6: supervise the source, one loop per projection, and (when
+        // enabled) the read API, until a task ends. `App::run` migrates first.
+        let app = App::new(block_source, committer, projections, httpd);
         app.run().await
     }
 }

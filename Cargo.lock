@@ -4120,13 +4120,16 @@ name = "dango-indexer-historical-cli"
 version = "0.0.0"
 dependencies = [
  "anyhow",
+ "async-graphql",
  "clap",
  "dango-config-parser",
  "dango-indexer-cache",
  "dango-indexer-historical-app",
  "dango-indexer-historical-block-source",
+ "dango-indexer-historical-httpd",
  "dango-indexer-historical-projection",
  "dango-primitives",
+ "futures",
  "home",
  "sea-orm",
  "serde",

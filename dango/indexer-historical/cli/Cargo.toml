@@ -15,13 +15,16 @@ path = "src/main.rs"
 
 [dependencies]
 anyhow                                = { workspace = true }
+async-graphql                         = { workspace = true }
 clap                                  = { workspace = true, features = ["wrap_help"] }
 dango-config-parser                   = { workspace = true }
 dango-indexer-cache                   = { workspace = true, features = ["metrics", "tracing"] }
 dango-indexer-historical-app          = { workspace = true, features = ["metrics", "tracing"] }
-dango-indexer-historical-block-source = { workspace = true, features = ["metrics", "tracing"] }
+dango-indexer-historical-block-source = { workspace = true, features = ["async-graphql", "metrics", "tracing"] }
+dango-indexer-historical-httpd        = { workspace = true, features = ["metrics", "tracing"] }
 dango-indexer-historical-projection   = { workspace = true, features = ["metrics", "tracing"] }
 dango-primitives                      = { workspace = true }
+futures                               = { workspace = true }
 home                                  = { workspace = true }
 sea-orm                               = { workspace = true }
 serde                                 = { workspace = true, features = ["derive"] }
