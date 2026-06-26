@@ -182,10 +182,11 @@ impl Projection for ActivityProjection {
 
         #[cfg(feature = "metrics")]
         {
-            metrics::counter!("indexer_historical_activity_transactions_total")
+            metrics::counter!(crate::metrics::ACTIVITY_TRANSACTIONS)
                 .increment(rows.transactions.len() as u64);
-            metrics::counter!("indexer_historical_activity_events_total")
-                .increment(rows.events.len() as u64);
+            metrics::counter!(crate::metrics::ACTIVITY_EVENTS).increment(rows.events.len() as u64);
+            metrics::counter!(crate::metrics::ACTIVITY_EVENT_DATA)
+                .increment(rows.event_data.len() as u64);
         }
 
         rows.write(ctx).await

@@ -1,3 +1,5 @@
+#[cfg(feature = "tracing")]
+use tracing::instrument;
 use {
     anyhow::bail,
     dango_indexer_historical_block_source::{BlockSource, GENESIS_HEIGHT},
@@ -10,6 +12,10 @@ use {
 /// Drive a single projection: pull catch-up while behind the source's
 /// frontier, then live-tail via the broadcast receiver. Transitions between
 /// the two phases happen transparently — see `DESIGN.md` for the rationale.
+///
+/// The whole task runs in a `projection{id}` span, so every event it (and the
+/// code it calls) emits is attributable to this projection.
+#[cfg_attr(feature = "tracing", instrument(skip_all, name = "projection", fields(id = p.id())))]
 pub async fn projection_loop(
     p: Arc<dyn Projection>,
     source: Arc<dyn BlockSource>,
@@ -62,6 +68,9 @@ pub async fn projection_loop(
                     // Broadcast buffer overflowed — we missed N blocks. Drop
                     // back to Phase 1 to recover via `get()` instead of
                     // racing the broadcast again.
+                    #[cfg(feature = "metrics")]
+                    metrics::counter!(crate::metrics::PROJECTION_LAGGED, "projection" => p.id())
+                        .increment(1);
                     #[cfg(feature = "tracing")]
                     tracing::warn!(
                         projection = p.id(),
@@ -94,6 +103,22 @@ async fn process_one(
     block: &BlockData,
 ) -> AnyResult<()> {
     let mut ctx = committer.begin(p.id()).await?;
-    p.process(&mut ctx, block).await?;
-    committer.commit(ctx, p.id(), block.height()).await
+
+    // Time staging and committing separately (both incl. their error paths), so
+    // a slow projection is told apart from a slow database.
+    #[cfg(feature = "metrics")]
+    let process_start = std::time::Instant::now();
+    let process_result = p.process(&mut ctx, block).await;
+    #[cfg(feature = "metrics")]
+    metrics::histogram!(crate::metrics::PROJECTION_PROCESS_DURATION, "projection" => p.id())
+        .record(process_start.elapsed().as_secs_f64());
+    process_result?;
+
+    #[cfg(feature = "metrics")]
+    let commit_start = std::time::Instant::now();
+    let commit_result = committer.commit(ctx, p.id(), block.height()).await;
+    #[cfg(feature = "metrics")]
+    metrics::histogram!(crate::metrics::PROJECTION_COMMIT_DURATION, "projection" => p.id())
+        .record(commit_start.elapsed().as_secs_f64());
+    commit_result
 }

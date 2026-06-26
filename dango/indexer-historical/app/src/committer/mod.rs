@@ -143,6 +143,16 @@ impl Committer for PgChCommitter {
 
         pg_txn.commit().await?;
 
+        // The committer is the one place that sees every projection's cursor —
+        // export the per-projection sync anchor (height + blocks) from here.
+        #[cfg(feature = "metrics")]
+        {
+            metrics::gauge!(crate::metrics::PROJECTION_HEIGHT, "projection" => projection_id.to_string())
+                .set(height as f64);
+            metrics::counter!(crate::metrics::PROJECTION_BLOCKS, "projection" => projection_id.to_string())
+                .increment(1);
+        }
+
         #[cfg(feature = "tracing")]
         tracing::debug!(projection = projection_id, height, "unit of work committed");
 

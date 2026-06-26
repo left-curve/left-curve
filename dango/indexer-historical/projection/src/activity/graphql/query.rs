@@ -34,7 +34,10 @@ use {
         pagination::{Binder, EventCursor, UnitCursor, decode_after, page_limit, paginate},
         types::{Address, AddressRole, Event, EventRow, Hash, Transaction, UnitKind},
     },
-    crate::activity::{entity::transactions, event_type::EventType},
+    crate::{
+        activity::{entity::transactions, event_type::EventType},
+        metrics::timed_query,
+    },
     async_graphql::{
         Context, Object, Result,
         connection::{Connection, OpaqueCursor},
@@ -75,12 +78,15 @@ impl ActivityQuery {
         hash: Hash,
     ) -> Result<Vec<Transaction>> {
         let db = ctx.data::<DatabaseConnection>()?;
-        let rows = transactions::Entity::find()
-            .filter(transactions::Column::Hash.eq(hash.bytes()))
-            .order_by_desc(transactions::Column::BlockHeight)
-            .order_by_desc(transactions::Column::Idx)
-            .all(db)
-            .await?;
+        let rows = timed_query(
+            "transactions_by_hash",
+            transactions::Entity::find()
+                .filter(transactions::Column::Hash.eq(hash.bytes()))
+                .order_by_desc(transactions::Column::BlockHeight)
+                .order_by_desc(transactions::Column::Idx)
+                .all(db),
+        )
+        .await?;
         rows.into_iter().map(Transaction::try_from).collect()
     }
 
@@ -185,10 +191,11 @@ impl ActivityQuery {
             );
             let stmt =
                 Statement::from_sql_and_values(DbBackend::Postgres, sql, binder.into_values());
-            transactions::Entity::find()
-                .from_raw_sql(stmt)
-                .all(db)
-                .await?
+            timed_query(
+                "transactions_involving",
+                transactions::Entity::find().from_raw_sql(stmt).all(db),
+            )
+            .await?
         };
 
         paginate(
@@ -227,6 +234,7 @@ impl ActivityQuery {
         );
         run_event_feed(
             db,
+            "events_by_type",
             sql,
             binder,
             limit,
@@ -262,6 +270,7 @@ impl ActivityQuery {
         );
         run_event_feed(
             db,
+            "contract_events",
             sql,
             binder,
             limit,
@@ -299,6 +308,7 @@ impl ActivityQuery {
         );
         run_event_feed(
             db,
+            "events_involving",
             sql,
             binder,
             limit,
@@ -336,6 +346,7 @@ impl ActivityQuery {
         );
         run_event_feed(
             db,
+            "contract_events_involving",
             sql,
             binder,
             limit,
@@ -399,6 +410,7 @@ fn wants_event_data(ctx: &Context<'_>) -> bool {
 /// one cursor / node mapping.
 async fn run_event_feed(
     db: &DatabaseConnection,
+    query: &'static str,
     sql: String,
     binder: Binder,
     limit: u64,
@@ -410,7 +422,7 @@ async fn run_event_feed(
         with_event_data(&sql, wants_data),
         binder.into_values(),
     );
-    let rows = EventRow::find_by_statement(stmt).all(db).await?;
+    let rows = timed_query(query, EventRow::find_by_statement(stmt).all(db)).await?;
     paginate(
         rows,
         limit,

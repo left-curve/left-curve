@@ -7,6 +7,10 @@
 
 mod app;
 mod committer;
+mod metrics;
 mod projection_loop;
 
-pub use {app::App, committer::PgChCommitter, projection_loop::projection_loop};
+pub use {
+    crate::metrics::init_metrics, app::App, committer::PgChCommitter,
+    projection_loop::projection_loop,
+};

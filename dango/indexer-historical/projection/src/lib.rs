@@ -17,10 +17,12 @@
 mod activity;
 mod committer;
 mod ctx;
+mod metrics;
 mod projection;
 mod white_or_black_list;
 
 pub use {
+    crate::metrics::init_metrics,
     activity::{ActivityConfig, ActivityProjection, ActivityQuery, EventType},
     committer::Committer,
     ctx::{ChWrite, Ctx},

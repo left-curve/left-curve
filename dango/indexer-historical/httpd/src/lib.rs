@@ -18,7 +18,8 @@
 //! [`App`]: dango_indexer_historical_app::App
 
 mod config;
+mod metrics;
 mod schema;
 mod server;
 
-pub use {config::HttpdConfig, schema::build_schema, server::serve};
+pub use {crate::metrics::init_metrics, config::HttpdConfig, schema::build_schema, server::serve};

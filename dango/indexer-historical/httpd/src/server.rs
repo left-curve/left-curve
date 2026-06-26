@@ -93,7 +93,25 @@ where
     M: ObjectType + 'static,
     S: SubscriptionType + 'static,
 {
-    schema.execute(req.into_inner()).await.into()
+    // End-to-end request stats: in-flight gauge bracketing the execution, plus a
+    // count and a latency histogram. async-graphql folds resolver errors into the
+    // response (no panic), so the decrement always runs.
+    #[cfg(feature = "metrics")]
+    let start = std::time::Instant::now();
+    #[cfg(feature = "metrics")]
+    metrics::gauge!(crate::metrics::GRAPHQL_IN_FLIGHT).increment(1.0);
+
+    let response = schema.execute(req.into_inner()).await;
+
+    #[cfg(feature = "metrics")]
+    {
+        metrics::gauge!(crate::metrics::GRAPHQL_IN_FLIGHT).decrement(1.0);
+        metrics::counter!(crate::metrics::GRAPHQL_REQUESTS).increment(1);
+        metrics::histogram!(crate::metrics::GRAPHQL_REQUEST_DURATION)
+            .record(start.elapsed().as_secs_f64());
+    }
+
+    response.into()
 }
 
 /// Serve the in-browser GraphQL playground, pointed at `/graphql`.
