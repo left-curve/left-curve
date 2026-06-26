@@ -8,6 +8,7 @@
 //! the OTLP / Sentry stack `dango-cli` wires can be layered on here later.
 
 mod config;
+mod db;
 mod home_directory;
 mod source;
 mod start;

@@ -32,9 +32,6 @@ pub struct Config {
 pub struct PostgresConfig {
     /// libpq URL, e.g. `postgres://user@host/db`. Secret — prefer injecting it
     /// via `POSTGRES__URL` rather than committing it.
-    // Consumed by the committer once `start` builds it (next wiring step);
-    // parse-only until then.
-    #[allow(dead_code)]
     pub url: String,
     /// Connection-pool size. Default 10.
     #[serde(default = "default_max_connections")]

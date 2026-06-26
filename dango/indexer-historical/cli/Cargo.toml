@@ -20,8 +20,10 @@ dango-config-parser                   = { workspace = true }
 dango-indexer-cache                   = { workspace = true, features = ["metrics", "tracing"] }
 dango-indexer-historical-app          = { workspace = true, features = ["metrics", "tracing"] }
 dango-indexer-historical-block-source = { workspace = true, features = ["metrics", "tracing"] }
+dango-indexer-historical-projection   = { workspace = true, features = ["metrics", "tracing"] }
 dango-primitives                      = { workspace = true }
 home                                  = { workspace = true }
+sea-orm                               = { workspace = true }
 serde                                 = { workspace = true, features = ["derive"] }
 tokio                                 = { workspace = true }
 tracing                               = { workspace = true }

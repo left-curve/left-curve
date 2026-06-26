@@ -1,7 +1,12 @@
 use {
-    crate::{config::Config, home_directory::HomeDirectory, source},
+    crate::{config::Config, db, home_directory::HomeDirectory, source},
     clap::Parser,
     dango_config_parser::parse_config,
+    dango_indexer_historical_app::{App, PgChCommitter},
+    dango_indexer_historical_projection::{
+        ActivityConfig, ActivityProjection, Committer, Projection,
+    },
+    std::sync::Arc,
 };
 
 /// `start` — boot the historical indexer.
@@ -45,8 +50,21 @@ impl StartCmd {
         let frontier = block_source.contiguous_frontier().await?;
         tracing::info!(?frontier, "block source built");
 
-        // TODO: wire the composition root (steps 3–6: committer, projections,
-        // schema, app) and replace this with `app.run().await`.
-        anyhow::bail!("`start` is not wired beyond the block source yet");
+        // Step 3: open Postgres and assemble the shared committer + the
+        // compiled-in set of projections (ClickHouse deferred → `None`).
+        let db = db::connect(&cfg.postgres).await?;
+        let committer: Arc<dyn Committer> = Arc::new(PgChCommitter::new(db, None));
+        let projections: Vec<Arc<dyn Projection>> =
+            vec![Arc::new(ActivityProjection::new(ActivityConfig::default()))];
+        tracing::info!(
+            projections = projections.len(),
+            "committer and projections ready"
+        );
+
+        // The read API (httpd) is wired next; until then run ingest-only
+        // (`httpd = None`). `App::run` migrates, then supervises the source and
+        // one loop per projection until a task ends.
+        let app = App::new(block_source, committer, projections, None);
+        app.run().await
     }
 }
