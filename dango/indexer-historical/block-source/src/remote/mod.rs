@@ -9,6 +9,8 @@ pub use {
     store::{BlockStore, GENESIS_HEIGHT, MemoryBlockStore, RocksdbBlockStore},
 };
 
+#[cfg(feature = "tracing")]
+use tracing::instrument;
 use {
     crate::{BlockSource, httpd_client::HttpdClient},
     anyhow::{anyhow, bail},
@@ -56,6 +58,10 @@ pub struct RemoteBlockSourceConfig {
     /// gap. Keeps a misbehaving fetcher from spinning the healer in a tight
     /// loop, while keeping the failure non-fatal to the source.
     pub heal_retry_backoff: Duration,
+    /// How often the metric sampler refreshes the periodic gauges (broadcast
+    /// fullness, frontier, RocksDB engine statistics). Mirrors the dango node's
+    /// 5 s statistics cadence. Only consulted when the `metrics` feature is on.
+    pub metrics_sample_interval: Duration,
 }
 
 impl Default for RemoteBlockSourceConfig {
@@ -67,6 +73,7 @@ impl Default for RemoteBlockSourceConfig {
             reorder_grace: Duration::from_millis(250),
             reconnect_backoff: Duration::from_secs(5),
             heal_retry_backoff: Duration::from_secs(1),
+            metrics_sample_interval: Duration::from_secs(5),
         }
     }
 }
@@ -133,11 +140,22 @@ impl RemoteBlockSource {
     /// store error is intentionally **fatal** — the store is the durability
     /// anchor, so on a write failure the source halts (the process restarts and
     /// resumes from the store) rather than limping on.
+    #[cfg_attr(
+        feature = "tracing",
+        instrument(skip_all, name = "bsource.coordinator")
+    )]
     async fn run_coordinator(
         self: Arc<Self>,
         mut coordinator_rx: mpsc::Receiver<BlockData>,
     ) -> AnyResult<()> {
         while let Some(block) = coordinator_rx.recv().await {
+            // Backlog the store writer is draining — the coordinator is the one
+            // bounded sink behind both writers, so its depth is the backpressure
+            // signal.
+            #[cfg(feature = "metrics")]
+            metrics::gauge!(crate::metrics::CHANNEL_DEPTH, "channel" => "coordinator")
+                .set(coordinator_rx.len() as f64);
+
             let height = block.height();
 
             let Some(frontier) = self.store.put(height, &block).await? else {
@@ -158,6 +176,12 @@ impl RemoteBlockSource {
                     .ok_or_else(|| anyhow!("frontier {frontier} missing from store"))?
             };
             self.broadcast_tx.send(Arc::new(top)).ok();
+
+            #[cfg(feature = "metrics")]
+            {
+                metrics::gauge!(crate::metrics::FRONTIER).set(frontier as f64);
+                metrics::counter!(crate::metrics::BROADCAST_SENT).increment(1);
+            }
         }
 
         Ok(())
@@ -173,6 +197,7 @@ impl RemoteBlockSource {
     /// of truth**: each pass re-reads its lowest gap, so a transient miss heals
     /// on the next pass and a reordered-but-present block is never mistaken for
     /// a hole.
+    #[cfg_attr(feature = "tracing", instrument(skip_all, name = "bsource.healer"))]
     async fn run_healer(self: Arc<Self>, coordinator_tx: mpsc::Sender<BlockData>) -> AnyResult<()> {
         loop {
             // Coordinator gone ⇒ the source is tearing down; stop before doing
@@ -183,6 +208,14 @@ impl RemoteBlockSource {
 
             match self.store.lowest_gap().await? {
                 Some((from, to)) => {
+                    // Expose the gap we're filling, so a frozen frontier is
+                    // visibly stuck on a specific range.
+                    #[cfg(feature = "metrics")]
+                    {
+                        metrics::gauge!(crate::metrics::HEALING).set(1.0);
+                        metrics::gauge!(crate::metrics::GAP_LOW).set(from as f64);
+                        metrics::gauge!(crate::metrics::GAP_HIGH).set(to as f64);
+                    }
                     #[cfg(feature = "tracing")]
                     tracing::info!(from, to, "healer backfilling gap");
                     // A fetcher that violates the contiguity contract (wrong
@@ -194,6 +227,8 @@ impl RemoteBlockSource {
                     // store-write errors remain fatal (they surface from the
                     // coordinator, not here).
                     if let Err(_err) = self.backfill_gap(from, to, &coordinator_tx).await {
+                        #[cfg(feature = "metrics")]
+                        metrics::counter!(crate::metrics::BACKFILL_FAILURES).increment(1);
                         #[cfg(feature = "tracing")]
                         tracing::warn!(
                             from,
@@ -205,11 +240,19 @@ impl RemoteBlockSource {
                     }
                 },
                 None => {
-                    // Gap-free. Sleep until a discontinuity signal, with a
-                    // periodic re-check as the safety net for a silently-dropped
-                    // block that raised no signal. After a signal, a short grace
-                    // lets an out-of-order live delivery land before we re-check,
-                    // so a transient reorder does not trigger a redundant fetch.
+                    // Gap-free: clear the gap gauges so the dashboard reads
+                    // "caught up" rather than the last filled range.
+                    #[cfg(feature = "metrics")]
+                    {
+                        metrics::gauge!(crate::metrics::HEALING).set(0.0);
+                        metrics::gauge!(crate::metrics::GAP_LOW).set(0.0);
+                        metrics::gauge!(crate::metrics::GAP_HIGH).set(0.0);
+                    }
+                    // Sleep until a discontinuity signal, with a periodic
+                    // re-check as the safety net for a silently-dropped block
+                    // that raised no signal. After a signal, a short grace lets
+                    // an out-of-order live delivery land before we re-check, so a
+                    // transient reorder does not trigger a redundant fetch.
                     tokio::select! {
                         _ = self.heal_notify.notified() => {
                             sleep(self.config.reorder_grace).await;
@@ -225,6 +268,10 @@ impl RemoteBlockSource {
     /// the stream delivers exactly that contiguous range before forwarding each
     /// block to the coordinator. The fetcher is best-effort; this is where the
     /// source enforces correctness (see the [`BlockFetcher`] contract).
+    #[cfg_attr(
+        feature = "tracing",
+        instrument(skip_all, name = "bsource.backfill", fields(from, to))
+    )]
     async fn backfill_gap(
         &self,
         from: u64,
@@ -235,6 +282,15 @@ impl RemoteBlockSource {
         let mut expected_height = from;
 
         while let Some(block) = stream.recv().await {
+            // The fetch-ahead backlog: a high/growing depth means the store
+            // writer (not the fetcher) is the backfill bottleneck.
+            #[cfg(feature = "metrics")]
+            {
+                metrics::gauge!(crate::metrics::CHANNEL_DEPTH, "channel" => "fetcher")
+                    .set(stream.queue_len() as f64);
+                metrics::counter!(crate::metrics::FETCHER_BLOCKS).increment(1);
+            }
+
             let height = block.height();
             if height != expected_height {
                 bail!(
@@ -264,7 +320,14 @@ impl RemoteBlockSource {
     /// downtime hole below it is repaired by the healer like any other gap —
     /// which is why a dropped stream no longer takes the source down. Runs for
     /// the source's lifetime; returns only when the coordinator is gone.
+    #[cfg_attr(feature = "tracing", instrument(skip_all, name = "bsource.live"))]
     async fn drain_live(self: Arc<Self>, coordinator_tx: mpsc::Sender<BlockData>) -> AnyResult<()> {
+        // Highest height ever delivered on the live feed — the observed chain
+        // tip. Held across reconnects (which resume at `frontier + 1`, below the
+        // tip), so the gauge tracks the real tip rather than the replay position.
+        #[cfg(feature = "metrics")]
+        let mut live_tip = 0u64;
+
         loop {
             if coordinator_tx.is_closed() {
                 return Ok(()); // coordinator gone — source shutting down
@@ -281,6 +344,9 @@ impl RemoteBlockSource {
             let mut live_blocks = match self.httpd_client.subscribe_full_blocks(since).await {
                 Ok(stream) => stream,
                 Err(_error) => {
+                    #[cfg(feature = "metrics")]
+                    metrics::counter!(crate::metrics::RECONNECTS, "reason" => "subscribe_failed")
+                        .increment(1);
                     #[cfg(feature = "tracing")]
                     tracing::warn!(error = %_error, "live subscribe failed; retrying");
                     sleep(self.config.reconnect_backoff).await;
@@ -303,6 +369,13 @@ impl RemoteBlockSource {
                     Some(Ok(block)) => {
                         let height = block.height();
 
+                        #[cfg(feature = "metrics")]
+                        {
+                            live_tip = live_tip.max(height);
+                            metrics::gauge!(crate::metrics::LIVE_HEIGHT).set(live_tip as f64);
+                            metrics::counter!(crate::metrics::LIVE_BLOCKS).increment(1);
+                        }
+
                         match prev {
                             // First block of this subscription: just the baseline.
                             None => prev = Some(height),
@@ -311,6 +384,8 @@ impl RemoteBlockSource {
                             // in `run_healer` absorbs a transient reorder.
                             Some(p) => {
                                 if height > p + 1 {
+                                    #[cfg(feature = "metrics")]
+                                    metrics::counter!(crate::metrics::DISCONTINUITIES).increment(1);
                                     self.heal_notify.notify_one();
                                 }
                                 prev = Some(height.max(p));
@@ -322,11 +397,17 @@ impl RemoteBlockSource {
                         }
                     },
                     Some(Err(_error)) => {
+                        #[cfg(feature = "metrics")]
+                        metrics::counter!(crate::metrics::RECONNECTS, "reason" => "stream_error")
+                            .increment(1);
                         #[cfg(feature = "tracing")]
                         tracing::warn!(error = %_error, "live stream error; reconnecting");
                         break;
                     },
                     None => {
+                        #[cfg(feature = "metrics")]
+                        metrics::counter!(crate::metrics::RECONNECTS, "reason" => "stream_ended")
+                            .increment(1);
                         #[cfg(feature = "tracing")]
                         tracing::warn!("live stream ended; reconnecting");
                         break;
@@ -335,6 +416,40 @@ impl RemoteBlockSource {
             }
 
             sleep(self.config.reconnect_backoff).await;
+        }
+    }
+
+    /// Refresh the periodic gauges every `metrics_sample_interval`: broadcast
+    /// fullness, the contiguous frontier, and the store's engine statistics
+    /// (RocksDB). The event-driven signals in the other tasks update on activity;
+    /// this keeps the "how full / how big" gauges live while the source is idle.
+    #[cfg(feature = "metrics")]
+    #[cfg_attr(feature = "tracing", instrument(skip_all, name = "bsource.sampler"))]
+    async fn run_metrics_sampler(self: Arc<Self>) -> AnyResult<()> {
+        // Constant buffer caps — emit once so a dashboard can plot depth / cap.
+        metrics::gauge!(crate::metrics::CHANNEL_CAPACITY, "channel" => "broadcast")
+            .set(self.config.pubsub_buffer_size as f64);
+        metrics::gauge!(crate::metrics::CHANNEL_CAPACITY, "channel" => "coordinator")
+            .set(self.config.coordinator_buffer as f64);
+
+        loop {
+            tokio::time::sleep(self.config.metrics_sample_interval).await;
+
+            // Broadcast fan-out: queued backlog (≈ the slowest projection's lag)
+            // and the live subscriber count.
+            metrics::gauge!(crate::metrics::CHANNEL_DEPTH, "channel" => "broadcast")
+                .set(self.broadcast_tx.len() as f64);
+            metrics::gauge!(crate::metrics::CHANNEL_RECEIVERS, "channel" => "broadcast")
+                .set(self.broadcast_tx.receiver_count() as f64);
+
+            // Frontier — refreshed here too so it is present before the first
+            // advance and stays live while idle.
+            if let Ok(Some(frontier)) = self.store.contiguous_frontier().await {
+                metrics::gauge!(crate::metrics::FRONTIER).set(frontier as f64);
+            }
+
+            // Store engine internals (RocksDB property gauges; no-op otherwise).
+            self.store.sample_metrics();
         }
     }
 }
@@ -350,14 +465,24 @@ impl BlockSource for RemoteBlockSource {
         // and the healer's backfill.
         let (coordinator_tx, coordinator_rx) = mpsc::channel(self.config.coordinator_buffer);
 
-        let coordinator = tokio::spawn(self.clone().run_coordinator(coordinator_rx));
-        let drain = tokio::spawn(self.clone().drain_live(coordinator_tx.clone()));
-        let healer = tokio::spawn(self.clone().run_healer(coordinator_tx));
+        // `mut` only when the metrics sampler is pushed below.
+        #[cfg_attr(not(feature = "metrics"), allow(unused_mut))]
+        let mut tasks = vec![
+            tokio::spawn(self.clone().run_coordinator(coordinator_rx)),
+            tokio::spawn(self.clone().drain_live(coordinator_tx.clone())),
+            tokio::spawn(self.clone().run_healer(coordinator_tx)),
+        ];
 
-        // All three run for the source's lifetime. Whichever returns first (a
+        // The metric sampler refreshes the periodic gauges. It loops forever, so
+        // it never wins the `select_all` race — it is simply aborted with the
+        // rest when another task ends. Compiled in only with the metrics feature.
+        #[cfg(feature = "metrics")]
+        tasks.push(tokio::spawn(self.clone().run_metrics_sampler()));
+
+        // All tasks run for the source's lifetime. Whichever returns first (a
         // clean end or an error) tears the others down — no detached task
         // outlives `run`.
-        let (result, _index, remaining) = select_all([coordinator, drain, healer]).await;
+        let (result, _index, remaining) = select_all(tasks).await;
         for handle in remaining {
             handle.abort();
         }

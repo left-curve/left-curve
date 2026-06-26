@@ -34,8 +34,17 @@ impl BlockQuery {
     /// its backfill floor, or not yet ingested). Returned as the canonical
     /// `JSON` payload, since `BlockData` has no GraphQL object type of its own.
     async fn block(&self, ctx: &Context<'_>, height: u64) -> Result<Option<Json<BlockData>>> {
+        #[cfg(feature = "metrics")]
+        let start = std::time::Instant::now();
+
         let source = ctx.data::<Arc<dyn BlockSource>>()?;
-        Ok(source.get(height).await?.map(Json))
+        let block = source.get(height).await?.map(Json);
+
+        #[cfg(feature = "metrics")]
+        metrics::histogram!(crate::metrics::QUERY_DURATION, "query" => "block")
+            .record(start.elapsed().as_secs_f64());
+
+        Ok(block)
     }
 }
 

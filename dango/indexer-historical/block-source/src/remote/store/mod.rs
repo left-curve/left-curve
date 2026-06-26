@@ -56,4 +56,11 @@ pub trait BlockStore: Send + Sync {
     /// capped at the highest stored height), or `None` if the stored prefix is
     /// gap-free. Drives the healer, lowest-first; O(1) on the topology.
     async fn lowest_gap(&self) -> AnyResult<Option<(u64, u64)>>;
+
+    /// Emit store-internal gauges (engine statistics), called periodically by the
+    /// source's metric sampler. The default is a no-op — only the persistent
+    /// [`RocksdbBlockStore`] has internals worth polling (memtable / SST / blob
+    /// sizes, compaction backlog, write stalls), mirroring the dango node's
+    /// RocksDB statistics. Synchronous and cheap (in-memory property reads).
+    fn sample_metrics(&self) {}
 }

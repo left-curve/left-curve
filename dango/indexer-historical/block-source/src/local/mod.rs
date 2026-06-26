@@ -1,3 +1,5 @@
+#[cfg(feature = "tracing")]
+use tracing::instrument;
 use {
     crate::{BlockSource, httpd_client::HttpdClient},
     async_trait::async_trait,
@@ -57,6 +59,7 @@ impl LocalBlockSource {
 
 #[async_trait]
 impl BlockSource for LocalBlockSource {
+    #[cfg_attr(feature = "tracing", instrument(skip_all, name = "bsource.local"))]
     async fn run(self: Arc<Self>) -> AnyResult<()> {
         #[cfg(feature = "tracing")]
         tracing::info!("LocalBlockSource starting");
@@ -75,6 +78,9 @@ impl BlockSource for LocalBlockSource {
             let mut stream = match self.httpd_client.subscribe_full_blocks(since).await {
                 Ok(s) => s,
                 Err(_e) => {
+                    #[cfg(feature = "metrics")]
+                    metrics::counter!(crate::metrics::RECONNECTS, "reason" => "subscribe_failed")
+                        .increment(1);
                     #[cfg(feature = "tracing")]
                     tracing::warn!(
                         error = %_e,
@@ -104,6 +110,12 @@ impl BlockSource for LocalBlockSource {
                             continue;
                         }
                         if current != 0 && height > current + 1 {
+                            #[cfg(feature = "metrics")]
+                            {
+                                metrics::counter!(crate::metrics::DISCONTINUITIES).increment(1);
+                                metrics::counter!(crate::metrics::RECONNECTS, "reason" => "gap")
+                                    .increment(1);
+                            }
                             #[cfg(feature = "tracing")]
                             tracing::warn!(current, height, "gap in full_block feed; reconnecting");
                             break;
@@ -111,13 +123,36 @@ impl BlockSource for LocalBlockSource {
 
                         self.frontier.store(height, Ordering::Release);
                         let _ = self.broadcast_tx.send(Arc::new(block));
+
+                        // Local is a contiguous passthrough: the frontier is the
+                        // live tip. Refresh both, count the block, and surface the
+                        // broadcast fan-out's backlog / subscriber count.
+                        #[cfg(feature = "metrics")]
+                        {
+                            metrics::gauge!(crate::metrics::FRONTIER).set(height as f64);
+                            metrics::gauge!(crate::metrics::LIVE_HEIGHT).set(height as f64);
+                            metrics::counter!(crate::metrics::LIVE_BLOCKS).increment(1);
+                            metrics::gauge!(crate::metrics::CHANNEL_DEPTH, "channel" => "broadcast")
+                                .set(self.broadcast_tx.len() as f64);
+                            metrics::gauge!(
+                                crate::metrics::CHANNEL_RECEIVERS,
+                                "channel" => "broadcast"
+                            )
+                            .set(self.broadcast_tx.receiver_count() as f64);
+                        }
                     },
                     Some(Err(_e)) => {
+                        #[cfg(feature = "metrics")]
+                        metrics::counter!(crate::metrics::RECONNECTS, "reason" => "stream_error")
+                            .increment(1);
                         #[cfg(feature = "tracing")]
                         tracing::warn!(error = %_e, "subscription error, reconnecting");
                         break;
                     },
                     None => {
+                        #[cfg(feature = "metrics")]
+                        metrics::counter!(crate::metrics::RECONNECTS, "reason" => "stream_ended")
+                            .increment(1);
                         #[cfg(feature = "tracing")]
                         tracing::warn!("subscription stream ended, reconnecting");
                         break;

@@ -63,6 +63,8 @@ impl Loader<u64> for BlockLoader {
                 },
                 Ok(None) => { /* missing — absent from the map, resolves to None */ },
                 Err(_err) => {
+                    #[cfg(feature = "metrics")]
+                    metrics::counter!(crate::metrics::LOADER_FAILURES).increment(1);
                     #[cfg(feature = "tracing")]
                     tracing::warn!(
                         height,

@@ -11,6 +11,7 @@ mod httpd_client;
 #[cfg(feature = "async-graphql")]
 mod loader;
 mod local;
+mod metrics;
 #[cfg(feature = "async-graphql")]
 mod query;
 mod remote;
@@ -21,6 +22,7 @@ pub use loader::BlockLoader;
 #[cfg(feature = "async-graphql")]
 pub use query::BlockQuery;
 pub use {
+    crate::metrics::init_metrics,
     httpd_client::HttpdClient,
     local::LocalBlockSource,
     remote::{

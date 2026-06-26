@@ -143,6 +143,12 @@ impl BlockStore for RocksdbBlockStore {
         // across a crash. The RocksDB write runs on the blocking pool so it does
         // not stall an async worker; the block encode stays here because the
         // coordinator is the only writer, so at most one encode is in flight.
+        //
+        // Time the whole persist (encode + handoff + write) — the cost the
+        // coordinator pays per block — and count it once durable.
+        #[cfg(feature = "metrics")]
+        let put_start = std::time::Instant::now();
+
         let db = self.db.clone();
         let block_bytes = borsh::to_vec(data)?;
         let topology_bytes = borsh::to_vec(&next.to_ranges())?;
@@ -157,6 +163,14 @@ impl BlockStore for RocksdbBlockStore {
 
         // The block is now durable; commit the advanced topology to RAM.
         *self.ranges.lock().unwrap() = next;
+
+        #[cfg(feature = "metrics")]
+        {
+            metrics::histogram!(crate::metrics::STORE_PUT_DURATION)
+                .record(put_start.elapsed().as_secs_f64());
+            metrics::counter!(crate::metrics::STORE_BLOCKS_PERSISTED).increment(1);
+        }
+
         Ok(advance)
     }
 
@@ -166,14 +180,23 @@ impl BlockStore for RocksdbBlockStore {
         // synchronous and CPU-bound, and `get` is called concurrently by every
         // projection during catch-up — keeping them off the async workers is
         // what stops a backfill read storm from starving the coordinator.
+        #[cfg(feature = "metrics")]
+        let get_start = std::time::Instant::now();
+
         let db = self.db.clone();
-        tokio::task::spawn_blocking(move || -> AnyResult<Option<BlockData>> {
+        let block = tokio::task::spawn_blocking(move || -> AnyResult<Option<BlockData>> {
             match db.get_cf(blocks_cf(&db), height.to_be_bytes())? {
                 Some(bytes) => Ok(Some(borsh::from_slice(&bytes)?)),
                 None => Ok(None),
             }
         })
-        .await?
+        .await?;
+
+        #[cfg(feature = "metrics")]
+        metrics::histogram!(crate::metrics::STORE_GET_DURATION)
+            .record(get_start.elapsed().as_secs_f64());
+
+        block
     }
 
     async fn contiguous_frontier(&self) -> AnyResult<Option<u64>> {
@@ -183,7 +206,113 @@ impl BlockStore for RocksdbBlockStore {
     async fn lowest_gap(&self) -> AnyResult<Option<(u64, u64)>> {
         Ok(self.ranges.lock().unwrap().first_gap())
     }
+
+    /// Poll RocksDB's integer properties for both column families and emit them
+    /// as gauges — the same shape as the dango node's `StatisticsWorker`, under
+    /// the same `rocksdb_*` names (plus `rocksdb_blob_bytes` for the BlobDB
+    /// payload files, which hold ~95% of the bytes here) so the node's RocksDB
+    /// dashboard works against this service unchanged. A property the engine does
+    /// not expose is silently skipped, never an error.
+    fn sample_metrics(&self) {
+        #[cfg(feature = "metrics")]
+        {
+            for cf_name in [CF_DEFAULT, CF_BLOCKS] {
+                let Some(cf) = self.db.cf_handle(cf_name) else {
+                    continue;
+                };
+
+                for (metric, props) in ROCKSDB_GAUGES {
+                    for (property, type_label) in *props {
+                        if let Ok(Some(v)) = self.db.property_int_value_cf(cf, *property) {
+                            metrics::gauge!(*metric, "type" => *type_label, "cf" => cf_name)
+                                .set(v as f64);
+                        }
+                    }
+                }
+
+                // SST files per LSM level — the iterator-cost signal.
+                for level in 0..7u32 {
+                    let property = format!("rocksdb.num-files-at-level{level}");
+                    if let Ok(Some(v)) = self.db.property_int_value_cf(cf, property.as_str()) {
+                        metrics::gauge!(
+                            "rocksdb_lsm_count",
+                            "type" => "num_files_at_level",
+                            "level" => level.to_string(),
+                            "cf" => cf_name,
+                        )
+                        .set(v as f64);
+                    }
+                }
+            }
+        }
+    }
 }
+
+/// `(metric_name, &[(rocksdb_property, type_label)])` — the integer properties
+/// sampled per column family, grouped into the dango `rocksdb_*` gauges. Raw
+/// property strings (stable RocksDB names); an unknown one just yields no value.
+#[cfg(feature = "metrics")]
+const ROCKSDB_GAUGES: &[(&str, &[(&str, &str)])] = &[
+    ("rocksdb_memtable_bytes", &[
+        ("rocksdb.cur-size-active-mem-table", "cur_size_active"),
+        ("rocksdb.cur-size-all-mem-tables", "cur_size_all"),
+        ("rocksdb.size-all-mem-tables", "size_all"),
+    ]),
+    ("rocksdb_sst_bytes", &[
+        ("rocksdb.live-sst-files-size", "live_sst_files_size"),
+        ("rocksdb.total-sst-files-size", "total_sst_files_size"),
+        ("rocksdb.estimate-live-data-size", "estimate_live_data_size"),
+    ]),
+    ("rocksdb_compaction_bytes", &[(
+        "rocksdb.estimate-pending-compaction-bytes",
+        "estimate_pending_compaction",
+    )]),
+    ("rocksdb_block_cache_bytes", &[
+        ("rocksdb.block-cache-capacity", "capacity"),
+        ("rocksdb.block-cache-usage", "usage"),
+        ("rocksdb.block-cache-pinned-usage", "pinned_usage"),
+    ]),
+    // BlobDB payload files — the bulk of the on-disk bytes for this store.
+    ("rocksdb_blob_bytes", &[
+        ("rocksdb.total-blob-file-size", "total_blob_file_size"),
+        ("rocksdb.live-blob-file-size", "live_blob_file_size"),
+        (
+            "rocksdb.live-blob-file-garbage-size",
+            "live_blob_file_garbage_size",
+        ),
+    ]),
+    ("rocksdb_memtable_count", &[
+        ("rocksdb.num-entries-active-mem-table", "entries_active"),
+        ("rocksdb.num-entries-imm-mem-tables", "entries_imm"),
+        ("rocksdb.num-deletes-active-mem-table", "deletes_active"),
+        ("rocksdb.num-deletes-imm-mem-tables", "deletes_imm"),
+    ]),
+    ("rocksdb_compaction_count", &[
+        ("rocksdb.num-running-compactions", "running_compactions"),
+        ("rocksdb.num-running-flushes", "running_flushes"),
+    ]),
+    ("rocksdb_lsm_count", &[
+        ("rocksdb.num-live-versions", "live_versions"),
+        (
+            "rocksdb.current-super-version-number",
+            "super_version_number",
+        ),
+        ("rocksdb.num-blob-files", "num_blob_files"),
+    ]),
+    ("rocksdb_errors_count", &[(
+        "rocksdb.background-errors",
+        "background_errors",
+    )]),
+    ("rocksdb_flags", &[
+        ("rocksdb.compaction-pending", "compaction_pending"),
+        ("rocksdb.mem-table-flush-pending", "memtable_flush_pending"),
+        ("rocksdb.is-write-stopped", "is_write_stopped"),
+        (
+            "rocksdb.is-file-deletions-enabled",
+            "is_file_deletions_enabled",
+        ),
+    ]),
+];
 
 /// Handle to the blocks CF — a cheap lookup; the CF always exists once opened.
 fn blocks_cf(db: &DB) -> &ColumnFamily {

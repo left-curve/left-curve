@@ -1,3 +1,5 @@
+#[cfg(feature = "tracing")]
+use tracing::instrument;
 use {
     super::{BlockFetcher, FetchStream},
     async_trait::async_trait,
@@ -104,6 +106,10 @@ where
 /// not-yet-available height) back off and retry — every block in the range
 /// exists below the live tip, so a failure is always transient and never
 /// surfaced to the consumer.
+#[cfg_attr(
+    feature = "tracing",
+    instrument(skip_all, name = "bsource.fetcher", fields(from, to))
+)]
 async fn fetch_range<C>(
     from: u64,
     to: u64,
@@ -120,20 +126,36 @@ async fn fetch_range<C>(
         // Up to `range_size` blocks, clamped to the blocks left in the gap.
         let batch_to = min(next_from + range_size - 1, to);
 
-        let blocks = match tokio::time::timeout(
+        // Time each range call and label its outcome (ok / error / timeout /
+        // empty) — the four mutually-exclusive ends of one request.
+        #[cfg(feature = "metrics")]
+        let request_start = std::time::Instant::now();
+
+        let response = tokio::time::timeout(
             config.timeout,
             client.fetch_block_range(next_from, batch_to),
         )
-        .await
-        {
+        .await;
+
+        #[cfg(feature = "metrics")]
+        metrics::histogram!(crate::metrics::FETCHER_REQUEST_DURATION)
+            .record(request_start.elapsed().as_secs_f64());
+
+        let blocks = match response {
             Ok(Ok(blocks)) => blocks,
             Ok(Err(_error)) => {
+                #[cfg(feature = "metrics")]
+                metrics::counter!(crate::metrics::FETCHER_REQUESTS, "outcome" => "error")
+                    .increment(1);
                 #[cfg(feature = "tracing")]
                 tracing::warn!(error = %_error, next_from, "sentinel range fetch failed, retrying");
                 sleep(config.retry_backoff).await;
                 continue;
             },
             Err(_timeout) => {
+                #[cfg(feature = "metrics")]
+                metrics::counter!(crate::metrics::FETCHER_REQUESTS, "outcome" => "timeout")
+                    .increment(1);
                 #[cfg(feature = "tracing")]
                 tracing::warn!(next_from, "sentinel range fetch timed out, retrying");
                 sleep(config.retry_backoff).await;
@@ -144,9 +166,14 @@ async fn fetch_range<C>(
         // An empty response means `next_from` is not yet on the sentinel — retry
         // from the same height after a backoff.
         let Some(last) = blocks.last().map(|block| block.height()) else {
+            #[cfg(feature = "metrics")]
+            metrics::counter!(crate::metrics::FETCHER_REQUESTS, "outcome" => "empty").increment(1);
             sleep(config.retry_backoff).await;
             continue;
         };
+
+        #[cfg(feature = "metrics")]
+        metrics::counter!(crate::metrics::FETCHER_REQUESTS, "outcome" => "ok").increment(1);
 
         for block in blocks {
             if tx.send(block).await.is_err() {

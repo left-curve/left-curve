@@ -654,10 +654,6 @@ Out of scope here, documented elsewhere or to be designed later:
 - **Schema version on `BlockData`**: should the wire payload include a
   `u16 schema_version` from day 1? Cheap insurance against future binary
   layout changes.
-- **Observability**: the committer sees every cursor, so it can export
-  `last_processed_height` and `lag_seconds` per projection from one
-  place; the source should expose `frontier`. List the minimum set as
-  part of the V1 cut.
 - **Testing strategy**: with everything behind three traits, a
   `MemoryBlockSource` + `MemoryCommitter` are enough to unit-test the
   app + projection loops. Add a section.
@@ -665,3 +661,8 @@ Out of scope here, documented elsewhere or to be designed later:
 Resolved (see [Commit protocol](#commit-protocol)): projection atomicity
 on ClickHouse, app-owned cursors, and the PG/CH convenience supertraits —
 superseded by the single `Ctx` + `Committer` pair.
+
+Resolved (see [Observability](./design/observability.md)): the metrics +
+per-component span surface — per-projection height/lag (from the committer),
+source frontier and fetcher/channel state, RocksDB and query latencies, and the
+Prometheus `/metrics` wiring.
