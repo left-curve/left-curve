@@ -11,12 +11,6 @@
 //! the block-source tuning knobs (buffer sizes, intervals, timeouts) are
 //! compiled in — see `start`.
 
-// Several fields (the source URLs / paths, the Postgres URL) are parse-only
-// until the `start` composition root consumes them — that wiring lands next.
-// Allow the unread fields for now rather than scatter throwaway reads; drop
-// this once `start` builds the source / committer / schema.
-#![allow(dead_code)]
-
 use {serde::Deserialize, std::path::PathBuf};
 
 /// Top-level config. `postgres` and `block_source` are required; `httpd`
@@ -38,6 +32,9 @@ pub struct Config {
 pub struct PostgresConfig {
     /// libpq URL, e.g. `postgres://user@host/db`. Secret — prefer injecting it
     /// via `POSTGRES__URL` rather than committing it.
+    // Consumed by the committer once `start` builds it (next wiring step);
+    // parse-only until then.
+    #[allow(dead_code)]
     pub url: String,
     /// Connection-pool size. Default 10.
     #[serde(default = "default_max_connections")]

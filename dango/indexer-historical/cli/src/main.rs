@@ -9,6 +9,7 @@
 
 mod config;
 mod home_directory;
+mod source;
 mod start;
 
 use {

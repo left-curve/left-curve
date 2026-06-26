@@ -1,7 +1,10 @@
 use {
     anyhow::anyhow,
     home::home_dir,
-    std::{ops::Deref, path::PathBuf},
+    std::{
+        ops::Deref,
+        path::{Path, PathBuf},
+    },
 };
 
 /// Default home directory, relative to the user's home (`~`).
@@ -31,6 +34,17 @@ impl HomeDirectory {
     /// The server configuration file, `<home>/config/app.toml`.
     pub fn config_file(&self) -> PathBuf {
         self.home.join("config").join("app.toml")
+    }
+
+    /// Resolve a configured path: returned as-is if absolute, otherwise joined
+    /// onto the home directory — so `store_path = "data/blocks"` lands under
+    /// `--home` while an absolute path is honored verbatim.
+    pub fn resolve(&self, path: &Path) -> PathBuf {
+        if path.is_absolute() {
+            path.to_path_buf()
+        } else {
+            self.home.join(path)
+        }
     }
 }
 

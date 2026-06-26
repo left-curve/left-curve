@@ -1,5 +1,5 @@
 use {
-    crate::{config::Config, home_directory::HomeDirectory},
+    crate::{config::Config, home_directory::HomeDirectory, source},
     clap::Parser,
     dango_config_parser::parse_config,
 };
@@ -39,8 +39,14 @@ impl StartCmd {
             "configuration loaded",
         );
 
-        // TODO: wire the composition root (steps 2–6 in the type docs) and
-        // replace this with `app.run().await`.
-        anyhow::bail!("`start` is not wired beyond config yet");
+        // Step 2: build the configured block source. The app, committer, and
+        // read schema all see it only as `Arc<dyn BlockSource>`.
+        let block_source = source::build(&cfg.block_source, &home)?;
+        let frontier = block_source.contiguous_frontier().await?;
+        tracing::info!(?frontier, "block source built");
+
+        // TODO: wire the composition root (steps 3–6: committer, projections,
+        // schema, app) and replace this with `app.run().await`.
+        anyhow::bail!("`start` is not wired beyond the block source yet");
     }
 }
