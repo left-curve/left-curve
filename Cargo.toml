@@ -36,6 +36,7 @@ members = [
   "dango/indexer-historical/app",
   "dango/indexer-historical/block-source",
   "dango/indexer-historical/cli",
+  "dango/indexer-historical/httpd",
   "dango/indexer-historical/projection",
   "dango/indexer-historical/types",
   "dango/indexer/cache",
@@ -215,6 +216,7 @@ dango-indexer-clickhouse    = { path = "dango/indexer/clickhouse" }
 dango-indexer-graphql-types = { path = "dango/indexer/graphql-types" }
 dango-indexer-historical-app          = { path = "dango/indexer-historical/app" }
 dango-indexer-historical-block-source = { path = "dango/indexer-historical/block-source" }
+dango-indexer-historical-httpd        = { path = "dango/indexer-historical/httpd" }
 dango-indexer-historical-projection   = { path = "dango/indexer-historical/projection" }
 dango-indexer-historical-types        = { path = "dango/indexer-historical/types" }
 dango-indexer-hooked        = { path = "dango/indexer/hooked" }

@@ -4122,10 +4122,32 @@ dependencies = [
 ]
 
 [[package]]
+name = "dango-indexer-historical-httpd"
+version = "0.0.0"
+dependencies = [
+ "actix-cors",
+ "actix-web",
+ "anyhow",
+ "async-graphql",
+ "async-graphql-actix-web",
+ "dango-indexer-historical-block-source",
+ "dango-indexer-historical-projection",
+ "dango-indexer-historical-types",
+ "futures",
+ "metrics",
+ "sea-orm",
+ "serde",
+ "serde_json",
+ "tokio",
+ "tracing",
+]
+
+[[package]]
 name = "dango-indexer-historical-projection"
 version = "0.0.0"
 dependencies = [
  "anyhow",
+ "async-graphql",
  "async-trait",
  "borsh",
  "clickhouse",

@@ -20,7 +20,7 @@ mod ctx;
 mod projection;
 
 pub use {
-    activity::{ActivityConfig, ActivityProjection, EventType},
+    activity::{ActivityConfig, ActivityProjection, ActivityQuery, EventType},
     committer::Committer,
     ctx::{ChWrite, Ctx},
     projection::Projection,

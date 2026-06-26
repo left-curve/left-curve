@@ -37,7 +37,7 @@ impl MigrationTrait for Migration {
                     .col(
                         ColumnDef::new(ActivityEvents::EventType)
                             .small_integer()
-                            .null(),
+                            .not_null(),
                     )
                     .col(ColumnDef::new(ActivityEvents::Contract).binary().null())
                     .col(
@@ -57,51 +57,51 @@ impl MigrationTrait for Migration {
             )
             .await?;
 
-        // Six partial indexes, each NULL-filtered on the attribute (which also
-        // skips the sentinel rows). The `(address, attr, …)` trio makes
-        // "<attr> events involving X" a single seek; the `(attr, …, address)`
-        // trio makes the address-less attribute feeds a backward scan +
-        // `DISTINCT ON` over the position tail (address last → an event's
-        // participant rows are adjacent, so the dedup is local). The recency /
-        // keyset tail is the event position `(block_height, category,
-        // category_index, event_index)`. Partial indexes are supported on both
-        // Postgres and SQLite, so one raw statement serves every backend.
+        // Four secondary indexes serving the eight documented feeds. All carry
+        // the event-position `(block_height, category, category_index,
+        // event_index)`, so each is a backward index scan ordered newest-first
+        // (keyset-paginated). On the DISTINCT-ON feeds (by type, by contract)
+        // `address` trails the position as the tiebreaker, so an event's
+        // participant rows are adjacent and the resolver's `ORDER BY <position>
+        // DESC, address DESC` is the backward scan verbatim — Index Scan →
+        // Unique → Limit, with **no sort node** (verified via `EXPLAIN`; with
+        // `address` ASC, or with `contract_event_name` wedged before `address`,
+        // the planner adds an Incremental Sort). `contract_event_name` therefore
+        // sits at the very **tail** of the contract index — a pure in-index
+        // `= ANY(...)` filter (never a seek column, always paired with
+        // `contract`), costing the ordering nothing.
+        //
+        // The type feeds are plain indexes (`event_type` is NOT NULL). The
+        // contract feeds are partial on `contract IS NOT NULL` — only contract
+        // events carry a contract — which keeps them small. Plain and partial
+        // indexes both work on Postgres and SQLite, so one raw statement per
+        // index serves every backend.
         let conn = manager.get_connection();
-        let indexes: [(&str, &str, &str); 6] = [
-            (
-                "idx_activity_events_addr_contract",
-                "address, contract, block_height, category, category_index, event_index",
-                "contract",
-            ),
-            (
-                "idx_activity_events_addr_name",
-                "address, contract_event_name, block_height, category, category_index, event_index",
-                "contract_event_name",
-            ),
+        let indexes: [(&str, &str, &str); 4] = [
             (
                 "idx_activity_events_addr_type",
                 "address, event_type, block_height, category, category_index, event_index",
-                "event_type",
+                "",
             ),
             (
                 "idx_activity_events_type",
                 "event_type, block_height, category, category_index, event_index, address",
-                "event_type",
+                "",
+            ),
+            (
+                "idx_activity_events_addr_contract",
+                "address, contract, block_height, category, category_index, event_index, contract_event_name",
+                "WHERE contract IS NOT NULL",
             ),
             (
                 "idx_activity_events_contract",
-                "contract, block_height, category, category_index, event_index, address",
-                "contract",
-            ),
-            (
-                "idx_activity_events_name",
-                "contract_event_name, block_height, category, category_index, event_index, address",
-                "contract_event_name",
+                "contract, block_height, category, category_index, event_index, address, contract_event_name",
+                "WHERE contract IS NOT NULL",
             ),
         ];
-        for (name, cols, partial) in indexes {
+        for (name, cols, filter) in indexes {
             conn.execute_unprepared(&format!(
-                "CREATE INDEX IF NOT EXISTS {name} ON activity_events ({cols}) WHERE {partial} IS NOT NULL"
+                "CREATE INDEX IF NOT EXISTS {name} ON activity_events ({cols}) {filter}"
             ))
             .await?;
         }

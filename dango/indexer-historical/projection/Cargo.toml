@@ -19,6 +19,7 @@ tracing = ["dep:tracing"]
 
 [dependencies]
 anyhow                   = { workspace = true }
+async-graphql            = { workspace = true }
 async-trait              = { workspace = true }
 borsh                    = { workspace = true }
 clickhouse               = { workspace = true }

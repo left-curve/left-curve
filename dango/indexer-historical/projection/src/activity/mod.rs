@@ -5,7 +5,7 @@
 //! - [`entity::transactions`] — one row per executed unit (a tx or a cronjob);
 //! - [`entity::events`] — the merged event log + participation index: one row
 //!   per (event × participant address), with an empty-address row for kept
-//!   events that have no participant and a sentinel row per tx sender;
+//!   events that have no participant;
 //! - [`entity::event_data`] — the event payload, split out and kept only for
 //!   priority types.
 //!
@@ -17,10 +17,10 @@
 
 mod entity;
 mod event_type;
+mod graphql;
 mod idens;
 mod migrations;
 
-pub use event_type::EventType;
 #[cfg(feature = "tracing")]
 use tracing::instrument;
 use {
@@ -37,13 +37,11 @@ use {
     sea_orm_migration::MigrationTrait,
     std::collections::HashSet,
 };
+pub use {event_type::EventType, graphql::ActivityQuery};
 
 /// Stable projection id keying the cursor row. Bumping it forces a full
 /// re-backfill.
 const PROJECTION_ID: &str = "activity";
-
-/// `events.event_index` sentinel marking a unit-level (sender) row.
-const SENTINEL_EVENT_INDEX: i32 = -1;
 
 /// zstd level for the `event_data.data` column. 3 is zstd's own default — a
 /// good ratio/speed trade-off for the borsh-encoded event payloads.
@@ -150,8 +148,9 @@ impl Projection for ActivityProjection {
                 timestamp: Set(timestamp),
             });
 
-            // A cronjob is a single commitment group. No sentinel row: cron has
-            // no sender.
+            // A cronjob is a single commitment group, flattened on a fresh
+            // per-unit id. Cron has no sender, so no `transactions.sender` row
+            // to feed query 1's sender side — only its participants.
             let mut event_id = EventId::new(block_height, FlatCategory::Cron, cron_idx as u32, 0);
             let flat = flatten_commitment_status(&mut event_id, cron_outcome.cron_event.clone());
             self.push_events(&mut rows, &flat, height)?;
@@ -175,19 +174,6 @@ impl Projection for ActivityProjection {
                 gas_limit: Set(Some(tx.gas_limit as i64)),
                 gas_used: Set(tx_outcome.gas_used as i64),
                 timestamp: Set(timestamp),
-            });
-
-            // Sentinel row: the sender at `event_index = -1` (NULL attributes),
-            // so the unit surfaces in the tx feed even when no event involves X.
-            rows.events.push(events::ActiveModel {
-                address: Set(tx.sender.as_ref().to_vec()),
-                block_height: Set(height),
-                category: Set(FlatCategory::Tx as i16),
-                category_index: Set(tx_idx as i32),
-                event_index: Set(SENTINEL_EVENT_INDEX),
-                event_type: Set(None),
-                contract: Set(None),
-                contract_event_name: Set(None),
             });
 
             // `flatten_tx_events` flattens the four commitment groups (withhold,
@@ -272,7 +258,7 @@ impl ActivityProjection {
                 category: Set(category),
                 category_index: Set(category_index),
                 event_index: Set(event_index),
-                event_type: Set(Some(event_type.code())),
+                event_type: Set(event_type.code()),
                 contract: Set(contract.clone()),
                 contract_event_name: Set(contract_event_name.clone()),
             });
@@ -367,6 +353,14 @@ mod tests {
         assert_eq!(EventType::Transfer.code(), 2);
         assert_eq!(EventType::Execute.code(), 5);
         assert_eq!(EventType::ContractEvent.code(), 14);
+
+        // `from_code` is the exact inverse used to surface `event_type` in the
+        // read API, and rejects out-of-range codes.
+        for code in 0..=14i16 {
+            assert_eq!(EventType::from_code(code).map(EventType::code), Some(code));
+        }
+        assert_eq!(EventType::from_code(15), None);
+        assert_eq!(EventType::from_code(-1), None);
     }
 
     #[test]
@@ -414,20 +408,9 @@ mod tests {
         let gateway = vec![0xAAu8; 20];
         let perps = vec![0xBBu8; 20];
         let tx = FlatCategory::Tx as i16;
-        let ce = Some(EventType::ContractEvent.code());
+        let ce = EventType::ContractEvent.code();
 
         events::Entity::insert_many([
-            // sentinel sender row.
-            events::ActiveModel {
-                address: Set(a.clone()),
-                block_height: Set(100),
-                category: Set(tx),
-                category_index: Set(0),
-                event_index: Set(SENTINEL_EVENT_INDEX),
-                event_type: Set(None),
-                contract: Set(None),
-                contract_event_name: Set(None),
-            },
             // gateway contract-event involving A.
             events::ActiveModel {
                 address: Set(a.clone()),
@@ -450,16 +433,17 @@ mod tests {
                 contract: Set(Some(perps.clone())),
                 contract_event_name: Set(Some("order_filled".to_string())),
             },
-            // an address-less event (empty-address marker) — an Execute of the
-            // gateway with no participant.
+            // an address-less event (empty-address marker) — a non-contract
+            // event (here an Execute) with no participant: only contract events
+            // carry `contract`, so it has none.
             events::ActiveModel {
                 address: Set(Vec::new()),
                 block_height: Set(70),
                 category: Set(tx),
                 category_index: Set(0),
                 event_index: Set(0),
-                event_type: Set(Some(EventType::Execute.code())),
-                contract: Set(Some(gateway.clone())),
+                event_type: Set(EventType::Execute.code()),
+                contract: Set(None),
                 contract_event_name: Set(None),
             },
         ])
@@ -487,15 +471,15 @@ mod tests {
         assert_eq!(of.len(), 1);
         assert_eq!(of[0].block_height, 50);
 
-        // "all events involving A, newest-first" — sentinel + gateway +
-        // order_filled = 3 (the empty-address event is not involving A).
+        // "all events involving A, newest-first" — gateway + order_filled = 2
+        // (no sentinels now; the empty-address event does not involve A).
         let all = events::Entity::find()
             .filter(events::Column::Address.eq(a.clone()))
             .order_by_desc(events::Column::BlockHeight)
             .all(&db)
             .await
             .unwrap();
-        assert_eq!(all.len(), 3);
+        assert_eq!(all.len(), 2);
         assert_eq!(all[0].block_height, 100);
 
         // The address-less event is stored under the empty address, distinct

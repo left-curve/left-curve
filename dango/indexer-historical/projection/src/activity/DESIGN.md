@@ -7,7 +7,7 @@ produces three Postgres tables that together answer, for any account address,
 - `transactions` — one row per executed unit (a transaction *or* a cronjob);
 - `events` — the **merged event log + participation index**: one row per
   *(event × participant address)*, plus an empty-address row for kept events
-  with no participant and a sentinel row per tx sender;
+  with no participant;
 - `event_data` — the event payload (`zstd(borsh(event))`), split out and kept
   only for the configured priority types.
 
@@ -16,24 +16,38 @@ events once and writes all three tables in one commit (one `Ctx`, one cursor).
 
 ## Queries it must serve
 
-All paginated **newest-first** (`block_height DESC`, then in-block position),
-keyset-paginated (cursor on the ordering tuple, never `OFFSET`):
+Eight feeds, all **newest-first** (`block_height DESC`, then in-block position),
+bounded by `LIMIT N`, and **keyset-paginated** (cursor on the ordering tuple,
+never `OFFSET`):
 
-1. transactions involving an address X (X is the sender, or a party in one of
-   the unit's events);
-2. transactions where X is specifically the sender;
-3. events filtered by **event type** (e.g. `transfer`, `contract_event`);
-4. contract events filtered by **name** (e.g. `order_filled`, `liquidated`);
-5. events where an address X **participates**;
-6. events emitted **by a contract** C;
-7. and the combinations of 3/4/6 **with** an involved address X — e.g. "the
-   `order_filled` events involving X", "the gateway's events involving X".
+| # | Feed | Filter |
+|---|------|--------|
+| 1 | transactions involving X | `address = X` — sender **or** party |
+| 2 | events by type | `event_type = T` |
+| 3 | contract events by contract | `contract = C` |
+| 4 | contract events by contract + name | `contract = C AND name = ANY([…])` |
+| 5 | events involving X | `address = X` |
+| 6 | events involving X + type | `address = X AND event_type = T` |
+| 7 | contract events of C involving X | `address = X AND contract = C` |
+| 8 | contract events of C involving X + name | `address = X AND contract = C AND name = ANY([…])` |
+
+Two properties of the filters shape the schema:
+
+- **Q1 spans two sources.** "Involving X" means X is the unit **sender** *or* a
+  **party** to one of its events. The sender lives in `transactions`, the
+  participation in `events`; Q1 merges the two (see Access paths). Cron units
+  (no sender, but X can be a party) are **included by default**; an optional
+  `kind` filter narrows to transactions only.
+- **`contract_event_name` is always paired with `contract`** (never queried on
+  its own) and may be a **single value or a list**. It is also
+  **low-cardinality** — the busiest contract (perps) has ~15 distinct names — so
+  it is a **filter, never a seek column** (see Indexes).
 
 ## Why one merged `events` table (not events + involvement)
 
 An earlier design had two tables: a narrow `events` (one row per event) and an
 `involvement` fan-out (one row per participant) carrying the event's filter
-attributes *denormalized* so address+attribute queries (query 7) stay a single
+attributes *denormalized* so address+attribute queries (queries 7/8) stay a single
 seek. But once the attributes are denormalized, the two tables hold **nearly
 identical columns**, differing only by `address`. Merging them — PK extended
 with `address`, one row per (event × participant) — removes that duplication.
@@ -53,10 +67,10 @@ flatten + `extract_addresses` + system-contract blacklist):
 Trade-offs the merge accepts (and why they're fine here):
 
 - A kept event with **no** participant (e.g. an `execute`) still needs a row so
-  the attribute feeds (queries 3/6) don't lose it. It gets **one row keyed by
+  the attribute feeds (queries 2/3/4) don't lose it. It gets **one row keyed by
   the empty byte string** — a real address is always 20 bytes, so `''` can never
   collide, and (unlike `NULL`) an empty value is valid in a primary key.
-- The address-less attribute feeds (queries 3/4/6) must `DISTINCT ON` the event
+- The address-less attribute feeds (queries 2/3/4) must `DISTINCT ON` the event
   position to collapse an event's K participant rows. At K≈1 this is a **no-op**;
   it stays correct for K>1 (multi-recipient transfers). The `address` column is
   the **last** index column so those K rows are adjacent and the dedup is local.
@@ -133,57 +147,77 @@ return more than one row.
 | `timestamp`    | `BIGINT`        | block time, unix nanoseconds            |
 
 Primary key `(block_height, idx, kind)`. Indexes: `(sender, block_height, idx)`
-partial `WHERE sender IS NOT NULL` — query 2, recency pagination via backward
-scan, excludes cron; `(hash)` partial `WHERE hash IS NOT NULL` — hash lookup.
+partial `WHERE sender IS NOT NULL` — the **sender side of query 1** (and a
+strict-sender feed), recency pagination via a backward scan, excludes cron;
+`(hash)` partial `WHERE hash IS NOT NULL` — hash lookup for the detail view.
 
 No payload column: a unit's messages / credential / error are **hydrated from
 the raw block** on the detail view (one block load — see below).
 
 ### `events` — merged event log + participation index
 
-One row per **(event × participant address)**. Three row kinds, all keyed by
-`(address, block_height, category, category_index, event_index)`:
+One row per **(event × participant address)**. Two row kinds, both keyed by
+`(address, block_height, category, category_index, event_index)` with
+`event_index >= 0`:
 
 | column                | type         | notes                                   |
 |-----------------------|--------------|-----------------------------------------|
-| `address`             | `BYTEA`      | 20-byte participant; **empty** = address-less event; sender on the sentinel |
+| `address`             | `BYTEA`      | 20-byte participant; **empty** = address-less event |
 | `block_height`        | `BIGINT`     |                                         |
 | `category`            | `SMALLINT`   | the unit's `kind` (`FlatCategory`): 0 = cron, 1 = tx |
 | `category_index`      | `INT`        | the tx/cron index (= the unit's `idx`)  |
-| `event_index`         | `INT`        | event position within the unit (0-based); **`-1`** = sentinel |
-| `event_type`          | `SMALLINT`   | `FlatEvent` discriminant; NULL only on the sentinel |
-| `contract`            | `BYTEA` (20) | emitting / subject contract; NULL where not applicable |
-| `contract_event_name` | `TEXT`       | the contract-event `ty` (order_filled, …); NULL otherwise |
+| `event_index`         | `INT`        | event position within the unit (0-based) |
+| `event_type`          | `SMALLINT`   | `FlatEvent` discriminant; **NOT NULL**  |
+| `contract`            | `BYTEA` (20) | emitting contract; **set only for contract events**, NULL otherwise |
+| `contract_event_name` | `TEXT`       | the contract-event `ty` (`order_filled`, …); set only for contract events (paired with `contract`), NULL otherwise |
 
-- **participation** — `address` = a 20-byte party, `event_index >= 0`. K rows
-  for an event with K participants (K ≈ 1).
-- **address-less event** — `address` = the **empty byte string**,
-  `event_index >= 0`. One per kept event with no (non-blacklisted) participant,
-  so the attribute feeds never lose it. (A real address is always 20 bytes, so
-  `''` never collides; `NULL` would be illegal in a PK.)
-- **sentinel** — `address` = the tx sender, `event_index = -1`,
-  `event_type`/`contract`/`contract_event_name` = NULL. Lets "txs involving X"
-  surface a unit where X is only the sender.
+- **participation** — `address` = a 20-byte party. K rows for an event with K
+  participants (K ≈ 1).
+- **address-less event** — `address` = the **empty byte string**. One per kept
+  event with no (non-blacklisted) participant, so the attribute feeds never lose
+  it. (A real address is always 20 bytes, so `''` never collides; `NULL` would be
+  illegal in a PK.)
+
+`contract` and `contract_event_name` are **coupled**: both are set exactly when
+the event is a `ContractEvent` (the contract feeds always filter them together),
+so `contract IS NOT NULL` means precisely "a contract event".
+
+The **sender side** of "involving X" is **not** a row here (there are no
+sentinel rows): it is read from `transactions.sender` and merged with this
+participation side at query time (query 1).
 
 The canonical *event* is the position `(block_height, category, category_index,
-event_index)`; `(block_height, category_index, category)` joins
-`transactions(block_height, idx, kind)`. Distinct events are recovered with
+event_index)`; the unit `(block_height, category, category_index)` joins
+`transactions(block_height, kind, idx)`. Distinct events are recovered with
 `DISTINCT ON` the position (a no-op at K = 1).
 
-**Indexes** (six, all partial `WHERE <attr> IS NOT NULL`, which also skips the
-sentinel). Tail is the event position `(block_height, category, category_index,
-event_index)`; `address` is last on the attribute-only trio so a multi-party
-event's rows are adjacent for the `DISTINCT ON`.
+**Indexes** (four). All carry the event-position `(block_height, category,
+category_index, event_index)`, so each is a backward scan ordered newest-first
+(keyset). On the two **attribute feeds** (by type, by contract) — the ones that
+`DISTINCT ON` the position — `address` **trails the position** as the
+tiebreaker, so an event's participant rows are adjacent and the resolver's
+`ORDER BY <position> DESC, address DESC` is the backward scan verbatim: Index
+Scan → Unique → Limit, **no sort node** (verified via `EXPLAIN`; with `address`
+ASC — or with `contract_event_name` wedged before `address` — the planner adds
+an Incremental Sort). `contract_event_name` therefore sits at the very **tail**
+of the contract index: a pure in-index `= ANY()` filter (never a seek column,
+always paired with `contract`), costing the ordering nothing.
 
-- `(address, contract, …)` · `(address, contract_event_name, …)` ·
-  `(address, event_type, …)` — **query 7**: "<attr> events involving X" as a
-  single seek (e.g. the gateway/perps history of X, `order_filled` involving X).
-- `(event_type, …, address)` · `(contract, …, address)` ·
-  `(contract_event_name, …, address)` — **queries 3/4/6**: the address-less
-  attribute feeds (backward scan + `DISTINCT ON`).
+- `idx_…_addr_type` — `(address, event_type, …)` — **query 6** ("type-T events
+  involving X" as a single seek). Plain index (`event_type` is NOT NULL).
+- `idx_…_addr_contract` — `(address, contract, …, contract_event_name)` —
+  **queries 7/8** (contract events of C involving X, optionally a name list);
+  address-led, no `DISTINCT ON`, so `contract_event_name` trails as the in-index
+  filter. Partial `WHERE contract IS NOT NULL`.
+- `idx_…_type` — `(event_type, …, address)` — **query 2** (events by type).
+  Plain.
+- `idx_…_contract` — `(contract, …, address, contract_event_name)` —
+  **queries 3/4** (contract events of C, optionally a name list); `address`
+  trails the position (tiebreaker), `contract_event_name` at the tail (filter).
+  Partial.
 
 The PK `(address, …)` itself serves **query 5** (events involving X) and, via
-`DISTINCT ON` the unit, **query 1** (txs involving X).
+`DISTINCT ON` the unit merged with `transactions.sender`, **query 1**.
 
 ### `event_data` — the event payload, split out
 
@@ -204,79 +238,96 @@ variable-size blob lives apart): narrower rows, smaller indexes, better cache.
 
 ## Access paths
 
-All newest-first, keyset-paginated (no `OFFSET`).
+All newest-first, keyset-paginated (no `OFFSET`). The keyset is a row-comparison
+on the position — `(block_height, category, category_index, event_index) <
+$cursor`, all DESC — which the index serves directly.
 
-**Transactions where X is the sender** (query 2) — directly on `transactions`,
-served by `(sender, block_height, idx)`:
+**Q1 — transactions involving X** (sender **or** party). Two sources, merged:
+the **involved** side is `DISTINCT ON` the unit over X's participation rows; the
+**sender** side is a direct filter on `transactions`. Each side takes N, they are
+unioned, deduped (a unit where X is both sender and party is the common case),
+and the top N kept. Cron units come only from the involved side (cron has no
+sender); `AND category = 1` on that side narrows to transactions only.
 
 ```sql
-SELECT * FROM transactions
+-- involved side (events) ...
+SELECT DISTINCT ON (block_height, category, category_index)
+       block_height, category, category_index
+FROM events
+WHERE address = $X
+ORDER BY block_height DESC, category DESC, category_index DESC, event_index DESC
+LIMIT $N
+-- ... UNION the sender side (transactions; cron has no sender) ...
+SELECT block_height, kind AS category, idx AS category_index
+FROM transactions
 WHERE sender = $X
 ORDER BY block_height DESC, idx DESC
-LIMIT 20;                       -- next page: AND (block_height, idx) < ($bh, $idx)
+LIMIT $N
+-- ... then join `transactions` on (block_height, kind, idx), ORDER BY the unit
+-- DESC, LIMIT $N. Next page: AND unit < $cursor on both sides.
 ```
 
-**Transactions involving X** (query 1) — `DISTINCT ON` the unit over X's rows,
-then join. The PK serves it as a backward Index Scan → Unique → Limit, short-
-circuiting at 20 distinct units:
-
-```sql
-SELECT t.*
-FROM (
-    SELECT DISTINCT ON (block_height, category_index, category)
-           block_height, category_index, category
-    FROM events
-    WHERE address = $X
-    ORDER BY block_height DESC, category_index DESC, category DESC, event_index DESC
-    LIMIT 20
-) u
-JOIN transactions t
-  ON t.block_height = u.block_height AND t.idx = u.category_index AND t.kind = u.category
-ORDER BY t.block_height DESC, t.idx DESC, t.kind DESC;
-```
-
-**Events involving X** (query 5), optionally filtered by an attribute (query 7)
-— a single seek on the PK or an `(address, <attr>, …)` index, no `DISTINCT`
-(X appears once per event):
+**Q5–Q8 — events involving X**, optionally + type / contract / (contract+name) —
+a single seek on the PK or an `(address, …)` index, no `DISTINCT` (X appears once
+per event):
 
 ```sql
 SELECT * FROM events
-WHERE address = $X AND event_index >= 0          -- AND contract = $C  (query 7)
+WHERE address = $X
+  -- AND event_type = $T                      (Q6, via idx_…_addr_type)
+  -- AND contract = $C                         (Q7, via idx_…_addr_contract)
+  -- AND contract = $C
+  --     AND contract_event_name = ANY($names) (Q8, name filtered in-index)
 ORDER BY block_height DESC, category DESC, category_index DESC, event_index DESC
-LIMIT 20;
+LIMIT $N;
 ```
 
-**Events by type / name / contract** (queries 3, 4, 6, no address) — on the
-`(<attr>, …, address)` indexes, with `DISTINCT ON` the position to collapse an
-event's participant rows (a no-op at K = 1):
+**Q2–Q4 — events by type / contract / (contract+name)**, no address — on the
+`(<attr>, …, address, …)` indexes, with `DISTINCT ON` the position to collapse
+an event's participant rows (a no-op at K = 1). The tiebreaker is `address`
+**DESC** — same direction as the position — so the whole `ORDER BY` is the
+backward index scan verbatim (Index Scan → Unique → Limit, no sort node);
+`address` ASC would force an Incremental Sort:
 
 ```sql
 SELECT DISTINCT ON (block_height, category, category_index, event_index) *
 FROM events
-WHERE contract_event_name = $N                   -- or event_type / contract
-ORDER BY block_height DESC, category DESC, category_index DESC, event_index DESC, address
-LIMIT 20;
+WHERE contract = $C                             -- or event_type = $T (Q2)
+  -- AND contract_event_name = ANY($names)      (Q4)
+ORDER BY block_height DESC, category DESC, category_index DESC, event_index DESC, address DESC
+LIMIT $N;
 ```
 
-### Index summary — every documented query is anchored by a selective seek
+The **name list** (Q4/Q8) is a plain `contract_event_name = ANY($names)`, never
+a per-name UNION: the column lives in the contract indexes (at the tail), so the
+filter is index-resident and rejects stay **off the heap**. The planner then
+picks one of two shapes by selectivity (both bounded by the ~15-name
+cardinality): a **non-selective** name keeps the ordered backward scan and
+short-circuits at N; a **selective** one is cheaper as a bitmap index scan on
+`(contract, name)` whose small match-set is sorted before the limit (confirmed
+via `EXPLAIN`). Either way the work is bounded by *(contract, name)* activity,
+not the table.
+
+### Index summary — every feed is anchored by a selective seek
 
 | Query | Index | Cost |
 |---|---|---|
-| tx where sender = X | `transactions (sender, bh, idx)` | seek + 20 |
-| tx involving X | `events` PK → `DISTINCT ON` units | seek + 20 units |
-| events involving X | `events` PK `(address, bh, …)` | seek + 20 |
-| **C / N / T events involving X** | `events (address, contract\|name\|type, …)` | **seek + 20** |
-| events of type T / contract C / name N | `events (<attr>, …, address)` + `DISTINCT ON` | seek + ~K·20 |
-| event payload (detail) | `event_data` PK, else raw block | point lookup |
+| Q1 tx involving X | `events` PK (involved) ∪ `transactions (sender, …)` → merge | 2 seeks + merge ~2N |
+| Q2 events by type T | `events (event_type, …, address)` + `DISTINCT ON` | seek + ~K·N |
+| Q3 contract events of C | `events (contract, …, address)` + `DISTINCT ON` | seek + ~K·N |
+| Q4 + name list | same index, `name = ANY()` in-index | seek + ~N/sel idx + N heap |
+| Q5 events involving X | `events` PK `(address, …)` | seek + N |
+| Q6 + type T | `events (address, event_type, …)` | seek + N |
+| Q7 contract C involving X | `events (address, contract, …)` | seek + N (small) |
+| Q8 + name list | same index, `name = ANY()` | seek + N (small) |
+| payload (detail) | `event_data` PK, else raw block | point lookup |
 
-No query scans the whole table — each is anchored on a selective equality
-(sender / address / contract / name) then a `block_height`-ordered scan, so the
-cost is bounded by **one entity's activity**, not the table total. The
-attribute-only feeds read ~K index entries per emitted event (K ≈ 1), all
-sequential; the heap reads (the cost) equal the page size. **The query layer
-must write these as `DISTINCT ON (<position>) … ORDER BY <position>, address …
-LIMIT n`** so Postgres streams + short-circuits; a non-matching `ORDER BY`
-materializes the whole match set instead.
+No feed scans the whole table — each is anchored on a selective equality
+(sender / address / contract / type) then a `block_height`-ordered scan, so the
+cost is bounded by **one entity's activity**, not the table total. **The query
+layer must write the attribute feeds as `DISTINCT ON (<position>) … ORDER BY
+<position>, address … LIMIT n`** so Postgres streams + short-circuits; a
+non-matching `ORDER BY` materializes the whole match set instead.
 
 ## What is stored vs hydrated from the raw block
 
@@ -307,10 +358,9 @@ block load.
 For each `tx_outcome[i]` aligned with `block.txs[i] = (tx, hash)`:
 
 1. write one `transactions` row (`kind = tx`, `sender`, gas, success, `hash`,
-   `timestamp`);
-2. write the **sentinel** `events` row (`address = sender`, `event_index = -1`,
-   NULL attributes);
-3. for each flattened event of the tx:
+   `timestamp`) — this row is also the **sender side** of query 1, read back
+   from `transactions.sender`;
+2. for each flattened event of the tx:
    - **skip it entirely** if its type is in `event_type_blacklist`;
    - if its type is a priority type, write its `event_data` row;
    - extract participants for the `involvement_types` (the chain's
@@ -319,17 +369,18 @@ For each `tx_outcome[i]` aligned with `block.txs[i] = (tx, hash)`:
      `contract_event_name`. If there is **no** participant, write a single
      empty-address row so the event still appears in the attribute feeds.
 
-For each `cron_outcome` (same block): the same, with `kind = cron`,
-`sender = NULL`, no sentinel row.
+For each `cron_outcome` (same block): the same, with `kind = cron` and
+`sender = NULL`. A cron has no sender, so it never contributes to the sender side
+of query 1 — only to the participation side (which is why cron units reach query
+1 through "involved", and the optional `kind` filter can drop them).
 
 Why two separate scopes — `event_type_blacklist` (drop the event) vs
 `involvement_types` (extract participants): the blacklist removes the
 address-less system *noise* (guest/withhold/authenticate/finalize) that nobody
 queries; `involvement_types` decides, among the **kept** events, which ones fan
-out by participant (the rest get one empty-address row). "Events emitted **by**
-a contract" (query 6) read `events.contract`, a different axis from
-participation — so blacklisting a contract from *participation* never hides its
-emitted events.
+out by participant (the rest get one empty-address row). The contract feeds read
+`events.contract`, a different axis from participation — so blacklisting a
+contract from *participation* never hides its emitted contract events.
 
 ## Configuration
 
@@ -363,7 +414,9 @@ discriminant stored in `event_type`, plus the per-event contract / name
 taxonomy) · `entity/` (sea-orm types for the three tables) · `idens.rs`
 (migration identifiers) · `migrations/` (one file per table + a `mod.rs`
 assembling them, names prefixed `…activity…` for the shared `seaql_migrations`
-history — mirrors `app/src/committer/`). Adds `dango-primitives` to the
+history — mirrors `app/src/committer/`). The read surface (below) lives in
+`graphql/` (`query.rs` resolvers · `types.rs` scalars + objects · `pagination.rs`
+keyset). Adds `dango-primitives` to the
 `projection` crate (for `FlatCategory` / `EventId` / `Extractable` /
 `flatten_tx_events` / `flatten_commitment_status`), plus `zstd`/`borsh` for the
 `event_data` payloads.
@@ -378,7 +431,38 @@ discriminant (cron = 0, tx = 1) directly; the integer value is immaterial to the
 queries as long as `events.category` and `transactions.kind` agree on it for the
 join.
 
+## Read surface
+
+The eight feeds are served by the GraphQL resolvers in `graphql/query.rs`
+(`ActivityQuery`), folded into **five fields** — each "+ optional filter" pair
+(name list, type, kind) becomes one resolver argument:
+
+| field | queries | filters |
+|-------|---------|---------|
+| `transactionsInvolving` | 1 | address (+ optional `kind`) |
+| `eventsByType` | 2 | type |
+| `contractEvents` | 3 / 4 | contract (+ optional `names`) |
+| `eventsInvolving` | 5 / 6 | address (+ optional `type`) |
+| `contractEventsInvolving` | 7 / 8 | address + contract (+ optional `names`) |
+
+Each runs the access path above verbatim: hand-written, `Binder`-parameterized
+SQL (`DISTINCT ON`, the involved ∪ sender union, the in-index `IN (…)` name
+list, the row-comparison keyset), mapped back to the sea-orm models. The
+GraphQL **type surface** — the `Address` / `Hash` scalars, the `Transaction` /
+`Event` objects, the `UnitKind` / `EventType` enums — lives in
+`graphql/types.rs`; the **keyset machinery** — opaque cursors, the page-size
+clamp, and the forward Relay-connection assembly (`limit + 1` ⇒ `hasNextPage`)
+— in `graphql/pagination.rs`.
+Addresses and hashes are stored as `BYTEA` but exposed as their canonical hex
+text; `timestamp` is exposed as RFC 3339, never a 64-bit-lossy `Int`.
+
+The schema is merged and served by the projection-agnostic `httpd` crate, which
+only injects the Postgres pool and the block source as context.
+
 ## Out of scope
 
-The query / front-door layer (REST / GraphQL / gRPC — undecided) and pagination
-cursors. The tables here fix the storage model those queries will run on.
+Still handled elsewhere (or not yet built): the **detail view** — a unit's full
+payload / messages / error and any non-priority event payload, hydrated from the
+raw block on demand (`event_data` for the priority types, `source.get(height)`
+otherwise) — and **live subscriptions**. The tables and feeds here fix the
+storage and read model those build on.

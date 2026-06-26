@@ -1,4 +1,5 @@
 use {
+    async_graphql::Enum,
     dango_primitives::{Addr, FlatEvent},
     serde::{Deserialize, Serialize},
 };
@@ -10,7 +11,10 @@ use {
 /// **stored codes**: they are part of the on-disk schema, so existing codes must
 /// never be renumbered (append-only). [`From<&FlatEvent>`] is exhaustive, so a
 /// new upstream variant is a compile error here until it is given a code.
-#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, Hash)]
+///
+/// Also the GraphQL enum used to filter the activity feeds by type (queries 2 /
+/// 6) and to surface an event's type in the read API.
+#[derive(Enum, Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[serde(rename_all = "snake_case")]
 #[repr(i16)]
 pub enum EventType {
@@ -36,6 +40,32 @@ impl EventType {
     #[must_use]
     pub fn code(self) -> i16 {
         self as i16
+    }
+
+    /// The variant for a stored discriminant, or `None` if `code` is unknown —
+    /// the inverse of [`code`](Self::code), used to surface `event_type` in the
+    /// read API. Spelled out (not `transmute`) so an out-of-range value read
+    /// from the database is a clean `None`, never undefined behaviour.
+    #[must_use]
+    pub fn from_code(code: i16) -> Option<Self> {
+        Some(match code {
+            0 => Self::Configure,
+            1 => Self::Upgrade,
+            2 => Self::Transfer,
+            3 => Self::Upload,
+            4 => Self::Instantiate,
+            5 => Self::Execute,
+            6 => Self::Migrate,
+            7 => Self::Reply,
+            8 => Self::Authenticate,
+            9 => Self::Backrun,
+            10 => Self::Withhold,
+            11 => Self::Finalize,
+            12 => Self::Cron,
+            13 => Self::Guest,
+            14 => Self::ContractEvent,
+            _ => return None,
+        })
     }
 }
 
@@ -63,27 +93,17 @@ impl From<&FlatEvent> for EventType {
 
 // ---- per-event taxonomy used by the `events` table columns ----
 
-/// The contract a flat event is "about" — its subject / emitter — for the
-/// `activity_events.contract` column and query 6 ("events emitted by contract
-/// C"). `None` for events with no associated contract (transfers, the
-/// authenticate / withhold wrappers, configure / upgrade / upload).
+/// The contract that emitted a contract event — the value of
+/// `activity_events.contract`. Populated **only for `ContractEvent`**: the
+/// contract feeds (queries 3/4/7/8) always filter `contract` together with
+/// `type = ContractEvent`, so `contract IS NOT NULL` is made to mean exactly
+/// "a contract event", and the other event kinds that happen to carry a
+/// contract are deliberately left out (reversible — re-backfill if an "Execute
+/// / Migrate by contract" axis is ever wanted). `None` for every other event.
 pub(crate) fn event_contract(event: &FlatEvent) -> Option<Addr> {
     match event {
         FlatEvent::ContractEvent(e) => Some(e.contract),
-        FlatEvent::Execute(e) => Some(e.contract),
-        FlatEvent::Instantiate(e) => Some(e.contract),
-        FlatEvent::Migrate(e) => Some(e.contract),
-        FlatEvent::Reply(e) => Some(e.contract),
-        FlatEvent::Cron(e) => Some(e.contract),
-        FlatEvent::Guest(e) => Some(e.contract),
-        FlatEvent::Configure(_)
-        | FlatEvent::Upgrade(_)
-        | FlatEvent::Transfer(_)
-        | FlatEvent::Upload(_)
-        | FlatEvent::Authenticate(_)
-        | FlatEvent::Backrun(_)
-        | FlatEvent::Withhold(_)
-        | FlatEvent::Finalize(_) => None,
+        _ => None,
     }
 }
 
