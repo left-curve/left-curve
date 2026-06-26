@@ -261,6 +261,14 @@ All newest-first, keyset-paginated (no `OFFSET`). The keyset is a row-comparison
 on the position — `(block_height, category, category_index, event_index) <
 $cursor`, all DESC — which the index serves directly.
 
+> The SQL below drops the table prefix for brevity. The physical tables the
+> resolver SQL targets are **`activity_transactions`**, **`activity_events`**,
+> **`activity_event_data`** (the `activity_` prefix keeps the names unique in the
+> app's shared schema / migration history) — never the bare `transactions` /
+> `events`, which compile fine in the hand-written SQL but fail at runtime
+> against Postgres. The `feeds_execute_against_postgres` integration test runs
+> every feed against a real Postgres so that can't regress unnoticed.
+
 **Q1 — transactions involving X** (sender **or** party). Two sources, merged:
 the **involved** side is `DISTINCT ON` the unit over X's participation rows; the
 **sender** side is a direct filter on `transactions`. Each side takes N, they are

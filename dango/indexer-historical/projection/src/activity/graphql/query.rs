@@ -17,10 +17,17 @@
 //! to match the access paths exactly (`DISTINCT ON` to collapse an event's
 //! participant rows, a row-comparison keyset, an in-index `IN (…)` name list,
 //! the union of involved ∪ sender for query 1) and parameterized through
-//! [`Binder`] so no argument is ever interpolated raw. The shared read handles
-//! come from the schema context (`ctx.data`), injected when the schema is built
-//! — so this module depends only on `async-graphql`, `sea-orm`, and the
-//! projection's own entities, never on the httpd.
+//! [`Binder`] so no argument is ever interpolated raw. It references the tables
+//! by their real names — `activity_transactions`, `activity_events`,
+//! `activity_event_data` (the `activity_` prefix the migrations and entities
+//! create) — never the bare `events` / `transactions`: a short name compiles
+//! fine but fails at runtime against Postgres (`relation "events" does not
+//! exist`). The `feeds_execute_against_postgres` integration test in
+//! [`super::super`] runs every feed against a real Postgres so that, and the
+//! `UNION` parenthesisation, can never regress unnoticed. The shared read
+//! handles come from the schema context (`ctx.data`), injected when the schema
+//! is built — so this module depends only on `async-graphql`, `sea-orm`, and
+//! the projection's own entities, never on the httpd.
 
 use {
     super::{
@@ -130,7 +137,7 @@ impl ActivityQuery {
                 None => String::new(),
             };
             sides.push(format!(
-                "SELECT DISTINCT block_height, category, category_index FROM events \
+                "SELECT DISTINCT block_height, category, category_index FROM activity_events \
                  WHERE address = {address_ph}{kind_filter}{keyset_clause} \
                  ORDER BY block_height DESC, category DESC, category_index DESC LIMIT {fetch}"
             ));
@@ -150,7 +157,7 @@ impl ActivityQuery {
                 None => String::new(),
             };
             sides.push(format!(
-                "SELECT block_height, kind AS category, idx AS category_index FROM transactions \
+                "SELECT block_height, kind AS category, idx AS category_index FROM activity_transactions \
                  WHERE sender = {address_ph}{keyset_clause} \
                  ORDER BY block_height DESC, idx DESC LIMIT {fetch}"
             ));
@@ -172,7 +179,7 @@ impl ActivityQuery {
                 .join(" UNION ");
             let sql = format!(
                 "WITH unit AS ({units}) \
-                 SELECT t.* FROM unit u JOIN transactions t \
+                 SELECT t.* FROM unit u JOIN activity_transactions t \
                  ON t.block_height = u.block_height AND t.kind = u.category AND t.idx = u.category_index \
                  ORDER BY t.block_height DESC, t.kind DESC, t.idx DESC LIMIT {fetch}"
             );
@@ -215,7 +222,7 @@ impl ActivityQuery {
         let keyset = event_keyset(&mut binder, &after);
         let sql = format!(
             "SELECT DISTINCT ON (block_height, category, category_index, event_index) * \
-             FROM events WHERE event_type = {type_ph}{keyset} \
+             FROM activity_events WHERE event_type = {type_ph}{keyset} \
              ORDER BY {POS_DESC}, address DESC LIMIT {fetch}"
         );
         run_event_feed(
@@ -250,7 +257,7 @@ impl ActivityQuery {
         let keyset = event_keyset(&mut binder, &after);
         let sql = format!(
             "SELECT DISTINCT ON (block_height, category, category_index, event_index) * \
-             FROM events WHERE contract = {contract_ph}{names}{keyset} \
+             FROM activity_events WHERE contract = {contract_ph}{names}{keyset} \
              ORDER BY {POS_DESC}, address DESC LIMIT {fetch}"
         );
         run_event_feed(
@@ -287,7 +294,7 @@ impl ActivityQuery {
         };
         let keyset = event_keyset(&mut binder, &after);
         let sql = format!(
-            "SELECT * FROM events WHERE address = {address_ph}{type_filter}{keyset} \
+            "SELECT * FROM activity_events WHERE address = {address_ph}{type_filter}{keyset} \
              ORDER BY {POS_DESC} LIMIT {fetch}"
         );
         run_event_feed(
@@ -323,7 +330,7 @@ impl ActivityQuery {
         let names = name_filter(&mut binder, &names);
         let keyset = event_keyset(&mut binder, &after);
         let sql = format!(
-            "SELECT * FROM events \
+            "SELECT * FROM activity_events \
              WHERE address = {address_ph} AND contract = {contract_ph}{names}{keyset} \
              ORDER BY {POS_DESC} LIMIT {fetch}"
         );
@@ -357,7 +364,7 @@ impl ActivityQuery {
 /// missed detection is safe: [`Event::data`] would just hydrate from the block.)
 fn with_event_data(inner: &str, wants_data: bool) -> String {
     let data_expr = if wants_data {
-        "( SELECT ed.data FROM event_data ed \
+        "( SELECT ed.data FROM activity_event_data ed \
           WHERE ed.block_height = sub.block_height AND ed.category = sub.category \
           AND ed.category_index = sub.category_index AND ed.event_index = sub.event_index )"
     } else {
