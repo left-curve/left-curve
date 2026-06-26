@@ -11,11 +11,15 @@ mod httpd_client;
 #[cfg(feature = "async-graphql")]
 mod loader;
 mod local;
+#[cfg(feature = "async-graphql")]
+mod query;
 mod remote;
 mod source;
 
 #[cfg(feature = "async-graphql")]
 pub use loader::BlockLoader;
+#[cfg(feature = "async-graphql")]
+pub use query::BlockQuery;
 pub use {
     httpd_client::HttpdClient,
     local::LocalBlockSource,

@@ -58,22 +58,30 @@ mod tests {
     use {
         super::*,
         async_graphql::{EmptySubscription, MergedObject},
+        dango_indexer_historical_block_source::BlockQuery,
         dango_indexer_historical_projection::ActivityQuery,
     };
 
-    // A stand-in for the root the composition root assembles from the
-    // registered projections' query objects.
+    // A stand-in for the root the composition root assembles: the core block
+    // query plus the registered projections' query objects.
     #[derive(MergedObject, Default)]
-    struct Query(ActivityQuery);
+    struct Query(BlockQuery, ActivityQuery);
 
-    /// A projection's query object surfaces in the merged schema. Assembles
-    /// without context data (introspection never runs resolvers) and checks the
-    /// activity feeds are present under their camelCased names — a guard for the
-    /// merge as more projections are added.
+    /// The read surface surfaces in the merged schema. Assembles without context
+    /// data (introspection never runs resolvers) and checks the core `block`
+    /// query and the activity feeds are present under their camelCased names — a
+    /// guard for the merge as more queries / projections are added.
     #[test]
-    fn schema_exposes_projection_surface() {
+    fn schema_exposes_read_surface() {
         let schema = assemble(Query::default(), EmptySubscription).finish();
         let sdl = schema.sdl();
+
+        // The core block-by-height query (not a projection): a `BlockData`
+        // through the `JSON` scalar.
+        assert!(
+            sdl.contains("block(height: Int!): JSON"),
+            "core `block` query missing from the merged root:\n{sdl}",
+        );
 
         for field in [
             "transactionsByHash",
