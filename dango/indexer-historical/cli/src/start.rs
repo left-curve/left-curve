@@ -1,11 +1,9 @@
 use {
-    crate::{config::Config, db, home_directory::HomeDirectory, read_api, source},
+    crate::{activity, config::Config, db, home_directory::HomeDirectory, read_api, source},
     clap::Parser,
     dango_config_parser::parse_config,
     dango_indexer_historical_app::{App, PgChCommitter},
-    dango_indexer_historical_projection::{
-        ActivityConfig, ActivityProjection, Committer, Projection,
-    },
+    dango_indexer_historical_projection::{ActivityProjection, Committer, Projection},
     std::sync::Arc,
 };
 
@@ -54,8 +52,13 @@ impl StartCmd {
         // compiled-in set of projections (ClickHouse deferred → `None`).
         let db = db::connect(&cfg.postgres).await?;
         let committer: Arc<dyn Committer> = Arc::new(PgChCommitter::new(db.clone(), None));
+
+        // The activity config harvests the deployment's system contracts from
+        // the node's `app_config` (queried with retry) to seed the participation
+        // blacklist, merged with any config addresses.
+        let activity_cfg = activity::config(&cfg.activity, cfg.block_source.node_url()).await?;
         let projections: Vec<Arc<dyn Projection>> =
-            vec![Arc::new(ActivityProjection::new(ActivityConfig::default()))];
+            vec![Arc::new(ActivityProjection::new(activity_cfg))];
         tracing::info!(
             projections = projections.len(),
             "committer and projections ready"

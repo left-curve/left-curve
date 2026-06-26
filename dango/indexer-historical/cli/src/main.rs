@@ -7,6 +7,7 @@
 //! Telemetry is intentionally a single `fmt` layer honoring `RUST_LOG` for now;
 //! the OTLP / Sentry stack `dango-cli` wires can be layered on here later.
 
+mod activity;
 mod config;
 mod db;
 mod home_directory;

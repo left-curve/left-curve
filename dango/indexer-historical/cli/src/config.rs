@@ -11,16 +11,42 @@
 //! the block-source tuning knobs (buffer sizes, intervals, timeouts) are
 //! compiled in — see `start`.
 
-use {serde::Deserialize, std::path::PathBuf};
+use {
+    dango_indexer_historical_projection::{EventType, WhiteOrBlackList},
+    serde::Deserialize,
+    std::path::PathBuf,
+};
 
 /// Top-level config. `postgres` and `block_source` are required; `httpd`
-/// defaults to an enabled server on `0.0.0.0:8080`.
+/// defaults to an enabled server on `0.0.0.0:8080`; `activity` to the
+/// projection's built-in filters.
 #[derive(Debug, Clone, Deserialize)]
 pub struct Config {
     pub postgres: PostgresConfig,
     pub block_source: BlockSourceConfig,
     #[serde(default)]
     pub httpd: HttpdConfig,
+    #[serde(default)]
+    pub activity: ActivitySettings,
+}
+
+/// Optional overrides for the activity projection's **write-time** filters
+/// (changing them is not retroactive — see the projection's `DESIGN.md`). Each
+/// omitted filter falls back to the projection's built-in default;
+/// `involvement_blacklist` is *merged* with the system contracts the cli reads
+/// from the node's `app_config`.
+#[derive(Debug, Clone, Deserialize, Default)]
+#[serde(default)]
+pub struct ActivitySettings {
+    /// Extra addresses (hex `0x…`) excluded from participation, merged with the
+    /// node's `app_config` system contracts.
+    pub involvement_blacklist: Vec<String>,
+    /// Which event types are kept at all. Default: blacklist the system noise.
+    pub event_type_filter: Option<WhiteOrBlackList<EventType>>,
+    /// Which event types' payload is stored. Default: whitelist priority types.
+    pub event_data_filter: Option<WhiteOrBlackList<EventType>>,
+    /// Which event types fan out by participant. Default: whitelist priority.
+    pub involvement_filter: Option<WhiteOrBlackList<EventType>>,
 }
 
 /// Postgres connection for the committer (the projection cursors + the
@@ -65,6 +91,16 @@ impl BlockSourceConfig {
         match self {
             Self::Remote(remote) => Some(remote.fetcher.kind()),
             Self::Local(_) => None,
+        }
+    }
+
+    /// The node httpd base URL — `live_url` (remote) or `node_url` (local).
+    /// The cli queries this node's `app_config` for the system-contract
+    /// blacklist.
+    pub fn node_url(&self) -> &str {
+        match self {
+            Self::Remote(remote) => &remote.live_url,
+            Self::Local(local) => &local.node_url,
         }
     }
 }
@@ -148,7 +184,7 @@ fn default_bind() -> String {
 
 #[cfg(test)]
 mod tests {
-    use {super::*, dango_config_parser::parse_config};
+    use {super::*, dango_config_parser::parse_config, std::collections::HashSet};
 
     /// The committed `config.example.toml` (also the user-facing example).
     fn example_config() -> PathBuf {
@@ -187,6 +223,18 @@ mod tests {
         }
         assert!(cfg.httpd.enabled);
         assert_eq!(cfg.httpd.bind, "0.0.0.0:8080");
+
+        // `[activity]`: a filter parses as a `WhiteOrBlackList`; omitted filters
+        // stay `None` (the projection's built-in default applies later).
+        assert!(cfg.activity.involvement_blacklist.is_empty());
+        assert_eq!(
+            cfg.activity.event_data_filter,
+            Some(WhiteOrBlackList::Whitelist(HashSet::from([
+                EventType::Transfer,
+                EventType::ContractEvent,
+            ])))
+        );
+        assert!(cfg.activity.event_type_filter.is_none());
 
         // Environment override: `POSTGRES__URL` wins over the TOML value.
         // SAFETY: single-threaded within this test; set then immediately

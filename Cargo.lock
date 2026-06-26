@@ -4129,6 +4129,7 @@ dependencies = [
  "dango-indexer-historical-httpd",
  "dango-indexer-historical-projection",
  "dango-primitives",
+ "dango-sdk",
  "futures",
  "home",
  "sea-orm",

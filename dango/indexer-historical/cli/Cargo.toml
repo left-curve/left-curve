@@ -24,6 +24,7 @@ dango-indexer-historical-block-source = { workspace = true, features = ["async-g
 dango-indexer-historical-httpd        = { workspace = true, features = ["metrics", "tracing"] }
 dango-indexer-historical-projection   = { workspace = true, features = ["metrics", "tracing"] }
 dango-primitives                      = { workspace = true }
+dango-sdk                             = { workspace = true, features = ["tracing"] }
 futures                               = { workspace = true }
 home                                  = { workspace = true }
 sea-orm                               = { workspace = true }

@@ -20,3 +20,14 @@ type = "sentinel"                   # reuses live_url — no URL of its own
 [httpd]
 enabled = true
 bind    = "0.0.0.0:8080"
+
+# Optional — activity projection write-time filters (NOT retroactive; changing
+# them needs a re-backfill). Omitted fields use the projection's built-in
+# defaults. `involvement_blacklist` is MERGED with the system contracts the cli
+# reads from the node's app_config, so usually you can leave it empty.
+[activity]
+involvement_blacklist = []          # extra addresses (hex) to exclude from participation
+# Each filter is a whitelist OR a blacklist of event types:
+event_data_filter = { whitelist = ["transfer", "contract_event"] }
+# event_type_filter  = { blacklist = ["guest", "withhold", "authenticate"] }
+# involvement_filter = { whitelist = ["transfer", "contract_event"] }
