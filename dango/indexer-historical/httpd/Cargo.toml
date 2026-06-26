@@ -23,7 +23,7 @@ actix-web               = { workspace = true }
 anyhow                  = { workspace = true }
 async-graphql           = { workspace = true }
 async-graphql-actix-web = { workspace = true }
-dango-indexer-historical-block-source = { workspace = true }
+dango-indexer-historical-block-source = { workspace = true, features = ["async-graphql"] }
 dango-indexer-historical-types        = { workspace = true }
 futures                 = { workspace = true }
 metrics                 = { workspace = true, optional = true }

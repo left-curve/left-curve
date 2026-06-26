@@ -4094,6 +4094,7 @@ name = "dango-indexer-historical-block-source"
 version = "0.0.0"
 dependencies = [
  "anyhow",
+ "async-graphql",
  "async-trait",
  "borsh",
  "dango-graphql-ws-client",
@@ -4151,6 +4152,7 @@ dependencies = [
  "async-trait",
  "borsh",
  "clickhouse",
+ "dango-indexer-historical-block-source",
  "dango-indexer-historical-types",
  "dango-primitives",
  "futures",

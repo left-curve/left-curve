@@ -19,9 +19,6 @@ pub struct Model {
     /// Account or contract sender (20 bytes). NULL for cron.
     pub sender: Option<Vec<u8>>,
     pub success: bool,
-    /// NULL for cron (unlimited gas).
-    pub gas_limit: Option<i64>,
-    pub gas_used: i64,
     /// Block time, unix nanoseconds.
     pub timestamp: i64,
 }

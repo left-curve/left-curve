@@ -35,9 +35,14 @@ Two properties of the filters shape the schema:
 
 - **Q1 spans two sources.** "Involving X" means X is the unit **sender** *or* a
   **party** to one of its events. The sender lives in `transactions`, the
-  participation in `events`; Q1 merges the two (see Access paths). Cron units
-  (no sender, but X can be a party) are **included by default**; an optional
-  `kind` filter narrows to transactions only.
+  participation in `events`; Q1 merges the two (see Access paths). The two are
+  genuinely different sets — the sender is **not** auto-added as a participant
+  (only `Transfer` / `ContractEvent` parties are; `Authenticate` is
+  blacklisted) — so an optional `role` filter narrows to one side (`SENDER`
+  reads only `transactions.sender`, `PARTICIPANT` only the `events` rows);
+  omitted ⇒ the union. Cron units (no sender, but X can be a party) are
+  **included by default**; an optional `kind` filter narrows to transactions or
+  cronjobs only (and `SENDER` + cron-only matches nothing).
 - **`contract_event_name` is always paired with `contract`** (never queried on
   its own) and may be a **single value or a list**. It is also
   **low-cardinality** — the busiest contract (perps) has ~15 distinct names — so
@@ -142,14 +147,17 @@ return more than one row.
 | `hash`         | `BYTEA` (32)    | content hash; indexed, **not unique**; NULL for cron |
 | `sender`       | `BYTEA` (20)    | account **or contract**; NULL for cron  |
 | `success`      | `BOOL`          | `tx_outcome.result.is_ok()`             |
-| `gas_limit`    | `BIGINT`        | NULL for cron (unlimited)               |
-| `gas_used`     | `BIGINT`        |                                         |
 | `timestamp`    | `BIGINT`        | block time, unix nanoseconds            |
+
+Gas (`gas_limit` / `gas_used`) is **not** a column: it lives in the unit's
+outcome, recovered through the on-demand `outcome` field (`TxOutcome` /
+`CronOutcome`) rather than duplicated into the summary row.
 
 Primary key `(block_height, idx, kind)`. Indexes: `(sender, block_height, idx)`
 partial `WHERE sender IS NOT NULL` — the **sender side of query 1** (and a
 strict-sender feed), recency pagination via a backward scan, excludes cron;
-`(hash)` partial `WHERE hash IS NOT NULL` — hash lookup for the detail view.
+`(hash)` partial `WHERE hash IS NOT NULL` — the **`transaction(hash)` point
+lookup** and the detail view.
 
 No payload column: a unit's messages / credential / error are **hydrated from
 the raw block** on the detail view (one block load — see below).
@@ -435,11 +443,13 @@ join.
 
 The eight feeds are served by the GraphQL resolvers in `graphql/query.rs`
 (`ActivityQuery`), folded into **five fields** — each "+ optional filter" pair
-(name list, type, kind) becomes one resolver argument:
+(name list, type, kind) becomes one resolver argument — plus a `transaction`
+point lookup by hash (un-paginated):
 
 | field | queries | filters |
 |-------|---------|---------|
-| `transactionsInvolving` | 1 | address (+ optional `kind`) |
+| `transaction` | — | hash (single unit, un-paginated) |
+| `transactionsInvolving` | 1 | address (+ optional `role`, `kind`) |
 | `eventsByType` | 2 | type |
 | `contractEvents` | 3 / 4 | contract (+ optional `names`) |
 | `eventsInvolving` | 5 / 6 | address (+ optional `type`) |
@@ -456,13 +466,45 @@ clamp, and the forward Relay-connection assembly (`limit + 1` ⇒ `hasNextPage`)
 Addresses and hashes are stored as `BYTEA` but exposed as their canonical hex
 text; `timestamp` is exposed as RFC 3339, never a 64-bit-lossy `Int`.
 
+On top of the indexed columns, `Transaction` carries two **on-demand detail
+fields** — `tx` (the full submitted transaction, the native `Tx` scalar) and
+`outcome` (the execution outcome, as a `JSON` scalar) — resolved only when
+selected, by loading the unit's block from the source. To keep that from being
+an N+1 across a page, the load goes through a `BlockLoader` `DataLoader` (in
+`block-source`, keyed by `block_height`): a page's rows — and `tx` + `outcome`
+on the same row — share one block read each. `tx` is `null` for cron units
+(which have no transaction); `outcome` carries the unit's `TxOutcome` for a
+transaction and its `CronOutcome` for a cronjob, externally tagged in the JSON
+(`{"transaction": …}` / `{"cron": …}`) so it is self-describing. (`TxOutcome`'s
+own GraphQL output type self-names but registers as the JSON scalar — a dangling
+SDL reference — so the outcome is wrapped in `Json`.)
+
+`Event` mirrors this with one on-demand `data` field — the decoded event payload
+(a `FlatEvent`) as a `JSON` scalar. Since `data` is **almost always** selected,
+the payload is fetched **eagerly** in the feed: each feed's inner query is
+wrapped (`with_event_data`) into a subquery whose `data` is pulled per row by a
+**correlated** lookup on `event_data`'s primary key — a scalar subquery, not a
+join. The correlation guarantees a point index probe per row however large
+`event_data` grows (a `LEFT JOIN` lets the planner hash-join with a full
+`event_data` scan — `EXPLAIN`-verified on a small table); and the inner `LIMIT`
+blocks subquery flattening, so the inner's backward-scan (no-sort) plan is
+untouched (also `EXPLAIN`-verified: `Index Scan Backward → Unique → Limit`, with
+the payload as a `SubPlan` index probe and no top-level sort). The *work* then
+stays **lazy** behind the `ComplexObject`: the blob is `zstd`/`borsh`-decoded
+only when the field is read. Non-priority events are absent from `event_data`
+(`data` comes back `NULL`), so there `data` falls back to the shared
+`BlockLoader` and re-flattens the unit via the write path's own `flatten_unit`
+— one source of truth for `event_index`. Net: priority payloads add no
+round-trip; non-priority cost one block read, and only when `data` is selected.
+
 The schema is merged and served by the projection-agnostic `httpd` crate, which
-only injects the Postgres pool and the block source as context.
+injects the Postgres pool, the block source, and a `BlockLoader` `DataLoader`
+over it as context.
 
 ## Out of scope
 
-Still handled elsewhere (or not yet built): the **detail view** — a unit's full
-payload / messages / error and any non-priority event payload, hydrated from the
-raw block on demand (`event_data` for the priority types, `source.get(height)`
-otherwise) — and **live subscriptions**. The tables and feeds here fix the
+Still handled elsewhere (or not yet built): **live subscriptions**. The detail
+layer is now served on demand — unit-level (`Transaction`'s `tx` and `outcome`,
+`TxOutcome` / `CronOutcome`) and per-event (`Event`'s `data`, from the
+`event_data` join with a block fallback). The tables and feeds here fix the
 storage and read model those build on.

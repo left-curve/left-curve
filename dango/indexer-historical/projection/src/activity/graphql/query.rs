@@ -6,7 +6,7 @@
 //!
 //! | field | queries | filters |
 //! |-------|---------|---------|
-//! | `transactionsInvolving` | 1 | address (+ optional `kind`) |
+//! | `transactionsInvolving` | 1 | address (+ optional `role`, `kind`) |
 //! | `eventsByType` | 2 | type |
 //! | `contractEvents` | 3 / 4 | contract (+ optional `names`) |
 //! | `eventsInvolving` | 5 / 6 | address (+ optional `type`) |
@@ -25,17 +25,17 @@
 use {
     super::{
         pagination::{Binder, EventCursor, UnitCursor, decode_after, page_limit, paginate},
-        types::{Address, Event, Transaction, UnitKind},
+        types::{Address, AddressRole, Event, EventRow, Hash, Transaction, UnitKind},
     },
-    crate::activity::{
-        entity::{events, transactions},
-        event_type::EventType,
-    },
+    crate::activity::{entity::transactions, event_type::EventType},
     async_graphql::{
         Context, Object, Result,
         connection::{Connection, OpaqueCursor},
     },
-    sea_orm::{DatabaseConnection, DbBackend, EntityTrait, Statement},
+    sea_orm::{
+        ColumnTrait, DatabaseConnection, DbBackend, EntityTrait, FromQueryResult, QueryFilter,
+        Statement,
+    },
 };
 
 /// The event-position ordering, newest-first — shared by every event feed so
@@ -53,16 +53,32 @@ pub struct ActivityQuery;
 
 #[Object]
 impl ActivityQuery {
-    /// Query 1 — transactions (and cronjobs) **involving** an address: it is the
-    /// unit's `sender` *or* a party to one of the unit's events. The two sides
-    /// live in different tables (`transactions.sender` and the `events`
-    /// participation rows); they are unioned, deduped, and the newest N kept.
-    /// Cron units (which have no sender) are included by default; `kind` narrows
-    /// to transactions or cronjobs only.
+    /// A single transaction by its content hash — the un-paginated point lookup
+    /// behind the detail view. Returns the indexed summary row (whose on-demand
+    /// `tx` / `outcome` fields hydrate the full payload from the block); `None`
+    /// if no transaction has that hash. Cron units carry no hash, so this only
+    /// ever resolves transactions. Served by the partial `(hash)` index.
+    async fn transaction(&self, ctx: &Context<'_>, hash: Hash) -> Result<Option<Transaction>> {
+        let db = ctx.data::<DatabaseConnection>()?;
+        let row = transactions::Entity::find()
+            .filter(transactions::Column::Hash.eq(hash.bytes()))
+            .one(db)
+            .await?;
+        row.map(Transaction::try_from).transpose()
+    }
+
+    /// Query 1 — transactions (and cronjobs) **involving** an address: by
+    /// default the unit's `sender` *or* a party to one of the unit's events.
+    /// The two sides live in different tables (`transactions.sender` and the
+    /// `events` participation rows); they are unioned, deduped, and the newest N
+    /// kept. `role` narrows to one side (`SENDER` / `PARTICIPANT`); omitted ⇒
+    /// either. Cron units (which have no sender) are included by default; `kind`
+    /// narrows to transactions or cronjobs only.
     async fn transactions_involving(
         &self,
         ctx: &Context<'_>,
         address: Address,
+        role: Option<AddressRole>,
         kind: Option<UnitKind>,
         first: Option<i32>,
         after: Option<String>,
@@ -72,9 +88,15 @@ impl ActivityQuery {
         let after = decode_after::<UnitCursor>(after)?;
         let fetch = limit + 1;
 
+        // Which sides of the union to scan. `role` picks one; cron has no
+        // sender, so a cron restriction drops the sender side regardless.
+        let want_sender = !matches!(role, Some(AddressRole::Participant))
+            && !matches!(kind, Some(UnitKind::Cron));
+        let want_participant = !matches!(role, Some(AddressRole::Sender));
+
         let mut binder = Binder::new();
         let address_ph = binder.bind(address.bytes());
-        // The unit keyset is bound once and reused on both sides of the union.
+        // The unit keyset is bound once and reused by whichever sides are scanned.
         let keyset = after.map(|c| {
             (
                 binder.bind(c.block_height),
@@ -83,53 +105,62 @@ impl ActivityQuery {
             )
         });
 
-        // Involved side: the distinct units X is a party to, from `events`.
-        let involved_kind = match kind {
-            Some(k) => format!(" AND category = {}", binder.bind(k.code())),
-            None => String::new(),
-        };
-        let involved_keyset = match &keyset {
-            Some((h, k, i)) => {
-                format!(" AND (block_height, category, category_index) < ({h}, {k}, {i})")
-            },
-            None => String::new(),
-        };
-        let involved = format!(
-            "SELECT DISTINCT block_height, category, category_index FROM events \
-             WHERE address = {address_ph}{involved_kind}{involved_keyset} \
-             ORDER BY block_height DESC, category DESC, category_index DESC LIMIT {fetch}"
-        );
+        let mut sides: Vec<String> = Vec::new();
 
-        // Sender side: the units X sent, from `transactions`. Cron has no
-        // sender, so when the caller restricts to cron it is omitted entirely.
-        let units = if matches!(kind, Some(UnitKind::Cron)) {
-            involved
-        } else {
-            let sender_keyset = match &keyset {
+        // Involved side: the distinct units X is a party to, from `events`.
+        if want_participant {
+            let kind_filter = match kind {
+                Some(k) => format!(" AND category = {}", binder.bind(k.code())),
+                None => String::new(),
+            };
+            let keyset_clause = match &keyset {
+                Some((h, k, i)) => {
+                    format!(" AND (block_height, category, category_index) < ({h}, {k}, {i})")
+                },
+                None => String::new(),
+            };
+            sides.push(format!(
+                "SELECT DISTINCT block_height, category, category_index FROM events \
+                 WHERE address = {address_ph}{kind_filter}{keyset_clause} \
+                 ORDER BY block_height DESC, category DESC, category_index DESC LIMIT {fetch}"
+            ));
+        }
+
+        // Sender side: the units X sent, from `transactions`. Only transactions
+        // carry a sender (cron rows are NULL), so this is inherently tx-only.
+        if want_sender {
+            let keyset_clause = match &keyset {
                 Some((h, k, i)) => format!(" AND (block_height, kind, idx) < ({h}, {k}, {i})"),
                 None => String::new(),
             };
-            let sender = format!(
+            sides.push(format!(
                 "SELECT block_height, kind AS category, idx AS category_index FROM transactions \
-                 WHERE sender = {address_ph}{sender_keyset} \
+                 WHERE sender = {address_ph}{keyset_clause} \
                  ORDER BY block_height DESC, kind DESC, idx DESC LIMIT {fetch}"
+            ));
+        }
+
+        // No side matches this (role, kind) combo — e.g. `SENDER` on cron-only.
+        // Nothing can match, so skip the database and return an empty page.
+        let rows = if sides.is_empty() {
+            Vec::new()
+        } else {
+            // Merge (dedup is the UNION), join the unit rows, take the newest N.
+            let units = sides.join(" UNION ");
+            let sql = format!(
+                "WITH unit AS ({units}) \
+                 SELECT t.* FROM unit u JOIN transactions t \
+                 ON t.block_height = u.block_height AND t.kind = u.category AND t.idx = u.category_index \
+                 ORDER BY t.block_height DESC, t.kind DESC, t.idx DESC LIMIT {fetch}"
             );
-            format!("{involved} UNION {sender}")
+            let stmt =
+                Statement::from_sql_and_values(DbBackend::Postgres, sql, binder.into_values());
+            transactions::Entity::find()
+                .from_raw_sql(stmt)
+                .all(db)
+                .await?
         };
 
-        // Merge (dedup is the UNION), join the unit rows, take the newest N.
-        let sql = format!(
-            "WITH unit AS ({units}) \
-             SELECT t.* FROM unit u JOIN transactions t \
-             ON t.block_height = u.block_height AND t.kind = u.category AND t.idx = u.category_index \
-             ORDER BY t.block_height DESC, t.kind DESC, t.idx DESC LIMIT {fetch}"
-        );
-
-        let stmt = Statement::from_sql_and_values(DbBackend::Postgres, sql, binder.into_values());
-        let rows = transactions::Entity::find()
-            .from_raw_sql(stmt)
-            .all(db)
-            .await?;
         paginate(
             rows,
             limit,
@@ -255,9 +286,32 @@ impl ActivityQuery {
 
 // ---- shared resolver plumbing ----
 
+/// Wrap a feed's event query so each row also carries its stored payload: the
+/// inner query (already selected, ordered, and limited over `events`) becomes a
+/// subquery, and `data` is pulled per row by a **correlated** lookup on
+/// `event_data`'s primary key. A scalar subquery (not a join) guarantees a
+/// point index probe per row no matter how large `event_data` grows — a plain
+/// `LEFT JOIN` lets the planner pick a hash join that sequentially scans the
+/// whole `event_data` (verified: it does so on small tables). The inner `LIMIT`
+/// blocks subquery flattening, so the inner's backward-scan (no-sort) plan is
+/// left untouched; `data` is `NULL` for non-priority events not stored there.
+fn with_event_data(inner: &str) -> String {
+    format!(
+        "SELECT sub.*, ( \
+         SELECT ed.data FROM event_data ed \
+         WHERE ed.block_height = sub.block_height AND ed.category = sub.category \
+         AND ed.category_index = sub.category_index AND ed.event_index = sub.event_index \
+         ) AS data \
+         FROM ({inner}) sub \
+         ORDER BY sub.block_height DESC, sub.category DESC, sub.category_index DESC, \
+         sub.event_index DESC"
+    )
+}
+
 /// Run an event feed's statement and shape the rows into a connection. Every
-/// event feed selects the full `events` row, so all map straight to
-/// [`events::Model`] and share one cursor / node mapping.
+/// feed's inner query is wrapped by [`with_event_data`] and mapped to an
+/// [`EventRow`] (the event columns plus the correlated payload), so all share
+/// one cursor / node mapping.
 async fn run_event_feed(
     db: &DatabaseConnection,
     sql: String,
@@ -265,8 +319,12 @@ async fn run_event_feed(
     limit: u64,
     has_prev: bool,
 ) -> Result<Connection<OpaqueCursor<EventCursor>, Event>> {
-    let stmt = Statement::from_sql_and_values(DbBackend::Postgres, sql, binder.into_values());
-    let rows = events::Entity::find().from_raw_sql(stmt).all(db).await?;
+    let stmt = Statement::from_sql_and_values(
+        DbBackend::Postgres,
+        with_event_data(&sql),
+        binder.into_values(),
+    );
+    let rows = EventRow::find_by_statement(stmt).all(db).await?;
     paginate(
         rows,
         limit,
@@ -333,6 +391,8 @@ mod tests {
         for needle in [
             "scalar Address",
             "scalar Hash",
+            "scalar Tx",
+            "transaction(hash: Hash!)",
             "transactionsInvolving(",
             "eventsByType(",
             "contractEventsInvolving(",
@@ -341,12 +401,24 @@ mod tests {
         }
 
         // The `type` keyword is exposed as an argument, the name filter is a
-        // list, and the cron/tx axis is an enum.
+        // list, and the cron/tx and sender/participant axes are enums.
         assert!(sdl.contains("type: EventType!"), "type arg:\n{sdl}");
         assert!(sdl.contains("names: [String!]"), "names list arg:\n{sdl}");
         assert!(sdl.contains("kind: UnitKind"), "kind arg:\n{sdl}");
+        assert!(sdl.contains("role: AddressRole"), "role arg:\n{sdl}");
 
         // `timestamp` is a string, never a (lossy) Int.
         assert!(sdl.contains("timestamp: String!"), "timestamp type:\n{sdl}");
+
+        // The on-demand detail fields: the full tx as the native `Tx` scalar,
+        // the outcome as a well-formed `JSON` scalar (not a dangling type ref).
+        assert!(sdl.contains("tx: Tx"), "tx detail field:\n{sdl}");
+        assert!(
+            sdl.contains("outcome: JSON"),
+            "outcome detail field:\n{sdl}"
+        );
+
+        // The event payload is hydrated on demand as a `JSON` scalar too.
+        assert!(sdl.contains("data: JSON"), "event data field:\n{sdl}");
     }
 }

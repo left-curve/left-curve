@@ -15,8 +15,6 @@ pub(super) enum ActivityTransactions {
     Hash,
     Sender,
     Success,
-    GasLimit,
-    GasUsed,
     Timestamp,
 }
 

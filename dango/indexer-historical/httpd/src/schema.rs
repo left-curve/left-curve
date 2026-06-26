@@ -1,6 +1,8 @@
 use {
-    async_graphql::{EmptyMutation, ObjectType, Schema, SchemaBuilder, SubscriptionType},
-    dango_indexer_historical_block_source::BlockSource,
+    async_graphql::{
+        EmptyMutation, ObjectType, Schema, SchemaBuilder, SubscriptionType, dataloader::DataLoader,
+    },
+    dango_indexer_historical_block_source::{BlockLoader, BlockSource},
     sea_orm::DatabaseConnection,
     std::sync::Arc,
 };
@@ -20,8 +22,10 @@ where
 
 /// Build the read-only schema from the roots the composition root assembled,
 /// injecting the shared read-side handles as typed context data: the Postgres
-/// pool (table queries) and the block source (raw-payload hydration).
-/// Resolvers fetch them with `ctx.data::<…>()`.
+/// pool (table queries), the block source (raw-payload hydration), and a
+/// [`BlockLoader`] `DataLoader` over it (so resolvers hydrating a unit's `Tx` /
+/// `TxOutcome` batch their block reads by height instead of an N+1). Resolvers
+/// fetch them with `ctx.data::<…>()`.
 pub fn build_schema<Q, S>(
     query: Q,
     subscription: S,
@@ -32,7 +36,12 @@ where
     Q: ObjectType + 'static,
     S: SubscriptionType + 'static,
 {
-    assemble(query, subscription).data(db).data(source).finish()
+    let blocks = DataLoader::new(BlockLoader::new(Arc::clone(&source)), tokio::spawn);
+    assemble(query, subscription)
+        .data(db)
+        .data(source)
+        .data(blocks)
+        .finish()
 }
 
 #[cfg(test)]
@@ -58,6 +67,7 @@ mod tests {
         let sdl = schema.sdl();
 
         for field in [
+            "transaction",
             "transactionsInvolving",
             "eventsByType",
             "contractEvents",

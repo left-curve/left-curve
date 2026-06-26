@@ -37,16 +37,6 @@ impl MigrationTrait for Migration {
                             .not_null(),
                     )
                     .col(
-                        ColumnDef::new(ActivityTransactions::GasLimit)
-                            .big_integer()
-                            .null(),
-                    )
-                    .col(
-                        ColumnDef::new(ActivityTransactions::GasUsed)
-                            .big_integer()
-                            .not_null(),
-                    )
-                    .col(
                         ColumnDef::new(ActivityTransactions::Timestamp)
                             .big_integer()
                             .not_null(),

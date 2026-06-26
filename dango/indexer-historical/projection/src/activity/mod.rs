@@ -143,16 +143,14 @@ impl Projection for ActivityProjection {
                 hash: Set(None),
                 sender: Set(None),
                 success: Set(cron_outcome.cron_event.maybe_error().is_none()),
-                gas_limit: Set(cron_outcome.gas_limit.map(|g| g as i64)),
-                gas_used: Set(cron_outcome.gas_used as i64),
                 timestamp: Set(timestamp),
             });
 
-            // A cronjob is a single commitment group, flattened on a fresh
-            // per-unit id. Cron has no sender, so no `transactions.sender` row
-            // to feed query 1's sender side — only its participants.
-            let mut event_id = EventId::new(block_height, FlatCategory::Cron, cron_idx as u32, 0);
-            let flat = flatten_commitment_status(&mut event_id, cron_outcome.cron_event.clone());
+            // A cronjob is a single commitment group; `flatten_unit` numbers
+            // its events exactly as the read path will (one source of truth).
+            // Cron has no sender, so no `transactions.sender` row feeds query
+            // 1's sender side — only its participants.
+            let flat = flatten_unit(block, FlatCategory::Cron as i16, cron_idx);
             self.push_events(&mut rows, &flat, height)?;
         }
 
@@ -171,14 +169,13 @@ impl Projection for ActivityProjection {
                 hash: Set(Some(tx_hash.as_ref().to_vec())),
                 sender: Set(Some(tx.sender.as_ref().to_vec())),
                 success: Set(tx_outcome.result.is_ok()),
-                gas_limit: Set(Some(tx.gas_limit as i64)),
-                gas_used: Set(tx_outcome.gas_used as i64),
                 timestamp: Set(timestamp),
             });
 
-            // `flatten_tx_events` flattens the four commitment groups (withhold,
-            // authenticate, msgs + backrun, finalize) on a fresh per-tx id.
-            let flat = flatten_tx_events(tx_outcome.events.clone(), block_height, tx_idx as u32);
+            // `flatten_unit` flattens the four commitment groups (withhold,
+            // authenticate, msgs + backrun, finalize) on a fresh per-tx id —
+            // the same numbering the read path reuses.
+            let flat = flatten_unit(block, FlatCategory::Tx as i16, tx_idx);
             self.push_events(&mut rows, &flat, height)?;
         }
 
@@ -339,6 +336,43 @@ fn compress_event(event: &FlatEvent) -> AnyResult<Vec<u8>> {
     let borshed = borsh::to_vec(event)?;
     let compressed = zstd::encode_all(borshed.as_slice(), ZSTD_LEVEL)?;
     Ok(compressed)
+}
+
+/// Inverse of [`compress_event`]: the stored `zstd(borsh(FlatEvent))` back to
+/// the event. The read path uses it to hydrate a priority event's payload from
+/// the `event_data` blob the feed join carried.
+pub(crate) fn decompress_event(data: &[u8]) -> AnyResult<FlatEvent> {
+    let borshed = zstd::decode_all(data)?;
+    Ok(borsh::from_slice(&borshed)?)
+}
+
+/// Flatten a single unit of a block — the cronjob or transaction at
+/// `(category, category_index)` — into its positioned events, numbered exactly
+/// as [`process`](ActivityProjection::process) writes them. Shared by the write
+/// path (staging the `events` rows) and the read path (hydrating a non-priority
+/// event's payload, absent from `event_data`), so `event_index` means the same
+/// on both sides. Empty when the index is out of range or the category is
+/// neither cron nor tx.
+pub(crate) fn flatten_unit(
+    block: &BlockData,
+    category: i16,
+    category_index: usize,
+) -> Vec<FlatEventInfo> {
+    let block_height = block.block.info.height;
+    if category == FlatCategory::Cron as i16 {
+        let Some(cron) = block.outcome.cron_outcomes.get(category_index) else {
+            return Vec::new();
+        };
+        let mut event_id = EventId::new(block_height, FlatCategory::Cron, category_index as u32, 0);
+        flatten_commitment_status(&mut event_id, cron.cron_event.clone())
+    } else if category == FlatCategory::Tx as i16 {
+        let Some(tx) = block.outcome.tx_outcomes.get(category_index) else {
+            return Vec::new();
+        };
+        flatten_tx_events(tx.events.clone(), block_height, category_index as u32)
+    } else {
+        Vec::new()
+    }
 }
 
 #[cfg(test)]

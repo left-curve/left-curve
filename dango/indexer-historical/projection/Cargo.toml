@@ -24,8 +24,9 @@ async-trait              = { workspace = true }
 borsh                    = { workspace = true }
 clickhouse               = { workspace = true }
 futures                  = { workspace = true }
-dango-primitives               = { workspace = true }
-dango-indexer-historical-types = { workspace = true }
+dango-primitives                      = { workspace = true, features = ["async-graphql", "chrono"] }
+dango-indexer-historical-block-source = { workspace = true, features = ["async-graphql"] }
+dango-indexer-historical-types        = { workspace = true }
 metrics                  = { workspace = true, optional = true }
 sea-orm                  = { workspace = true }
 sea-orm-migration        = { workspace = true }

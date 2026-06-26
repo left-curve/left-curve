@@ -8,10 +8,14 @@
 //!   pulls from a sentinel node.
 
 mod httpd_client;
+#[cfg(feature = "async-graphql")]
+mod loader;
 mod local;
 mod remote;
 mod source;
 
+#[cfg(feature = "async-graphql")]
+pub use loader::BlockLoader;
 pub use {
     httpd_client::HttpdClient,
     local::LocalBlockSource,
