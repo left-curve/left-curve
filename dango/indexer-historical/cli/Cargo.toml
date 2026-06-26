@@ -23,10 +23,13 @@ dango-indexer-historical-app          = { workspace = true, features = ["metrics
 dango-indexer-historical-block-source = { workspace = true, features = ["async-graphql", "metrics", "tracing"] }
 dango-indexer-historical-httpd        = { workspace = true, features = ["metrics", "tracing"] }
 dango-indexer-historical-projection   = { workspace = true, features = ["metrics", "tracing"] }
+dango-indexer-metrics                 = { workspace = true, features = ["tracing"] }
 dango-primitives                      = { workspace = true }
 dango-sdk                             = { workspace = true, features = ["tracing"] }
 futures                               = { workspace = true }
 home                                  = { workspace = true }
+metrics                               = { workspace = true }
+metrics-exporter-prometheus           = { workspace = true }
 sea-orm                               = { workspace = true }
 serde                                 = { workspace = true, features = ["derive"] }
 tokio                                 = { workspace = true }

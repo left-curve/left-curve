@@ -24,6 +24,10 @@ pub struct StartCmd;
 
 impl StartCmd {
     pub async fn run(self, home: HomeDirectory) -> anyhow::Result<()> {
+        // Install the global Prometheus recorder first, so metrics emitted during
+        // startup are captured. Recording is always on; serving is gated below.
+        let metrics_handle = crate::metrics::install()?;
+
         tracing::info!(
             home = %home.display(),
             commit = dango_primitives::GIT_COMMIT,
@@ -38,6 +42,8 @@ impl StartCmd {
             fetcher = cfg.block_source.fetcher_kind().unwrap_or("none"),
             httpd_enabled = cfg.httpd.enabled,
             httpd_bind = %cfg.httpd.bind,
+            metrics_enabled = cfg.metrics.enabled,
+            metrics_bind = %format!("{}:{}", cfg.metrics.ip, cfg.metrics.port),
             pg_max_connections = cfg.postgres.max_connections,
             "configuration loaded",
         );
@@ -72,6 +78,23 @@ impl StartCmd {
         // Step 6: supervise the source, one loop per projection, and (when
         // enabled) the read API, until a task ends. `App::run` migrates first.
         let app = App::new(block_source, committer, projections, httpd);
-        app.run().await
+
+        // Supervise the ingest+read-API app alongside the Prometheus endpoint.
+        // `try_join!` polls both on this task (no `Send` wrapper needed for the
+        // actix metrics server), and the first to finish/err tears the other
+        // down. With metrics disabled it is just `App::run`.
+        if cfg.metrics.enabled {
+            tracing::info!(
+                metrics_bind = %format!("{}:{}", cfg.metrics.ip, cfg.metrics.port),
+                "serving the /metrics endpoint"
+            );
+            tokio::try_join!(
+                app.run(),
+                crate::metrics::serve(&cfg.metrics, metrics_handle)
+            )?;
+            Ok(())
+        } else {
+            app.run().await
+        }
     }
 }

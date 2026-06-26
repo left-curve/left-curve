@@ -4,13 +4,16 @@
 //! a global `--home` and one subcommand per mode of operation. For now the only
 //! command is [`start`](start), which boots the ingest + read-API service.
 //!
-//! Telemetry is intentionally a single `fmt` layer honoring `RUST_LOG` for now;
-//! the OTLP / Sentry stack `dango-cli` wires can be layered on here later.
+//! Logs are a single `fmt` layer honoring `RUST_LOG` (the OTLP / Sentry tracing
+//! export `dango-cli` wires can be layered on here later); metrics are a global
+//! Prometheus recorder installed in `start` and scraped at `/metrics` — see
+//! `design/observability.md`.
 
 mod activity;
 mod config;
 mod db;
 mod home_directory;
+mod metrics;
 mod read_api;
 mod source;
 mod start;

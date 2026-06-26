@@ -27,6 +27,8 @@ pub struct Config {
     #[serde(default)]
     pub httpd: HttpdConfig,
     #[serde(default)]
+    pub metrics: MetricsConfig,
+    #[serde(default)]
     pub activity: ActivitySettings,
 }
 
@@ -170,8 +172,45 @@ impl Default for HttpdConfig {
     }
 }
 
+/// The Prometheus `/metrics` endpoint. Recording is always installed (cheap);
+/// this only controls whether the scrape endpoint is served — `enabled = false`
+/// keeps metrics internal and binds no port. Separate from the GraphQL `httpd`
+/// so metrics stay available even when the read API runs ingest-only.
+#[derive(Debug, Clone, Deserialize)]
+pub struct MetricsConfig {
+    /// Serve the `/metrics` endpoint. Default `true`.
+    #[serde(default = "default_true")]
+    pub enabled: bool,
+    /// Address to bind — default `0.0.0.0`, so an external Prometheus on the
+    /// detached host can scrape it.
+    #[serde(default = "default_metrics_ip")]
+    pub ip: String,
+    /// Port to bind. Default `9191`, matching the dango node's metrics-port
+    /// convention.
+    #[serde(default = "default_metrics_port")]
+    pub port: u16,
+}
+
+impl Default for MetricsConfig {
+    fn default() -> Self {
+        Self {
+            enabled: default_true(),
+            ip: default_metrics_ip(),
+            port: default_metrics_port(),
+        }
+    }
+}
+
 fn default_max_connections() -> u32 {
     10
+}
+
+fn default_metrics_ip() -> String {
+    "0.0.0.0".to_string()
+}
+
+fn default_metrics_port() -> u16 {
+    9191
 }
 
 fn default_true() -> bool {
@@ -223,6 +262,11 @@ mod tests {
         }
         assert!(cfg.httpd.enabled);
         assert_eq!(cfg.httpd.bind, "0.0.0.0:8080");
+
+        // `[metrics]`: the Prometheus scrape endpoint.
+        assert!(cfg.metrics.enabled);
+        assert_eq!(cfg.metrics.ip, "0.0.0.0");
+        assert_eq!(cfg.metrics.port, 9191);
 
         // `[activity]`: a filter parses as a `WhiteOrBlackList`; omitted filters
         // stay `None` (the projection's built-in default applies later).

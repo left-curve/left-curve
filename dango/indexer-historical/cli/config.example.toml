@@ -21,6 +21,14 @@ type = "sentinel"                   # reuses live_url — no URL of its own
 enabled = true
 bind    = "0.0.0.0:8080"
 
+# Prometheus /metrics scrape endpoint. Recording is always on; this only
+# controls whether the endpoint is served (separate from the GraphQL httpd, so
+# metrics stay available even in ingest-only mode). See design/observability.md.
+[metrics]
+enabled = true
+ip      = "0.0.0.0"                  # bind for an external Prometheus to scrape
+port    = 9191
+
 # Optional — activity projection write-time filters (NOT retroactive; changing
 # them needs a re-backfill). Omitted fields use the projection's built-in
 # defaults. `involvement_blacklist` is MERGED with the system contracts the cli
