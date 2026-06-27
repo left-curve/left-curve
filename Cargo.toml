@@ -38,6 +38,7 @@ members = [
   "dango/indexer-historical/cli",
   "dango/indexer-historical/httpd",
   "dango/indexer-historical/projection",
+  "dango/indexer-historical/testing",
   "dango/indexer-historical/types",
   "dango/indexer/cache",
   "dango/indexer/clickhouse",
@@ -144,6 +145,7 @@ p256                        = "0.13"
 parking_lot                 = { version = "0.12", features = ["arc_lock", "send_guard"] }
 paste                       = "1"
 pbkdf2                      = "0.12"
+postgresql_embedded         = { version = "0.20.0", features = ["tokio"] }
 proptest                    = "1"
 prost                       = "0.14"
 pyth-lazer-client           = "25.0.0"
@@ -218,6 +220,7 @@ dango-indexer-historical-app          = { path = "dango/indexer-historical/app" 
 dango-indexer-historical-block-source = { path = "dango/indexer-historical/block-source" }
 dango-indexer-historical-httpd        = { path = "dango/indexer-historical/httpd" }
 dango-indexer-historical-projection   = { path = "dango/indexer-historical/projection" }
+dango-indexer-historical-testing      = { path = "dango/indexer-historical/testing" }
 dango-indexer-historical-types        = { path = "dango/indexer-historical/types" }
 dango-indexer-hooked        = { path = "dango/indexer/hooked" }
 dango-indexer-httpd         = { path = "dango/indexer/httpd", features = ["tracing"] }
