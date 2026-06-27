@@ -56,21 +56,30 @@ impl HttpdClient {
     }
 
     /// Open a WebSocket subscription to the `full_block` channel and return a
-    /// stream of fully-assembled [`BlockData`]. With `since`, the feed replays
-    /// from that height and then streams the live tail; without it, it streams
-    /// only blocks newer than the current tip. Each item is the sentinel's
+    /// stream of fully-assembled [`BlockData`], **always starting at the live
+    /// tip** (only blocks newer than the current tip). Each item is the node's
     /// `FullBlock` as a JSON scalar, decoded here.
+    ///
+    /// There is deliberately **no `since` parameter**. The node serves this feed
+    /// from a small in-memory ring (~100 blocks), so a `since` below that window
+    /// fails the subscription with a "resync required" error — which is exactly
+    /// where the resume point sits during a backfill or after any non-trivial
+    /// downtime. Resuming at the tip and backfilling the gap below it by other
+    /// means — the remote source's healer via `/block/full/range`, the local
+    /// source's on-disk `get` — is the only reconnect strategy that cannot wedge.
+    /// See the callers in `remote::drain_live` and `LocalBlockSource::run`.
     ///
     /// The **shared live path**: both block sources call it — the local one
     /// against the in-process `dango-httpd`, the remote one against a sentinel.
     pub(crate) async fn subscribe_full_blocks(
         &self,
-        since: Option<u64>,
     ) -> AnyResult<BoxStream<'static, AnyResult<BlockData>>> {
         let stream = self
             .ws
             .subscribe::<SubscribeFullBlock>(subscribe_full_block::Variables {
-                since_block_height: since.map(|height| height as i64),
+                // Always at the tip — see the doc comment for why there is no
+                // `since`.
+                since_block_height: None,
             })
             .await?;
 

@@ -419,8 +419,11 @@ impl App {
                 self.committer.clone(),
             )));
         }
-        try_join_all(handles).await?;
-        Ok(())
+        // Whichever task finishes first (clean exit or error) tears the rest
+        // down — no task outlives `run`.
+        let (result, _, rest) = select_all(handles).await;
+        for h in rest { h.abort(); }
+        result?
     }
 }
 ```
@@ -608,7 +611,7 @@ t=0   Chain at 1.0M. Indexer fresh.
       → committer.migrate(projections): PG migrations under the shared
         `seaql_migrations` history, then the projections' CH DDL.
       → LocalBlockSource boots: opens the `full_block` subscription at the
-        live tip (since = None); the first delivered block baselines the
+        live tip (always — no `since`); the first delivered block baselines the
         frontier → contiguous_frontier ≈ 1.0M.
       → Projections boot with cursor = their `projection_cursors` row
         (or min_height).
@@ -624,7 +627,7 @@ t=k₂  New block finalized by node. The `full_block` event delivers it;
 t=k₃  All projections at the frontier, sitting on rx.recv().
 
 t=k₄  Indexer crashes. Restart.
-      Source re-opens the `full_block` subscription (since = None) and
+      Source re-opens the `full_block` subscription (always at the tip) and
       baselines the frontier from the first delivered block (chain now ~1.2M).
       Projections resume from their `projection_cursors` row → catch-up via
       get() against the on-disk cache files until they reach the live tail,

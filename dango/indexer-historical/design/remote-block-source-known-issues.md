@@ -80,6 +80,24 @@ concrete `HttpdClient` and call `subscribe_full_blocks` directly — the
 = 20 per call). The two-call `query_block` + `query_block_outcome` assembly the
 earlier draft described no longer exists.
 
+**Fixed 2026-06-27 — live-tail reconnect no longer wedges on the node's ring.**
+The node serves `full_block` from a **~100-block in-memory ring**
+(`DEFAULT_BLOCK_RING_CAPACITY`), so a `since` below that window fails the
+subscription with "resync required". The reconnect logic resumed at
+`frontier + 1`, which sits far below the ring for the **entire initial backfill**
+(and after any steady-state downtime longer than ~100 blocks). A single live-WS
+drop during backfill therefore wedged the live tail permanently: it could never
+re-subscribe (`since` stayed below the ring as the frontier stalled), `max_stored`
+froze, the healer drained to that frozen ceiling and idled, and the source
+**silently stopped following the chain**. Fix: `subscribe_full_blocks` lost its
+`since` parameter and now **always opens at the live tip**; the gap below the new
+tip is filled by the healer (remote, via `/block/full/range`, which serves deep
+history) or read from the node's disk by the projection loop's `get` (local). The
+`LocalBlockSource` gap path no longer breaks-and-replays — a forward jump advances
+the frontier straight to the delivered height and the skipped heights come from
+disk. ⚠️ Still no automated coverage of the live path (see Completeness): a
+regression test belongs with the deferred `mock_httpd` live-tail tests.
+
 ## Severity index
 
 | # | Issue | Severity | Type |
@@ -93,9 +111,13 @@ earlier draft described no longer exists.
 
 Not bugs, but the source cannot run in production until these land:
 
-- **No wiring.** `cli/src/main.rs` is a stub; nothing maps a `remote.*` config
-  section onto `RemoteBlockSourceConfig` / `SentinelFetcherConfig` or the store
-  path yet, and nothing constructs the `HttpdClient`, fetcher, and store.
+- **Tuning knobs not surfaced.** The CLI wiring has landed — the `remote.*`
+  config section provides `store_path`, the sentinel `live_url`, and the fetcher
+  kind, and `cli/src/source.rs` constructs the `HttpdClient`, fetcher, and store.
+  What remains is the per-source **tuning**: `RemoteBlockSourceConfig` /
+  `SentinelFetcherConfig` are still built from their crate `Default`s, not mapped
+  from TOML, so the buffer sizes / intervals / timeouts can't be tuned per
+  deployment yet.
 - **Live-tail tests.** The live path (`HttpdClient::subscribe_full_blocks` and
   `drain_live`'s reconnect/gap handling) has no automated coverage yet: the
   earlier mock-subscriber tests were removed with the `LiveSubscriber` trait and

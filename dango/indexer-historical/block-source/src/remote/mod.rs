@@ -333,15 +333,15 @@ impl RemoteBlockSource {
                 return Ok(()); // coordinator gone — source shutting down
             }
 
-            // Resume the feed just above the contiguous frontier, so a reconnect
-            // replays the downtime hole with no gap; `None` (fresh, empty store)
-            // starts at the live tip.
-            let since = self
-                .store
-                .contiguous_frontier()
-                .await?
-                .map(|frontier| frontier + 1);
-            let mut live_blocks = match self.httpd_client.subscribe_full_blocks(since).await {
+            // Always (re)subscribe at the live tip. The node serves `full_block`
+            // from a ~100-block in-memory ring, so resuming at `frontier + 1`
+            // would fail with "resync required" whenever the frontier is far
+            // below the tip — i.e. for the whole initial backfill, and after any
+            // downtime longer than the ring — permanently wedging the live tail.
+            // Taking the tip instead makes the downtime hole just another gap the
+            // store reports and the healer backfills via the fetcher
+            // (`/block/full/range`, which does serve deep history).
+            let mut live_blocks = match self.httpd_client.subscribe_full_blocks().await {
                 Ok(stream) => stream,
                 Err(_error) => {
                     #[cfg(feature = "metrics")]

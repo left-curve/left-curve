@@ -57,7 +57,7 @@ RemoteBlockSource (impl BlockSource)
  │     put → Option<frontier> · get · contiguous_frontier · lowest_gap
  │     owns the stored-height topology (frontier + gaps), persisted
  ├── HttpdClient (node `httpd` connection)        [concrete; one node-backed impl]
- │     subscribe_full_blocks(since) → live tail [since..∞) as a stream of BlockData
+ │     subscribe_full_blocks() → live tail [tip..∞) as a stream of BlockData
  │     also backs the fetcher via BlockRangeClient (the `/block/full/range` call)
  ├── BlockFetcher                                [trait, ≥1 impl]
  │     spawn(from, to) -> FetchStream   (bounded backfill, dies at `to`)
@@ -258,7 +258,8 @@ fast writes for free.
 ## The live tail
 
 The live tail is the node's **`full_block`** subscription, opened on the
-`HttpdClient` via `subscribe_full_blocks(since)` — the same shared path
+`HttpdClient` via `subscribe_full_blocks()` (always at the tip) — the same shared
+path
 `LocalBlockSource` uses, only pointed at a remote sentinel rather than an
 in-process `dango-httpd`. Each event carries the **whole `BlockData`** (block +
 outcome) as a JSON scalar, decoded directly, so the call hands back just a
@@ -269,10 +270,16 @@ single store writer) and reconnects on drop; `subscribe_full_blocks` only opens
 the one subscription and yields. There is no `LiveSubscriber` trait — one
 node-backed implementation, so the source holds the `HttpdClient` directly.
 
-`since` resumes the feed: `None` (a fresh, empty store) starts at the live tip;
-otherwise it replays from `frontier + 1`, so a reconnect re-delivers the downtime
-hole rather than leaving a gap. The chain produces blocks in order and the
-subscription delivers them in order, so `[since..∞)` is contiguous.
+The subscription **always opens at the live tip** (no `since`). The node serves
+`full_block` from a small in-memory ring (~100 blocks), so resuming at
+`frontier + 1` would fail with a "resync required" error whenever the frontier
+sits more than ~100 blocks below the tip — i.e. for the entire initial backfill,
+and after any downtime longer than the ring — permanently wedging the live tail.
+Taking the tip instead makes the downtime hole just another gap below the new
+max-stored height: the store reports it and the healer fills it via the fetcher
+(`/block/full/range`, which *does* serve deep history). The chain produces blocks
+in order and the subscription delivers them in order, so `[tip..∞)` is contiguous;
+everything below the tip is the healer's job.
 
 Because the subscription **carries the payload**, the live tail needs no
 follow-up read — neither the V1 disk read nor a per-height RPC. That is the V1→V2
@@ -481,8 +488,10 @@ and add the `from/to` bound so the task terminates.
 
 ## Configuration
 
-The tunables exist as Rust config structs with `Default`s; the CLI/TOML wiring
-that maps a `remote.*` section onto them is not built yet.
+The deployment-specific fields — `store_path`, the sentinel `live_url`, and the
+fetcher kind — are wired through the CLI's `remote.*` config section. The
+**tuning** structs below still use their Rust `Default`s; mapping them onto
+`remote.*` TOML keys is a future task.
 
 `RemoteBlockSourceConfig` — `pubsub_buffer_size` (broadcast capacity),
 `coordinator_buffer` (the coordinator's input channel), `heal_poll_interval`
@@ -495,10 +504,10 @@ call, clamped to the gap and capped at `MAX_BLOCK_RANGE` = 20), `timeout`
 (per-request RPC timeout), `channel_capacity` (fetch-ahead backlog — the dominant
 backfill-RAM knob), `retry_backoff`.
 
-Still needed: `sentinel_url` — the sentinel's base `httpd` URL, from which
-`HttpdClient::new` derives both the `full_block` subscription and the
-`/block/full/range` endpoint; it feeds the live tail and the fetcher's client
-alike. And `store_path` — the **local directory** for the source's RocksDB.
+Already wired through `remote.*`: `live_url` (the sentinel's base `httpd` URL,
+from which `HttpdClient::new` derives both the `full_block` subscription and the
+`/block/full/range` endpoint — it feeds the live tail and the fetcher's client
+alike) and `store_path` — the **local directory** for the source's RocksDB.
 Unlike the projections' Postgres, the raw
 store is a private on-disk store owned by this source; nothing else reads it
 (the query service reaches blocks through the same in-process `source.get`), so

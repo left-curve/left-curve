@@ -29,7 +29,10 @@ const RECONNECT_BACKOFF: Duration = Duration::from_secs(5);
 pub struct LocalBlockSource {
     cache_path: IndexerPath,
     httpd_client: HttpdClient,
-    /// Highest contiguous block height observed.
+    /// Highest block height the live feed has delivered — the broadcast
+    /// frontier. Everything at or below it is reachable through `get` (the
+    /// co-located node holds every finalized block on disk), so a jump in the
+    /// feed simply advances it and the skipped heights are pulled from disk.
     ///
     /// Mutated only by the `run()` task; reads are lock-free. The atomic is
     /// here for cross-task visibility, not for write serialisation.
@@ -65,17 +68,18 @@ impl BlockSource for LocalBlockSource {
         tracing::info!("LocalBlockSource starting");
 
         // Outer loop: keep the `full_block` subscription open across transient
-        // disconnects. The first connect resumes from `None` (the live tip) and
-        // the frontier is set from the first block that arrives; each reconnect
-        // then resumes from `frontier + 1`, so the node replays any downtime hole
-        // before the live tail — the same shared path the remote source uses.
+        // disconnects, always (re)subscribing at the live tip. Unlike the remote
+        // source there is no store to heal from — but there needs not be: the
+        // co-located node has every finalized block on disk (it writes the cache
+        // file at FinalizeBlock, before publishing the feed), so any height at or
+        // below the frontier is always reachable through `get`. A reconnect
+        // therefore just re-baselines the frontier at the new tip, and the
+        // heights skipped during the downtime are pulled from disk by the
+        // projection loop's `get` catch-up. Resuming at `frontier + 1` instead
+        // would fail against the node's ~100-block ring ("resync required") after
+        // any non-trivial downtime — a wedge with no recovery here.
         loop {
-            let since = match self.frontier.load(Ordering::Acquire) {
-                0 => None,
-                frontier => Some(frontier + 1),
-            };
-
-            let mut stream = match self.httpd_client.subscribe_full_blocks(since).await {
+            let mut stream = match self.httpd_client.subscribe_full_blocks().await {
                 Ok(s) => s,
                 Err(_e) => {
                     #[cfg(feature = "metrics")]
@@ -101,24 +105,29 @@ impl BlockSource for LocalBlockSource {
                         let height = block.height();
                         let current = self.frontier.load(Ordering::Acquire);
 
-                        // The feed delivers in order from `since`. Skip a
-                        // re-delivered block at/under the frontier. The first
-                        // block (frontier still 0) sets the baseline; after that
-                        // a gap (a dropped block) reconnects to replay from
-                        // `frontier + 1` rather than broadcasting a hole.
+                        // Skip a re-delivered block at/under the frontier. The
+                        // first block (frontier still 0) sets the baseline.
                         if height <= current {
                             continue;
                         }
+
+                        // A jump beyond `current + 1` (a dropped live event, or a
+                        // reconnect at a higher tip) is not a hole to replay: the
+                        // skipped heights are already on the node's disk, so we
+                        // advance the frontier straight to `height` and the
+                        // projection loop pulls the gap via `get`. Record it for
+                        // observability, but never break to "replay" — the node's
+                        // ~100-block ring can't serve a large hole anyway.
+                        #[cfg(any(feature = "metrics", feature = "tracing"))]
                         if current != 0 && height > current + 1 {
                             #[cfg(feature = "metrics")]
-                            {
-                                metrics::counter!(crate::metrics::DISCONTINUITIES).increment(1);
-                                metrics::counter!(crate::metrics::RECONNECTS, "reason" => "gap")
-                                    .increment(1);
-                            }
+                            metrics::counter!(crate::metrics::DISCONTINUITIES).increment(1);
                             #[cfg(feature = "tracing")]
-                            tracing::warn!(current, height, "gap in full_block feed; reconnecting");
-                            break;
+                            tracing::debug!(
+                                current,
+                                height,
+                                "live feed skipped; advancing frontier (projections fill via disk)"
+                            );
                         }
 
                         self.frontier.store(height, Ordering::Release);

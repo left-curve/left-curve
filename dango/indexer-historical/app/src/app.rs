@@ -1,10 +1,10 @@
 use {
     crate::projection_loop,
-    anyhow::Context,
+    anyhow::anyhow,
     dango_indexer_historical_block_source::BlockSource,
     dango_indexer_historical_projection::{Committer, Projection},
     dango_indexer_historical_types::AnyResult,
-    futures::future::{BoxFuture, try_join_all},
+    futures::future::{BoxFuture, select_all},
     std::sync::Arc,
 };
 
@@ -72,12 +72,17 @@ impl App {
             handles.push(tokio::spawn(httpd));
         }
 
-        // try_join_all surfaces the first join error (panic / cancellation);
-        // we then bubble up the first inner task error if any.
-        let results = try_join_all(handles).await.context("task join")?;
-        for r in results {
-            r?;
+        // Whichever task returns first — a clean end or an error — tears the
+        // others down, so no task is left detached on the runtime when one exits
+        // (and a clean exit of a single task can't hang `run` waiting on the
+        // others that loop forever). Mirrors `RemoteBlockSource::run`.
+        let (result, _index, remaining) = select_all(handles).await;
+        for handle in remaining {
+            handle.abort();
         }
-        Ok(())
+        match result {
+            Ok(task_result) => task_result,
+            Err(join_err) => Err(anyhow!("indexer task panicked: {join_err}")),
+        }
     }
 }

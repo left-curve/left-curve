@@ -49,7 +49,7 @@ Why a GraphQL subscription over polling or inotify:
   instead of the on-disk file layout.
 - **Reconnection** is solved by the WS client wrapped in the source's own
   resume loop (see [Frontier](#frontier--from-the-live-feed-not-a-boot-query)).
-- **"Live from tip"** semantics come for free — `subscribe_full_blocks(None)`
+- **"Live from tip"** semantics come for free — `subscribe_full_blocks()`
   starts at the chain head and moves forward.
 - **No file enumeration** to discover what appeared.
 - **Shared with V2** — the same subscription transfers to a remote sentinel
@@ -88,7 +88,7 @@ The source holds `frontier: AtomicU64` in memory, mutated only by the `run()`
 task; reads are lock-free.
 
 **At boot** there is no separate query. `run()` opens the subscription at the
-live tip (`subscribe_full_blocks(None)`) and the **first block that arrives sets
+live tip (`subscribe_full_blocks()`) and the **first block that arrives sets
 the baseline** — the frontier jumps straight to it. No walk of the on-disk
 blocks, no `latest_block_height` round-trip; the feed itself tells the source
 where the tip is.
@@ -97,15 +97,20 @@ where the tip is.
 
 - `height <= frontier` — already seen (a re-delivery after a reconnect); skip.
 - `height == frontier + 1` — advance the frontier and broadcast.
-- `height > frontier + 1` while `frontier != 0` — a gap (a dropped live event).
-  Break and reconnect, resuming the feed from `frontier + 1` so the node replays
-  the hole in order, rather than broadcasting past it. (The first block, with
-  `frontier` still 0, is the baseline and never counts as a gap.)
+- `height > frontier + 1` while `frontier != 0` — a jump (a dropped live event,
+  or a reconnect at a higher tip). The frontier advances **straight to `height`**
+  and broadcasts it; the skipped heights are **not** a hole to replay — they are
+  already on the node's disk, so the projection loop pulls them via `get`. (The
+  first block, with `frontier` still 0, is the baseline.)
 
-This is **identical** to the `RemoteBlockSource` live-tail logic — the same
-`since`/reconnect dance over the same `subscribe_full_blocks` stream. The only
-difference is that V1 has no store of its own to heal a gap from, so it
-reconnects and lets the node replay instead.
+The subscription **always opens at the live tip** (`subscribe_full_blocks`, no
+`since`). Unlike `RemoteBlockSource` there is no store to heal from — but there
+needs not be: every height at or below the frontier is reachable through `get`
+(the co-located node holds every finalized block on disk), so a reconnect simply
+re-baselines the frontier at the new tip and the projection loop fills the skipped
+range from disk. Resuming at `frontier + 1` instead would fail against the node's
+~100-block ring ("resync required") after any non-trivial downtime — a wedge with
+no recovery here, since V1 has no healer.
 
 ### Why not query the indexer for the boot frontier
 
@@ -144,9 +149,9 @@ broadcast sender.
 
 | Failure | Behavior |
 |---|---|
-| WS connection drops | The source reconnects with backoff and resumes the feed from `frontier + 1`, so the node replays anything produced during the outage in order. The frontier stalls until the feed is back. |
-| `dango-httpd` down but node up | Same as a WS drop — the source retries. Files on disk keep growing but the source doesn't see them until httpd comes back. Frontier stalls. Projections keep processing up to the old frontier. |
-| Gap in the live feed (a dropped event) | A delivered height beyond `frontier + 1` is treated as a gap: the source reconnects and replays from `frontier + 1` rather than broadcasting past the hole. |
+| WS connection drops | The source reconnects with backoff and resubscribes at the live tip; the heights produced during the outage are read from disk by the projection loop's `get` catch-up. The frontier stalls until the feed is back, then jumps to the new tip. |
+| `dango-httpd` down but node up | Same as a WS drop — the source retries. Files on disk keep growing; the projections keep draining them via `get` regardless of the frontier, and the frontier catches up once the feed returns. |
+| Gap in the live feed (a dropped event) | A delivered height beyond `frontier + 1` advances the frontier straight to it and broadcasts; the skipped heights are pulled from disk via `get`, never replayed over the (small-ring) subscription. |
 | Cache file missing for a `get(h)` | Maps to `Ok(None)` — "not yet"; a projection that outran the node's on-disk writes retries. |
 | Cache file present but corrupt | `CacheFile::load` returns a borsh error, bubbled up via `anyhow`. Operational decision (skip vs halt) deferred — TBD. |
 
