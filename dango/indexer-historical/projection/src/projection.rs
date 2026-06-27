@@ -3,6 +3,7 @@ use {
     async_trait::async_trait,
     dango_indexer_historical_types::{AnyResult, BlockData},
     sea_orm_migration::MigrationTrait,
+    std::num::NonZero,
 };
 
 /// Domain-specific consumer of the block stream.
@@ -26,10 +27,14 @@ pub trait Projection: Send + Sync {
     /// row, so the projection catches up from `min_height()`.
     fn id(&self) -> &'static str;
 
-    /// Minimum height below which this projection has nothing to do
+    /// Minimum height this projection starts at; blocks below it are skipped
     /// (e.g. a contract that didn't exist before that block).
-    fn min_height(&self) -> u64 {
-        0
+    ///
+    /// `NonZero` by type: block 0 does not exist — the chain's first block is
+    /// height 1 — so a projection can never declare it. The default is that
+    /// genesis floor, [`NonZero::<u64>::MIN`].
+    fn min_height(&self) -> NonZero<u64> {
+        NonZero::<u64>::MIN
     }
 
     /// Schema migrations for this projection's Postgres tables.

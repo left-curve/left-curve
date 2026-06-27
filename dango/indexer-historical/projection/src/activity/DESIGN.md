@@ -478,7 +478,8 @@ ClickHouse path in V1.
 ## Crate layout
 
 `projection/src/activity/`: `mod.rs` (the `Projection` impl + `ActivityConfig`,
-`id = "activity"`, `min_height = 0`) · `event_type.rs` (the `EventType`
+`id = "activity"`, `min_height` left at the default genesis floor) ·
+`event_type.rs` (the `EventType`
 discriminant stored in `event_type`, plus the per-event contract / name
 taxonomy) · `entity/` (sea-orm types for the three tables) · `idens.rs`
 (migration identifiers) · `migrations/` (one file per table + a `mod.rs`

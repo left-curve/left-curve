@@ -21,15 +21,17 @@ pub async fn projection_loop(
     source: Arc<dyn BlockSource>,
     committer: Arc<dyn Committer>,
 ) -> AnyResult<()> {
-    // Clamp to the genesis floor: the source never serves a height below
-    // `GENESIS_HEIGHT`, so a `min_height` (or the trait default `0`) under it
-    // would leave `get(cursor)` forever `None` while every broadcast is
-    // `Greater` — a livelock where the projection never advances.
+    // Resume just past the committed cursor, or from the projection's
+    // `min_height` on a cold start. `min_height` is `NonZero` (block 0 does not
+    // exist), and we additionally clamp to `GENESIS_HEIGHT` — the source's own
+    // floor, the authority on the lowest servable height — so `get(cursor)` can
+    // never sit below what the store can serve while every broadcast is
+    // `Greater`, a livelock where the projection never advances.
     let mut cursor = committer
         .cursor(p.id())
         .await?
         .map(|h| h + 1)
-        .unwrap_or_else(|| p.min_height())
+        .unwrap_or_else(|| p.min_height().get())
         .max(GENESIS_HEIGHT);
 
     #[cfg(feature = "tracing")]

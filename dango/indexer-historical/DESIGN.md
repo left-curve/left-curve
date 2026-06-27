@@ -184,9 +184,11 @@ pub trait Projection: Send + Sync {
     /// (new id ⇒ no cursor row).
     fn id(&self) -> &'static str;
 
-    /// Minimum height below which this projection has nothing to do
-    /// (e.g. a contract that didn't exist before that block).
-    fn min_height(&self) -> u64 { 0 }
+    /// Minimum height this projection starts at; blocks below it are
+    /// skipped (e.g. a contract that didn't exist before that block).
+    /// `NonZero` by type — block 0 does not exist — defaulting to the
+    /// genesis floor.
+    fn min_height(&self) -> NonZero<u64> { NonZero::<u64>::MIN }
 
     /// Schema migrations for this projection's PG tables. Declared on
     /// the trait so what runs is derived from the registered
@@ -464,7 +466,8 @@ async fn projection_loop(
         .cursor(p.id())
         .await?
         .map(|h| h + 1)
-        .unwrap_or_else(|| p.min_height());
+        .unwrap_or_else(|| p.min_height().get())
+        .max(GENESIS_HEIGHT);
 
     let mut maybe_rx = None;
 

@@ -114,10 +114,6 @@ impl Projection for ActivityProjection {
         PROJECTION_ID
     }
 
-    fn min_height(&self) -> u64 {
-        0
-    }
-
     fn migrations(&self) -> Vec<Box<dyn MigrationTrait>> {
         migrations::migrations()
     }
