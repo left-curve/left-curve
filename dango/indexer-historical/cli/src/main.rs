@@ -63,7 +63,13 @@ async fn main() -> anyhow::Result<()> {
     };
 
     // Minimal tracing: a fmt layer honoring `RUST_LOG` (default `info`). The
-    // OTLP / Sentry export layers can be composed in here later.
+    // OTLP / Sentry export layers can be composed in here later — but when they
+    // are, this binary MUST also grow a SIGINT/SIGTERM handler that flushes the
+    // tracer provider / Sentry on shutdown (per `.claude/rules/rust.md`), or
+    // buffered spans/events are lost on exit. Today there is nothing to flush
+    // (fmt is synchronous, metrics are pull-based) and the commit protocol is
+    // crash-safe, so the default terminate-on-signal is safe; that stops being
+    // true the moment a buffered exporter is added.
     tracing_subscriber::registry()
         .with(EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info")))
         .with(tracing_subscriber::fmt::layer())

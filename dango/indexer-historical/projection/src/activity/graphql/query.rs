@@ -72,6 +72,16 @@ impl ActivityQuery {
     /// full payload from its block); empty if none. Cron units carry no hash, so
     /// this only ever resolves transactions. Served by the partial `(hash)`
     /// index.
+    ///
+    /// **Intentionally un-capped.** A hash collision is only reachable by
+    /// re-submitting *byte-identical* tx bytes — a nonce-less contract sender, or
+    /// a tx that passes `CheckTx` but fails in `FinalizeBlock` — never by an
+    /// external party crafting distinct txs, so in practice a hash maps to a
+    /// handful of units and the un-paginated list (plus its per-row `tx` /
+    /// `outcome` block hydration) is bounded in practice. We accept the unbounded
+    /// shape rather than complicate the detail lookup. If a deployment ever
+    /// observes *many* units sharing one hash, add a `LIMIT` here — the partial
+    /// `(hash)` index already serves it as a bounded backward scan.
     async fn transactions_by_hash(
         &self,
         ctx: &Context<'_>,

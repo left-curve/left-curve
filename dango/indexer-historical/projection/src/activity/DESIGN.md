@@ -99,8 +99,10 @@ lever: the raw stream is ~112 flattened events/block, of which ~81% is dropped
 noise, leaving ~20/block of meaningful, mostly address-bearing events. Postgres
 serves the *queries* fine (every one is a bounded keyset scan on a good index),
 so the cost center is **storage and write throughput**, addressed by: the
-blacklist, the payload split (below), the involvement blacklist (below),
-`block_height`-range partitioning, and offline backfill.
+blacklist, the payload split (below), the involvement blacklist (below), and
+offline backfill. (`block_height`-range partitioning is **not** implemented — a
+deliberate deferral; see the write-side caveat below for the rationale and the
+recovery path if a measured trigger ever demands it.)
 
 A write-side caveat: `activity_events`' indexes are address- / contract-prefixed
 (a near-random prefix), so a sustained insert stream scatters across the key
@@ -110,8 +112,24 @@ backfill**: bulk-load with the secondary indexes dropped, then build them on the
 populated table (a packed build, not incremental splits). The migrations set a
 `fillfactor` of 85 on those indexes (Postgres only) so that build — and later
 right-extension — leaves slack; for a live, index-present load the gain is
-smaller. (`fillfactor` is the documented knob; partitioning is the structural
-one.)
+smaller. `fillfactor` and the offline backfill are the implemented write levers.
+
+`block_height`-range **partitioning is deliberately not implemented.** It would
+help *writes* (insert locality) and *retention* (drop an old range as a whole
+partition, instantly), but **not** the reads — every feed seeks on `address` /
+`contract` / `event_type`, never a `block_height` range, so there is no partition
+pruning (a feed would `MergeAppend` across all partitions). And it is **not a
+cheap retrofit**: partitioning a populated table means a rebuild (a new
+partitioned table + a copy), not an in-place `ALTER`. So the levers above carry
+V1, and if a *measured* trigger ever demands more, the response is, in order:
+(1) the **ClickHouse** escape hatch below (committer-ready — the real scale-out);
+or (2) for a partitioned Postgres layout specifically (e.g. range-drop retention),
+a one-time rebuild. The rebuild is operationally cheap in the planned
+**two-indexer + load-balancer** topology: each indexer owns its own raw store and
+Postgres, so it is a rolling per-projection re-backfill (bump the projection `id`,
+re-create the table partitioned, catch up from the local raw store) on one indexer
+while the other serves the load balancer — no shared-state migration, no
+downtime.
 
 **ClickHouse is the documented escape hatch.** If volume outgrows Postgres, the
 `events` read-path moves to ClickHouse: the filter columns are low-cardinality
