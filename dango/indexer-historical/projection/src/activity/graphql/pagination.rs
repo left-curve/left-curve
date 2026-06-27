@@ -24,7 +24,15 @@ use {
 /// Page size when a feed is queried without an explicit `first`.
 pub(crate) const DEFAULT_LIMIT: u64 = 50;
 /// Hard ceiling on `first` — a page never returns more than this many rows.
-pub(crate) const MAX_LIMIT: u64 = 200;
+///
+/// Deliberately conservative for now (equal to [`DEFAULT_LIMIT`]): besides
+/// capping page size, it bounds the worst-case per-request block hydration when
+/// `data` is selected on a non-priority event feed — one `source.get` per
+/// *distinct* block in the page (the `BlockLoader` dedups by height, so a dense
+/// type costs a few reads and only a sparse type over cold history approaches
+/// one read per row). See `Event::data`. Raise once cold-read latency is
+/// measured.
+pub(crate) const MAX_LIMIT: u64 = 50;
 
 /// The effective page size for a `first` argument, clamped to `[0, MAX_LIMIT]`.
 /// `first: 0` is honored as an explicit empty page (Relay semantics — the edges

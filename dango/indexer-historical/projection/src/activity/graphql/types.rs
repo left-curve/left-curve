@@ -221,6 +221,15 @@ impl Event {
     /// is just decompressed here; for non-priority types it is hydrated from the
     /// unit's block (shared `BlockLoader`) and flattened. `null` only if the
     /// block is no longer available from the source.
+    ///
+    /// Cost note: selecting `data` on a feed of a **non-priority** type (kept by
+    /// `event_type_filter` but absent from `event_data_filter`, e.g. `execute`)
+    /// pays one block load per *distinct* block in the page. The `BlockLoader`
+    /// dedups by height, so a type with many events per block costs only a few
+    /// reads, while a sparse type over cold history approaches one read per row
+    /// (bounded by `MAX_LIMIT`). If a deployment queries such payloads often, add
+    /// the type to `event_data_filter` (and re-backfill) so they are stored
+    /// inline and the feed never hydrates.
     async fn data(&self, ctx: &Context<'_>) -> Result<Option<Json<FlatEvent>>> {
         // Priority types: the payload came with the feed row — just decode it.
         if let Some(blob) = &self.raw_data {
