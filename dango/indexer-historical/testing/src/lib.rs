@@ -34,7 +34,9 @@ use {
     },
     dango_types::constants::usdc,
     postgresql_embedded::PostgreSQL,
-    sea_orm::{ConnectOptions, ConnectionTrait, Database, DatabaseConnection},
+    sea_orm::{
+        ConnectOptions, ConnectionTrait, Database, DatabaseConnection, DbBackend, Statement,
+    },
     std::{sync::Arc, time::Duration},
     tempfile::{Builder, TempDir},
 };
@@ -140,6 +142,10 @@ impl Drop for TestDb {
 /// stay up.
 async fn base_engine() -> anyhow::Result<(String, Option<PostgreSQL>)> {
     if let Ok(url) = std::env::var("DATABASE_URL") {
+        // CI points `DATABASE_URL` at a `dango_test` database the bare Postgres
+        // container never creates; make sure it exists before we carve schemas
+        // inside it.
+        ensure_database_exists(&url).await?;
         return Ok((url, None));
     }
 
@@ -151,6 +157,47 @@ async fn base_engine() -> anyhow::Result<(String, Option<PostgreSQL>)> {
     // The default `postgres` database; tests carve their own schema inside it.
     let url = pg.settings().url("postgres");
     Ok((url, Some(pg)))
+}
+
+/// Ensure the database named in an external `DATABASE_URL` exists, creating it
+/// through the server's `postgres` maintenance database if not.
+///
+/// CI points `DATABASE_URL` at a `dango_test` database that the bare Postgres
+/// container never creates — the in-process indexer harness likewise carves its
+/// own test databases. Postgres has no `CREATE DATABASE IF NOT EXISTS`, so check
+/// `pg_database` first and tolerate a concurrent creator: the `db`, `e2e`, and
+/// `backfill` test binaries run as separate processes and can reach here at once.
+async fn ensure_database_exists(url: &str) -> anyhow::Result<()> {
+    let slash = url
+        .rfind('/')
+        .context("DATABASE_URL has no `/<database>`")?;
+    let server_prefix = &url[..slash];
+    // Drop any `?query` suffix from the database name.
+    let db_name = url[slash + 1..].split('?').next().unwrap_or_default();
+    if db_name.is_empty() {
+        return Ok(());
+    }
+
+    let admin = Database::connect(format!("{server_prefix}/postgres"))
+        .await
+        .context("connecting to the `postgres` maintenance database")?;
+    let exists = admin
+        .query_one(Statement::from_string(
+            DbBackend::Postgres,
+            format!("SELECT 1 AS one FROM pg_database WHERE datname = '{db_name}'"),
+        ))
+        .await
+        .context("checking whether the test database exists")?
+        .is_some();
+    if !exists {
+        // A sibling process may win the race and create it first; our `CREATE`
+        // then fails with "already exists", which is exactly the state we want.
+        let _ = admin
+            .execute_unprepared(&format!("CREATE DATABASE \"{db_name}\""))
+            .await;
+    }
+    admin.close().await.ok();
+    Ok(())
 }
 
 // ---- Full end-to-end environment ----
