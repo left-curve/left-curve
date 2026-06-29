@@ -2769,12 +2769,12 @@ Client messages are tagged by `method`; server messages are tagged by `channel`.
 {"channel": "error", "id": 1, "data": {"code": "resync", "message": "..."}}
 ```
 
-| `channel`              | Description                                                                     |
-| ---------------------- | ------------------------------------------------------------------------------- |
-| `subscriptionResponse` | Acknowledges a `subscribe`/`unsubscribe`, echoing its `id`                      |
-| `perpsEvents`/`fullBlock` | A data frame, tagged with the originating subscription's `id`                |
-| `pong`                 | Reply to a `ping`, echoing its `id`                                             |
-| `error`                | A problem, tagged with the offending `id` when applicable; see [§11.3](#113-reconnect-and-errors) |
+| `channel`                 | Description                                                                                       |
+| ------------------------- | ------------------------------------------------------------------------------------------------- |
+| `subscriptionResponse`    | Acknowledges a `subscribe`/`unsubscribe`, echoing its `id`                                        |
+| `perpsEvents`/`fullBlock` | A data frame, tagged with the originating subscription's `id`                                     |
+| `pong`                    | Reply to a `ping`, echoing its `id`                                                               |
+| `error`                   | A problem, tagged with the offending `id` when applicable; see [§11.3](#113-reconnect-and-errors) |
 
 **Heartbeat.** The server sends a WebSocket ping every 20 seconds and closes a connection it has heard nothing from for 60 seconds. A client either lets its WebSocket stack answer those pings, or sends `{"method": "ping"}` itself; either keeps an idle subscription alive.
 
@@ -2796,7 +2796,7 @@ Stream every event emitted by the perps contract — order lifecycle, fills, liq
 }}
 ```
 
-| Field            | Type       | Description                                                             |
+| Field            | Type       | Description                                                            |
 | ---------------- | ---------- | ---------------------------------------------------------------------- |
 | `since`          | `Int`      | Replay retained blocks from this height on connect; omit for live-only |
 | `eventTypes`     | `[String]` | Keep only these event types (see [§9](#9-events-reference))            |
@@ -2855,7 +2855,7 @@ Stream every finalized block in full — the same `FullBlock` shape (`block` + `
 {"method": "subscribe", "id": 2, "subscription": {"type": "fullBlock", "since": 100000}}
 ```
 
-| Field   | Type  | Description                                                             |
+| Field   | Type  | Description                                                            |
 | ------- | ----- | ---------------------------------------------------------------------- |
 | `since` | `Int` | Replay retained blocks from this height on connect; omit for live-only |
 
@@ -2869,11 +2869,11 @@ Both channels are served from an in-memory window of recent blocks. Every data f
 
 Problems are delivered as `error` frames tagged with the offending `id`:
 
-| `code`            | Meaning                                                                                                                                                                                                        |
-| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `code`            | Meaning                                                                                                                                                                                                         |
+| ----------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `resync`          | `since` predates the retained window, or the feed lagged past it. Reconnect with a newer `since`; backfill the gap from the `perpsEvents` query ([§5.5](#55-trade-history)) or the `/block/full/*` REST routes. |
-| `tooManyRequests` | The server's subscription limit was reached.                                                                                                                                                                  |
-| `badRequest`      | The message could not be parsed, or the `id` is already in use.                                                                                                                                                |
+| `tooManyRequests` | The server's subscription limit was reached.                                                                                                                                                                    |
+| `badRequest`      | The message could not be parsed, or the `id` is already in use.                                                                                                                                                 |
 
 ```json
 {"channel": "error", "id": 1, "data": {"code": "resync", "message": "resync required: requested from block 100 but the oldest retained block is 900"}}
