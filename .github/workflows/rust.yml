@@ -99,6 +99,7 @@ jobs:
               - 'clippy.toml'
               - 'rustfmt.toml'
               - 'docker/dango/**'
+              - 'docker/indexer-historical/**'
               - '.force_backend_rebuild'
             frontend_app:
               - 'sdk/typescript/**'
