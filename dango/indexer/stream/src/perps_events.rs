@@ -19,7 +19,12 @@ use {
 };
 
 /// A single perps-contract event, as streamed to clients.
-#[derive(Debug, Clone, SimpleObject)]
+///
+/// `serde(rename_all = "camelCase")` reproduces the field-level GraphQL names
+/// verbatim (`eventType`, `pairId`, ...), so the JSON emitted over the REST/SSE
+/// transport is byte-shape-identical to the `perps_events2` GraphQL payload.
+#[derive(Debug, Clone, SimpleObject, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
 #[graphql(name = "PerpsEvent2")]
 pub struct PerpsEvent {
     /// Per-block ordinal across all perps-contract events in the block.
@@ -58,7 +63,8 @@ pub struct PerpsEvent {
 
 /// All perps-contract events emitted in one block. Doubles as the ring item
 /// (holding every event) and the streamed output (holding the filtered subset).
-#[derive(Debug, Clone, SimpleObject)]
+#[derive(Debug, Clone, SimpleObject, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
 #[graphql(name = "PerpsEvent2Batch")]
 pub struct PerpsEventBlock {
     #[graphql(name = "blockHeight")]

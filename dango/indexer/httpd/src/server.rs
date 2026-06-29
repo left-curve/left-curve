@@ -43,6 +43,7 @@ where
             .service(routes::index::requester_ip)
             .service(routes::index::sentry_raise)
             .service(routes::blocks::services())
+            .service(routes::perps::services())
             .service(graphql_route::<
                 crate::graphql::query::FullQuery,
                 crate::graphql::mutation::IndexerMutation,

@@ -20,6 +20,7 @@ tracing = ["dango-app/tracing", "dango-indexer-sql/tracing", "dep:tracing"]
 actix-cors               = { workspace = true }
 actix-files              = { workspace = true }
 actix-web                = { workspace = true }
+actix-web-lab            = { workspace = true }
 actix-web-metrics        = { workspace = true, optional = true }
 anyhow                   = { workspace = true }
 async-graphql            = { workspace = true, features = ["bigdecimal"] }

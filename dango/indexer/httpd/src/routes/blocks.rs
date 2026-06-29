@@ -1,14 +1,19 @@
 use {
-    crate::context::FullContext,
+    crate::{
+        context::FullContext,
+        subscription_limiter::{SubscriptionLimiter, guard_subscription_stream},
+    },
     actix_web::{
-        Error, HttpResponse, Scope,
-        error::{ErrorBadRequest, ErrorInternalServerError},
+        Error, HttpRequest, HttpResponse, Scope,
+        error::{ErrorBadRequest, ErrorConflict, ErrorInternalServerError, ErrorTooManyRequests},
         get, web,
     },
+    actix_web_lab::sse,
     dango_indexer_cache::cache_file::CacheFile,
     dango_primitives::FullBlock,
+    futures_util::StreamExt,
     serde::Deserialize,
-    std::path::PathBuf,
+    std::{path::PathBuf, sync::Arc},
 };
 
 /// Maximum number of blocks returned by `/block/full/range` in one request.
@@ -20,9 +25,11 @@ pub fn services() -> Scope {
         .service(latest_block_info)
         .service(block_result_by_height)
         .service(block_result)
-        // `/full/range` is registered before `/full/{block_height}` so the
-        // literal "range" segment is not captured as a block height.
+        // `/full/range` and `/full/stream` are registered before
+        // `/full/{block_height}` so their literal segments are not captured as a
+        // block height.
         .service(full_block_range)
+        .service(full_block_stream)
         .service(full_block_by_height)
         .service(latest_full_block)
 }
@@ -170,6 +177,59 @@ pub async fn full_block_range(
     }
 
     Ok(HttpResponse::Ok().json(blocks))
+}
+
+// ---- /full/stream: live SSE feed of full blocks ----
+
+#[derive(Deserialize)]
+struct StreamQuery {
+    since: Option<u64>,
+}
+
+/// Stream every finalized block in real time as Server-Sent Events — the same
+/// `FullBlock` shape (`block` + `outcome`) the `/full/{block_height}` route
+/// returns, one event per block. Each event's `id` is the block height, so a
+/// client reconnecting with a `Last-Event-ID` header resumes after the last
+/// block it received.
+///
+/// The feed is served from the validator's in-memory window. `?since=<height>`
+/// replays the retained blocks from that height (inclusive) before streaming the
+/// live tail; without it, only blocks newer than the current tip are streamed.
+/// A `since` that predates the retained window fails with `409 Conflict` —
+/// reconnect with a newer height (deep history is on the `/full/{block_height}`
+/// and `/full/range` routes). The stream is capped by the shared subscription
+/// limiter and returns `429 Too Many Requests` when the global limit is reached.
+#[cfg_attr(feature = "tracing", tracing::instrument(skip_all))]
+#[get("/full/stream")]
+pub async fn full_block_stream(
+    req: HttpRequest,
+    query: web::Query<StreamQuery>,
+    app_ctx: web::Data<FullContext>,
+    limiter: web::Data<SubscriptionLimiter>,
+) -> Result<HttpResponse, Error> {
+    let guard = Arc::new(
+        limiter
+            .new_connection()
+            .try_acquire()
+            .map_err(|err| ErrorTooManyRequests(err.message))?,
+    );
+
+    let since = crate::routes::resolve_since(&req, query.since);
+
+    // Every block matches (no filtering); mirror the GraphQL `full_block`
+    // projection, which clones the block as-is.
+    let stream = app_ctx
+        .stream_context
+        .blocks()
+        .subscribe(since, |block: &FullBlock| Some(block.clone()))
+        .map_err(|resync| ErrorConflict(resync.to_string()))?;
+
+    let events = guard_subscription_stream(stream, Some(guard)).map(|block| {
+        let id = block.block.info.height.to_string();
+        sse::Data::new_json(&block).map(|data| sse::Event::Data(data.id(id)))
+    });
+
+    Ok(crate::routes::sse_response(&req, events))
 }
 
 fn _full_block_by_height(block_height: u64, app_ctx: &FullContext) -> Result<HttpResponse, Error> {

@@ -250,7 +250,7 @@ dependencies = [
  "futures-core",
  "http 0.2.12",
  "http 1.4.2",
- "impl-more",
+ "impl-more 0.1.9",
  "pin-project-lite",
  "tokio",
  "tokio-util",
@@ -291,7 +291,7 @@ dependencies = [
  "foldhash 0.1.5",
  "futures-core",
  "futures-util",
- "impl-more",
+ "impl-more 0.1.9",
  "itoa",
  "language-tags",
  "log",
@@ -336,6 +336,54 @@ checksum = "f591380e2e68490b5dfaf1dd1aa0ebe78d84ba7067078512b4ea6e4492d622b8"
 dependencies = [
  "actix-router",
  "proc-macro2",
+ "quote",
+ "syn 2.0.117",
+]
+
+[[package]]
+name = "actix-web-lab"
+version = "0.26.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1a89606b86fd2f8c0ddd72ef0be171e58c919ee0b6914aa7b52354063e5ee361"
+dependencies = [
+ "actix-http",
+ "actix-router",
+ "actix-service",
+ "actix-utils",
+ "actix-web",
+ "actix-web-lab-derive",
+ "ahash 0.8.12",
+ "arc-swap",
+ "bytes",
+ "bytestring",
+ "csv",
+ "derive_more 2.1.1",
+ "form_urlencoded",
+ "futures-core",
+ "futures-util",
+ "http 0.2.12",
+ "impl-more 0.3.1",
+ "itertools 0.14.0",
+ "local-channel",
+ "mime",
+ "pin-project-lite",
+ "regex",
+ "serde",
+ "serde_html_form",
+ "serde_json",
+ "serde_path_to_error",
+ "tokio",
+ "tokio-stream",
+ "tracing",
+ "url",
+]
+
+[[package]]
+name = "actix-web-lab-derive"
+version = "0.26.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2ac4d6e04e97fe707286509b4f338e99c5fb7249c770e1da074af5e27faa96b3"
+dependencies = [
  "quote",
  "syn 2.0.117",
 ]
@@ -425,6 +473,19 @@ dependencies = [
  "getrandom 0.2.17",
  "once_cell",
  "version_check",
+]
+
+[[package]]
+name = "ahash"
+version = "0.8.12"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5a15f179cd60c4584b8a8c596927aadc462e27f2ca70c04e0071964a73ba7a75"
+dependencies = [
+ "cfg-if",
+ "getrandom 0.3.4",
+ "once_cell",
+ "version_check",
+ "zerocopy",
 ]
 
 [[package]]
@@ -3055,7 +3116,7 @@ version = "3.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "faf9468729b8cbcea668e36183cb69d317348c2e08e994829fb56ebfdfbaac34"
 dependencies = [
- "windows-sys 0.48.0",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -4074,6 +4135,7 @@ dependencies = [
  "actix-cors",
  "actix-files",
  "actix-web",
+ "actix-web-lab",
  "actix-web-metrics",
  "anyhow",
  "async-graphql",
@@ -5899,7 +5961,7 @@ version = "0.12.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8a9ee70c43aaf417c914396645a0fa852624801b24ebb7ae78fe8272889ac888"
 dependencies = [
- "ahash",
+ "ahash 0.7.8",
 ]
 
 [[package]]
@@ -6284,7 +6346,7 @@ dependencies = [
  "libc",
  "percent-encoding",
  "pin-project-lite",
- "socket2 0.5.10",
+ "socket2 0.6.4",
  "system-configuration 0.7.0",
  "tokio",
  "tower-service",
@@ -6445,6 +6507,12 @@ name = "impl-more"
 version = "0.1.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e8a5a9a0ff0086c7a148acb942baaabeadf9504d10400b5a05645853729b9cd2"
+
+[[package]]
+name = "impl-more"
+version = "0.3.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "35a84fd5aa25fae5c0f4a33d9cac2ca017fc622cbd089be2229993514990f870"
 
 [[package]]
 name = "impl-trait-for-tuples"
@@ -8675,7 +8743,7 @@ dependencies = [
  "quinn-udp",
  "rustc-hash",
  "rustls 0.23.40",
- "socket2 0.5.10",
+ "socket2 0.6.4",
  "thiserror 2.0.18",
  "tokio",
  "tracing",
@@ -8713,7 +8781,7 @@ dependencies = [
  "cfg_aliases",
  "libc",
  "once_cell",
- "socket2 0.5.10",
+ "socket2 0.6.4",
  "tracing",
  "windows-sys 0.60.2",
 ]
@@ -10207,6 +10275,19 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 2.0.117",
+]
+
+[[package]]
+name = "serde_html_form"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0946d52b4b7e28823148aebbeceb901012c595ad737920d504fa8634bb099e6f"
+dependencies = [
+ "form_urlencoded",
+ "indexmap 2.14.0",
+ "itoa",
+ "ryu",
+ "serde_core",
 ]
 
 [[package]]
@@ -12565,7 +12646,7 @@ version = "0.1.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c2a7b1c03c876122aa43f3020e6c3c3ee5c05081c9a00739faf7503aeba10d22"
 dependencies = [
- "windows-sys 0.48.0",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
