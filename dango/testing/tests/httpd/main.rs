@@ -6,3 +6,4 @@ mod perps_pair_stats;
 mod shutdown;
 mod transfers;
 mod users;
+mod ws;
