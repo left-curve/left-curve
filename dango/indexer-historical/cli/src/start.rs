@@ -1,7 +1,6 @@
 use {
     crate::{activity, config::Config, db, home_directory::HomeDirectory, read_api, source},
     clap::Parser,
-    dango_config_parser::parse_config,
     dango_indexer_historical_app::{App, PgChCommitter},
     dango_indexer_historical_projection::{ActivityProjection, Committer, Projection},
     std::sync::Arc,
@@ -11,7 +10,7 @@ use {
 ///
 /// Assembles the composition root and supervises it until a shutdown signal:
 ///
-/// 1. parse the config from `home.config_file()`;
+/// 1. reuse the `cfg` parsed in `main` (used there to set up tracing);
 /// 2. build the configured `BlockSource` (local / remote) as an
 ///    `Arc<dyn BlockSource>` — the rest of the app is agnostic to which;
 /// 3. open the Postgres pool and build the shared `Committer`;
@@ -23,7 +22,7 @@ use {
 pub struct StartCmd;
 
 impl StartCmd {
-    pub async fn run(self, home: HomeDirectory) -> anyhow::Result<()> {
+    pub async fn run(self, home: HomeDirectory, cfg: Config) -> anyhow::Result<()> {
         // Install the global Prometheus recorder first, so metrics emitted during
         // startup are captured. Recording is always on; serving is gated below.
         let metrics_handle = crate::metrics::install()?;
@@ -34,8 +33,7 @@ impl StartCmd {
             "starting the historical indexer",
         );
 
-        // Step 1: parse the config (TOML + `SECTION__FIELD` env overrides).
-        let cfg: Config = parse_config(home.config_file())?;
+        // The config was parsed in `main` (to set up tracing); reuse it here.
         // A secrets-safe summary — never the Postgres URL or the source URLs.
         tracing::info!(
             block_source = cfg.block_source.kind(),

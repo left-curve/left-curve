@@ -3,6 +3,10 @@
 # environment as `SECTION__FIELD` (`__`-separated), e.g. `POSTGRES__URL` —
 # prefer that for secrets rather than committing them.
 
+# Logging: tracing filter directive and output format (`json` | `plain`).
+log_level  = "info"
+log_format = "json"
+
 [postgres]
 url = "postgres://postgres@localhost/indexer_historical"
 # max_connections defaults to 10 when omitted.

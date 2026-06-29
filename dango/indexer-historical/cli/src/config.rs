@@ -17,11 +17,18 @@ use {
     std::path::PathBuf,
 };
 
-/// Top-level config. `postgres` and `block_source` are required; `httpd`
-/// defaults to an enabled server on `0.0.0.0:8080`; `activity` to the
-/// projection's built-in filters.
+/// Top-level config. `postgres` and `block_source` are required; `log_level`
+/// defaults to `info` and `log_format` to `json`; `httpd` defaults to an
+/// enabled server on `0.0.0.0:8080`; `activity` to the projection's built-in
+/// filters.
 #[derive(Debug, Clone, Deserialize)]
 pub struct Config {
+    /// Tracing filter directive, e.g. `info`, `debug`, `warn,dango=debug`.
+    #[serde(default = "default_log_level")]
+    pub log_level: String,
+    /// Log output format. Default `json`.
+    #[serde(default)]
+    pub log_format: LogFormat,
     pub postgres: PostgresConfig,
     pub block_source: BlockSourceConfig,
     #[serde(default)]
@@ -30,6 +37,17 @@ pub struct Config {
     pub metrics: MetricsConfig,
     #[serde(default)]
     pub activity: ActivitySettings,
+}
+
+/// How log events are written to stdout.
+#[derive(Debug, Clone, Copy, Default, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum LogFormat {
+    /// One JSON object per event — the default, suited to log aggregators.
+    #[default]
+    Json,
+    /// Human-readable plain text.
+    Plain,
 }
 
 /// Optional overrides for the activity projection's **write-time** filters
@@ -203,6 +221,10 @@ impl Default for MetricsConfig {
 
 fn default_max_connections() -> u32 {
     10
+}
+
+fn default_log_level() -> String {
+    "info".to_string()
 }
 
 fn default_metrics_ip() -> String {

@@ -19,8 +19,14 @@ mod source;
 mod start;
 
 use {
-    crate::{home_directory::HomeDirectory, start::StartCmd},
+    crate::{
+        config::{Config, LogFormat},
+        home_directory::HomeDirectory,
+        start::StartCmd,
+    },
+    anyhow::Context,
     clap::{CommandFactory, FromArgMatches, Parser, Subcommand},
+    dango_config_parser::parse_config,
     std::{path::PathBuf, sync::LazyLock},
     tracing_subscriber::{EnvFilter, prelude::*},
 };
@@ -62,25 +68,41 @@ async fn main() -> anyhow::Result<()> {
         Cli::from_arg_matches(&matches).unwrap_or_else(|err| err.exit())
     };
 
-    // Minimal tracing: a fmt layer honoring `RUST_LOG` (default `info`). The
-    // OTLP / Sentry export layers can be composed in here later — but when they
-    // are, this binary MUST also grow a SIGINT/SIGTERM handler that flushes the
-    // tracer provider / Sentry on shutdown (per `.claude/rules/rust.md`), or
-    // buffered spans/events are lost on exit. Today there is nothing to flush
-    // (fmt is synchronous, metrics are pull-based) and the commit protocol is
-    // crash-safe, so the default terminate-on-signal is safe; that stops being
-    // true the moment a buffered exporter is added.
-    tracing_subscriber::registry()
-        .with(EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info")))
-        .with(tracing_subscriber::fmt::layer())
-        .init();
-
     let home = HomeDirectory::new_or_default(cli.home)?;
 
+    // Parse the config before installing tracing, so the log level and format
+    // come from it (TOML + `SECTION__FIELD` env overrides) rather than
+    // `RUST_LOG`. `start` reuses this same `cfg`.
+    let cfg: Config = parse_config(home.config_file())?;
+    init_tracing(&cfg)?;
+
     match cli.command {
-        Command::Start(cmd) => cmd.run(home).await?,
+        Command::Start(cmd) => cmd.run(home, cfg).await?,
     }
 
+    Ok(())
+}
+
+/// Install the global tracing subscriber from config: a single `fmt` layer
+/// filtered by `cfg.log_level` and rendered per `cfg.log_format`.
+///
+/// The OTLP / Sentry export layers can be composed in here later — but when
+/// they are, this binary MUST also grow a SIGINT/SIGTERM handler that flushes
+/// the tracer provider / Sentry on shutdown (per `.claude/rules/rust.md`), or
+/// buffered spans/events are lost on exit. Today there is nothing to flush
+/// (fmt is synchronous, metrics are pull-based) and the commit protocol is
+/// crash-safe, so the default terminate-on-signal is safe; that stops being
+/// true the moment a buffered exporter is added.
+fn init_tracing(cfg: &Config) -> anyhow::Result<()> {
+    let filter = EnvFilter::try_new(&cfg.log_level)
+        .with_context(|| format!("invalid log_level `{}`", cfg.log_level))?;
+    let registry = tracing_subscriber::registry().with(filter);
+    match cfg.log_format {
+        LogFormat::Json => registry
+            .with(tracing_subscriber::fmt::layer().json())
+            .init(),
+        LogFormat::Plain => registry.with(tracing_subscriber::fmt::layer()).init(),
+    }
     Ok(())
 }
 
