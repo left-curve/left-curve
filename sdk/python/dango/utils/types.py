@@ -796,9 +796,10 @@ class Trade(TypedDict):  # noqa: N815
 
 
 class PerpsEvent2(TypedDict):
-    """One perps-contract event from the perpsEvents2 subscription; camelCase (wire shape)."""
+    """One perps-contract event from the /ws perpsEvents feed; camelCase (wire shape)."""
 
-    # Mirrors `PerpsEvent2` on the indexer (subscriptions/perpsEvents2.graphql).
+    # Mirrors the perps event the indexer emits on the `/ws` `perpsEvents`
+    # channel.
     # `user` / `pairId` / `orderId` / `clientOrderId` are nullable: not every
     # event names a participant, market, or order (e.g. fee distribution), and
     # `clientOrderId` is set only when the order carried one. `data` is the
@@ -813,9 +814,9 @@ class PerpsEvent2(TypedDict):
 
 
 class PerpsEvent2Batch(TypedDict):  # noqa: N815
-    """One block's matching perps events from the perpsEvents2 subscription."""
+    """One block's matching perps events from the /ws perpsEvents feed."""
 
-    # Each `next` message on `subscribe_perps_events2` is one of these: the
+    # Each `perpsEvents` frame on `subscribe_perps_events2` is one of these: the
     # block's height/timestamp plus every perps event in it that passed the
     # filter. Only blocks with at least one matching event are delivered.
     blockHeight: int  # noqa: N815

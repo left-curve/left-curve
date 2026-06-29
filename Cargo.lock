@@ -4169,7 +4169,6 @@ dependencies = [
 name = "dango-indexer-stream"
 version = "0.0.0"
 dependencies = [
- "async-graphql",
  "async-stream",
  "async-trait",
  "dango-app",

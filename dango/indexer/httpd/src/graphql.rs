@@ -102,7 +102,6 @@ pub fn build_full_schema(app_ctx: FullContext) -> FullSchema {
 
     schema_builder
         .data(app_ctx.clickhouse_context.clone())
-        .data(app_ctx.stream_context.clone())
         .data(app_ctx.db.clone())
         .data(app_ctx.base.clone())
         .data(app_ctx)

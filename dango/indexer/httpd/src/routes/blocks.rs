@@ -185,8 +185,8 @@ fn _full_block_by_height(block_height: u64, app_ctx: &FullContext) -> Result<Htt
 
 /// Load a block file from disk and project it to `block` + `block_outcome`,
 /// dropping the `http_request_details` (client IPs) the file also holds — the
-/// same projection the `/info` and `/result` routes use. Returns the same shape
-/// as the `fullBlock` GraphQL subscription.
+/// same projection the `/info` and `/result` routes use. Returns the same
+/// `FullBlock` shape as the `/ws` `fullBlock` channel.
 fn load_full_block(block_filename: PathBuf) -> Result<FullBlock, Error> {
     let cache_file = CacheFile::load_from_disk(block_filename)
         .map_err(|err| ErrorInternalServerError(format!("failed to load block file: {err}")))?;
