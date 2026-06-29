@@ -12,9 +12,11 @@ use {
         Query, QueryClient, QueryResponse, SearchTxClient, SearchTxOutcome, Tx, TxOutcome,
         UnsignedTx,
     },
+    eventsource_stream::Eventsource,
+    futures::{Stream, StreamExt},
     graphql_client::{GraphQLQuery, Response},
     reqwest::IntoUrl,
-    serde::Serialize,
+    serde::{Deserialize, Serialize},
     std::{fmt::Debug, str::FromStr},
     url::Url,
 };
@@ -168,6 +170,58 @@ impl HttpClient {
         }
 
         Ok(all_items)
+    }
+
+    /// Subscribe to perps-exchange events over the REST/SSE endpoint
+    /// (`GET /perps/events/stream`) — the transport replacement for the
+    /// `perps_events2` GraphQL subscription. Yields one [`PerpsEventsBatch`] per
+    /// block that has at least one matching event.
+    ///
+    /// The five filters are comma-separated sets that AND together; `None` (or an
+    /// empty list) does not filter on that field. `since_block_height` replays
+    /// the retained in-memory window from that height (inclusive) before the live
+    /// tail; a height that predates the window fails this call with an error
+    /// (HTTP 409). The stream is also subject to the server's subscription limit
+    /// (HTTP 429).
+    pub async fn subscribe_perps_events2(
+        &self,
+        since_block_height: Option<u64>,
+        event_types: Option<Vec<String>>,
+        pair_ids: Option<Vec<String>>,
+        users: Option<Vec<String>>,
+        order_ids: Option<Vec<String>>,
+        client_order_ids: Option<Vec<String>>,
+    ) -> Result<impl Stream<Item = Result<PerpsEventsBatch, anyhow::Error>> + Send, anyhow::Error>
+    {
+        // Comma-join each present filter; omit absent ones (the server treats an
+        // absent or empty parameter as match-all).
+        let mut url = self.url.join("perps/events/stream")?;
+        {
+            let mut pairs = url.query_pairs_mut();
+            if let Some(since) = since_block_height {
+                pairs.append_pair("since", &since.to_string());
+            }
+            for (key, values) in [
+                ("eventTypes", event_types),
+                ("pairIds", pair_ids),
+                ("users", users),
+                ("orderIds", order_ids),
+                ("clientOrderIds", client_order_ids),
+            ] {
+                if let Some(values) = values {
+                    pairs.append_pair(key, &values.join(","));
+                }
+            }
+        }
+
+        // `error_for_status` surfaces a resync (409) or limit (429) as a
+        // connect-time error, before any frame is streamed.
+        let response = error_for_status(self.inner.get(url).send().await?).await?;
+
+        Ok(response.bytes_stream().eventsource().map(|event| {
+            let event = event?;
+            Ok(serde_json::from_str::<PerpsEventsBatch>(&event.data)?)
+        }))
     }
 }
 
@@ -407,6 +461,32 @@ impl SearchTxClient for HttpClient {
             },
         })
     }
+}
+
+// ---- perps events SSE feed ----
+
+/// One block's matching perps-contract events, as delivered by the
+/// `/perps/events/stream` SSE feed. Mirrors the `perps_events2` payload shape.
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PerpsEventsBatch {
+    pub block_height: u64,
+    /// Block timestamp, RFC 3339.
+    pub created_at: String,
+    pub events: Vec<PerpsEvent>,
+}
+
+/// A single perps-contract event within a [`PerpsEventsBatch`].
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PerpsEvent {
+    pub idx: u32,
+    pub event_type: String,
+    pub user: Option<String>,
+    pub pair_id: Option<String>,
+    pub order_id: Option<String>,
+    pub client_order_id: Option<String>,
+    pub data: serde_json::Value,
 }
 
 async fn error_for_status(response: reqwest::Response) -> Result<reqwest::Response, anyhow::Error> {

@@ -60,6 +60,44 @@ def _make_info_with_fake_ws() -> tuple[Info, _FakeWebsocketManager]:
     return info, fake
 
 
+class _FakeSseManager:
+    """Captures SSE subscribe/unsubscribe/stop calls without doing real I/O."""
+
+    def __init__(self) -> None:
+        # Each entry is (path, params, callback) so tests can both assert on
+        # the request AND trigger the callback as if an SSE event had arrived.
+        self.subscriptions: list[tuple[str, dict[str, Any], Any]] = []
+        self.unsubscribed: list[int] = []
+        self.stopped: bool = False
+        self._next_id: int = 0
+
+    def subscribe(self, path: str, params: dict[str, Any], callback: Any) -> int:
+        self._next_id += 1
+        self.subscriptions.append((path, params, callback))
+        return self._next_id
+
+    def unsubscribe(self, subscription_id: int) -> bool:
+        self.unsubscribed.append(subscription_id)
+        return True
+
+    def stop(self) -> None:
+        self.stopped = True
+
+    def join(self, timeout: float | None = None) -> None:
+        # No-op: the fake has no thread to join. Accepting `timeout` keeps the
+        # signature compatible with `SseManager.join`.
+        pass
+
+
+def _make_info_with_fake_sse() -> tuple[Info, _FakeSseManager]:
+    """Build an Info and inject a fake SseManager into its slot."""
+
+    info = Info("http://localhost:8080", skip_ws=False)
+    fake = _FakeSseManager()
+    info._sse_manager = fake  # type: ignore[assignment]
+    return info, fake
+
+
 class TestLazyWsConstruction:
     def test_skip_ws_raises_on_subscribe(self) -> None:
         """skip_ws=True turns subscribe_* into a hard error, not a silent no-op."""
@@ -112,86 +150,83 @@ class TestSubscribePerpsTrades:
 
 
 class TestSubscribePerpsEvents2:
-    def test_no_filter_sends_all_none(self) -> None:
-        """With no filter args, every variable is sent as null (match everything)."""
+    """`subscribe_perps_events2` streams over the REST/SSE endpoint."""
 
-        info, fake = _make_info_with_fake_ws()
+    def test_no_filter_sends_no_params(self) -> None:
+        """With no filter args, no query params are sent (the server matches all)."""
+
+        info, fake = _make_info_with_fake_sse()
         info.subscribe_perps_events2(lambda _: None)
-        doc, variables, _cb = fake.subscriptions[-1]
-        assert "perpsEvents2" in doc
-        assert variables == {
-            "sinceBlockHeight": None,
-            "eventTypes": None,
-            "pairIds": None,
-            "users": None,
-            "orderIds": None,
-            "clientOrderIds": None,
-        }
+        path, params, _cb = fake.subscriptions[-1]
+        assert path == "perps/events/stream"
+        assert params == {}
 
-    def test_filters_passed_through(self) -> None:
-        """Each keyword filter maps to its camelCase GraphQL variable."""
+    def test_filters_map_to_query_params(self) -> None:
+        """Each keyword filter maps to a comma-joined camelCase query param."""
 
-        info, fake = _make_info_with_fake_ws()
+        info, fake = _make_info_with_fake_sse()
         info.subscribe_perps_events2(
             lambda _: None,
             since_block_height=42,
-            event_types=["order_filled"],
+            event_types=["order_filled", "liquidated"],
             pair_ids=["perp/btcusd"],
             users=["0xabc"],
             order_ids=["100"],
             client_order_ids=["7"],
         )
-        _doc, variables, _cb = fake.subscriptions[-1]
-        assert variables == {
-            "sinceBlockHeight": 42,
-            "eventTypes": ["order_filled"],
-            "pairIds": ["perp/btcusd"],
-            "users": ["0xabc"],
-            "orderIds": ["100"],
-            "clientOrderIds": ["7"],
+        _path, params, _cb = fake.subscriptions[-1]
+        assert params == {
+            "since": "42",
+            "eventTypes": "order_filled,liquidated",
+            "pairIds": "perp/btcusd",
+            "users": "0xabc",
+            "orderIds": "100",
+            "clientOrderIds": "7",
         }
 
-    def test_callback_receives_unwrapped_batch(self) -> None:
-        """The callback gets the whole PerpsEvent2Batch, not the GraphQL wrapper."""
+    def test_callback_receives_batch(self) -> None:
+        """The callback gets each block's PerpsEvent2Batch as-is.
 
-        info, fake = _make_info_with_fake_ws()
+        The SSE payload is already the bare batch (no GraphQL `data` wrapper),
+        so it reaches the callback unchanged.
+        """
+
+        info, fake = _make_info_with_fake_sse()
         received: list[Any] = []
         info.subscribe_perps_events2(received.append)
-        _doc, _vars, cb = fake.subscriptions[-1]
-        # One `next` message = one block's batch (block meta + its events).
+        _path, _params, cb = fake.subscriptions[-1]
         batch = {
             "blockHeight": 7,
             "createdAt": "2026-06-18T00:00:00Z",
             "events": [{"idx": 0, "eventType": "order_filled"}],
         }
-        cb({"data": {"perpsEvents2": batch}})
+        cb(batch)
         assert received == [batch]
 
     def test_callback_forwards_error_envelope(self) -> None:
-        """Server errors flow through to the user as {"_error": payload}."""
+        """Transport errors flow through to the user as {"_error": payload}."""
 
-        info, fake = _make_info_with_fake_ws()
+        info, fake = _make_info_with_fake_sse()
         received: list[Any] = []
         info.subscribe_perps_events2(received.append)
-        _doc, _vars, cb = fake.subscriptions[-1]
+        _path, _params, cb = fake.subscriptions[-1]
         cb({"_error": "boom"})
         assert received == [{"_error": "boom"}]
 
-    def test_callback_forwards_inband_graphql_errors(self) -> None:
-        """A `next` with `{data: null, errors: [...]}` becomes an _error envelope.
+    def test_callback_forwards_http_error_envelope(self) -> None:
+        """A non-200 response (e.g. 409 resync) reaches the callback as an error.
 
-        This is how the server reports e.g. an unknown field (a node that
-        predates `perpsEvents2`), so the callback must see a clean error rather
-        than a bare None.
+        This replaces the GraphQL in-band-error path: the SSE transport reports
+        an unservable `since` as HTTP 409, surfaced through the same envelope.
         """
 
-        info, fake = _make_info_with_fake_ws()
+        info, fake = _make_info_with_fake_sse()
         received: list[Any] = []
         info.subscribe_perps_events2(received.append)
-        _doc, _vars, cb = fake.subscriptions[-1]
-        errors = [{"message": 'Unknown field "perpsEvents2" on type "Subscription".'}]
-        cb({"data": None, "errors": errors})
-        assert received == [{"_error": errors}]
+        _path, _params, cb = fake.subscriptions[-1]
+        err = {"status": 409, "message": "resync required: ..."}
+        cb({"_error": err})
+        assert received == [{"_error": err}]
 
 
 class TestSubscribePerpsCandles:
