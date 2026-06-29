@@ -39,7 +39,6 @@ exclude = [
 "../../dango/indexer/graphql-types/src/schemas/subscriptions/block.graphql"        = "dango/_graphql/subscriptions/block.graphql"
 "../../dango/indexer/graphql-types/src/schemas/subscriptions/events.graphql"       = "dango/_graphql/subscriptions/events.graphql"
 "../../dango/indexer/graphql-types/src/schemas/subscriptions/perpsCandles.graphql" = "dango/_graphql/subscriptions/perpsCandles.graphql"
-"../../dango/indexer/graphql-types/src/schemas/subscriptions/perpsEvents2.graphql" = "dango/_graphql/subscriptions/perpsEvents2.graphql"
 "../../dango/indexer/graphql-types/src/schemas/subscriptions/queryApp.graphql"     = "dango/_graphql/subscriptions/queryApp.graphql"
 
 [dependency-groups]

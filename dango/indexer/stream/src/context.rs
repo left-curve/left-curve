@@ -4,9 +4,8 @@ use {
 };
 
 /// A cheap-to-clone reader handle to the realtime stream's in-memory state,
-/// held by the httpd server and registered as GraphQL schema data. The
-/// `perps_events2` and `full_block` subscription resolvers use it to open
-/// subscriptions.
+/// held by the httpd server. The `/perps/events/stream` and
+/// `/block/full/stream` SSE handlers use it to open subscriptions.
 ///
 /// Cloning shares the underlying rings + broadcasts with the live [`Indexer`].
 ///
@@ -25,12 +24,12 @@ impl Context {
         Self { perps, blocks }
     }
 
-    /// The perps-events stream backing the `perps_events2` subscription.
+    /// The perps-events stream backing the `/perps/events/stream` SSE endpoint.
     pub fn perps(&self) -> &RecentStream<PerpsEventBlock> {
         &self.perps
     }
 
-    /// The full-block stream backing the `full_block` subscription.
+    /// The full-block stream backing the `/block/full/stream` SSE endpoint.
     pub fn blocks(&self) -> &RecentStream<FullBlock> {
         &self.blocks
     }

@@ -9,7 +9,6 @@
 
 use {
     crate::recent_stream::HasHeight,
-    async_graphql::SimpleObject,
     dango_order_book::{ClientOrderId, OrderId},
     dango_primitives::{
         Addr, BlockOutcome, CheckedContractEvent, Denom, FlatCommitmentStatus, FlatEvent, Inner,
@@ -18,20 +17,16 @@ use {
     std::collections::HashSet,
 };
 
-/// A single perps-contract event, as streamed to clients.
-///
-/// `serde(rename_all = "camelCase")` reproduces the field-level GraphQL names
-/// verbatim (`eventType`, `pairId`, ...), so the JSON emitted over the REST/SSE
-/// transport is byte-shape-identical to the `perps_events2` GraphQL payload.
-#[derive(Debug, Clone, SimpleObject, serde::Serialize)]
+/// A single perps-contract event, as streamed to clients over the REST/SSE
+/// feed. `serde(rename_all = "camelCase")` produces the camelCase wire field
+/// names (`eventType`, `pairId`, ...).
+#[derive(Debug, Clone, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-#[graphql(name = "PerpsEvent2")]
 pub struct PerpsEvent {
     /// Per-block ordinal across all perps-contract events in the block.
     pub idx: u32,
 
     /// Raw on-chain event type string, e.g. `"order_filled"`, `"liquidated"`.
-    #[graphql(name = "eventType")]
     pub event_type: String,
 
     /// The event's subject address (its `user` field), if present. Each perps
@@ -41,37 +36,31 @@ pub struct PerpsEvent {
     pub user: Option<String>,
 
     /// The market the event pertains to (its `pair_id` field), if present.
-    #[graphql(name = "pairId")]
     pub pair_id: Option<String>,
 
     /// The order this event pertains to (its `order_id` field), if present.
     /// Carried by the order-lifecycle events (`order_filled`, `order_persisted`,
     /// `order_resized`, `order_removed`); `None` otherwise.
-    #[graphql(name = "orderId")]
     pub order_id: Option<String>,
 
     /// The caller-assigned client order id (its `client_order_id` field), if
     /// present. Optional even on order-lifecycle events — an order submitted
     /// without one yields `None` here. Unique only per sender, so combine with
     /// the `users` filter to single out one trader's order.
-    #[graphql(name = "clientOrderId")]
     pub client_order_id: Option<String>,
 
     /// The raw event payload.
-    pub data: async_graphql::Json<serde_json::Value>,
+    pub data: serde_json::Value,
 }
 
 /// All perps-contract events emitted in one block. Doubles as the ring item
 /// (holding every event) and the streamed output (holding the filtered subset).
-#[derive(Debug, Clone, SimpleObject, serde::Serialize)]
+#[derive(Debug, Clone, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-#[graphql(name = "PerpsEvent2Batch")]
 pub struct PerpsEventBlock {
-    #[graphql(name = "blockHeight")]
     pub block_height: u64,
 
     /// Block timestamp, RFC 3339.
-    #[graphql(name = "createdAt")]
     pub created_at: String,
 
     pub events: Vec<PerpsEvent>,
@@ -119,7 +108,7 @@ pub fn extract_perps_event_block(
             pair_id,
             order_id,
             client_order_id,
-            data: async_graphql::Json(contract_event.data.clone().into_inner()),
+            data: contract_event.data.clone().into_inner(),
         });
 
         idx += 1;
@@ -284,7 +273,7 @@ mod tests {
             // strings.
             order_id: order_id.map(|i| i.to_string()),
             client_order_id: client_order_id.map(|i| i.to_string()),
-            data: async_graphql::Json(serde_json::json!({})),
+            data: serde_json::json!({}),
         }
     }
 

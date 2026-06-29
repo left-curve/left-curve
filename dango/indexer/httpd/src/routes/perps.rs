@@ -48,8 +48,7 @@ fn parse_set(raw: Option<String>) -> Option<HashSet<String>> {
 
 /// Stream perps-exchange contract events (e.g. `order_filled`, `liquidated`,
 /// `deleveraged`, `order_persisted`, `order_removed`) in real time as
-/// Server-Sent Events, grouped per block — the same `PerpsEvent2Batch` shape the
-/// `perps_events2` GraphQL subscription emits, one event per block that has at
+/// Server-Sent Events, grouped per block — one event per block that has at
 /// least one matching contract event. Each event's `id` is the block height, so
 /// a client reconnecting with a `Last-Event-ID` header resumes after the last
 /// block it received.

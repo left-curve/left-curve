@@ -1,6 +1,6 @@
 //! End-to-end tests for the REST/SSE subscription endpoints
-//! (`GET /block/full/stream` and `GET /perps/events/stream`), which mirror the
-//! `full_block` and `perps_events2` GraphQL subscriptions over plain
+//! (`GET /block/full/stream` and `GET /perps/events/stream`), which serve the
+//! validator's in-memory block / perps-event feeds over plain
 //! `text/event-stream`.
 //!
 //! These run against a real TCP server (`actix_test::start`) so the global
@@ -15,8 +15,8 @@ use {
     },
     anyhow::anyhow,
     dango_app::Indexer,
-    dango_indexer_graphql_types::subscribe_perps_events2,
     dango_primitives::FullBlock,
+    dango_sdk::PerpsEventsBatch,
     dango_testing::{
         TestOption, build_app_service, create_perps_fill, pair_id, setup_perps_env,
         setup_test_naive_with_indexer,
@@ -185,12 +185,11 @@ async fn perps_events_stream_filtered_by_pair() -> anyhow::Result<()> {
 
                 let mut saw_order_filled = false;
                 for (_, data) in &events {
-                    // Parses into the GraphQL `perps_events2` batch type => the
-                    // SSE JSON matches the GraphQL wire shape field-for-field.
-                    let batch: subscribe_perps_events2::SubscribePerpsEvents2PerpsEvents2 =
-                        serde_json::from_str(data).map_err(|err| {
-                            anyhow!("perps frame not parity with GraphQL type: {err}; body={data}")
-                        })?;
+                    // Parses into the SDK's `PerpsEventsBatch` => the SSE JSON
+                    // matches the client wire type field-for-field (camelCase).
+                    let batch: PerpsEventsBatch = serde_json::from_str(data).map_err(|err| {
+                        anyhow!("perps frame does not match the SDK PerpsEventsBatch: {err}; body={data}")
+                    })?;
 
                     for event in &batch.events {
                         assert_eq!(
@@ -251,12 +250,7 @@ async fn perps_events_stream_empty_filter_matches_all() -> anyhow::Result<()> {
                 let events = read_sse_events(res, 256).await?;
                 let total: usize = events
                     .iter()
-                    .filter_map(|(_, data)| {
-                        serde_json::from_str::<
-                            subscribe_perps_events2::SubscribePerpsEvents2PerpsEvents2,
-                        >(data)
-                        .ok()
-                    })
+                    .filter_map(|(_, data)| serde_json::from_str::<PerpsEventsBatch>(data).ok())
                     .map(|batch| batch.events.len())
                     .sum();
 
