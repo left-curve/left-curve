@@ -1,0 +1,20 @@
+http:
+  services:
+    historical-{{ instance.name }}:
+      loadBalancer:
+        servers:
+          - url: "http://historical-indexer-{{ instance.name }}:8080"
+
+  routers:
+    historical-{{ instance.name }}-ssl:
+      rule: "Host(`historical-{{ instance.name }}.{{ dango_domain }}`)"
+      entryPoints:
+        - "websecure"
+      tls: {}
+      service: "historical-{{ instance.name }}"
+
+    historical-{{ instance.name }}:
+      rule: "Host(`historical-{{ instance.name }}.{{ dango_domain }}`)"
+      entryPoints:
+        - "web"
+      service: "historical-{{ instance.name }}"
