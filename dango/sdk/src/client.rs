@@ -12,10 +12,12 @@ use {
         Query, QueryClient, QueryResponse, SearchTxClient, SearchTxOutcome, Tx, TxOutcome,
         UnsignedTx,
     },
+    futures::{SinkExt, Stream, StreamExt, channel::mpsc},
     graphql_client::{GraphQLQuery, Response},
     reqwest::IntoUrl,
-    serde::Serialize,
-    std::{fmt::Debug, str::FromStr},
+    serde::{Deserialize, Serialize},
+    std::{fmt::Debug, str::FromStr, time::Duration},
+    tokio_tungstenite::{connect_async, tungstenite::Message},
     url::Url,
 };
 
@@ -168,6 +170,143 @@ impl HttpClient {
         }
 
         Ok(all_items)
+    }
+
+    /// Subscribe to perps-exchange events over the WebSocket endpoint
+    /// (`GET /ws`, `perpsEvents` channel) — the transport replacement for the
+    /// `perps_events2` GraphQL subscription. Yields one [`PerpsEventsBatch`] per
+    /// block that has at least one matching event.
+    ///
+    /// The five filters are sets that AND together; `None` (or an empty list)
+    /// does not filter on that field. `since_block_height` replays the retained
+    /// in-memory window from that height (inclusive) before the live tail; a
+    /// height that predates the window fails this call with an error (the
+    /// server's `resync` reply). The subscription is also subject to the
+    /// server's limit (`tooManyRequests`).
+    pub async fn subscribe_perps_events2(
+        &self,
+        since_block_height: Option<u64>,
+        event_types: Option<Vec<String>>,
+        pair_ids: Option<Vec<String>>,
+        users: Option<Vec<String>>,
+        order_ids: Option<Vec<String>>,
+        client_order_ids: Option<Vec<String>>,
+    ) -> Result<impl Stream<Item = Result<PerpsEventsBatch, anyhow::Error>> + Send, anyhow::Error>
+    {
+        // Derive the `/ws` URL from the HTTP base.
+        let mut ws_url = self.url.join("ws")?;
+        match ws_url.scheme() {
+            "http" => ws_url
+                .set_scheme("ws")
+                .map_err(|_| anyhow!("failed to set ws scheme"))?,
+            "https" => ws_url
+                .set_scheme("wss")
+                .map_err(|_| anyhow!("failed to set wss scheme"))?,
+            "ws" | "wss" => {},
+            scheme => bail!("invalid URL scheme: {scheme}"),
+        }
+
+        // Build the subscribe message. Absent filters are omitted (match-all);
+        // present ones are sent as JSON arrays.
+        let mut subscription = serde_json::Map::new();
+        subscription.insert("type".into(), "perpsEvents".into());
+        if let Some(since) = since_block_height {
+            subscription.insert("since".into(), since.into());
+        }
+        for (key, values) in [
+            ("eventTypes", event_types),
+            ("pairIds", pair_ids),
+            ("users", users),
+            ("orderIds", order_ids),
+            ("clientOrderIds", client_order_ids),
+        ] {
+            if let Some(values) = values {
+                subscription.insert(key.into(), values.into());
+            }
+        }
+        let subscribe = serde_json::json!({
+            "method": "subscribe",
+            "id": 1,
+            "subscription": serde_json::Value::Object(subscription),
+        });
+
+        let (ws, _response) = connect_async(ws_url.as_str())
+            .await
+            .map_err(|err| anyhow!("WebSocket connection failed: {err}"))?;
+        let (mut sink, mut stream) = ws.split();
+        sink.send(Message::text(subscribe.to_string()))
+            .await
+            .map_err(|err| anyhow!("failed to send subscribe: {err}"))?;
+
+        // Await the acknowledgement, mapping a `resync` / `tooManyRequests`
+        // error frame to a connect-time error (no data frame precedes the ack).
+        loop {
+            match stream.next().await {
+                Some(Ok(Message::Text(text))) => match parse_server_frame(&text)? {
+                    ServerFrame::Ack => break,
+                    ServerFrame::Error { code, message } => bail!("{code}: {message}"),
+                    ServerFrame::Data(_) | ServerFrame::Other => {},
+                },
+                Some(Ok(Message::Ping(data))) => {
+                    let _ = sink.send(Message::Pong(data)).await;
+                },
+                Some(Ok(Message::Close(frame))) => {
+                    bail!("WebSocket closed before acknowledgement: {frame:?}")
+                },
+                Some(Ok(_)) => {},
+                Some(Err(err)) => bail!("WebSocket error before acknowledgement: {err}"),
+                None => bail!("WebSocket closed before acknowledgement"),
+            }
+        }
+
+        // Drive the socket on a background task: forward batches to the stream,
+        // answer control pings, and send an app-level ping on a fixed schedule
+        // so an idle subscription is not reaped by the server's idle timeout.
+        let (tx, rx) = mpsc::unbounded::<Result<PerpsEventsBatch, anyhow::Error>>();
+        tokio::spawn(async move {
+            let mut keepalive = tokio::time::interval(Duration::from_secs(20));
+            keepalive.tick().await; // The first tick is immediate; skip it.
+            let ping = serde_json::json!({"method": "ping"}).to_string();
+
+            loop {
+                tokio::select! {
+                    _ = keepalive.tick() => {
+                        if sink.send(Message::text(ping.clone())).await.is_err() {
+                            break;
+                        }
+                    },
+                    message = stream.next() => match message {
+                        Some(Ok(Message::Text(text))) => match parse_server_frame(&text) {
+                            Ok(ServerFrame::Data(batch)) => {
+                                if tx.unbounded_send(Ok(batch)).is_err() {
+                                    break;
+                                }
+                            },
+                            Ok(ServerFrame::Error { code, message }) => {
+                                let _ = tx.unbounded_send(Err(anyhow!("{code}: {message}")));
+                                break;
+                            },
+                            Ok(ServerFrame::Ack | ServerFrame::Other) => {},
+                            Err(err) => {
+                                let _ = tx.unbounded_send(Err(err));
+                                break;
+                            },
+                        },
+                        Some(Ok(Message::Ping(data))) => {
+                            if sink.send(Message::Pong(data)).await.is_err() {
+                                break;
+                            }
+                        },
+                        Some(Ok(Message::Close(_))) | Some(Err(_)) | None => break,
+                        Some(Ok(_)) => {},
+                    },
+                }
+            }
+
+            let _ = sink.close().await;
+        });
+
+        Ok(rx)
     }
 }
 
@@ -406,6 +545,68 @@ impl SearchTxClient for HttpClient {
                     .deserialize_json()?,
             },
         })
+    }
+}
+
+// ---- perps events WebSocket feed ----
+
+/// One block's matching perps-contract events, as delivered by the `/ws`
+/// `perpsEvents` channel. Mirrors the `perps_events2` payload shape.
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PerpsEventsBatch {
+    pub block_height: u64,
+    /// Block timestamp, RFC 3339.
+    pub created_at: String,
+    pub events: Vec<PerpsEvent>,
+}
+
+/// A single perps-contract event within a [`PerpsEventsBatch`].
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PerpsEvent {
+    pub idx: u32,
+    pub event_type: String,
+    pub user: Option<String>,
+    pub pair_id: Option<String>,
+    pub order_id: Option<String>,
+    pub client_order_id: Option<String>,
+    pub data: serde_json::Value,
+}
+
+/// A classified server frame from the `/ws` endpoint.
+enum ServerFrame {
+    /// `subscriptionResponse` acknowledgement.
+    Ack,
+    /// A `perpsEvents` data frame.
+    Data(PerpsEventsBatch),
+    /// An `error` frame (e.g. `resync`, `tooManyRequests`).
+    Error { code: String, message: String },
+    /// Anything else (e.g. `pong`).
+    Other,
+}
+
+fn parse_server_frame(text: &str) -> Result<ServerFrame, anyhow::Error> {
+    let value: serde_json::Value = serde_json::from_str(text)?;
+    match value.get("channel").and_then(serde_json::Value::as_str) {
+        Some("perpsEvents") => {
+            let data = value.get("data").cloned().unwrap_or_default();
+            Ok(ServerFrame::Data(serde_json::from_value(data)?))
+        },
+        Some("subscriptionResponse") => Ok(ServerFrame::Ack),
+        Some("error") => Ok(ServerFrame::Error {
+            code: value
+                .pointer("/data/code")
+                .and_then(serde_json::Value::as_str)
+                .unwrap_or("error")
+                .to_string(),
+            message: value
+                .pointer("/data/message")
+                .and_then(serde_json::Value::as_str)
+                .unwrap_or_default()
+                .to_string(),
+        }),
+        _ => Ok(ServerFrame::Other),
     }
 }
 
