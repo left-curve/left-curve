@@ -1011,9 +1011,13 @@ jobs:
           for image in "${images[@]}"; do
             [ -n "$image" ] || continue
             safe_name=$(echo "$image" | tr '/:@' '___')
+            # Stable per-image name (no tag) for the SARIF file, so each image
+            # can be uploaded to code scanning under its own category below
+            # (CodeQL rejects multiple SARIF runs sharing one category).
+            short_name=$(echo "$image" | sed 's#.*/##; s#:.*##')
             sbom_file="$SBOM_DIR/${safe_name}.cdx.json"
             report_file="$REPORT_DIR/${safe_name}.txt"
-            sarif_file="$SARIF_DIR/${safe_name}.sarif"
+            sarif_file="$SARIF_DIR/${short_name}.sarif"
             syft scan "$image" -o cyclonedx-json > "$sbom_file"
             grype "$image" --add-cpes-if-none -o sarif > "$sarif_file"
             if ! grype "$image" --fail-on high --only-fixed --add-cpes-if-none > "$report_file"; then
@@ -1032,12 +1036,18 @@ jobs:
           path: |
             sbom
             vuln-reports
-      - name: Upload Grype SARIF
+      - name: Upload Grype SARIF (dango)
         if: env.BACKEND_CHANGED == 'true'
         uses: github/codeql-action/upload-sarif@cdefb33c0f6224e58673d9004f47f7cb3e328b89 # v4.31.10
         with:
-          sarif_file: sarif
+          sarif_file: sarif/dango.sarif
           category: grype
+      - name: Upload Grype SARIF (indexer-historical)
+        if: env.BACKEND_CHANGED == 'true'
+        uses: github/codeql-action/upload-sarif@cdefb33c0f6224e58673d9004f47f7cb3e328b89 # v4.31.10
+        with:
+          sarif_file: sarif/indexer-historical.sarif
+          category: grype-indexer-historical
       - name: Enforce vulnerability policy
         if: env.BACKEND_CHANGED == 'true'
         run: |
