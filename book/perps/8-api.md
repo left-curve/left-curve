@@ -2195,7 +2195,7 @@ Shares are burned immediately. The corresponding USD value enters a cooldown que
 
 ## 8. Real-time subscriptions
 
-All subscriptions use the WebSocket transport described in [§1.2](#12-websocket).
+Most feeds here use the WebSocket transport described in [§1.2](#12-websocket). The perps-events ([§8.3](#83-perps-events)) and full-block ([§8.7](#87-full-block-stream)) feeds are instead served over _Server-Sent Events_ (SSE): a plain `GET` with `Accept: text/event-stream` that emits one JSON object per `data:` event. Each event's `id` is the block height, so a dropped connection resumes via the `Last-Event-ID` header (or the `since` query parameter); a `since` older than the retained in-memory window fails the request with `409 Conflict`.
 
 ### 8.1 Perps candles
 
@@ -2268,54 +2268,40 @@ subscription {
 
 ### 8.3 Perps events
 
-Stream every event emitted by the perps contract — order lifecycle, fills, liquidations, and deleveraging — grouped per block. It is the richer superset of [§8.2](#82-perps-trades) (which streams fills only), and a perps-scoped, lower-latency alternative to the generic event stream ([§8.6](#86-event-stream)). It is served from an in-memory window of the most recent blocks, so deep history is not available here — use the `perpsEvents` query ([§5.5](#55-trade-history)) for that.
+Stream every event emitted by the perps contract — order lifecycle, fills, liquidations, and deleveraging — grouped per block, over `GET /perps/events/stream`. It is the richer superset of [§8.2](#82-perps-trades) (which streams fills only), and a perps-scoped, lower-latency alternative to the generic event stream ([§8.6](#86-event-stream)). It is served from an in-memory window of the most recent blocks, so deep history is not available here — use the `perpsEvents` query ([§5.5](#55-trade-history)) for that.
 
-```graphql
-subscription {
-  perpsEvents2(
-    eventTypes: ["order_filled", "liquidated"],
-    pairIds: ["perp/btcusd"],
-    users: ["0x1234...abcd"],
-    orderIds: ["100"],
-    clientOrderIds: ["42"]
-  ) {
-    blockHeight
-    createdAt
-    events {
-      idx
-      eventType
-      user
-      pairId
-      orderId
-      clientOrderId
-      data
-    }
-  }
-}
+```plain
+GET /perps/events/stream?eventTypes=order_filled,liquidated&pairIds=perp/btcusd&users=0x1234...abcd&orderIds=100&clientOrderIds=42&since=100000
+Accept: text/event-stream
 ```
 
-Each message carries one block's worth of matching events. Only blocks that contain at least one matching event are delivered.
+Only blocks that contain at least one matching event are delivered. Each arrives as one SSE event — the event `id` is the block height, and `data` is a JSON object:
 
-| Parameter          | Type        | Description                                                            |
-| ------------------ | ----------- | ---------------------------------------------------------------------- |
-| `sinceBlockHeight` | `Int`       | Replay retained blocks from this height on connect; omit for live-only |
-| `eventTypes`       | `[String!]` | Keep only these event types (see [§9](#9-events-reference))            |
-| `pairIds`          | `[String!]` | Keep only these trading pairs                                          |
-| `users`            | `[String!]` | Keep only events whose `user` is one of these addresses                |
-| `orderIds`         | `[String!]` | Keep only events whose `order_id` is one of these                      |
-| `clientOrderIds`   | `[String!]` | Keep only events whose `client_order_id` is one of these               |
+```plain
+id: 100123
+data: {"blockHeight":100123,"createdAt":"2026-06-18T00:00:00Z","events":[{"idx":0,"eventType":"order_filled","user":"0x1234...abcd","pairId":"perp/btcusd","orderId":"100","clientOrderId":"42","data":{...}}]}
+```
 
-**Filter semantics.** The five filters AND together. Omitting a filter does not filter on that field (matches everything); passing an _empty_ list matches nothing. Addresses are matched verbatim against each event's canonical address string, so pass the same `0x`-prefixed form the API returns elsewhere; order and client order ids are matched the same way, as the decimal strings the API returns. A `client_order_id` is unique only per sender, so combine `clientOrderIds` with `users` to single out one trader's order.
+| Parameter        | Type              | Description                                                            |
+| ---------------- | ----------------- | ---------------------------------------------------------------------- |
+| `since`          | `Int`             | Replay retained blocks from this height on connect; omit for live-only |
+| `eventTypes`     | comma-separated   | Keep only these event types (see [§9](#9-events-reference))            |
+| `pairIds`        | comma-separated   | Keep only these trading pairs                                          |
+| `users`          | comma-separated   | Keep only events whose `user` is one of these addresses                |
+| `orderIds`       | comma-separated   | Keep only events whose `order_id` is one of these                      |
+| `clientOrderIds` | comma-separated   | Keep only events whose `client_order_id` is one of these               |
 
-**PerpsEvent2Batch fields:**
+**Filter semantics.** The five filters AND together; within one filter, the comma-separated values are OR'd. Omitting a parameter — or passing it empty — does not filter on that field (matches everything). Addresses are matched verbatim against each event's canonical address string, so pass the same `0x`-prefixed form the API returns elsewhere; order and client order ids are matched the same way, as the decimal strings the API returns. A `client_order_id` is unique only per sender, so combine `clientOrderIds` with `users` to single out one trader's order.
 
-| Field         | Type            | Description                       |
-| ------------- | --------------- | --------------------------------- |
-| `blockHeight` | `Int`           | Block height                      |
-| `createdAt`   | `String`        | Block timestamp (ISO 8601)        |
-| `events`      | `[PerpsEvent2]` | The block's matching perps events |
+Each event's `data` is a JSON object:
 
-**PerpsEvent2 fields:**
+| Field         | Type      | Description                       |
+| ------------- | --------- | --------------------------------- |
+| `blockHeight` | `Int`     | Block height                      |
+| `createdAt`   | `String`  | Block timestamp (ISO 8601)        |
+| `events`      | `[Event]` | The block's matching perps events |
+
+Each entry in `events`:
 
 | Field           | Type      | Description                                                 |
 | --------------- | --------- | ----------------------------------------------------------- |
@@ -2327,7 +2313,7 @@ Each message carries one block's worth of matching events. Only blocks that cont
 | `clientOrderId` | `String?` | The caller-assigned client order id, if it has one          |
 | `data`          | `JSON`    | Raw event payload (same shape as [§9](#9-events-reference)) |
 
-**Reconnect.** Pass `sinceBlockHeight` to replay events missed while disconnected. The in-memory window retains only recent blocks; if `sinceBlockHeight` is older than the window, the subscription fails to start with a "resync required" error — reconnect with a newer height and backfill the gap from the `perpsEvents` query ([§5.5](#55-trade-history)).
+**Reconnect.** Send the `Last-Event-ID` header (the last block height you received) or pass `?since=` to replay from the in-memory window. The window retains only recent blocks; if the requested height is older than the window, the request fails with `409 Conflict` ("resync required") — reconnect with a newer height and backfill the gap from the `perpsEvents` query ([§5.5](#55-trade-history)).
 
 ### 8.4 Contract query polling
 
@@ -2419,9 +2405,33 @@ subscription {
 | `checkMode`  | `CheckValue`   | `EQUAL` (exact match) or `CONTAINS` (substring) |
 | `value`      | `[JSON]`       | Values to match against                         |
 
+### 8.7 Full block stream
+
+Stream every finalized block in full — the `Block` (header + transactions) together with its `BlockOutcome` (every transaction and cron outcome, and so every event) — one SSE event per block, over `GET /block/full/stream`. Like the perps-events feed it is served over SSE (see the transport note at the start of [§8](#8-real-time-subscriptions)) from an in-memory window of recent blocks; for deep history, fetch individual blocks from the REST `/block/full/{height}` and `/block/full/range` routes.
+
+```plain
+GET /block/full/stream?since=100000
+Accept: text/event-stream
+```
+
+Each block arrives as one SSE event — the event `id` is the block height, and `data` is a `FullBlock` JSON object:
+
+```plain
+id: 100123
+data: {"block":{...},"outcome":{...}}
+```
+
+| Parameter | Type  | Description                                                            |
+| --------- | ----- | ---------------------------------------------------------------------- |
+| `since`   | `Int` | Replay retained blocks from this height on connect; omit for live-only |
+
+**Payload.** Each event's `data` is a `FullBlock`: `block` holds the block header and its full transaction list, and `outcome` holds the block's execution result (every transaction and cron outcome, including events). It is the same shape the REST `/block/full/{height}` and `/block/full/range` routes return.
+
+**Reconnect.** Same as [§8.3](#83-perps-events): send the `Last-Event-ID` header (or pass `?since=`) to replay from the in-memory window; a height older than the window fails with `409 Conflict`.
+
 ## 9. Events reference
 
-The perps contract emits the following events. These can be queried via `perpsEvents` ([§5.5](#55-trade-history)) or streamed in real time via the `perpsEvents2` subscription ([§8.3](#83-perps-events)) or the generic `events` subscription ([§8.6](#86-event-stream)).
+The perps contract emits the following events. These can be queried via `perpsEvents` ([§5.5](#55-trade-history)) or streamed in real time via the perps-events SSE feed ([§8.3](#83-perps-events)) or the generic `events` subscription ([§8.6](#86-event-stream)).
 
 ### Margin events
 
