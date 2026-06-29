@@ -127,6 +127,20 @@ impl Client {
             .await
             .map_err(|e| IndexerError::byte_stream(e.to_string()))?;
 
+        self.put(key, body).await
+    }
+
+    /// Upload an in-memory buffer directly, without staging it to a file. Useful
+    /// for objects built in memory (e.g. a freshly compressed batch archive).
+    #[cfg_attr(feature = "tracing", tracing::instrument(skip_all, fields(key = %key)))]
+    pub async fn upload_bytes(&self, key: String, data: Vec<u8>) -> Result<()> {
+        self.put(key, ByteStream::from(data)).await
+    }
+
+    /// Shared `put_object` call backing [`Self::upload_file`] and
+    /// [`Self::upload_bytes`].
+    #[cfg_attr(feature = "tracing", tracing::instrument(skip_all, fields(key = %key)))]
+    async fn put(&self, key: String, body: ByteStream) -> Result<()> {
         self.inner
             .put_object()
             .bucket(&self.cfg.bucket)
