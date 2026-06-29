@@ -161,6 +161,7 @@ sqlx                        = "0.8" # FIXME: can't bump to 0.9 because sea-orm 1
 strum                       = "0.28"
 strum_macros                = "0.28"
 syn                         = "2"
+tar                         = "0.4"
 tempfile                    = "3"
 tendermint                  = "0.40.4"
 tendermint-rpc              = "0.40.4"
@@ -179,6 +180,7 @@ url                         = "2.5.4"
 uuid                        = { version = "1", features = ["serde", "v4"] }
 wasmer                      = "7"
 wasmer-middlewares          = "7"
+xz2                         = "0.1"
 # ----------------------------- Local dependencies -----------------------------
 dango-account               = { path = "dango/exchange/account" }
 dango-account-factory       = { path = "dango/exchange/account-factory" }
