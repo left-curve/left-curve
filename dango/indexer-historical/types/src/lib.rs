@@ -4,12 +4,8 @@
 //! contains items shared between the block source and the projections.
 
 mod block_data;
-mod graphql;
 
-pub use {
-    block_data::{BlockData, BlockDataExt},
-    graphql::post_graphql,
-};
+pub use block_data::{BlockData, BlockDataExt};
 
 /// Convenience alias for `anyhow::Result<T>` used across all historical
 /// indexer crates.

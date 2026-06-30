@@ -12,10 +12,12 @@ use {
         Query, QueryClient, QueryResponse, SearchTxClient, SearchTxOutcome, Tx, TxOutcome,
         UnsignedTx,
     },
+    futures::{SinkExt, Stream, StreamExt, channel::mpsc},
     graphql_client::{GraphQLQuery, Response},
     reqwest::IntoUrl,
-    serde::Serialize,
-    std::{fmt::Debug, str::FromStr},
+    serde::{Deserialize, Serialize},
+    std::{fmt::Debug, str::FromStr, time::Duration},
+    tokio_tungstenite::{connect_async, tungstenite::Message},
     url::Url,
 };
 
@@ -26,7 +28,7 @@ pub struct HttpClient {
 }
 
 impl HttpClient {
-    pub fn new<U>(url: U) -> Result<Self, anyhow::Error>
+    pub fn new<U>(url: U) -> anyhow::Result<Self>
     where
         U: IntoUrl,
     {
@@ -36,18 +38,18 @@ impl HttpClient {
         })
     }
 
-    async fn get(&self, path: &str) -> Result<reqwest::Response, anyhow::Error> {
+    async fn get(&self, path: &str) -> anyhow::Result<reqwest::Response> {
         error_for_status(self.inner.get(self.url.join(path)?).send().await?).await
     }
 
     async fn post_graphql<V>(
         &self,
         variables: V,
-    ) -> Result<<V::Query as GraphQLQuery>::ResponseData, anyhow::Error>
+    ) -> anyhow::Result<<V::Query as GraphQLQuery>::ResponseData>
     where
-        V: Variables + Serialize + std::fmt::Debug,
+        V: Variables + Serialize + Debug,
         <<V as dango_indexer_graphql_types::Variables>::Query as graphql_client::GraphQLQuery>::ResponseData:
-            std::fmt::Debug,
+            Debug,
     {
         let query = V::Query::build_query(variables);
         let response = error_for_status(
@@ -84,36 +86,38 @@ impl HttpClient {
     /// It supports both forward pagination (using `first`) and backward pagination
     /// (using `last`).
     ///
-    /// # Arguments
+    /// ## Arguments
     ///
-    /// * `first` - Number of items to fetch per page when paginating forward (use with `None` for `last`)
-    /// * `last` - Number of items to fetch per page when paginating backward (use with `None` for `first`)
-    /// * `build_variables` - Closure that builds the query variables given pagination cursors
-    /// * `extract_page` - Closure that extracts the nodes and page info from the response data
+    /// - `first` - Number of items to fetch per page when paginating forward (use with `None` for `last`)
+    /// - `last` - Number of items to fetch per page when paginating backward (use with `None` for `first`)
+    /// - `build_variables` - Closure that builds the query variables given pagination cursors
+    /// - `extract_page` - Closure that extracts the nodes and page info from the response data
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```ignore
-    /// let all_accounts = client.paginate_all(
-    ///     Some(10), // fetch 10 per page, forward pagination
-    ///     None,
-    ///     |after, before, first, last| accounts::Variables {
-    ///         after,
-    ///         before,
-    ///         first: first.map(|f| f as i64),
-    ///         last: last.map(|l| l as i64),
-    ///         ..Default::default()
-    ///     },
-    ///     |data| {
-    ///         let page_info = PageInfo {
-    ///             start_cursor: data.accounts.page_info.start_cursor,
-    ///             end_cursor: data.accounts.page_info.end_cursor,
-    ///             has_next_page: data.accounts.page_info.has_next_page,
-    ///             has_previous_page: data.accounts.page_info.has_previous_page,
-    ///         };
-    ///         (data.accounts.nodes, page_info)
-    ///     },
-    /// ).await?;
+    /// let all_accounts = client
+    ///     .paginate_all(
+    ///         Some(10), // fetch 10 per page, forward pagination
+    ///         None,
+    ///         |after, before, first, last| accounts::Variables {
+    ///             after,
+    ///             before,
+    ///             first: first.map(|f| f as i64),
+    ///             last: last.map(|l| l as i64),
+    ///             ..Default::default()
+    ///         },
+    ///         |data| {
+    ///             let page_info = PageInfo {
+    ///                 start_cursor: data.accounts.page_info.start_cursor,
+    ///                 end_cursor: data.accounts.page_info.end_cursor,
+    ///                 has_next_page: data.accounts.page_info.has_next_page,
+    ///                 has_previous_page: data.accounts.page_info.has_previous_page,
+    ///             };
+    ///             (data.accounts.nodes, page_info)
+    ///         },
+    ///     )
+    ///     .await?;
     /// ```
     pub async fn paginate_all<V, N, BuildVariables, ExtractPage>(
         &self,
@@ -121,7 +125,7 @@ impl HttpClient {
         last: Option<i64>,
         build_variables: BuildVariables,
         extract_page: ExtractPage,
-    ) -> Result<Vec<N>, anyhow::Error>
+    ) -> anyhow::Result<Vec<N>>
     where
         V: Variables + Serialize + Debug,
         <V::Query as GraphQLQuery>::ResponseData: Debug,
@@ -129,8 +133,8 @@ impl HttpClient {
         ExtractPage: Fn(<V::Query as GraphQLQuery>::ResponseData) -> (Vec<N>, PageInfo),
     {
         let mut all_items = vec![];
-        let mut after: Option<String> = None;
-        let mut before: Option<String> = None;
+        let mut after = None;
+        let mut before = None;
 
         loop {
             let variables = build_variables(after.clone(), before.clone(), first, last);
@@ -168,6 +172,148 @@ impl HttpClient {
         }
 
         Ok(all_items)
+    }
+
+    /// Subscribe to perps-exchange events over the WebSocket endpoint
+    /// (`GET /ws`, `perpsEvents` channel) — the transport replacement for the
+    /// `perps_events` GraphQL subscription. Yields one [`PerpsEventsBatch`] per
+    /// block that has at least one matching event.
+    ///
+    /// The five filters are sets that AND together; `None` (or an empty list)
+    /// does not filter on that field. `since_block_height` replays the retained
+    /// in-memory window from that height (inclusive) before the live tail; a
+    /// height that predates the window fails this call with an error (the
+    /// server's `resync` reply). The subscription is also subject to the
+    /// server's limit (`tooManyRequests`).
+    pub async fn subscribe_perps_events(
+        &self,
+        since_block_height: Option<u64>,
+        event_types: Option<Vec<String>>,
+        pair_ids: Option<Vec<String>>,
+        users: Option<Vec<String>>,
+        order_ids: Option<Vec<String>>,
+        client_order_ids: Option<Vec<String>>,
+    ) -> anyhow::Result<impl Stream<Item = anyhow::Result<PerpsEventsBatch>> + Send> {
+        // Derive the `/ws` URL from the HTTP base.
+        let mut ws_url = self.url.join("ws")?;
+        match ws_url.scheme() {
+            "http" => ws_url
+                .set_scheme("ws")
+                .map_err(|_| anyhow!("failed to set ws scheme"))?,
+            "https" => ws_url
+                .set_scheme("wss")
+                .map_err(|_| anyhow!("failed to set wss scheme"))?,
+            "ws" | "wss" => {},
+            scheme => bail!("invalid URL scheme: {scheme}"),
+        }
+
+        // Build the subscribe message. Absent filters are omitted (match-all);
+        // present ones are sent as JSON arrays.
+        let subscribe = {
+            let mut subscription = serde_json::Map::new();
+            subscription.insert("type".into(), "perpsEvents".into());
+
+            if let Some(since) = since_block_height {
+                subscription.insert("since".into(), since.into());
+            }
+
+            for (key, values) in [
+                ("eventTypes", event_types),
+                ("pairIds", pair_ids),
+                ("users", users),
+                ("orderIds", order_ids),
+                ("clientOrderIds", client_order_ids),
+            ] {
+                if let Some(values) = values {
+                    subscription.insert(key.into(), values.into());
+                }
+            }
+
+            serde_json::json!({
+                "method": "subscribe",
+                "id": 1,
+                "subscription": serde_json::Value::Object(subscription),
+            })
+        };
+
+        let (ws, _response) = connect_async(ws_url.as_str())
+            .await
+            .map_err(|err| anyhow!("WebSocket connection failed: {err}"))?;
+
+        let (mut sink, mut stream) = ws.split();
+        sink.send(Message::text(subscribe.to_string()))
+            .await
+            .map_err(|err| anyhow!("failed to send subscribe: {err}"))?;
+
+        // Await the acknowledgement, mapping a `resync` / `tooManyRequests`
+        // error frame to a connect-time error (no data frame precedes the ack).
+        loop {
+            match stream.next().await {
+                Some(Ok(Message::Text(text))) => match parse_server_frame(&text)? {
+                    ServerFrame::Ack => break,
+                    ServerFrame::Error { code, message } => bail!("{code}: {message}"),
+                    ServerFrame::Data(_) | ServerFrame::Other => {},
+                },
+                Some(Ok(Message::Ping(data))) => {
+                    let _ = sink.send(Message::Pong(data)).await;
+                },
+                Some(Ok(Message::Close(frame))) => {
+                    bail!("WebSocket closed before acknowledgement: {frame:?}")
+                },
+                Some(Ok(_)) => {},
+                Some(Err(err)) => bail!("WebSocket error before acknowledgement: {err}"),
+                None => bail!("WebSocket closed before acknowledgement"),
+            }
+        }
+
+        // Drive the socket on a background task: forward batches to the stream,
+        // answer control pings, and send an app-level ping on a fixed schedule
+        // so an idle subscription is not reaped by the server's idle timeout.
+        let (tx, rx) = mpsc::unbounded::<anyhow::Result<PerpsEventsBatch>>();
+        tokio::spawn(async move {
+            let mut keepalive = tokio::time::interval(Duration::from_secs(20));
+            keepalive.tick().await; // The first tick is immediate; skip it.
+            let ping = serde_json::json!({"method": "ping"}).to_string();
+
+            loop {
+                tokio::select! {
+                    _ = keepalive.tick() => {
+                        if sink.send(Message::text(ping.clone())).await.is_err() {
+                            break;
+                        }
+                    },
+                    message = stream.next() => match message {
+                        Some(Ok(Message::Text(text))) => match parse_server_frame(&text) {
+                            Ok(ServerFrame::Data(batch)) => {
+                                if tx.unbounded_send(Ok(batch)).is_err() {
+                                    break;
+                                }
+                            },
+                            Ok(ServerFrame::Error { code, message }) => {
+                                let _ = tx.unbounded_send(Err(anyhow!("{code}: {message}")));
+                                break;
+                            },
+                            Ok(ServerFrame::Ack | ServerFrame::Other) => {},
+                            Err(err) => {
+                                let _ = tx.unbounded_send(Err(err));
+                                break;
+                            },
+                        },
+                        Some(Ok(Message::Ping(data))) => {
+                            if sink.send(Message::Pong(data)).await.is_err() {
+                                break;
+                            }
+                        },
+                        Some(Ok(Message::Close(_))) | Some(Err(_)) | None => break,
+                        Some(Ok(_)) => {},
+                    },
+                }
+            }
+
+            let _ = sink.close().await;
+        });
+
+        Ok(rx)
     }
 }
 
@@ -207,7 +353,7 @@ macro_rules! impl_paginate_method {
                 &self,
                 page_size: i64,
                 mut variables: $module::Variables,
-            ) -> Result<Vec<$module::$node_type>, anyhow::Error> {
+            ) -> anyhow::Result<Vec<$module::$node_type>> {
                 let mut all_items = vec![];
                 let mut after: Option<String> = None;
 
@@ -409,7 +555,72 @@ impl SearchTxClient for HttpClient {
     }
 }
 
-async fn error_for_status(response: reqwest::Response) -> Result<reqwest::Response, anyhow::Error> {
+// ---- perps events WebSocket feed ----
+
+/// One block's matching perps-contract events, as delivered by the `/ws`
+/// `perpsEvents` channel. Mirrors the `perps_events` payload shape.
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PerpsEventsBatch {
+    pub block_height: u64,
+    /// Block timestamp, RFC 3339.
+    pub created_at: String,
+    pub events: Vec<PerpsEvent>,
+}
+
+/// A single perps-contract event within a [`PerpsEventsBatch`].
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PerpsEvent {
+    pub idx: u32,
+    pub event_type: String,
+    pub user: Option<String>,
+    pub pair_id: Option<String>,
+    pub order_id: Option<String>,
+    pub client_order_id: Option<String>,
+    pub data: serde_json::Value,
+}
+
+/// A classified server frame from the `/ws` endpoint.
+enum ServerFrame {
+    /// `subscriptionResponse` acknowledgement.
+    Ack,
+
+    /// A `perpsEvents` data frame.
+    Data(PerpsEventsBatch),
+
+    /// An `error` frame (e.g. `resync`, `tooManyRequests`).
+    Error { code: String, message: String },
+
+    /// Anything else (e.g. `pong`).
+    Other,
+}
+
+fn parse_server_frame(text: &str) -> anyhow::Result<ServerFrame> {
+    let value: serde_json::Value = serde_json::from_str(text)?;
+    match value.get("channel").and_then(serde_json::Value::as_str) {
+        Some("subscriptionResponse") => Ok(ServerFrame::Ack),
+        Some("perpsEvents") => {
+            let data = value.get("data").cloned().unwrap_or_default();
+            Ok(ServerFrame::Data(serde_json::from_value(data)?))
+        },
+        Some("error") => Ok(ServerFrame::Error {
+            code: value
+                .pointer("/data/code")
+                .and_then(serde_json::Value::as_str)
+                .unwrap_or("error")
+                .to_string(),
+            message: value
+                .pointer("/data/message")
+                .and_then(serde_json::Value::as_str)
+                .unwrap_or_default()
+                .to_string(),
+        }),
+        _ => Ok(ServerFrame::Other),
+    }
+}
+
+async fn error_for_status(response: reqwest::Response) -> anyhow::Result<reqwest::Response> {
     if let Err(e) = response.error_for_status_ref() {
         bail!("{}: {}", e, response.text().await?)
     } else {

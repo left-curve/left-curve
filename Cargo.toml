@@ -59,7 +59,6 @@ members = [
   "dango/utils/disk-saver",
   "dango/utils/dyn-event",
   "dango/utils/eth",
-  "dango/utils/graphql-ws-client",
   "dango/utils/identity",
   "dango/utils/temp-rocksdb",
 ]
@@ -87,6 +86,7 @@ actix-service               = "2"
 actix-test                  = "0.1"
 actix-web                   = "4"
 actix-web-metrics           = "0.4"
+actix-ws                    = "0.4"
 aes-gcm                     = "0.10"
 alloy                       = "2"
 anyhow                      = "1"
@@ -207,7 +207,6 @@ dango-eth-utils             = { path = "dango/utils/eth" }
 dango-ffi                   = { path = "dango/core/ffi" }
 dango-gateway               = { path = "dango/exchange/gateway" }
 dango-genesis               = { path = "dango/exchange/genesis" }
-dango-graphql-ws-client     = { path = "dango/utils/graphql-ws-client" }
 dango-hyperlane-ism         = { path = "dango/hyperlane/isms/multisig" }
 dango-hyperlane-mailbox     = { path = "dango/hyperlane/mailbox" }
 dango-hyperlane-types       = { path = "dango/hyperlane/types" }

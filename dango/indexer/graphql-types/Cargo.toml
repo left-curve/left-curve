@@ -10,9 +10,7 @@ rust-version  = { workspace = true }
 version       = { workspace = true }
 
 [dependencies]
-anyhow                  = { workspace = true }
-dango-graphql-ws-client = { workspace = true }
-graphql_client          = { workspace = true }
-paste                   = { workspace = true }
-serde                   = { workspace = true, features = ["derive"] }
-serde_json              = { workspace = true }
+graphql_client = { workspace = true }
+paste          = { workspace = true }
+serde          = { workspace = true, features = ["derive"] }
+serde_json     = { workspace = true }

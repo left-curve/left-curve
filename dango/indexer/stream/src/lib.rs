@@ -1,13 +1,13 @@
 //! Validator-side, in-memory, low-latency event streaming for Dango.
 //!
-//! This crate provides two ephemeral, purely in-memory GraphQL subscriptions,
-//! each a ring of the last `N` blocks broadcast live, in-process with the state
+//! This crate provides two ephemeral, purely in-memory real-time feeds, each a
+//! ring of the last `N` blocks broadcast live, in-process with the state
 //! machine (no validator -> indexer-node hop) — the lowest-latency surface for
-//! real-time data:
+//! real-time data, served to clients over the WebSocket `/ws` endpoint as the
+//! `perpsEvents` and `fullBlock` channels:
 //!
-//! - `perps_events2` — per-block perps-exchange contract events, for bots and
-//!   algo-traders.
-//! - `full_block` — each finalized block in full (`Block` + `BlockOutcome`).
+//! - per-block perps-exchange contract events, for bots and algo-traders.
+//! - each finalized block in full (`Block` + `BlockOutcome`).
 //!
 //! It implements [`dango_app::Indexer`] — but, despite the name, it does no
 //! durable indexing. It only maintains in-memory state for real-time
@@ -24,15 +24,14 @@
 //!   publishes both rings from `post_indexing`, in height order, once the
 //!   block is committed (the perps address it also needs only arrives with
 //!   `app_cfg` there).
-//! - [`Context`] — the reader handle the httpd holds; the `perps_events2` and
-//!   `full_block` resolvers live in the httpd crate and drive
-//!   [`RecentStream::subscribe`].
+//! - [`Context`] — the reader handle the httpd holds; the `/ws` WebSocket
+//!   handler lives in the httpd crate and drives [`RecentStream::subscribe`].
 //!
 //! # Future direction
 //!
 //! - Once block files / Postgres / ClickHouse move to the dedicated indexer
 //!   node, this crate will REPLACE `HookedIndexer` as the validator's sole, thin
-//!   indexer; the `full_block` ring is what that node consumes to stay in sync.
+//!   indexer; the full-block ring is what that node consumes to stay in sync.
 
 mod context;
 mod indexer;

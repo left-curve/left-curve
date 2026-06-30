@@ -1,13 +1,12 @@
 use {
     crate::remote::BlockRangeClient,
-    anyhow::{Context, bail},
+    anyhow::{Context, anyhow, bail},
     async_trait::async_trait,
-    dango_graphql_ws_client::WsClient,
-    dango_indexer_graphql_types::{SubscribeFullBlock, subscribe_full_block},
     dango_indexer_historical_types::{AnyResult, BlockData},
-    futures::{StreamExt, stream::BoxStream},
+    futures::{SinkExt, StreamExt, channel::mpsc, stream::BoxStream},
     reqwest::IntoUrl,
     std::time::Duration,
+    tokio_tungstenite::{connect_async, tungstenite::Message},
     url::Url,
 };
 
@@ -16,8 +15,14 @@ use {
 /// timeout.
 const HTTP_TIMEOUT: Duration = Duration::from_secs(30);
 
-/// Thin client against a dango node's `httpd` — WebSocket for the `full_block`
-/// subscription, HTTP for the `/block/full/range` backfill endpoint.
+/// App-level keepalive cadence for the `/ws` subscription. The node reaps a
+/// socket idle for 60s, so a quiet `fullBlock` feed (no new blocks) is kept
+/// alive by sending a `ping` well within that window.
+const WS_KEEPALIVE: Duration = Duration::from_secs(20);
+
+/// Thin client against a dango node's `httpd` — the multiplexed WebSocket `/ws`
+/// endpoint for the `fullBlock` subscription, HTTP for the `/block/full/range`
+/// backfill endpoint.
 ///
 /// Used directly by both block sources (no trait): there is one node-backed
 /// implementation. The local source points it at the in-process `dango-httpd`,
@@ -31,76 +36,196 @@ pub struct HttpdClient {
     inner: reqwest::Client,
     /// `{base}/block/full/range`, joined once at construction.
     range_url: Url,
-    ws: WsClient,
+    /// `{base}/ws` as a `ws`/`wss` URL, joined once at construction.
+    ws_url: Url,
 }
 
 impl HttpdClient {
     /// Construct from the node's base URL (e.g. `http://localhost:8080`). The
-    /// `/graphql` and `/block/full/range` paths are joined internally; the
-    /// WebSocket URL is derived from the GraphQL one.
+    /// `/ws` and `/block/full/range` paths are joined internally; the WebSocket
+    /// scheme is derived from the base (`http`→`ws`, `https`→`wss`).
     pub fn new<U>(base_url: U) -> AnyResult<Self>
     where
         U: IntoUrl,
     {
         let base = base_url.into_url()?;
-        let graphql_url = base.join("graphql")?;
         let range_url = base.join("block/full/range")?;
-        let ws = WsClient::from_http_url(graphql_url.as_str())?;
+
+        let mut ws_url = base.join("ws")?;
+        match ws_url.scheme() {
+            "http" => ws_url
+                .set_scheme("ws")
+                .map_err(|_| anyhow!("failed to set ws scheme"))?,
+            "https" => ws_url
+                .set_scheme("wss")
+                .map_err(|_| anyhow!("failed to set wss scheme"))?,
+            "ws" | "wss" => {},
+            scheme => bail!("invalid node URL scheme: {scheme}"),
+        }
+
         let inner = reqwest::Client::builder().timeout(HTTP_TIMEOUT).build()?;
 
         Ok(Self {
             inner,
             range_url,
-            ws,
+            ws_url,
         })
     }
 
-    /// Open a WebSocket subscription to the `full_block` channel and return a
-    /// stream of fully-assembled [`BlockData`], **always starting at the live
-    /// tip** (only blocks newer than the current tip). Each item is the node's
-    /// `FullBlock` as a JSON scalar, decoded here.
+    /// Open a WebSocket subscription to the node's `fullBlock` channel and return
+    /// a stream of fully-assembled [`BlockData`], **always starting at the live
+    /// tip** (only blocks newer than the current tip). Each data frame's `data`
+    /// is the node's `{block, outcome}` — a `FullBlock`, which `BlockData` (an
+    /// alias of it) deserializes directly.
     ///
-    /// There is deliberately **no `since` parameter**. The node serves this feed
-    /// from a small in-memory ring (~100 blocks), so a `since` below that window
-    /// fails the subscription with a "resync required" error — which is exactly
-    /// where the resume point sits during a backfill or after any non-trivial
-    /// downtime. Resuming at the tip and backfilling the gap below it by other
-    /// means — the remote source's healer via `/block/full/range`, the local
-    /// source's on-disk `get` — is the only reconnect strategy that cannot wedge.
-    /// See the callers in `remote::drain_live` and `LocalBlockSource::run`.
+    /// There is deliberately **no `since`**. The node serves this feed from a
+    /// small in-memory ring, so a `since` below that window fails the
+    /// subscription with a `resync` error — which is exactly where the resume
+    /// point sits during a backfill or after any non-trivial downtime. Resuming
+    /// at the tip and backfilling the gap below it by other means — the remote
+    /// source's healer via `/block/full/range`, the local source's on-disk `get`
+    /// — is the only reconnect strategy that cannot wedge. See the callers in
+    /// `remote::drain_live` and `LocalBlockSource::run`.
     ///
     /// The **shared live path**: both block sources call it — the local one
     /// against the in-process `dango-httpd`, the remote one against a sentinel.
     pub(crate) async fn subscribe_full_blocks(
         &self,
     ) -> AnyResult<BoxStream<'static, AnyResult<BlockData>>> {
-        let stream = self
-            .ws
-            .subscribe::<SubscribeFullBlock>(subscribe_full_block::Variables {
-                // Always at the tip — see the doc comment for why there is no
-                // `since`.
-                since_block_height: None,
-            })
-            .await?;
+        let (ws, _response) = connect_async(self.ws_url.as_str())
+            .await
+            .map_err(|err| anyhow!("websocket connection to {} failed: {err}", self.ws_url))?;
+        let (mut sink, mut stream) = ws.split();
 
-        let mapped = stream.map(|res| -> AnyResult<BlockData> {
-            let response = res?;
+        // Open the `fullBlock` channel at the live tip (no `since`).
+        let subscribe = serde_json::json!({
+            "method": "subscribe",
+            "id": 1,
+            "subscription": { "type": "fullBlock" },
+        });
+        sink.send(Message::text(subscribe.to_string()))
+            .await
+            .map_err(|err| anyhow!("failed to send fullBlock subscribe: {err}"))?;
 
-            if let Some(errors) = response.errors
-                && !errors.is_empty()
-            {
-                bail!("full_block subscription returned errors: {errors:?}");
+        // Await the acknowledgement (no data frame precedes it); a `resync` /
+        // limit error frame becomes a connect-time error.
+        loop {
+            match stream.next().await {
+                Some(Ok(Message::Text(text))) => match classify_frame(&text)? {
+                    Frame::Ack => break,
+                    Frame::Error { code, message } => {
+                        bail!("fullBlock subscribe rejected ({code}): {message}")
+                    },
+                    Frame::Data(_) | Frame::Other => {},
+                },
+                Some(Ok(Message::Ping(data))) => {
+                    let _ = sink.send(Message::Pong(data)).await;
+                },
+                Some(Ok(Message::Close(frame))) => {
+                    bail!("websocket closed before acknowledgement: {frame:?}")
+                },
+                Some(Ok(_)) => {},
+                Some(Err(err)) => bail!("websocket error before acknowledgement: {err}"),
+                None => bail!("websocket closed before acknowledgement"),
+            }
+        }
+
+        // Drive the socket on a background task: forward decoded blocks, answer
+        // control pings, and send an app-level ping on a fixed schedule so an
+        // idle feed is not reaped by the server's idle timeout.
+        let (tx, rx) = mpsc::unbounded::<AnyResult<BlockData>>();
+        tokio::spawn(async move {
+            let mut keepalive = tokio::time::interval(WS_KEEPALIVE);
+            keepalive.tick().await; // the first tick is immediate; skip it.
+            let ping = serde_json::json!({ "method": "ping" }).to_string();
+
+            loop {
+                tokio::select! {
+                    _ = keepalive.tick() => {
+                        if sink.send(Message::text(ping.clone())).await.is_err() {
+                            break;
+                        }
+                    },
+                    message = stream.next() => match message {
+                        Some(Ok(Message::Text(text))) => match classify_frame(&text) {
+                            Ok(Frame::Data(data)) => {
+                                let block = serde_json::from_value::<BlockData>(data)
+                                    .map_err(|err| anyhow!("failed to decode fullBlock frame: {err}"));
+                                if tx.unbounded_send(block).is_err() {
+                                    break;
+                                }
+                            },
+                            Ok(Frame::Error { code, message }) => {
+                                let _ = tx.unbounded_send(Err(anyhow!(
+                                    "fullBlock feed error ({code}): {message}"
+                                )));
+                                break;
+                            },
+                            Ok(Frame::Ack | Frame::Other) => {},
+                            Err(err) => {
+                                let _ = tx.unbounded_send(Err(err));
+                                break;
+                            },
+                        },
+                        Some(Ok(Message::Ping(data))) => {
+                            if sink.send(Message::Pong(data)).await.is_err() {
+                                break;
+                            }
+                        },
+                        Some(Ok(Message::Close(_))) | Some(Err(_)) | None => break,
+                        Some(Ok(_)) => {},
+                    },
+                }
             }
 
-            let data = response
-                .data
-                .context("full_block subscription returned no data")?;
-            // `full_block` is the JSON scalar — the sentinel's `FullBlock`, which
-            // `BlockData` (an alias of it) deserializes directly.
-            Ok(serde_json::from_value::<BlockData>(data.full_block)?)
+            let _ = sink.close().await;
         });
 
-        Ok(Box::pin(mapped))
+        Ok(Box::pin(rx))
+    }
+}
+
+/// A classified `/ws` server text frame (discriminated by its `channel` tag).
+enum Frame {
+    /// `subscriptionResponse` — the subscribe acknowledgement.
+    Ack,
+    /// A `fullBlock` data frame's `data` payload (the `{block, outcome}` value).
+    Data(serde_json::Value),
+    /// An `error` frame (e.g. `resync`, `tooManyRequests`).
+    Error { code: String, message: String },
+    /// `pong` or any other channel — ignored.
+    Other,
+}
+
+/// Classify a `/ws` server text frame by its `channel` tag (see the node's
+/// `routes::ws`): `subscriptionResponse` / `fullBlock` / `error` / other.
+fn classify_frame(text: &str) -> AnyResult<Frame> {
+    let value: serde_json::Value =
+        serde_json::from_str(text).map_err(|err| anyhow!("malformed websocket frame: {err}"))?;
+
+    match value.get("channel").and_then(|c| c.as_str()) {
+        Some("subscriptionResponse") => Ok(Frame::Ack),
+        Some("fullBlock") => Ok(Frame::Data(
+            value
+                .get("data")
+                .cloned()
+                .context("fullBlock frame missing `data`")?,
+        )),
+        Some("error") => {
+            let data = value.get("data");
+            let code = data
+                .and_then(|d| d.get("code"))
+                .and_then(|c| c.as_str())
+                .unwrap_or("error")
+                .to_string();
+            let message = data
+                .and_then(|d| d.get("message"))
+                .and_then(|m| m.as_str())
+                .unwrap_or_default()
+                .to_string();
+            Ok(Frame::Error { code, message })
+        },
+        _ => Ok(Frame::Other),
     }
 }
 

@@ -19,8 +19,8 @@
       *nat
       :PREROUTING ACCEPT [0:0]
 
-      -A PREROUTING -i {{ internal_api_public_iface }} -p tcp --dport 80  -j DNAT --to-destination {{ tailscale_ip }}:80
-      -A PREROUTING -i {{ internal_api_public_iface }} -p tcp --dport 443 -j DNAT --to-destination {{ tailscale_ip }}:443
+      -A PREROUTING -i {{ internal_api_public_iface_resolved }} -p tcp --dport 80  -j DNAT --to-destination {{ tailscale_ip }}:80
+      -A PREROUTING -i {{ internal_api_public_iface_resolved }} -p tcp --dport 443 -j DNAT --to-destination {{ tailscale_ip }}:443
       -A POSTROUTING -o wg0 -j MASQUERADE
 
       COMMIT
@@ -37,10 +37,10 @@
 - name: Move DNAT rules above DOCKER chain when not already on top
   ansible.builtin.shell: |
     set -e
-    while iptables -t nat -D PREROUTING -i {{ internal_api_public_iface }} -p tcp --dport 80  -j DNAT --to-destination {{ tailscale_ip }}:80 2>/dev/null; do :; done
-    while iptables -t nat -D PREROUTING -i {{ internal_api_public_iface }} -p tcp --dport 443 -j DNAT --to-destination {{ tailscale_ip }}:443 2>/dev/null; do :; done
-    iptables -t nat -I PREROUTING 1 -i {{ internal_api_public_iface }} -p tcp --dport 80  -j DNAT --to-destination {{ tailscale_ip }}:80
-    iptables -t nat -I PREROUTING 2 -i {{ internal_api_public_iface }} -p tcp --dport 443 -j DNAT --to-destination {{ tailscale_ip }}:443
+    while iptables -t nat -D PREROUTING -i {{ internal_api_public_iface_resolved }} -p tcp --dport 80  -j DNAT --to-destination {{ tailscale_ip }}:80 2>/dev/null; do :; done
+    while iptables -t nat -D PREROUTING -i {{ internal_api_public_iface_resolved }} -p tcp --dport 443 -j DNAT --to-destination {{ tailscale_ip }}:443 2>/dev/null; do :; done
+    iptables -t nat -I PREROUTING 1 -i {{ internal_api_public_iface_resolved }} -p tcp --dport 80  -j DNAT --to-destination {{ tailscale_ip }}:80
+    iptables -t nat -I PREROUTING 2 -i {{ internal_api_public_iface_resolved }} -p tcp --dport 443 -j DNAT --to-destination {{ tailscale_ip }}:443
   when: prerouting_dump.stdout_lines[2] is not search('DNAT.*' + tailscale_ip +
     ':80')
   changed_when: true

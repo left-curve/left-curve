@@ -2,8 +2,8 @@ mod client;
 mod keystore;
 mod secret;
 mod signer;
+mod subscription;
 
 pub use {
-    client::*, dango_graphql_ws_client::*, dango_indexer_graphql_types::*, keystore::*, secret::*,
-    signer::*,
+    client::*, dango_indexer_graphql_types::*, keystore::*, secret::*, signer::*, subscription::*,
 };
