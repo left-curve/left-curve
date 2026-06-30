@@ -2,12 +2,12 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, cast
 
 import pytest
 
 from dango.info import Info
-from dango.utils.types import Addr, CandleInterval, PairId
+from dango.utils.types import Addr, CandleInterval, PairId, Tx
 
 
 class _FakeWebsocketManager:
@@ -70,6 +70,12 @@ class _FakeWsStreamManager:
         self.unsubscribed: list[int] = []
         self.stopped: bool = False
         self._next_id: int = 0
+        # One-shot broadcasts: the txs sent, and the canned outcome returned.
+        self.broadcasts: list[dict[str, Any]] = []
+        self.broadcast_result: dict[str, Any] = {
+            "tx_hash": "0xabc",
+            "check_tx": {"result": {"Ok": None}},
+        }
 
     def subscribe(self, subscription: dict[str, Any], callback: Any) -> int:
         self._next_id += 1
@@ -86,6 +92,10 @@ class _FakeWsStreamManager:
     def join(self, timeout: float | None = None) -> None:
         pass
 
+    def broadcast(self, tx: dict[str, Any]) -> dict[str, Any]:
+        self.broadcasts.append(tx)
+        return self.broadcast_result
+
 
 def _make_info_with_fake_ws_stream() -> tuple[Info, _FakeWsStreamManager]:
     """Build an Info and inject a fake WsStreamManager into its slot."""
@@ -94,6 +104,28 @@ def _make_info_with_fake_ws_stream() -> tuple[Info, _FakeWsStreamManager]:
     fake = _FakeWsStreamManager()
     info._ws_stream_manager = fake  # type: ignore[assignment]
     return info, fake
+
+
+class TestBroadcastWs:
+    def test_delegates_to_ws_stream(self) -> None:
+        """`broadcast_tx_ws` forwards the tx to the manager and returns its outcome."""
+
+        info, fake = _make_info_with_fake_ws_stream()
+        tx = cast(
+            Tx,
+            {
+                "sender": "0x000000000000000000000000000000000000beef",
+                "gas_limit": 1000000,
+                "msgs": [],
+                "data": {},
+                "credential": {},
+            },
+        )
+
+        result = info.broadcast_tx_ws(tx)
+
+        assert fake.broadcasts == [tx]
+        assert result == fake.broadcast_result
 
 
 class TestLazyWsConstruction:
