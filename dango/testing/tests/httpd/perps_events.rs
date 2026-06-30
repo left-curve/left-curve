@@ -101,7 +101,7 @@ async fn query_perps_events_user_lifecycle() -> anyhow::Result<()> {
 }
 
 /// Deterministically reproduce the `event_by_addresses` drop bug that
-/// `perps_events2` was designed to avoid.
+/// `perps_events` was designed to avoid.
 ///
 /// The root cause is in the *producer*: `HookedIndexer::post_indexing` spawns
 /// one `tokio::spawn` per block, so block N+1's events can be written to the

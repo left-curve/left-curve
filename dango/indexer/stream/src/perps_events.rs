@@ -1,5 +1,5 @@
 //! Perps-exchange event types, extraction from a `BlockOutcome`, and the
-//! client-supplied filter, for the `perps_events2` subscription.
+//! client-supplied filter, for the `perps_events` subscription.
 //!
 //! Every event emitted by the perps contract is captured (filtered only by
 //! emitting contract address) — there is no event-name whitelist, so new perps
@@ -163,7 +163,7 @@ fn extract_filter_fields(
     )
 }
 
-/// Build the per-block projection closure for a `perps_events2` subscription.
+/// Build the per-block projection closure for a `perps_events` subscription.
 ///
 /// The five predicates AND together. For each, `None` means "do not filter on
 /// this field" (matches everything), while `Some(set)` keeps only events whose

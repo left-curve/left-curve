@@ -77,7 +77,7 @@ _SUB_BLOCK: Final[str] = _SUBSCRIPTIONS.joinpath("block.graphql").read_text(enco
 _SUB_EVENTS: Final[str] = _SUBSCRIPTIONS.joinpath("events.graphql").read_text(encoding="utf-8")
 _SUB_QUERY_APP: Final[str] = _SUBSCRIPTIONS.joinpath("queryApp.graphql").read_text(encoding="utf-8")
 # `perpsEvents` is served over the native WebSocket `/ws` endpoint — see
-# `Info.subscribe_perps_events2`, which uses `WsStreamManager` instead of a
+# `Info.subscribe_perps_events`, which uses `WsStreamManager` instead of a
 # graphql-transport-ws document.
 
 # perpsTrades is supported by the chain — `Subscription.perpsTrades` is
@@ -829,7 +829,7 @@ class Info(API):
             lambda payload: callback(_unwrap_node(payload, "block", Block)),
         )
 
-    def subscribe_perps_events2(
+    def subscribe_perps_events(
         self,
         callback: Callable[[PerpsEvent2Batch], None],
         *,

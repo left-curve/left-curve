@@ -174,7 +174,7 @@ impl HttpClient {
 
     /// Subscribe to perps-exchange events over the WebSocket endpoint
     /// (`GET /ws`, `perpsEvents` channel) — the transport replacement for the
-    /// `perps_events2` GraphQL subscription. Yields one [`PerpsEventsBatch`] per
+    /// `perps_events` GraphQL subscription. Yields one [`PerpsEventsBatch`] per
     /// block that has at least one matching event.
     ///
     /// The five filters are sets that AND together; `None` (or an empty list)
@@ -183,7 +183,7 @@ impl HttpClient {
     /// height that predates the window fails this call with an error (the
     /// server's `resync` reply). The subscription is also subject to the
     /// server's limit (`tooManyRequests`).
-    pub async fn subscribe_perps_events2(
+    pub async fn subscribe_perps_events(
         &self,
         since_block_height: Option<u64>,
         event_types: Option<Vec<String>>,
@@ -551,7 +551,7 @@ impl SearchTxClient for HttpClient {
 // ---- perps events WebSocket feed ----
 
 /// One block's matching perps-contract events, as delivered by the `/ws`
-/// `perpsEvents` channel. Mirrors the `perps_events2` payload shape.
+/// `perpsEvents` channel. Mirrors the `perps_events` payload shape.
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct PerpsEventsBatch {

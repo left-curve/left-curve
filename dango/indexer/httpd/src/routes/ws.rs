@@ -9,7 +9,7 @@
 //! different filters) are demultiplexable on the client.
 //!
 //! Two channel types are served, both reusing the in-memory validator stream
-//! that backed the `full_block` / `perps_events2` GraphQL subscriptions:
+//! that backed the `full_block` / `perps_events` GraphQL subscriptions:
 //!
 //! - `fullBlock` — every finalized block (`{block, outcome}`).
 //! - `perpsEvents` — perps-contract events grouped per block, narrowed by the
@@ -104,7 +104,7 @@ enum Subscription {
 }
 
 /// Filters for a `perpsEvents` subscription, mirroring the former
-/// `perps_events2` GraphQL arguments: an absent/`null` set does not filter on
+/// `perps_events` GraphQL arguments: an absent/`null` set does not filter on
 /// that field; an empty set matches nothing; the sets AND together.
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]

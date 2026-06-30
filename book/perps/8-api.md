@@ -2738,7 +2738,7 @@ A native WebSocket endpoint for real-time feeds, distinct from the `graphql-ws` 
 Two channels are served, both replacing `graphql-ws` subscriptions removed in this release:
 
 - `fullBlock` — every finalized block (`Block` + `BlockOutcome`).
-- `perpsEvents` — perps-contract events grouped per block, with filters (the former `perpsEvents2` subscription).
+- `perpsEvents` — perps-contract events grouped per block, with filters.
 
 ### 11.1 Protocol
 

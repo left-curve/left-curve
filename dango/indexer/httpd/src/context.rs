@@ -29,7 +29,7 @@ pub struct FullContext {
     pub indexer_cache_context: dango_indexer_cache::Context,
     pub clickhouse_context: dango_indexer_clickhouse::context::Context,
     /// Reader handle to the validator-side realtime stream backing the
-    /// `perps_events2` subscription.
+    /// `perps_events` subscription.
     pub stream_context: dango_indexer_stream::Context,
     pub base: MinimalContext,
     pub db: DatabaseConnection,

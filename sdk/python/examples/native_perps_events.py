@@ -1,13 +1,13 @@
 """Native Dango API: stream BTC perps events from testnet.
 
-Subscribes to the ``perpsEvents2`` feed filtered to the BTC pair and the order
+Subscribes to the ``perpsEvents`` feed filtered to the BTC pair and the order
 lifecycle / forced-exit event types — ``order_persisted``, ``order_removed``,
 ``order_resized``, ``order_filled``, ``liquidated``, ``deleveraged`` — grouped
 per block. Runnable with no ``.env``: it only reads public chain state.
 
 Run with::
 
-    uv run python examples/native_perps_events2.py
+    uv run python examples/native_perps_events.py
 """
 
 from __future__ import annotations
@@ -52,7 +52,7 @@ def _print_batch(batch: PerpsEvent2Batch) -> None:
 def main() -> None:
     info = example_utils.setup_read_only(TESTNET_API_URL)
 
-    sub_id = info.subscribe_perps_events2(
+    sub_id = info.subscribe_perps_events(
         _print_batch,
         pair_ids=["perp/btcusd"],
         event_types=_EVENT_TYPES,

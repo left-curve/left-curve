@@ -10,7 +10,7 @@
 //! Run with:
 //!
 //! ```sh
-//! cargo run -p dango-sdk --example subscribe_perps_events2
+//! cargo run -p dango-sdk --example subscribe_perps_events
 //! ```
 
 use {
@@ -33,7 +33,7 @@ async fn main() -> Result<()> {
 
     // Filters AND together, so only BTC events of the listed types stream.
     let mut events = client
-        .subscribe_perps_events2(
+        .subscribe_perps_events(
             None,
             Some(vec![
                 OrderPersisted::EVENT_NAME.to_string(),

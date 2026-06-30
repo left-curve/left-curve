@@ -147,12 +147,12 @@ class TestSubscribePerpsTrades:
         assert received == [{"_error": "boom"}]
 
 
-class TestSubscribePerpsEvents2:
+class TestSubscribePerpsEvents:
     def test_no_filter_sends_type_only(self) -> None:
         """With no filter args, the subscription carries only its type (match all)."""
 
         info, fake = _make_info_with_fake_ws_stream()
-        info.subscribe_perps_events2(lambda _: None)
+        info.subscribe_perps_events(lambda _: None)
         subscription, _cb = fake.subscriptions[-1]
         # Absent filters are omitted entirely (the server treats an absent set
         # as match-all); only the channel type is sent.
@@ -162,7 +162,7 @@ class TestSubscribePerpsEvents2:
         """Each keyword filter is sent as its camelCase subscription field."""
 
         info, fake = _make_info_with_fake_ws_stream()
-        info.subscribe_perps_events2(
+        info.subscribe_perps_events(
             lambda _: None,
             since_block_height=42,
             event_types=["order_filled"],
@@ -187,7 +187,7 @@ class TestSubscribePerpsEvents2:
 
         info, fake = _make_info_with_fake_ws_stream()
         received: list[Any] = []
-        info.subscribe_perps_events2(received.append)
+        info.subscribe_perps_events(received.append)
         _subscription, cb = fake.subscriptions[-1]
         # One `perpsEvents` frame's payload = one block's batch.
         batch = {
@@ -203,7 +203,7 @@ class TestSubscribePerpsEvents2:
 
         info, fake = _make_info_with_fake_ws_stream()
         received: list[Any] = []
-        info.subscribe_perps_events2(received.append)
+        info.subscribe_perps_events(received.append)
         _subscription, cb = fake.subscriptions[-1]
         cb({"_error": "boom"})
         assert received == [{"_error": "boom"}]

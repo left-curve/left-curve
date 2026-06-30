@@ -816,7 +816,7 @@ class PerpsEvent2(TypedDict):
 class PerpsEvent2Batch(TypedDict):  # noqa: N815
     """One block's matching perps events from the /ws perpsEvents feed."""
 
-    # Each `perpsEvents` frame on `subscribe_perps_events2` is one of these: the
+    # Each `perpsEvents` frame on `subscribe_perps_events` is one of these: the
     # block's height/timestamp plus every perps event in it that passed the
     # filter. Only blocks with at least one matching event are delivered.
     blockHeight: int  # noqa: N815
