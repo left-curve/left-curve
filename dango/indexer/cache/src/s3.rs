@@ -8,7 +8,7 @@ use {
         error::SdkError,
         operation::{
             create_bucket::CreateBucketError, get_object::GetObjectError,
-            head_object::HeadObjectError,
+            head_bucket::HeadBucketError, head_object::HeadObjectError,
         },
         primitives::ByteStream,
     },
@@ -119,6 +119,31 @@ impl Client {
             },
             Err(e) => Err(IndexerError::s3(e.to_string())),
         }
+    }
+
+    /// Whether the configured bucket exists and is reachable. A `NotFound`
+    /// response means it's absent; any other failure (transport, auth) is
+    /// returned as an error rather than reported as "missing".
+    #[cfg_attr(feature = "tracing", tracing::instrument(skip_all, fields(bucket = %self.cfg.bucket)))]
+    pub async fn bucket_exists(&self) -> Result<bool> {
+        let res = self
+            .inner
+            .head_bucket()
+            .bucket(&self.cfg.bucket)
+            .send()
+            .await;
+
+        Ok(match res {
+            Ok(_) => true,
+            // Service error and it's specifically a NotFound => doesn't exist.
+            Err(SdkError::ServiceError(inner))
+                if matches!(inner.err(), HeadBucketError::NotFound(_)) =>
+            {
+                false
+            },
+            // anything else is a real error
+            Err(e) => return Err(IndexerError::s3(e.to_string())),
+        })
     }
 
     #[cfg_attr(feature = "tracing", tracing::instrument(skip_all, fields(key = %key)))]
