@@ -87,6 +87,8 @@ export function DateRangePicker({
       selected={pendingRange}
       onSelect={handleSelect}
       numberOfMonths={effectiveNumberOfMonths}
+      fixedWeeks
+      showOutsideDays
       disabled={disabled}
       components={{
         Nav: ({ onPreviousClick, onNextClick, previousMonth, nextMonth }) => (
@@ -111,20 +113,25 @@ export function DateRangePicker({
             </button>
           </nav>
         ),
-        DayButton: ({ day, modifiers, className: _dayClassName, ...props }) => (
-          <button
-            type="button"
-            {...props}
-            className={dayButton({
-              isStart: !!modifiers.range_start,
-              isEnd: !!modifiers.range_end,
-              isMiddle: !!modifiers.range_middle,
-              isSelected: !!modifiers.selected,
-            })}
-          >
-            {day.date.getDate()}
-          </button>
-        ),
+        DayButton: ({ day, modifiers, className: _dayClassName, ...props }) => {
+          const isOutside = !!modifiers.outside;
+
+          return (
+            <button
+              type="button"
+              {...props}
+              className={dayButton({
+                isStart: !isOutside && !!modifiers.range_start,
+                isEnd: !isOutside && !!modifiers.range_end,
+                isMiddle: !isOutside && !!modifiers.range_middle,
+                isSelected: !isOutside && !!modifiers.selected,
+                isOutside,
+              })}
+            >
+              {day.date.getDate()}
+            </button>
+          );
+        },
       }}
       formatters={{
         formatWeekdayName: (date) => formatDate(date, "EEEEEE"),
@@ -195,6 +202,7 @@ const dayButton = tv(
       isEnd: { true: "" },
       isMiddle: { true: "" },
       isSelected: { true: "" },
+      isOutside: { true: "" },
     },
     compoundVariants: [
       {
@@ -202,7 +210,16 @@ const dayButton = tv(
         isEnd: false,
         isMiddle: false,
         isSelected: false,
+        isOutside: false,
         class: "hover:bg-surface-tertiary-rice",
+      },
+      {
+        isStart: false,
+        isEnd: false,
+        isMiddle: false,
+        isSelected: false,
+        isOutside: true,
+        class: "text-ink-tertiary-500 opacity-40 hover:bg-surface-tertiary-rice",
       },
       {
         isStart: true,
@@ -250,11 +267,11 @@ const dayPickerClassNames = {
   weekdays: "grid grid-cols-7",
   weekday:
     "h-9 w-9 flex items-center justify-center diatype-xs-medium text-ink-placeholder-400 uppercase font-normal",
-  week: "grid grid-cols-7",
+  week: "grid grid-cols-7 [&:nth-of-type(6)]:hidden",
   day: "h-9 w-9 text-ink-secondary-700",
   month_grid: "w-fit border-separate border-spacing-0",
   today: "[&>button]:underline [&>button]:underline-offset-4",
-  outside: "text-ink-tertiary-500 opacity-40",
+  outside: "",
   disabled: "opacity-30 cursor-not-allowed",
   hidden: "invisible",
 };
