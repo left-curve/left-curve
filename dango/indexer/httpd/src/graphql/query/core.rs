@@ -46,6 +46,18 @@ impl CoreQuery {
 
         Ok(status)
     }
+
+    pub async fn _simulate(app_ctx: &MinimalContext, tx: UnsignedTx) -> Result<TxOutcome, Error> {
+        #[cfg(feature = "metrics")]
+        let start = Instant::now();
+
+        let outcome = app_ctx.dango_app.simulate(tx).await?;
+
+        #[cfg(feature = "metrics")]
+        histogram!("http.grug.simulate.duration").record(start.elapsed().as_secs_f64());
+
+        Ok(outcome)
+    }
 }
 
 #[Object]
@@ -89,6 +101,6 @@ impl CoreQuery {
     ) -> Result<TxOutcome, Error> {
         let app_ctx = ctx.data::<MinimalContext>()?;
 
-        Ok(app_ctx.dango_app.simulate(tx).await?)
+        Self::_simulate(app_ctx, tx).await
     }
 }

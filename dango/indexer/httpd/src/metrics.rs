@@ -44,4 +44,8 @@ pub fn init_core_query_metrics() {
         "http.grug.query_status.duration",
         "Dango query_status duration in seconds"
     );
+    describe_histogram!(
+        "http.grug.simulate.duration",
+        "Dango simulate duration in seconds"
+    );
 }
