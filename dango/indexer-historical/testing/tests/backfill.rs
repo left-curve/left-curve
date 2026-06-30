@@ -6,7 +6,7 @@
 //! tip it observes, so the fetcher must backfill the whole history below through
 //! the REST `/block/full/range` API. The chain must keep producing for the live
 //! tail to observe a tip at all — so we pump blocks until the backfill catches
-//! up (the "poi continua a farne fare" part), then exercise every GraphQL feed.
+//! up (the "poi continua a farne fare" part), then exercise every REST feed.
 //!
 //! Assertions survive two unknowns: the genesis block-height offset (counts are
 //! of *broadcast* txs, not absolute heights) and gas mechanics. The test preset
@@ -106,7 +106,7 @@ async fn backfill_then_live_then_query_coverage() {
         .wait_for_tx_indexed(&marker_hash.to_string(), WAIT)
         .await
         .expect("fetcher to reach the marker (bottom) block");
-    let marker_node = &marker["transactionsByHash"][0];
+    let marker_node = &marker[0];
     let marker_height = marker_node["blockHeight"].as_u64().expect("marker height");
     assert_eq!(marker_node["sender"].as_str().unwrap(), user3);
     assert!(marker_node["success"].as_bool().unwrap());
@@ -176,10 +176,7 @@ async fn backfill_then_live_then_query_coverage() {
     // ---- transactionsInvolving ----
     // user1 sent every bulk + live transfer, and nothing else.
     let sent = env
-        .collect_heights(
-            "transactionsInvolving",
-            &format!("address: \"{user1}\", role: SENDER"),
-        )
+        .collect_heights(&format!("/transactions/involving/{user1}?role=sender"))
         .await
         .unwrap();
     assert_eq!(
@@ -194,30 +191,21 @@ async fn backfill_then_live_then_query_coverage() {
 
     // user3 sent only the marker.
     let s3 = env
-        .collect_heights(
-            "transactionsInvolving",
-            &format!("address: \"{user3}\", role: SENDER"),
-        )
+        .collect_heights(&format!("/transactions/involving/{user3}?role=sender"))
         .await
         .unwrap();
     assert_eq!(s3, vec![marker_height], "user3 sent only the marker");
 
     // user4 sent nothing.
     let s4 = env
-        .collect_heights(
-            "transactionsInvolving",
-            &format!("address: \"{user4}\", role: SENDER"),
-        )
+        .collect_heights(&format!("/transactions/involving/{user4}?role=sender"))
         .await
         .unwrap();
     assert!(s4.is_empty(), "user4 never sent a tx");
 
     // user4 participates only in the marker (as recipient).
     let p4 = env
-        .collect_heights(
-            "transactionsInvolving",
-            &format!("address: \"{user4}\", role: PARTICIPANT"),
-        )
+        .collect_heights(&format!("/transactions/involving/{user4}?role=participant"))
         .await
         .unwrap();
     assert_eq!(
@@ -226,73 +214,52 @@ async fn backfill_then_live_then_query_coverage() {
         "user4 participates only in the marker"
     );
 
-    // kind: CRON → none in this window (the exclusion case).
+    // kind: cron → none in this window (the exclusion case).
     let crons = env
-        .collect_heights(
-            "transactionsInvolving",
-            &format!("address: \"{user1}\", kind: CRON"),
-        )
+        .collect_heights(&format!("/transactions/involving/{user1}?kind=cron"))
         .await
         .unwrap();
     assert!(crons.is_empty(), "no cron units in this window");
 
-    // kind: TRANSACTION → all of user1's units.
+    // kind: transaction → all of user1's units.
     let txs = env
-        .collect_heights(
-            "transactionsInvolving",
-            &format!("address: \"{user1}\", kind: TRANSACTION"),
-        )
+        .collect_heights(&format!("/transactions/involving/{user1}?kind=transaction"))
         .await
         .unwrap();
     assert_eq!(txs.len(), PRE_BULK + live_count);
 
     // explicit first-page pagination shape.
     let page = env
-        .query(&format!(
-            "{{ transactionsInvolving(address: \"{user1}\", role: SENDER, first: 50) \
-             {{ edges {{ node {{ blockHeight }} }} pageInfo {{ hasNextPage }} }} }}"
+        .get(&format!(
+            "/transactions/involving/{user1}?role=sender&first=50"
         ))
         .await
         .unwrap();
     assert_eq!(
-        page["transactionsInvolving"]["edges"]
-            .as_array()
-            .unwrap()
-            .len(),
+        page["items"].as_array().unwrap().len(),
         50,
         "a page is capped at 50",
     );
-    assert!(
-        page["transactionsInvolving"]["pageInfo"]["hasNextPage"]
-            .as_bool()
-            .unwrap()
-    );
+    assert!(page["pageInfo"]["hasNextPage"].as_bool().unwrap());
 
     // ---- transactionsByHash ----
     let by_hash = env
-        .query(&format!(
-            "{{ transactionsByHash(hash: \"{marker_hash}\") {{ blockHeight sender }} }}"
-        ))
+        .get(&format!("/transactions/by-hash/{marker_hash}"))
         .await
         .unwrap();
-    assert_eq!(by_hash["transactionsByHash"].as_array().unwrap().len(), 1);
+    assert_eq!(by_hash.as_array().unwrap().len(), 1);
     // an unknown hash maps to nothing.
     let unknown_hash = "0".repeat(64);
     let none = env
-        .query(&format!(
-            "{{ transactionsByHash(hash: \"{unknown_hash}\") {{ blockHeight }} }}"
-        ))
+        .get(&format!("/transactions/by-hash/{unknown_hash}"))
         .await
         .unwrap();
-    assert!(none["transactionsByHash"].as_array().unwrap().is_empty());
+    assert!(none.as_array().unwrap().is_empty());
 
     // ---- eventsByType ----
-    let transfers = env
-        .collect_heights("eventsByType", "type: TRANSFER")
-        .await
-        .unwrap();
+    let transfers = env.collect_heights("/events?type=transfer").await.unwrap();
     let contract_events = env
-        .collect_heights("eventsByType", "type: CONTRACT_EVENT")
+        .collect_heights("/events?type=contract_event")
         .await
         .unwrap();
     eprintln!(
@@ -313,10 +280,30 @@ async fn backfill_then_live_then_query_coverage() {
     );
     assert!(non_increasing(&contract_events));
 
+    // Multiple types in one call (the UNION-ALL path) — every transfer + every
+    // bank contract-event, merged newest-first.
+    let multi = env
+        .collect_heights("/events?type=transfer,contract_event")
+        .await
+        .unwrap();
+    assert_eq!(
+        multi.len(),
+        3 * total,
+        "every Transfer + bank sent/received, across both types",
+    );
+    assert!(non_increasing(&multi));
+
+    // Guardrail: `/events` with neither `type` nor `involved` has no index
+    // anchor, so it is rejected (a 400) — never run as a full-table scan.
+    assert!(
+        env.get_opt("/events").await.is_err(),
+        "/events without type or involved must be rejected",
+    );
+
     // ---- eventsInvolving ----
     // user4 is a party to the marker's Transfer + bank `sent` + bank `received`.
     let inv4 = env
-        .collect_heights("eventsInvolving", &format!("address: \"{user4}\""))
+        .collect_heights(&format!("/events?involved={user4}"))
         .await
         .unwrap();
     assert_eq!(
@@ -325,18 +312,12 @@ async fn backfill_then_live_then_query_coverage() {
         "user4 is a party to exactly the marker's three events",
     );
     let inv4_transfer = env
-        .collect_heights(
-            "eventsInvolving",
-            &format!("address: \"{user4}\", type: TRANSFER"),
-        )
+        .collect_heights(&format!("/events?involved={user4}&type=transfer"))
         .await
         .unwrap();
     assert_eq!(inv4_transfer, vec![marker_height]);
     let inv4_contract = env
-        .collect_heights(
-            "eventsInvolving",
-            &format!("address: \"{user4}\", type: CONTRACT_EVENT"),
-        )
+        .collect_heights(&format!("/events?involved={user4}&type=contract_event"))
         .await
         .unwrap();
     assert_eq!(
@@ -347,17 +328,11 @@ async fn backfill_then_live_then_query_coverage() {
 
     // ---- contractEvents (bank) ----
     let sent_events = env
-        .collect_heights(
-            "contractEvents",
-            &format!("contract: \"{bank}\", names: [\"sent\"]"),
-        )
+        .collect_heights(&format!("/contract-events/{bank}?names=sent"))
         .await
         .unwrap();
     let received_events = env
-        .collect_heights(
-            "contractEvents",
-            &format!("contract: \"{bank}\", names: [\"received\"]"),
-        )
+        .collect_heights(&format!("/contract-events/{bank}?names=received"))
         .await
         .unwrap();
     eprintln!(
@@ -378,20 +353,14 @@ async fn backfill_then_live_then_query_coverage() {
     // an unknown contract has no events.
     let unknown_contract = Addr::try_from(vec![0xCDu8; 20]).unwrap().to_string();
     let no_events = env
-        .collect_heights(
-            "contractEvents",
-            &format!("contract: \"{unknown_contract}\""),
-        )
+        .collect_heights(&format!("/contract-events/{unknown_contract}"))
         .await
         .unwrap();
     assert!(no_events.is_empty(), "an unknown contract has no events");
 
     // ---- contractEventsInvolving ----
     let ci4 = env
-        .collect_heights(
-            "contractEventsInvolving",
-            &format!("address: \"{user4}\", contract: \"{bank}\""),
-        )
+        .collect_heights(&format!("/contract-events/{bank}?user={user4}"))
         .await
         .unwrap();
     assert_eq!(
@@ -400,55 +369,46 @@ async fn backfill_then_live_then_query_coverage() {
         "user4's bank sent + received in the marker"
     );
     let ci4_received = env
-        .collect_heights(
-            "contractEventsInvolving",
-            &format!("address: \"{user4}\", contract: \"{bank}\", names: [\"received\"]"),
-        )
+        .collect_heights(&format!(
+            "/contract-events/{bank}?user={user4}&names=received"
+        ))
         .await
         .unwrap();
     assert_eq!(ci4_received, vec![marker_height]);
     let ci4_sent = env
-        .collect_heights(
-            "contractEventsInvolving",
-            &format!("address: \"{user4}\", contract: \"{bank}\", names: [\"sent\"]"),
-        )
+        .collect_heights(&format!("/contract-events/{bank}?user={user4}&names=sent"))
         .await
         .unwrap();
     assert_eq!(ci4_sent, vec![marker_height]);
 
-    // ===== on-demand payload hydration — the read paths back to the store =====
+    // ===== eager payload hydration — the read paths back to the store =====
 
-    // block(height): the full `{ block, outcome }` read straight from the
+    // GET /block/{height}: the full `{ block, outcome }` read straight from the
     // RocksDB store the fetcher populated, for the marker's own height.
-    let block = env
-        .query(&format!("{{ block(height: {marker_height}) }}"))
-        .await
-        .unwrap();
+    let block = env.get(&format!("/block/{marker_height}")).await.unwrap();
     assert_eq!(
-        block["block"]["block"]["info"]["height"].as_u64(),
+        block["block"]["info"]["height"].as_u64(),
         Some(marker_height),
-        "block(height) returns the stored block at that height",
+        "GET /block/{{height}} returns the stored block at that height",
     );
     assert!(
-        block["block"]["outcome"].is_object(),
+        block["outcome"].is_object(),
         "...with its execution outcome"
     );
-    // a height the source does not hold → null, no error.
+    // a height the source does not hold → 404.
     let absent = env
-        .query(&format!("{{ block(height: {}) }}", (total + 1000) as u64))
+        .get_opt(&format!("/block/{}", (total + 1000) as u64))
         .await
         .unwrap();
-    assert!(absent["block"].is_null(), "an un-ingested height is null");
+    assert!(absent.is_none(), "an un-ingested height is a 404");
 
-    // Transaction.tx / Transaction.outcome: hydrated from the unit's block via
-    // the shared BlockLoader (→ source.get → RocksDB).
+    // Transaction.tx / Transaction.outcome: hydrated eagerly from the unit's
+    // block (→ source.get → RocksDB).
     let hydrated = env
-        .query(&format!(
-            "{{ transactionsByHash(hash: \"{marker_hash}\") {{ tx outcome }} }}"
-        ))
+        .get(&format!("/transactions/by-hash/{marker_hash}"))
         .await
         .unwrap();
-    let unit = &hydrated["transactionsByHash"][0];
+    let unit = &hydrated[0];
     assert!(
         unit["tx"].is_object(),
         "tx is hydrated from the block store"
@@ -461,13 +421,10 @@ async fn backfill_then_live_then_query_coverage() {
     // Event.data: the priority Transfer payload, served from the inline
     // event_data join (decompressed) without a block load.
     let with_data = env
-        .query(&format!(
-            "{{ eventsInvolving(address: \"{user4}\", type: TRANSFER, first: 1) \
-             {{ edges {{ node {{ data }} }} }} }}"
-        ))
+        .get(&format!("/events?involved={user4}&type=transfer&first=1"))
         .await
         .unwrap();
-    let payload = &with_data["eventsInvolving"]["edges"][0]["node"]["data"];
+    let payload = &with_data["items"][0]["data"];
     assert!(
         !payload.is_null(),
         "the transfer event payload round-trips from event_data"

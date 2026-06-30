@@ -13,17 +13,14 @@
 
 use {
     anyhow::Context,
-    async_graphql::{EmptyMutation, EmptySubscription, MergedObject, Schema},
     dango_genesis::{Contracts, GenesisOption},
     dango_indexer_historical_app::{App, PgChCommitter},
     dango_indexer_historical_block_source::{
-        BlockFetcher, BlockQuery, BlockSource, BlockStore, HttpdClient, RemoteBlockSource,
+        BlockFetcher, BlockSource, BlockStore, HttpdClient, RemoteBlockSource,
         RemoteBlockSourceConfig, RocksdbBlockStore, SentinelBlockFetcher, SentinelFetcherConfig,
     },
-    dango_indexer_historical_httpd::build_schema,
-    dango_indexer_historical_projection::{
-        ActivityProjection, ActivityQuery, Committer, Projection,
-    },
+    dango_indexer_historical_httpd::HttpdConfig,
+    dango_indexer_historical_projection::{ActivityProjection, Committer, Projection},
     dango_primitives::{
         Addr, BroadcastClient, Coins, Hash256, MOCK_CHAIN_ID, Message, NonEmpty, Signer,
     },
@@ -202,17 +199,6 @@ async fn ensure_database_exists(url: &str) -> anyhow::Result<()> {
 
 // ---- Full end-to-end environment ----
 
-/// The merged query root — the raw `block(height)` reader plus the activity
-/// projection's feeds — mirroring the CLI's composition root so the harness
-/// exposes the exact read surface production serves.
-#[derive(MergedObject, Default)]
-pub struct Query(BlockQuery, ActivityQuery);
-
-/// The in-process read schema the harness exposes: [`Query`] over the same
-/// Postgres the committer writes to, with the block store registered so the
-/// `block(height)` query and the on-demand payload fields see the App's blocks.
-pub type ActivityReadSchema = Schema<Query, EmptyMutation, EmptySubscription>;
-
 /// A spawned `App::run` task, aborted when the env drops so a test never leaks
 /// the indexer's background loops past its own lifetime.
 struct AbortOnDrop(tokio::task::JoinHandle<anyhow::Result<()>>);
@@ -297,25 +283,31 @@ impl PendingEnv {
         let committer: Arc<dyn Committer> = Arc::new(PgChCommitter::new(db.conn.clone(), None));
         let projections: Vec<Arc<dyn Projection>> = vec![Arc::new(ActivityProjection::default())];
 
-        // Migrate up front so the schema is queryable immediately; `App::run`
+        // Migrate up front so the tables are queryable immediately; `App::run`
         // re-migrates idempotently at boot. Doing it here also surfaces a
         // migration failure to the caller instead of the background task.
         db.migrate(&projections)
             .await
             .context("migrating the test schema")?;
 
-        // The read schema shares the App's Postgres and block source, so any
-        // block hydration sees the same blocks the App ingests.
-        let schema = build_schema(
-            Query::default(),
-            EmptySubscription,
-            db.conn.clone(),
-            source.clone(),
-        );
+        // Serve the REST read API on a free port over the same Postgres + block
+        // source the App ingests into, so reads see exactly what it writes.
+        // `App::run` assembles the httpd from the projections' own routes.
+        let httpd_port = mock_httpd_get_socket_addr();
+        let read_bind = format!("127.0.0.1:{httpd_port}");
+        let read_cfg = Some(HttpdConfig {
+            bind: read_bind.clone(),
+        });
 
-        // Supervise ingest in the background; surface a fatal exit on stderr so
-        // a test that then times out has the cause in its output.
-        let app = App::new(source.clone(), committer, projections, None);
+        // Supervise ingest + read API in the background; surface a fatal exit on
+        // stderr so a test that then times out has the cause in its output.
+        let app = App::new(
+            source.clone(),
+            committer,
+            projections,
+            db.conn.clone(),
+            read_cfg,
+        );
         let app = AbortOnDrop(tokio::spawn(async move {
             let result = app.run().await;
             if let Err(ref error) = result {
@@ -328,7 +320,8 @@ impl PendingEnv {
             client,
             accounts,
             contracts,
-            schema,
+            read_url: format!("http://{read_bind}"),
+            http: reqwest::Client::new(),
             node_port,
             _app: app,
             _source: source,
@@ -340,8 +333,8 @@ impl PendingEnv {
 
 /// A full historical-indexer environment: a mock Dango node producing blocks,
 /// the `App` ingesting them into a throwaway Postgres via a temp RocksDB store,
-/// and the read schema to assert on. Build with [`Env::setup`] (all at once) or
-/// [`PendingEnv::start_indexer`]; everything is torn down on drop.
+/// and the REST read API to assert on. Build with [`Env::setup`] (all at once)
+/// or [`PendingEnv::start_indexer`]; everything is torn down on drop.
 pub struct Env {
     /// Broadcast transactions to the mock node with this — under `OnBroadcast`
     /// each broadcast drives exactly one block.
@@ -350,8 +343,10 @@ pub struct Env {
     pub accounts: TestAccounts,
     /// The deployment's system contract addresses (e.g. `contracts.bank`).
     pub contracts: Contracts,
-    /// The in-process activity read schema over the indexed Postgres.
-    pub schema: ActivityReadSchema,
+    /// Base URL of the in-process REST read API (`http://127.0.0.1:<port>`).
+    read_url: String,
+    /// HTTP client for the read API.
+    http: reqwest::Client,
     /// The mock node's bound port.
     pub node_port: u16,
 
@@ -378,37 +373,56 @@ impl Env {
         &self._db.conn
     }
 
-    /// Run a GraphQL query against the read schema, asserting no errors and
-    /// returning the `data` payload as JSON.
-    pub async fn query(&self, query: &str) -> anyhow::Result<serde_json::Value> {
-        let response = self.schema.execute(query).await;
-        if !response.errors.is_empty() {
-            anyhow::bail!("graphql errors for `{query}`:\n{:#?}", response.errors);
+    /// GET `path` on the read API, returning the JSON body for a `2xx`, `None`
+    /// for a `404` (an absent resource — e.g. `block(height)` the source does not
+    /// hold). Any other status, or a transport error, is an `Err`.
+    pub async fn get_opt(&self, path: &str) -> anyhow::Result<Option<serde_json::Value>> {
+        let response = self
+            .http
+            .get(format!("{}{path}", self.read_url))
+            .send()
+            .await
+            .with_context(|| format!("GET {path}"))?;
+        let status = response.status();
+        if status == reqwest::StatusCode::NOT_FOUND {
+            return Ok(None);
         }
-        response
-            .data
-            .into_json()
-            .context("graphql response data to json")
+        let body = response
+            .bytes()
+            .await
+            .context("reading the response body")?;
+        if !status.is_success() {
+            anyhow::bail!("GET {path} -> {status}: {}", String::from_utf8_lossy(&body));
+        }
+        Ok(Some(
+            serde_json::from_slice(&body).context("read API response to json")?,
+        ))
     }
 
-    /// Poll `transactionsByHash(hash)` until that tx is indexed or `timeout`
-    /// elapses — the catch-up signal. The projection advances contiguously, so
-    /// once a block's tx is visible every block below it has been ingested too.
+    /// GET `path`, requiring a `2xx` body (a `404` is an error here).
+    pub async fn get(&self, path: &str) -> anyhow::Result<serde_json::Value> {
+        self.get_opt(path)
+            .await?
+            .with_context(|| format!("GET {path} returned 404"))
+    }
+
+    /// Poll `GET /transactions/by-hash/{hash}` until that tx is indexed or
+    /// `timeout` elapses — the catch-up signal. The projection advances
+    /// contiguously, so once a block's tx is visible every block below it has
+    /// been ingested too. Returns the list of matching units. Tolerates the read
+    /// API's startup window (a not-yet-bound server reads as "not indexed").
     pub async fn wait_for_tx_indexed(
         &self,
         hash: &str,
         timeout: Duration,
     ) -> anyhow::Result<serde_json::Value> {
-        let query =
-            format!("{{ transactionsByHash(hash: \"{hash}\") {{ blockHeight sender success }} }}");
+        let path = format!("/transactions/by-hash/{hash}");
         let start = std::time::Instant::now();
         loop {
-            let data = self.query(&query).await?;
-            if data["transactionsByHash"]
-                .as_array()
-                .is_some_and(|units| !units.is_empty())
+            if let Ok(Some(units)) = self.get_opt(&path).await
+                && units.as_array().is_some_and(|units| !units.is_empty())
             {
-                return Ok(data);
+                return Ok(units);
             }
             if start.elapsed() >= timeout {
                 anyhow::bail!("timed out after {timeout:?} waiting for tx {hash} to be indexed");
@@ -417,37 +431,34 @@ impl Env {
         }
     }
 
-    /// A single, non-blocking check of whether `hash`'s tx is indexed yet —
-    /// for a producer loop that pumps the chain forward until the backfill
-    /// catches up.
+    /// A single, non-blocking check of whether `hash`'s tx is indexed yet — for
+    /// a producer loop that pumps the chain forward until the backfill catches
+    /// up. A transport error (read API not yet up) reads as "not indexed".
     pub async fn is_tx_indexed(&self, hash: &str) -> anyhow::Result<bool> {
-        let query = format!("{{ transactionsByHash(hash: \"{hash}\") {{ blockHeight }} }}");
-        let data = self.query(&query).await?;
-        Ok(data["transactionsByHash"]
-            .as_array()
-            .is_some_and(|units| !units.is_empty()))
+        match self.get_opt(&format!("/transactions/by-hash/{hash}")).await {
+            Ok(Some(units)) => Ok(units.as_array().is_some_and(|units| !units.is_empty())),
+            _ => Ok(false),
+        }
     }
 
-    /// Poll `transactionsInvolving(address, role)` until it returns at least one
-    /// edge or `timeout` elapses — the bridge across the async ingest pipeline.
+    /// Poll `GET /transactions/involving/{address}?role={role}` until it returns
+    /// at least one item or `timeout` elapses — the bridge across the async
+    /// ingest pipeline. Returns the page (`{ items, pageInfo }`).
     pub async fn wait_for_transactions_involving(
         &self,
         address: &str,
         role: &str,
         timeout: Duration,
     ) -> anyhow::Result<serde_json::Value> {
-        let query = format!(
-            "{{ transactionsInvolving(address: \"{address}\", role: {role}) \
-             {{ edges {{ node {{ hash blockHeight sender success }} }} }} }}"
-        );
+        let path = format!("/transactions/involving/{address}?role={role}");
         let start = std::time::Instant::now();
         loop {
-            let data = self.query(&query).await?;
-            let has_edge = data["transactionsInvolving"]["edges"]
-                .as_array()
-                .is_some_and(|edges| !edges.is_empty());
-            if has_edge {
-                return Ok(data);
+            if let Ok(Some(page)) = self.get_opt(&path).await
+                && page["items"]
+                    .as_array()
+                    .is_some_and(|items| !items.is_empty())
+            {
+                return Ok(page);
             }
             if start.elapsed() >= timeout {
                 anyhow::bail!(
@@ -459,36 +470,33 @@ impl Env {
         }
     }
 
-    /// Page through a Relay connection feed 50 at a time, returning every node's
-    /// `blockHeight` newest-first across pages — exercising cursor pagination
-    /// end to end. `field` is the query name and `args` its non-pagination
-    /// arguments, e.g. `address: "0x..", role: SENDER`.
-    pub async fn collect_heights(&self, field: &str, args: &str) -> anyhow::Result<Vec<u64>> {
+    /// Page through a feed 50 at a time, returning every item's `blockHeight`
+    /// newest-first across pages — exercising cursor pagination end to end.
+    /// `path` is the feed's REST path including any non-pagination query
+    /// arguments, e.g. `/transactions/involving/0x..?role=sender` or
+    /// `/events/by-contract/0x..?names=sent`.
+    pub async fn collect_heights(&self, path: &str) -> anyhow::Result<Vec<u64>> {
+        let sep = if path.contains('?') {
+            '&'
+        } else {
+            '?'
+        };
         let mut heights = Vec::new();
         let mut after: Option<String> = None;
         loop {
-            let page = match &after {
-                Some(cursor) => format!("first: 50, after: \"{cursor}\""),
-                None => "first: 50".to_string(),
+            let paged = match &after {
+                Some(cursor) => format!("{path}{sep}first=50&after={cursor}"),
+                None => format!("{path}{sep}first=50"),
             };
-            let query = format!(
-                "{{ {field}({args}, {page}) {{ edges {{ node {{ blockHeight }} }} \
-                 pageInfo {{ hasNextPage endCursor }} }} }}"
-            );
-            let data = self.query(&query).await?;
-            let conn = &data[field];
-            if let Some(edges) = conn["edges"].as_array() {
-                for edge in edges {
-                    heights.push(
-                        edge["node"]["blockHeight"]
-                            .as_u64()
-                            .context("blockHeight")?,
-                    );
+            let page = self.get(&paged).await?;
+            if let Some(items) = page["items"].as_array() {
+                for item in items {
+                    heights.push(item["blockHeight"].as_u64().context("blockHeight")?);
                 }
             }
-            if conn["pageInfo"]["hasNextPage"].as_bool().unwrap_or(false) {
+            if page["pageInfo"]["hasNextPage"].as_bool().unwrap_or(false) {
                 after = Some(
-                    conn["pageInfo"]["endCursor"]
+                    page["pageInfo"]["endCursor"]
                         .as_str()
                         .context("endCursor")?
                         .to_string(),

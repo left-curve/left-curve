@@ -3,8 +3,7 @@ use serde::Deserialize;
 /// Configuration for the historical indexer's HTTP front door.
 ///
 /// Parsed from the indexer's TOML config. Intentionally minimal for now; it
-/// will grow CORS origins, GraphQL complexity / depth caps, and subscription
-/// limits as those land.
+/// will grow CORS origins and per-route limits as those land.
 #[derive(Clone, Debug, Deserialize)]
 pub struct HttpdConfig {
     /// Socket address to bind, e.g. `"0.0.0.0:8080"`.

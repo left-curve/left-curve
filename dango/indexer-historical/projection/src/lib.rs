@@ -23,7 +23,7 @@ mod white_or_black_list;
 
 pub use {
     crate::metrics::init_metrics,
-    activity::{ActivityConfig, ActivityProjection, ActivityQuery, EventType},
+    activity::{ActivityConfig, ActivityProjection, EventType},
     committer::Committer,
     ctx::{ChWrite, Ctx},
     projection::Projection,

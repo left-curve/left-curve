@@ -21,17 +21,13 @@ tracing = ["dep:tracing"]
 actix-cors              = { workspace = true }
 actix-web               = { workspace = true }
 anyhow                  = { workspace = true }
-async-graphql           = { workspace = true }
-async-graphql-actix-web = { workspace = true }
-dango-indexer-historical-block-source = { workspace = true, features = ["async-graphql"] }
+dango-indexer-historical-block-source = { workspace = true }
 dango-indexer-historical-types        = { workspace = true }
 futures                 = { workspace = true }
+hex                     = { workspace = true }
 metrics                 = { workspace = true, optional = true }
 sea-orm                 = { workspace = true }
 serde                   = { workspace = true, features = ["derive"] }
 serde_json              = { workspace = true }
 tokio                   = { workspace = true }
 tracing                 = { workspace = true, optional = true }
-
-[dev-dependencies]
-dango-indexer-historical-projection = { workspace = true }

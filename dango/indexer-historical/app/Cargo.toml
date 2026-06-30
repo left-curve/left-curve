@@ -24,6 +24,7 @@ chrono                          = { workspace = true }
 clickhouse                      = { workspace = true }
 futures                         = { workspace = true }
 dango-indexer-historical-block-source = { workspace = true }
+dango-indexer-historical-httpd        = { workspace = true }
 dango-indexer-historical-projection   = { workspace = true }
 dango-indexer-historical-types        = { workspace = true }
 metrics                         = { workspace = true, optional = true }

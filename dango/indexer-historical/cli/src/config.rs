@@ -170,7 +170,7 @@ pub struct LocalSourceConfig {
     pub node_url: String,
 }
 
-/// The GraphQL read API. `enabled = false` runs the indexer ingest-only.
+/// The REST read API. `enabled = false` runs the indexer ingest-only.
 #[derive(Debug, Clone, Deserialize)]
 pub struct HttpdConfig {
     /// Serve the read API. Default `true`.
@@ -192,7 +192,7 @@ impl Default for HttpdConfig {
 
 /// The Prometheus `/metrics` endpoint. Recording is always installed (cheap);
 /// this only controls whether the scrape endpoint is served — `enabled = false`
-/// keeps metrics internal and binds no port. Separate from the GraphQL `httpd`
+/// keeps metrics internal and binds no port. Separate from the read-API `httpd`
 /// so metrics stay available even when the read API runs ingest-only.
 #[derive(Debug, Clone, Deserialize)]
 pub struct MetricsConfig {

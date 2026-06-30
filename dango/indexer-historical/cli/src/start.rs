@@ -1,7 +1,8 @@
 use {
-    crate::{activity, config::Config, db, home_directory::HomeDirectory, read_api, source},
+    crate::{activity, config::Config, db, home_directory::HomeDirectory, source},
     clap::Parser,
     dango_indexer_historical_app::{App, PgChCommitter},
+    dango_indexer_historical_httpd::HttpdConfig,
     dango_indexer_historical_projection::{ActivityProjection, Committer, Projection},
     std::sync::Arc,
 };
@@ -15,8 +16,8 @@ use {
 ///    `Arc<dyn BlockSource>` — the rest of the app is agnostic to which;
 /// 3. open the Postgres pool and build the shared `Committer`;
 /// 4. assemble the registered projections (`ActivityProjection`, …);
-/// 5. build the read schema — `Query(BlockQuery, ActivityQuery)` via the
-///    httpd's `build_schema` — and wrap it in the `serve(…)` task;
+/// 5. derive the read-API config (`None` when disabled) — `App::run` builds the
+///    httpd from each projection's own routes;
 /// 6. hand them to `App::new` and `run()` the supervisor.
 #[derive(Parser)]
 pub struct StartCmd;
@@ -68,14 +69,17 @@ impl StartCmd {
             "committer and projections ready"
         );
 
-        // Step 4-5: the GraphQL read API over the shared pool + block source —
-        // `None` when disabled, which runs the indexer ingest-only.
-        let httpd = read_api::task(&cfg.httpd, db, block_source.clone());
-        tracing::info!(read_api = httpd.is_some(), "read API task assembled");
+        // Step 5: the read-API config — `None` when disabled, which runs the
+        // indexer ingest-only. `App::run` assembles the httpd from the
+        // projections' own routes over the shared pool + block source.
+        let read_cfg = cfg.httpd.enabled.then(|| HttpdConfig {
+            bind: cfg.httpd.bind.clone(),
+        });
+        tracing::info!(read_api = read_cfg.is_some(), "read API config assembled");
 
         // Step 6: supervise the source, one loop per projection, and (when
         // enabled) the read API, until a task ends. `App::run` migrates first.
-        let app = App::new(block_source, committer, projections, httpd);
+        let app = App::new(block_source, committer, projections, db, read_cfg);
 
         // Supervise the ingest+read-API app alongside the Prometheus endpoint.
         // `try_join!` polls both on this task (no `Send` wrapper needed for the

@@ -1,7 +1,7 @@
 //! Full-pipeline e2e: a transfer broadcast to a mock Dango node must surface in
 //! the activity read API once the `App` has ingested its block — exercising the
 //! whole chain (node httpd → remote block source → committer → projection →
-//! read schema), not a single layer.
+//! REST read API), not a single layer.
 
 use {
     dango_indexer_historical_testing::Env,
@@ -41,16 +41,14 @@ async fn transfer_is_indexed_into_the_activity_feed() {
 
     // Bridge the async pipeline: live tail (or healer) → store → projection.
     let data = env
-        .wait_for_transactions_involving(&sender, "SENDER", Duration::from_secs(30))
+        .wait_for_transactions_involving(&sender, "sender", Duration::from_secs(30))
         .await
         .expect("the transfer to be indexed");
 
-    let edges = data["transactionsInvolving"]["edges"]
-        .as_array()
-        .expect("edges array");
-    assert_eq!(edges.len(), 1, "exactly the one broadcast tx should match");
+    let items = data["items"].as_array().expect("items array");
+    assert_eq!(items.len(), 1, "exactly the one broadcast tx should match");
 
-    let node = &edges[0]["node"];
+    let node = &items[0];
     assert_eq!(
         node["hash"].as_str().expect("hash string"),
         tx_hash,

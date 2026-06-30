@@ -164,13 +164,15 @@ derived in Grafana. Catch-up speed = `rate(projection_blocks_total)`.
 |---|---|---|---|
 | `indexer_historical_query_duration_seconds` | histogram | `query` | per-feed DB query latency (the hand-written SQL) |
 | `indexer_historical_query_total` | counter | `query`, `outcome` ∈ ok/error | per-feed executions |
-| `indexer_historical_graphql_request_duration_seconds` | histogram | — | end-to-end GraphQL request execution |
-| `indexer_historical_graphql_requests_total` | counter | — | GraphQL requests served |
-| `indexer_historical_graphql_in_flight` | gauge | — | concurrent in-flight GraphQL requests |
+| `indexer_historical_http_request_duration_seconds` | histogram | — | end-to-end HTTP request handling |
+| `indexer_historical_http_requests_total` | counter | — | HTTP requests served |
+| `indexer_historical_http_in_flight` | gauge | — | concurrent in-flight HTTP requests |
 
 `query` values: `events_by_type`, `contract_events`, `events_involving`,
-`contract_events_involving`, `transactions_involving`, `transactions_by_hash`,
-`block`. A feed slow relative to the others points straight at an index miss.
+`contract_events_involving`, `transactions_involving`, `transactions_by_hash`.
+A feed slow relative to the others points straight at an index miss. (The core
+`GET /block/{height}` route is not a feed; its latency rides the end-to-end HTTP
+histogram below.)
 
 ### Misc
 

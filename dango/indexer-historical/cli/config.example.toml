@@ -26,7 +26,7 @@ enabled = true
 bind    = "0.0.0.0:8080"
 
 # Prometheus /metrics scrape endpoint. Recording is always on; this only
-# controls whether the endpoint is served (separate from the GraphQL httpd, so
+# controls whether the endpoint is served (separate from the read-API httpd, so
 # metrics stay available even in ingest-only mode). See design/observability.md.
 [metrics]
 enabled = true

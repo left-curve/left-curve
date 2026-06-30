@@ -1,5 +1,6 @@
 use {
     crate::Ctx,
+    actix_web::Scope,
     async_trait::async_trait,
     dango_indexer_historical_types::{AnyResult, BlockData},
     sea_orm_migration::MigrationTrait,
@@ -75,4 +76,19 @@ pub trait Projection: Send + Sync {
     /// Never commits: committing consumes the [`Ctx`], which this method
     /// only borrows.
     async fn process(&self, ctx: &mut Ctx, block: &BlockData) -> AnyResult<()>;
+
+    /// The projection's read surface, as actix [`Scope`]s the app collects and
+    /// mounts on the shared httpd — one per resource, each grouping its feeds
+    /// under its prefix, exactly like the in-process indexer's
+    /// `routes::blocks::services()`.
+    ///
+    /// A projection owns both its tables and the read surface over them, so the
+    /// queries that expose its data live here, next to the schema that backs
+    /// them. The handlers a scope mounts read the shared Postgres pool and block
+    /// source from actix app data; they never need the projection instance, so a
+    /// scope carries no state and is cheap to rebuild per worker. The default is
+    /// none — a write-only (or not-yet-served) projection contributes no routes.
+    fn services(&self) -> Vec<Scope> {
+        vec![]
+    }
 }

@@ -69,12 +69,7 @@ pub(crate) const STORE_GET_DURATION: &str = "indexer_historical_block_store_get_
 pub(crate) const STORE_BLOCKS_PERSISTED: &str =
     "indexer_historical_block_store_blocks_persisted_total";
 
-// ---- block-by-height read query ----
-
-/// Read-query latency, by `query` — shared with the projection feeds (histogram).
-pub(crate) const QUERY_DURATION: &str = "indexer_historical_query_duration_seconds";
-
-// ---- block loader ----
+// ---- block hydration ----
 
 /// Block hydrations that errored and were served as unavailable (counter).
 pub(crate) const LOADER_FAILURES: &str = "indexer_historical_block_loader_failures_total";
@@ -124,7 +119,6 @@ pub fn init_metrics() {
             describe_histogram!(STORE_GET_DURATION, "Read + decode one block, seconds");
             describe_counter!(STORE_BLOCKS_PERSISTED, "Blocks written to the store");
 
-            describe_histogram!(QUERY_DURATION, "Read-query latency, by query, seconds");
             describe_counter!(LOADER_FAILURES, "Block hydrations served as unavailable");
         });
     }

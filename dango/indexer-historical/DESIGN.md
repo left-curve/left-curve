@@ -2,7 +2,7 @@
 
 Internal design of the standalone `indexer-historical` binary — the
 external service that consumes finalized blocks from the dango chain and
-exposes structured data (Postgres / ClickHouse / GraphQL / REST) to clients.
+exposes structured data (Postgres / ClickHouse, over a REST API) to clients.
 
 In this document "indexer" refers exclusively to this binary — separated
 from the dango chain binary, replacing today's in-process `indexer/sql/` +
@@ -37,8 +37,17 @@ dango/indexer-historical/
 │                     • committer/: PgChCommitter + entity/ + idens +
 │                       migrations/ (app-level schema) + the shared
 │                       migration runner
-│                     • GraphQL resolvers (where applicable)
-│                     • deps: types, block-source, projection
+│                     • assembles the read httpd from the projections'
+│                       `services()` scopes and supervises it
+│                     • deps: types, block-source, projection, httpd
+├── httpd/         → lib `dango-indexer-historical-httpd`
+│                     • actix server: injects the shared read handles,
+│                       mounts the core block route, applies the app's
+│                       route configurator
+│                     • the shared read toolkit projections build feeds on:
+│                       `ApiError`, `Page`/`PageInfo`, `paginate`, `page_limit`,
+│                       the opaque-cursor codec, the SQL `Binder`
+│                     • projection-agnostic • deps: types, block-source
 └── cli/           → bin `indexer-historical`
                      • clap subcommands (init, start, drop-*, ...)
                      • config parsing (file + env)
@@ -51,9 +60,19 @@ Dependency graph (acyclic):
 
 - `types` is the foundation: no dependencies on any other historical crate.
 - `block-source` depends on `types`.
-- `projection` depends on `types`.
-- `app` depends on `types`, `block-source`, and `projection`.
+- `httpd` depends on `types` and `block-source`; it hosts the shared read-API
+  toolkit and stays projection-agnostic (it never names a projection).
+- `projection` depends on `types`, `block-source`, and `httpd` — it builds its
+  feeds on the httpd read toolkit (`paginate`, `Binder`, `ApiError`, …) and
+  returns `Scope`s of `#[get]`-routed handlers from `services()`.
+- `app` depends on `types`, `block-source`, `projection`, and `httpd` — it
+  gathers each projection's `services()` scopes into one configurator for the
+  httpd's `serve`.
 - `cli` depends on `app`.
+
+`httpd` deliberately does **not** depend on `projection`, so the new
+`projection → httpd` edge stays acyclic: the toolkit flows down, the routes flow
+up (as type-erased scopes/configurators).
 
 ```
               cli
@@ -203,6 +222,15 @@ pub trait Projection: Send + Sync {
     /// only borrows the context, and committing consumes it — so only
     /// the committer, which owns it, can commit.
     async fn process(&self, ctx: &mut Ctx, block: &BlockData) -> AnyResult<()>;
+
+    /// This projection's read surface, as actix `Scope`s — one per
+    /// resource, each grouping its feeds under its prefix, exactly like
+    /// the in-process indexer's `routes::blocks::services()`. A projection
+    /// owns both its tables and the read surface over them, so the queries
+    /// that expose its data live here. The handlers a scope mounts read
+    /// the shared Postgres pool and block source from actix app data, so a
+    /// scope carries no state. Default: none (write-only projection).
+    fn services(&self) -> Vec<Scope> { vec![] }
 }
 ```
 
@@ -210,6 +238,16 @@ Concrete implementations live in the `projection` crate, one folder per
 domain area: `CandlesProjection` (→ ClickHouse), `TxPerUserProjection`
 (→ Postgres), `PerpsTradesProjection` (→ ClickHouse),
 `GatewayDepositsProjection` (→ Postgres), etc.
+
+Each handler is routed by a `#[get("…")]` attribute macro and grouped in a
+`web::scope("…")`, the same convention the in-process indexer uses. The read
+surface is therefore **derived from the registered projections**: there is no
+second place that enumerates routes that could drift out of sync, exactly as
+with `migrations()`. The app builds one `Configurator` — `Arc<dyn Fn(&mut
+actix_web::web::ServiceConfig) + Send + Sync>`, mirroring the in-process
+indexer's `config_app` — that, per worker, asks every projection for its
+`services()` scopes and mounts them; the httpd just applies it and stays
+projection-agnostic.
 
 ### `Committer` and `Ctx`
 
@@ -405,10 +443,12 @@ struct App {
     source: Arc<dyn BlockSource>,
     committer: Arc<dyn Committer>,
     projections: Vec<Arc<dyn Projection>>,
+    db: DatabaseConnection,         // the read side's PG pool
+    read_cfg: Option<HttpdConfig>,  // None ⇒ ingest-only
 }
 
 impl App {
-    async fn run(&self) -> Result<()> {
+    async fn run(self) -> Result<()> {
         // Boot: the committer derives every owner's migrations from the
         // registered projections and applies them.
         self.committer.migrate(&self.projections).await?;
@@ -421,6 +461,17 @@ impl App {
                 self.committer.clone(),
             )));
         }
+        // Read API: build one configurator that mounts every projection's
+        // `services()` scopes, and let the httpd serve it over the shared
+        // pool + source — one more supervised task.
+        if let Some(cfg) = self.read_cfg {
+            let projections = self.projections.clone();
+            let configure = Arc::new(move |sc: &mut ServiceConfig| {
+                for p in &projections { for s in p.services() { sc.service(s); } }
+            });
+            handles.push(spawn(httpd::serve(cfg, self.db.clone(),
+                                            self.source.clone(), configure)));
+        }
         // Whichever task finishes first (clean exit or error) tears the rest
         // down — no task outlives `run`.
         let (result, _, rest) = select_all(handles).await;
@@ -430,11 +481,13 @@ impl App {
 }
 ```
 
-Two kinds of task: the source's internal `run` (whatever it does inside —
-WS subscriptions, fetchers, store writes), and one `projection_loop` per
-projection. The app doesn't orchestrate anything else — in particular, it
-does not subscribe to the broadcast on behalf of the projections; each
-`projection_loop` subscribes itself, lazily, after its first pull catch-up.
+Three kinds of task: the source's internal `run` (whatever it does inside —
+WS subscriptions, fetchers, store writes), one `projection_loop` per
+projection, and — when the read API is enabled — the httpd, assembled here
+from the projections' own `services()` scopes. The app doesn't orchestrate anything
+else — in particular, it does not subscribe to the broadcast on behalf of
+the projections; each `projection_loop` subscribes itself, lazily, after its
+first pull catch-up.
 
 ### Projection loop
 
@@ -546,6 +599,31 @@ test mocks), the source must guarantee:
 A source that violates any of these is broken; the loop is intentionally
 not defensive against them.
 
+## Read API
+
+Reads are served over plain REST by the `httpd` crate. The front door is
+**derived from the projections**, the same way migrations are: each
+projection contributes its read surface through `Projection::services()` —
+actix `Scope`s of `#[get]`-routed handlers, one per resource, just like the
+in-process indexer's `routes::blocks::services()`. The app gathers them in
+`run` into one configurator, and the httpd injects the shared read handles
+(the Postgres pool, the block source) as actix app data and applies it. The
+httpd never names a projection; its only built-in route is the generic
+`GET /block/{height}`, read straight from the `BlockSource`.
+
+Each feed is a `GET` whose path + query string carry the same arguments the
+queries always took (address, contract, type, role, kind, names, plus
+`first` / `after`). A paginated feed answers with a slim envelope —
+`{ "items": [...], "pageInfo": { "hasNextPage", "endCursor" } }` —
+keyset-paginated on the row's ordering tuple, the cursor an opaque
+`hex(json(tuple))` token the client rolls back in as `after`. Detail that
+was a lazy GraphQL field before — a unit's full `tx` / `outcome`, an event's
+decoded `data` — is now hydrated **eagerly**: once the feed query returns a
+page, the handler batch-loads the page's distinct blocks (one `source.get`
+per height, deduped) and fills each row. A block the source no longer holds
+leaves that row's detail `null` rather than failing the page. `MAX_LIMIT`
+bounds the per-request hydration cost.
+
 ## Projection backends
 
 Projections are **free to choose** their own backend per-domain. A
@@ -561,7 +639,7 @@ wants. Typical mapping:
 | `gateway_deposits` | Postgres | few rows, OLTP queries |
 | `leaderboard_volumes` | ClickHouse | massive aggregation |
 
-OLTP-shaped GraphQL queries hit PG, OLAP-shaped queries hit CH —
+OLTP-shaped queries hit PG, OLAP-shaped queries hit CH —
 unchanged from today's split, just reorganized as projections.
 
 Engine choice on the CH side follows the data shape, never the replay
@@ -648,8 +726,6 @@ Out of scope here, documented elsewhere or to be designed later:
 - **Projection schemas**: concrete table designs for candles, tx_per_user,
   events_per_user, perps_trades, etc. One document per projection or
   grouped, TBD.
-- **GraphQL/REST front door**: query layer over the projected data.
-  Carries over largely unchanged from today's `indexer/httpd/`.
 
 ## Open questions
 

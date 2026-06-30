@@ -14,7 +14,6 @@ mod config;
 mod db;
 mod home_directory;
 mod metrics;
-mod read_api;
 mod source;
 mod start;
 
@@ -41,7 +40,7 @@ static VERSION_WITH_COMMIT: LazyLock<String> = LazyLock::new(|| {
 });
 
 /// The historical indexer: ingest blocks from a `BlockSource` and serve the
-/// projections' GraphQL read API.
+/// projections' REST read API.
 #[derive(Parser)]
 #[command(author, about, next_display_order = None)]
 struct Cli {

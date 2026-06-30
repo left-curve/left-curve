@@ -11,10 +11,9 @@ version       = { workspace = true }
 
 [dependencies]
 anyhow                                = { workspace = true }
-async-graphql                         = { workspace = true }
 dango-genesis                         = { workspace = true }
 dango-indexer-historical-app          = { workspace = true }
-dango-indexer-historical-block-source = { workspace = true, features = ["async-graphql"] }
+dango-indexer-historical-block-source = { workspace = true }
 dango-indexer-historical-httpd        = { workspace = true }
 dango-indexer-historical-projection   = { workspace = true }
 dango-primitives                      = { workspace = true }
@@ -22,6 +21,7 @@ dango-sdk                             = { workspace = true }
 dango-testing                         = { workspace = true }
 dango-types                           = { workspace = true }
 postgresql_embedded                   = { workspace = true }
+reqwest                               = { workspace = true }
 sea-orm                               = { workspace = true }
 serde_json                            = { workspace = true }
 tempfile                              = { workspace = true }

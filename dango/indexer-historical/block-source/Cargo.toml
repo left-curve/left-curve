@@ -14,16 +14,11 @@ path = "src/lib.rs"
 
 [features]
 default = ["metrics", "tracing"]
-# Expose a `BlockLoader` (an async-graphql `DataLoader` over `BlockSource`) for
-# read surfaces that hydrate raw payloads from blocks. Off by default: the
-# source's core (fetch / store / subscribe) carries no GraphQL.
-async-graphql = ["dep:async-graphql"]
-metrics       = ["dep:metrics"]
-tracing       = ["dep:tracing"]
+metrics = ["dep:metrics"]
+tracing = ["dep:tracing"]
 
 [dependencies]
 anyhow                   = { workspace = true }
-async-graphql            = { workspace = true, optional = true }
 async-trait              = { workspace = true }
 borsh                    = { workspace = true }
 futures                  = { workspace = true }

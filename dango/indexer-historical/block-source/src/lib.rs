@@ -6,24 +6,20 @@
 //!   [`BlockFetcher`].
 //! - [`BlockFetcher`] — bounded backfill abstraction; [`SentinelBlockFetcher`]
 //!   pulls from a sentinel node.
+//! - [`load_blocks`] — batch raw-payload hydration the REST read handlers run
+//!   over a page's distinct heights.
 
 mod httpd_client;
-#[cfg(feature = "async-graphql")]
-mod loader;
+mod hydrate;
 mod local;
 mod metrics;
-#[cfg(feature = "async-graphql")]
-mod query;
 mod remote;
 mod source;
 
-#[cfg(feature = "async-graphql")]
-pub use loader::BlockLoader;
-#[cfg(feature = "async-graphql")]
-pub use query::BlockQuery;
 pub use {
     crate::metrics::init_metrics,
     httpd_client::HttpdClient,
+    hydrate::load_blocks,
     local::LocalBlockSource,
     remote::{
         BlockFetcher, BlockRangeClient, BlockStore, FetchStream, GENESIS_HEIGHT, MAX_BLOCK_RANGE,

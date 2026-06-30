@@ -4079,6 +4079,7 @@ dependencies = [
  "chrono",
  "clickhouse",
  "dango-indexer-historical-block-source",
+ "dango-indexer-historical-httpd",
  "dango-indexer-historical-projection",
  "dango-indexer-historical-types",
  "futures",
@@ -4094,7 +4095,6 @@ name = "dango-indexer-historical-block-source"
 version = "0.0.0"
 dependencies = [
  "anyhow",
- "async-graphql",
  "async-trait",
  "borsh",
  "dango-graphql-ws-client",
@@ -4120,7 +4120,6 @@ name = "dango-indexer-historical-cli"
 version = "0.0.0"
 dependencies = [
  "anyhow",
- "async-graphql",
  "clap",
  "dango-config-parser",
  "dango-indexer-cache",
@@ -4149,12 +4148,10 @@ dependencies = [
  "actix-cors",
  "actix-web",
  "anyhow",
- "async-graphql",
- "async-graphql-actix-web",
  "dango-indexer-historical-block-source",
- "dango-indexer-historical-projection",
  "dango-indexer-historical-types",
  "futures",
+ "hex",
  "metrics",
  "sea-orm",
  "serde",
@@ -4167,12 +4164,13 @@ dependencies = [
 name = "dango-indexer-historical-projection"
 version = "0.0.0"
 dependencies = [
+ "actix-web",
  "anyhow",
- "async-graphql",
  "async-trait",
  "borsh",
  "clickhouse",
  "dango-indexer-historical-block-source",
+ "dango-indexer-historical-httpd",
  "dango-indexer-historical-types",
  "dango-primitives",
  "futures",
@@ -4192,7 +4190,6 @@ name = "dango-indexer-historical-testing"
 version = "0.0.0"
 dependencies = [
  "anyhow",
- "async-graphql",
  "dango-genesis",
  "dango-indexer-historical-app",
  "dango-indexer-historical-block-source",
@@ -4203,6 +4200,7 @@ dependencies = [
  "dango-testing",
  "dango-types",
  "postgresql_embedded",
+ "reqwest 0.13.4",
  "sea-orm",
  "serde_json",
  "tempfile",

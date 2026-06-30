@@ -485,8 +485,10 @@ taxonomy) · `entity/` (sea-orm types for the three tables) · `idens.rs`
 (migration identifiers) · `migrations/` (one file per table + a `mod.rs`
 assembling them, names prefixed `…activity…` for the shared `seaql_migrations`
 history — mirrors `app/src/committer/`). The read surface (below) lives in
-`graphql/` (`query.rs` resolvers · `types.rs` scalars + objects · `pagination.rs`
-keyset). Adds `dango-primitives` to the
+`http/` (`feeds.rs` DB queries · `services/` actix handlers + scopes, one module
+per resource: `transaction.rs`, `events.rs` · `hydrate.rs` eager payload
+hydration · `types.rs` objects + enums · `pagination.rs` keyset · `error.rs`).
+Adds `dango-primitives` to the
 `projection` crate (for `FlatCategory` / `EventId` / `Extractable` /
 `flatten_tx_events` / `flatten_commitment_status`), plus `zstd`/`borsh` for the
 `event_data` payloads.
@@ -499,7 +501,7 @@ index (`next_id.event_index += 1`), the few that don't (`Configure` / `Upgrade`
 a unit's commitment groups stay contiguous and never collide. The invariant the
 projection leans on is that the `event_index` values are a dense `0..n` matching
 the flattened Vec position — the write path stores `id.event_index`, the read
-path (`Event::data`'s non-priority fallback) finds an event **by that value**,
+path (`hydrate_events`'s non-priority fallback) finds an event **by that value**,
 and a `debug_assert` in `push_events` pins the equality so a flatten change
 can't silently desync them. Encoding note: `category` / `kind` store the canonical `FlatCategory`
 discriminant (cron = 0, tx = 1) directly; the integer value is immaterial to the
@@ -508,71 +510,80 @@ join.
 
 ## Read surface
 
-The eight feeds are served by the GraphQL resolvers in `graphql/query.rs`
-(`ActivityQuery`), folded into **five fields** — each "+ optional filter" pair
-(name list, type, kind) becomes one resolver argument — plus a
-`transactionsByHash` lookup (un-paginated; the hash is non-unique, so it returns
-a **list**, newest-first):
+The eight access paths are served by `#[get]`-routed handlers in
+`http/services/` (one module per resource), over the database feeds in
+`http/feeds.rs`, folded into **four routes** — two on `transactions`, two on
+`events`:
 
-| field | queries | filters |
-|-------|---------|---------|
-| `transactionsByHash` | — | hash (all matching units, un-paginated; hash non-unique) |
-| `transactionsInvolving` | 1 | address (+ optional `role`, `kind`) |
-| `eventsByType` | 2 | type |
-| `contractEvents` | 3 / 4 | contract (+ optional `names`) |
-| `eventsInvolving` | 5 / 6 | address (+ optional `type`) |
-| `contractEventsInvolving` | 7 / 8 | address + contract (+ optional `names`) |
+| route | access paths | arguments |
+|-------|--------------|-----------|
+| `GET /transactions/by-hash/{hash}` | — | un-paginated; the hash is non-unique, so a **list**, newest-first |
+| `GET /transactions/involving/{address}` | 1 | + optional `role`, `kind` |
+| `GET /events` | 2, 5, 6 | `type` (a list) and/or `involved` — **at least one required** |
+| `GET /contract-events/{contract}` | 3 / 4 / 7 / 8 | + optional `user`, `names` (a list) |
+
+`/events` folds the by-type feed (Q2) and the involving feeds (Q5/Q6):
+`involved` anchors on the address (the type list is then a residual filter),
+`type` alone anchors on `event_type` (a single type is the clean `idx_type`
+scan, several a bounded `UNION ALL` per type — never a full-type sort). Neither
+argument present has no index anchor — it would be a full-table scan + sort — so
+it is a **400**. `/contract-events` makes `contract` mandatory, which keeps every
+reachable combination index-anchored and makes the unsupported shapes (a name
+filter without a contract, a type filter with a contract) structurally
+impossible.
 
 Each runs the access path above verbatim: hand-written, `Binder`-parameterized
 SQL (`DISTINCT ON`, the involved ∪ sender union, the in-index `IN (…)` name
 list, the row-comparison keyset), mapped back to the sea-orm models. The
-GraphQL **type surface** — the `Address` / `Hash` scalars, the `Transaction` /
-`Event` objects, the `UnitKind` / `EventType` enums — lives in
-`graphql/types.rs`; the **keyset machinery** — opaque cursors, the page-size
-clamp, and the forward Relay-connection assembly (`limit + 1` ⇒ `hasNextPage`)
-— in `graphql/pagination.rs`.
-Addresses and hashes are stored as `BYTEA` but exposed as their canonical hex
-text; `timestamp` is exposed as RFC 3339, never a 64-bit-lossy `Int`.
+**type surface** — the `Transaction` / `Event` objects and the `UnitKind` /
+`AddressRole` enums — lives in `http/types.rs`; the **keyset machinery** —
+opaque `hex(json(tuple))` cursors, the page-size clamp, and the slim
+`{ items, pageInfo }` envelope (`limit + 1` ⇒ `hasNextPage`) — in
+`http/pagination.rs`. Addresses and hashes are grug's own `Addr` / `Hash256`:
+their serde already speaks the canonical hex dialect, so the read API uses them
+directly on input (`web::Path<Addr>` parses the hex) and output (no wrapper),
+decoding the stored `BYTEA` back with `Addr::try_from` / `Hash256::try_from`;
+`timestamp` is exposed as RFC 3339, never a 64-bit-lossy integer.
 
-On top of the indexed columns, `Transaction` carries two **on-demand detail
-fields** — `tx` (the full submitted transaction, the native `Tx` scalar) and
-`outcome` (the execution outcome, as a `JSON` scalar) — resolved only when
-selected, by loading the unit's block from the source. To keep that from being
-an N+1 across a page, the load goes through a `BlockLoader` `DataLoader` (in
-`block-source`, keyed by `block_height`): a page's rows — and `tx` + `outcome`
-on the same row — share one block read each. `tx` is `null` for cron units
-(which have no transaction); `outcome` carries the unit's `TxOutcome` for a
-transaction and its `CronOutcome` for a cronjob, externally tagged in the JSON
-(`{"transaction": …}` / `{"cron": …}`) so it is self-describing. (`TxOutcome`'s
-own GraphQL output type self-names but registers as the JSON scalar — a dangling
-SDL reference — so the outcome is wrapped in `Json`.)
+On top of the indexed columns, `Transaction` carries `tx` (the full submitted
+transaction) and `outcome` (the execution outcome), and `Event` carries `data`
+(the decoded `FlatEvent` payload). REST has no field selection, so these are
+hydrated **eagerly**, in `http/hydrate.rs`: once a feed returns a page, the
+handler batch-loads the page's distinct blocks through `block-source`'s
+`load_blocks` (one `source.get` per height, deduped) and fills every row. `tx`
+is `null` for cron units (which have no transaction); `outcome` carries the
+unit's `TxOutcome` for a transaction and its `CronOutcome` for a cronjob,
+externally tagged in the JSON (`{"transaction": …}` / `{"cron": …}`) so it is
+self-describing. `MAX_LIMIT` bounds the per-page hydration cost; a block the
+source no longer holds leaves that row's detail `null`.
 
-`Event` mirrors this with one on-demand `data` field — the decoded event payload
-(a `FlatEvent`) as a `JSON` scalar. Since `data` is **almost always** selected,
-the payload is fetched **eagerly** in the feed: each feed's inner query is
-wrapped (`with_event_data`) into a subquery whose `data` is pulled per row by a
-**correlated** lookup on `event_data`'s primary key — a scalar subquery, not a
-join. The correlation guarantees a point index probe per row however large
-`event_data` grows (a `LEFT JOIN` lets the planner hash-join with a full
-`event_data` scan — `EXPLAIN`-verified on a small table); and the inner `LIMIT`
-blocks subquery flattening, so the inner's backward-scan (no-sort) plan is
-untouched (also `EXPLAIN`-verified: `Index Scan Backward → Unique → Limit`, with
-the payload as a `SubPlan` index probe and no top-level sort). The *work* then
-stays **lazy** behind the `ComplexObject`: the blob is `zstd`/`borsh`-decoded
-only when the field is read. Non-priority events are absent from `event_data`
-(`data` comes back `NULL`), so there `data` falls back to the shared
-`BlockLoader` and re-flattens the unit via the write path's own `flatten_unit`
-— one source of truth for `event_index`. Net: priority payloads add no
-round-trip; non-priority cost one block read, and only when `data` is selected.
+For `Event.data` the priority payload never needs a block: each feed's inner
+query is wrapped (`with_event_data`) into a subquery whose `data` is pulled per
+row by a **correlated** lookup on `event_data`'s primary key — a scalar
+subquery, not a join. The correlation guarantees a point index probe per row
+however large `event_data` grows (a `LEFT JOIN` lets the planner hash-join with
+a full `event_data` scan — `EXPLAIN`-verified on a small table); and the inner
+`LIMIT` blocks subquery flattening, so the inner's backward-scan (no-sort) plan
+is untouched (also `EXPLAIN`-verified: `Index Scan Backward → Unique → Limit`,
+with the payload as a `SubPlan` index probe and no top-level sort). The priority
+blob is `zstd`/`borsh`-decoded in `event_from_row`. Non-priority events are
+absent from `event_data` (`data` comes back `NULL`), so for them
+`hydrate_events` loads the unit's block and re-flattens it via the write path's
+own `flatten_unit` — one source of truth for `event_index`. Net: priority
+payloads add no round-trip; non-priority cost one (batched, deduped) block read
+per distinct block in the page.
 
-The schema is merged and served by the projection-agnostic `httpd` crate, which
-injects the Postgres pool, the block source, and a `BlockLoader` `DataLoader`
-over it as context.
+The routes are served by the projection-agnostic `httpd` crate, which injects
+the Postgres pool and the block source as actix app data; the projection
+contributes them through `Projection::services()` — three `web::scope`s
+(`/transactions`, `/events`, `/contract-events`) of `#[get]`-routed handlers,
+grouped in `http/services/` one module per resource — and the app gathers every
+projection's scopes when it builds the server.
 
 ## Out of scope
 
 Still handled elsewhere (or not yet built): **live subscriptions**. The detail
-layer is now served on demand — unit-level (`Transaction`'s `tx` and `outcome`,
+layer is served eagerly — unit-level (`Transaction`'s `tx` and `outcome`,
 `TxOutcome` / `CronOutcome`) and per-event (`Event`'s `data`, from the
 `event_data` join with a block fallback). The tables and feeds here fix the
 storage and read model those build on.

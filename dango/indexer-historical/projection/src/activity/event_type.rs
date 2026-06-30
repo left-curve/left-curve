@@ -1,5 +1,4 @@
 use {
-    async_graphql::Enum,
     dango_primitives::{Addr, FlatEvent},
     serde::{Deserialize, Serialize},
 };
@@ -12,9 +11,10 @@ use {
 /// never be renumbered (append-only). [`From<&FlatEvent>`] is exhaustive, so a
 /// new upstream variant is a compile error here until it is given a code.
 ///
-/// Also the GraphQL enum used to filter the activity feeds by type (queries 2 /
-/// 6) and to surface an event's type in the read API.
-#[derive(Enum, Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, Hash)]
+/// Serialized snake_case (`transfer`, `contract_event`, …): the spelling the
+/// read API accepts to filter the activity feeds by type and surfaces as an
+/// event's `type`.
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[serde(rename_all = "snake_case")]
 #[repr(i16)]
 pub enum EventType {
