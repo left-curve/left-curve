@@ -2764,18 +2764,18 @@ Client messages are tagged by `method`; server messages are tagged by `channel`.
 ```json
 {"channel": "subscriptionResponse", "id": 1, "data": {"method": "subscribe", "type": "perpsEvents"}}
 {"channel": "perpsEvents", "id": 1, "data": { ... }}
+{"channel": "perpsEvents", "id": 1, "error": {"code": "resync", "message": "..."}}
 {"channel": "fullBlock", "id": 2, "data": { ... }}
 {"channel": "pong", "id": 9}
-{"channel": "perpsEvents", "id": 1, "error": {"code": "resync", "message": "..."}}
 {"channel": "error", "error": {"code": "badRequest", "message": "..."}}
 ```
 
-| `channel`                 | Description                                                                                       |
-| ------------------------- | ------------------------------------------------------------------------------------------------- |
-| `subscriptionResponse`    | Acknowledges a `subscribe`/`unsubscribe`, echoing its `id`                                        |
+| `channel`                 | Description                                                                                                                                             |
+| ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `subscriptionResponse`    | Acknowledges a `subscribe`/`unsubscribe`, echoing its `id`                                                                                              |
 | `perpsEvents`/`fullBlock` | A frame on a subscription's channel, tagged with its `id`: a `data` payload, or an `error` that ended the feed (see [§11.3](#113-reconnect-and-errors)) |
-| `pong`                    | Reply to a `ping`, echoing its `id`                                                               |
-| `error`                   | A connection-level problem with no subscription to attribute it to (e.g. an unparseable frame); see [§11.3](#113-reconnect-and-errors) |
+| `pong`                    | Reply to a `ping`, echoing its `id`                                                                                                                     |
+| `error`                   | A connection-level problem with no subscription to attribute it to (e.g. an unparseable frame); see [§11.3](#113-reconnect-and-errors)                  |
 
 Each frame on a subscription's channel (`perpsEvents` / `fullBlock`) carries either a `data` payload or an `error`; a client demultiplexes by `id` and branches on which key is present. Errors are co-located this way so a feed's failure arrives on the same channel its data does — see [§11.3](#113-reconnect-and-errors).
 
@@ -2872,12 +2872,12 @@ Both channels are served from an in-memory window of recent blocks. Every data f
 
 Problems are delivered as `error`-keyed frames. An error that concerns a specific subscription rides that subscription's own channel and `id` — an `error` sibling of the `data` frames it would otherwise send — so a client handles a feed's failure on the same channel it reads from. An error with no subscription to attribute it to (an unparseable message, or an `unsubscribe` for an unknown `id`) arrives on the dedicated `error` channel instead, carrying the offending `id` when there is one.
 
-| `code`                | Meaning                                                                                                                                                                                                                                  |
-| --------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `code`                | Meaning                                                                                                                                                                                                                                   |
+| --------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `resync`              | `since` predates the retained window, or the feed lagged past it. The subscription ends; reconnect with a newer `since` and backfill the gap from the `perpsEvents` query ([§5.5](#55-trade-history)) or the `/block/full/*` REST routes. |
-| `tooManyRequests`     | The server's subscription limit was reached.                                                                                                                                                                                            |
-| `badRequest`          | The message could not be parsed, or the `id` is already in use.                                                                                                                                                                         |
-| `unknownSubscription` | An `unsubscribe` referenced an `id` with no open subscription.                                                                                                                                                                          |
+| `tooManyRequests`     | The server's subscription limit was reached.                                                                                                                                                                                              |
+| `badRequest`          | The message could not be parsed, or the `id` is already in use.                                                                                                                                                                           |
+| `unknownSubscription` | An `unsubscribe` referenced an `id` with no open subscription.                                                                                                                                                                            |
 
 A subscription-scoped error (here, a terminal `resync` on the `perpsEvents` feed opened with `id: 1`):
 
