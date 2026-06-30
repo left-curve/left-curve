@@ -379,61 +379,6 @@ type PerpsEvent {
 	createdAt: String!
 }
 
-"""
-A single perps-contract event, as streamed to clients.
-"""
-type PerpsEvent2 {
-	"""
-	Per-block ordinal across all perps-contract events in the block.
-	"""
-	idx: Int!
-	"""
-	Raw on-chain event type string, e.g. `"order_filled"`, `"liquidated"`.
-	"""
-	eventType: String!
-	"""
-	The event's subject address (its `user` field), if present. Each perps
-	event names a single participant — a fill's two sides are separate
-	events — so this is what the `user` filter matches on. `None` for events
-	without a `user` field (e.g. fee distribution).
-	"""
-	user: String
-	"""
-	The market the event pertains to (its `pair_id` field), if present.
-	"""
-	pairId: String
-	"""
-	The order this event pertains to (its `order_id` field), if present.
-	Carried by the order-lifecycle events (`order_filled`, `order_persisted`,
-	`order_resized`, `order_removed`); `None` otherwise.
-	"""
-	orderId: String
-	"""
-	The caller-assigned client order id (its `client_order_id` field), if
-	present. Optional even on order-lifecycle events — an order submitted
-	without one yields `None` here. Unique only per sender, so combine with
-	the `users` filter to single out one trader's order.
-	"""
-	clientOrderId: String
-	"""
-	The raw event payload.
-	"""
-	data: JSON!
-}
-
-"""
-All perps-contract events emitted in one block. Doubles as the ring item
-(holding every event) and the streamed output (holding the filtered subset).
-"""
-type PerpsEvent2Batch {
-	blockHeight: Int!
-	"""
-	Block timestamp, RFC 3339.
-	"""
-	createdAt: String!
-	events: [PerpsEvent2!]!
-}
-
 type PerpsEventConnection {
 	"""
 	Information to aid in pagination.
@@ -921,40 +866,6 @@ type Subscription {
 	Returns cached recent trades first, then streams new trades as they occur.
 	"""
 	perpsTrades(pairId: String!): PerpsTrade!
-	"""
-	Stream perps-exchange contract events (e.g. `order_filled`, `liquidated`,
-	`deleveraged`, `order_persisted`, `order_removed`) in real time, grouped
-	per block.
-	
-	The feed is served from an in-memory window on the validator (lowest
-	latency). It first replays recent retained blocks — from
-	`sinceBlockHeight` if given, otherwise none — then streams the live tail.
-	The `eventTypes`, `pairIds`, `users`, `orderIds`, and `clientOrderIds`
-	filters AND together; for each, omitting it matches everything, while
-	passing an empty list matches nothing. A `clientOrderId` is unique only
-	per sender, so combine it with `users` to target a single trader's order.
-	If `sinceBlockHeight` predates the retained window, the
-	subscription fails to start with a "resync required" error — reconnect
-	with a newer `sinceBlockHeight` (deep history is available via the
-	`perpsEvents` query on the indexer node).
-	"""
-	perpsEvents2(sinceBlockHeight: Int, eventTypes: [String!], pairIds: [String!], users: [String!], orderIds: [String!], clientOrderIds: [String!]): PerpsEvent2Batch!
-	"""
-	Stream every finalized block in real time — the full `Block` (header +
-	transactions) together with its `BlockOutcome` (every tx/cron outcome,
-	hence every event) — as a single JSON scalar per block.
-	
-	The feed is served from an in-memory window on the validator (lowest
-	latency, in-process). With `sinceBlockHeight` it first replays the
-	retained blocks from that height, then streams the live tail; without it,
-	it streams only blocks newer than the current tip. If `sinceBlockHeight`
-	predates the retained window the subscription fails to start with a
-	"resync required" error — reconnect with a newer height (deep history is
-	available via the REST `/block/full/{block_height}` and
-	`/block/full/range` routes on the indexer node, which return the same
-	shape).
-	"""
-	fullBlock(sinceBlockHeight: Int): JSON!
 }
 
 type Transaction {

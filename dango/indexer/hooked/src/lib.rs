@@ -35,7 +35,7 @@ pub struct HookedIndexer {
     pub file: dango_indexer_cache::Cache,
     pub sql: dango_indexer_sql::Indexer,
     pub clickhouse: dango_indexer_clickhouse::Indexer,
-    /// In-memory, validator-side realtime feed backing the `perps_events2`
+    /// In-memory, validator-side realtime feed backing the `perps_events`
     /// GraphQL subscription. Unlike the other three components it does no
     /// durable indexing — it only keeps a ring of recent perps-contract events
     /// and broadcasts them live, in-process (lowest latency).
@@ -132,7 +132,7 @@ impl HookedIndexer {
             return Ok(());
         }
 
-        // The realtime stream (`perps_events2`) is intentionally NOT replayed
+        // The realtime stream (`perps_events`) is intentionally NOT replayed
         // here: it is an ephemeral, live-only feed with no subscribers during a
         // cold catch-up, and this replay path has no `BlockOutcome` to extract
         // events from (it only reloads the cached payload for SQL/Clickhouse).
@@ -276,7 +276,7 @@ impl Indexer for HookedIndexer {
         // Realtime feed: extract perps events and append them to the in-memory
         // ring + broadcast, INLINE and IN STRICT HEIGHT ORDER (the app awaits
         // this method per height), BEFORE the spawned task below. Running it
-        // here — not inside the spawn — is what keeps `perps_events2` free of
+        // here — not inside the spawn — is what keeps `perps_events` free of
         // the out-of-order publishing that the spawned SQL/Clickhouse path is
         // subject to. Best-effort: errors are logged, never propagated, so the
         // realtime feed can never affect consensus.

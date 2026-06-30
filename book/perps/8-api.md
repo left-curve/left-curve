@@ -51,7 +51,7 @@ curl -X POST https://<host>/graphql \
 
 ### 1.2 WebSocket
 
-Subscriptions (real-time data) use WebSocket with the `graphql-ws` protocol.
+Subscriptions (real-time data) use WebSocket with the `graphql-ws` protocol. A separate native WebSocket API (not `graphql-ws`) serves the `fullBlock` and `perpsEvents` feeds — see [§11](#11-new-in-v0260-websocket-api).
 
 **Endpoint:** See [Constants](9-constants.md#endpoints).
 
@@ -2193,9 +2193,9 @@ Request a withdrawal from the vault (initiates cooldown):
 
 Shares are burned immediately. The corresponding USD value enters a cooldown queue. After `vault_cooldown_period` elapses, funds are automatically credited back to the user's trading margin.
 
-## 8. Real-time subscriptions
+## 8. Real-time subscriptions (graphql-ws)
 
-All subscriptions use the WebSocket transport described in [§1.2](#12-websocket).
+All subscriptions in this section use the `graphql-ws` WebSocket transport described in [§1.2](#12-websocket). The `fullBlock` and `perpsEvents` feeds use the native WebSocket API instead — see [§11](#11-new-in-v0260-websocket-api).
 
 ### 8.1 Perps candles
 
@@ -2268,66 +2268,7 @@ subscription {
 
 ### 8.3 Perps events
 
-Stream every event emitted by the perps contract — order lifecycle, fills, liquidations, and deleveraging — grouped per block. It is the richer superset of [§8.2](#82-perps-trades) (which streams fills only), and a perps-scoped, lower-latency alternative to the generic event stream ([§8.6](#86-event-stream)). It is served from an in-memory window of the most recent blocks, so deep history is not available here — use the `perpsEvents` query ([§5.5](#55-trade-history)) for that.
-
-```graphql
-subscription {
-  perpsEvents2(
-    eventTypes: ["order_filled", "liquidated"],
-    pairIds: ["perp/btcusd"],
-    users: ["0x1234...abcd"],
-    orderIds: ["100"],
-    clientOrderIds: ["42"]
-  ) {
-    blockHeight
-    createdAt
-    events {
-      idx
-      eventType
-      user
-      pairId
-      orderId
-      clientOrderId
-      data
-    }
-  }
-}
-```
-
-Each message carries one block's worth of matching events. Only blocks that contain at least one matching event are delivered.
-
-| Parameter          | Type        | Description                                                            |
-| ------------------ | ----------- | ---------------------------------------------------------------------- |
-| `sinceBlockHeight` | `Int`       | Replay retained blocks from this height on connect; omit for live-only |
-| `eventTypes`       | `[String!]` | Keep only these event types (see [§9](#9-events-reference))            |
-| `pairIds`          | `[String!]` | Keep only these trading pairs                                          |
-| `users`            | `[String!]` | Keep only events whose `user` is one of these addresses                |
-| `orderIds`         | `[String!]` | Keep only events whose `order_id` is one of these                      |
-| `clientOrderIds`   | `[String!]` | Keep only events whose `client_order_id` is one of these               |
-
-**Filter semantics.** The five filters AND together. Omitting a filter does not filter on that field (matches everything); passing an _empty_ list matches nothing. Addresses are matched verbatim against each event's canonical address string, so pass the same `0x`-prefixed form the API returns elsewhere; order and client order ids are matched the same way, as the decimal strings the API returns. A `client_order_id` is unique only per sender, so combine `clientOrderIds` with `users` to single out one trader's order.
-
-**PerpsEvent2Batch fields:**
-
-| Field         | Type            | Description                       |
-| ------------- | --------------- | --------------------------------- |
-| `blockHeight` | `Int`           | Block height                      |
-| `createdAt`   | `String`        | Block timestamp (ISO 8601)        |
-| `events`      | `[PerpsEvent2]` | The block's matching perps events |
-
-**PerpsEvent2 fields:**
-
-| Field           | Type      | Description                                                 |
-| --------------- | --------- | ----------------------------------------------------------- |
-| `idx`           | `Int`     | Ordinal of this event within the block                      |
-| `eventType`     | `String`  | Event type name (see [§9](#9-events-reference))             |
-| `user`          | `String?` | The event's subject address, if it has a `user` field       |
-| `pairId`        | `String?` | The event's trading pair, if it has a `pair_id` field       |
-| `orderId`       | `String?` | The event's order, if it has an `order_id` field            |
-| `clientOrderId` | `String?` | The caller-assigned client order id, if it has one          |
-| `data`          | `JSON`    | Raw event payload (same shape as [§9](#9-events-reference)) |
-
-**Reconnect.** Pass `sinceBlockHeight` to replay events missed while disconnected. The in-memory window retains only recent blocks; if `sinceBlockHeight` is older than the window, the subscription fails to start with a "resync required" error — reconnect with a newer height and backfill the gap from the `perpsEvents` query ([§5.5](#55-trade-history)).
+Perps-contract events are streamed over the native WebSocket API, on the `perpsEvents` channel — see [§11.2](#112-channels). For deep history, use the `perpsEvents` query ([§5.5](#55-trade-history)).
 
 ### 8.4 Contract query polling
 
@@ -2421,7 +2362,7 @@ subscription {
 
 ## 9. Events reference
 
-The perps contract emits the following events. These can be queried via `perpsEvents` ([§5.5](#55-trade-history)) or streamed in real time via the `perpsEvents2` subscription ([§8.3](#83-perps-events)) or the generic `events` subscription ([§8.6](#86-event-stream)).
+The perps contract emits the following events. These can be queried via `perpsEvents` ([§5.5](#55-trade-history)) or streamed in real time via the WebSocket `perpsEvents` channel ([§11.2](#112-channels)) or the generic `events` subscription ([§8.6](#86-event-stream)).
 
 ### Margin events
 
@@ -2787,3 +2728,153 @@ One action inside a [`batch_update_orders`](#66-batch-update-orders) list. Condi
 | ------- | -------------- | ---------------------- |
 | `index` | `AccountIndex` | Account's unique index |
 | `owner` | `UserIndex`    | Owning user's index    |
+
+## 11. New in v0.26.0: WebSocket API
+
+A native WebSocket endpoint for real-time feeds, distinct from the `graphql-ws` endpoint in [§1.2](#12-websocket). It follows the multiplexed, message-oriented convention used by major exchanges: one socket carries any number of subscriptions, the client opens and closes them with JSON messages, and every frame is a single JSON object.
+
+**Endpoint:** `GET /ws` (WebSocket upgrade). See [Constants](9-constants.md#endpoints).
+
+Two channels are served, both replacing `graphql-ws` subscriptions removed in this release:
+
+- `fullBlock` — every finalized block (`Block` + `BlockOutcome`).
+- `perpsEvents` — perps-contract events grouped per block, with filters.
+
+### 11.1 Protocol
+
+Client messages are tagged by `method`; server messages are tagged by `channel`. A `subscribe` carries a client-chosen integer `id` that is the subscription handle: it is echoed on the acknowledgement and on every data frame the subscription produces, and is used to `unsubscribe`. One socket can therefore carry several subscriptions — for example several `perpsEvents` feeds with different filters — that the client demultiplexes by `id`.
+
+**Client → server:**
+
+```json
+{"method": "subscribe", "id": 1, "subscription": {"type": "perpsEvents", "pairIds": ["perp/btcusd"]}}
+{"method": "subscribe", "id": 2, "subscription": {"type": "fullBlock"}}
+{"method": "unsubscribe", "id": 1}
+{"method": "ping", "id": 9}
+```
+
+| Field          | Type     | Description                                                |
+| -------------- | -------- | ---------------------------------------------------------- |
+| `method`       | `String` | `subscribe`, `unsubscribe`, or `ping`                      |
+| `id`           | `Int`    | Subscription handle; required on `subscribe`/`unsubscribe` |
+| `subscription` | `Object` | The feed selector; see [§11.2](#112-channels)              |
+
+**Server → client:**
+
+```json
+{"channel": "subscriptionResponse", "id": 1, "data": {"method": "subscribe", "type": "perpsEvents"}}
+{"channel": "perpsEvents", "id": 1, "data": { ... }}
+{"channel": "fullBlock", "id": 2, "data": { ... }}
+{"channel": "pong", "id": 9}
+{"channel": "error", "id": 1, "data": {"code": "resync", "message": "..."}}
+```
+
+| `channel`                 | Description                                                                                       |
+| ------------------------- | ------------------------------------------------------------------------------------------------- |
+| `subscriptionResponse`    | Acknowledges a `subscribe`/`unsubscribe`, echoing its `id`                                        |
+| `perpsEvents`/`fullBlock` | A data frame, tagged with the originating subscription's `id`                                     |
+| `pong`                    | Reply to a `ping`, echoing its `id`                                                               |
+| `error`                   | A problem, tagged with the offending `id` when applicable; see [§11.3](#113-reconnect-and-errors) |
+
+**Heartbeat.** The server sends a WebSocket ping every 20 seconds and closes a connection it has heard nothing from for 60 seconds. A client either lets its WebSocket stack answer those pings, or sends `{"method": "ping"}` itself; either keeps an idle subscription alive.
+
+### 11.2 Channels
+
+#### `perpsEvents`
+
+Stream every event emitted by the perps contract — order lifecycle, fills, liquidations, and deleveraging — grouped per block. Served from an in-memory window of recent blocks, so deep history is not available here; use the `perpsEvents` query ([§5.5](#55-trade-history)) for that.
+
+```json
+{"method": "subscribe", "id": 1, "subscription": {
+  "type": "perpsEvents",
+  "since": 100000,
+  "eventTypes": ["order_filled", "liquidated"],
+  "pairIds": ["perp/btcusd"],
+  "users": ["0x1234...abcd"],
+  "orderIds": ["100"],
+  "clientOrderIds": ["42"]
+}}
+```
+
+| Field            | Type       | Description                                                            |
+| ---------------- | ---------- | ---------------------------------------------------------------------- |
+| `since`          | `Int`      | Replay retained blocks from this height on connect; omit for live-only |
+| `eventTypes`     | `[String]` | Keep only these event types (see [§9](#9-events-reference))            |
+| `pairIds`        | `[String]` | Keep only these trading pairs                                          |
+| `users`          | `[String]` | Keep only events whose `user` is one of these addresses                |
+| `orderIds`       | `[String]` | Keep only events whose `order_id` is one of these                      |
+| `clientOrderIds` | `[String]` | Keep only events whose `client_order_id` is one of these               |
+
+**Filter semantics.** The five filters AND together. Omitting a filter does not filter on that field (matches everything); passing an _empty_ array matches nothing. Each value is matched verbatim against the event's canonical string form, so pass the same `0x`-prefixed address or decimal-id form the API returns elsewhere. A `client_order_id` is unique only per sender, so combine `clientOrderIds` with `users` to single out one trader's order.
+
+Each data frame carries one block's matching events; only blocks with at least one matching event are delivered:
+
+```json
+{"channel": "perpsEvents", "id": 1, "data": {
+  "blockHeight": 100001,
+  "createdAt": "2026-06-18T00:00:00Z",
+  "events": [
+    {
+      "idx": 0,
+      "eventType": "order_filled",
+      "user": "0x1234...abcd",
+      "pairId": "perp/btcusd",
+      "orderId": "100",
+      "clientOrderId": "42",
+      "data": { ... }
+    }
+  ]
+}}
+```
+
+**`data` (PerpsEventsBatch) fields:**
+
+| Field         | Type           | Description                       |
+| ------------- | -------------- | --------------------------------- |
+| `blockHeight` | `Int`          | Block height                      |
+| `createdAt`   | `String`       | Block timestamp (ISO 8601)        |
+| `events`      | `[PerpsEvent]` | The block's matching perps events |
+
+**PerpsEvent fields:**
+
+| Field           | Type      | Description                                                 |
+| --------------- | --------- | ----------------------------------------------------------- |
+| `idx`           | `Int`     | Ordinal of this event within the block                      |
+| `eventType`     | `String`  | Event type name (see [§9](#9-events-reference))             |
+| `user`          | `String?` | The event's subject address, if it has a `user` field       |
+| `pairId`        | `String?` | The event's trading pair, if it has a `pair_id` field       |
+| `orderId`       | `String?` | The event's order, if it has an `order_id` field            |
+| `clientOrderId` | `String?` | The caller-assigned client order id, if it has one          |
+| `data`          | `JSON`    | Raw event payload (same shape as [§9](#9-events-reference)) |
+
+#### `fullBlock`
+
+Stream every finalized block in full — the same `FullBlock` shape (`block` + `outcome`) the REST `/block/full/{height}` route returns, one data frame per block.
+
+```json
+{"method": "subscribe", "id": 2, "subscription": {"type": "fullBlock", "since": 100000}}
+```
+
+| Field   | Type  | Description                                                            |
+| ------- | ----- | ---------------------------------------------------------------------- |
+| `since` | `Int` | Replay retained blocks from this height on connect; omit for live-only |
+
+```json
+{"channel": "fullBlock", "id": 2, "data": {"block": { ... }, "outcome": { ... }}}
+```
+
+### 11.3 Reconnect and errors
+
+Both channels are served from an in-memory window of recent blocks. Every data frame carries the block height (`blockHeight`, or `block.info.height` for `fullBlock`), so a client tracks the last height it saw and, on reconnect, resubscribes with `since` set to that height plus one. Subscriptions are not persisted across reconnects: a client that reconnects must resend its `subscribe` messages.
+
+Problems are delivered as `error` frames tagged with the offending `id`:
+
+| `code`            | Meaning                                                                                                                                                                                                         |
+| ----------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `resync`          | `since` predates the retained window, or the feed lagged past it. Reconnect with a newer `since`; backfill the gap from the `perpsEvents` query ([§5.5](#55-trade-history)) or the `/block/full/*` REST routes. |
+| `tooManyRequests` | The server's subscription limit was reached.                                                                                                                                                                    |
+| `badRequest`      | The message could not be parsed, or the `id` is already in use.                                                                                                                                                 |
+
+```json
+{"channel": "error", "id": 1, "data": {"code": "resync", "message": "resync required: requested from block 100 but the oldest retained block is 900"}}
+```

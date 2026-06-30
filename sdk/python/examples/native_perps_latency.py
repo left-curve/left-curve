@@ -15,7 +15,7 @@ record two latencies per action, both anchored at that same start:
   signing plus the broadcast hop.
 * ``confirm`` — when the matching lifecycle event (``order_persisted`` for the
   place, ``order_removed`` for the cancel) arrives back over the
-  ``perps_events2`` WebSocket subscription. This is the full client-observed
+  ``perps_events`` WebSocket subscription. This is the full client-observed
   round trip: broadcast -> block inclusion -> indexer -> push back to us.
 
 So ``confirm >= mempool`` always, since both share the same start anchor.
@@ -196,7 +196,7 @@ class _Match(NamedTuple):
 class _EventAwaiter:
     """Thread-safe rendezvous between the WS reader thread and the main thread.
 
-    The ``perps_events2`` callback runs on the WebSocket reader thread. Before
+    The ``perps_events`` callback runs on the WebSocket reader thread. Before
     each broadcast, the main thread arms the awaiter with the
     ``(event_type, client_order_id)`` it expects, then blocks in ``wait()``. When
     a matching event arrives, the callback timestamps it with ``perf_counter()``
@@ -300,7 +300,7 @@ class _EventAwaiter:
 
 
 def _make_callback(awaiter: _EventAwaiter) -> Callable[[PerpsEvent2Batch], None]:
-    """Build the perps_events2 callback that feeds events into ``awaiter``."""
+    """Build the perps_events callback that feeds events into ``awaiter``."""
 
     def _callback(batch: PerpsEvent2Batch) -> None:
         # Stamp arrival immediately, before doing any other work: a monotonic
@@ -453,7 +453,7 @@ def _print_summary(samples: dict[str, list[float]]) -> None:
 
     print("\n=== round-trip latency (ms) ===")
     print("  mempool = broadcast call returned (tx admitted to mempool)")
-    print("  confirm = lifecycle event received over perps_events2 (on-chain + indexed)\n")
+    print("  confirm = lifecycle event received over perps_events (on-chain + indexed)\n")
 
     header = f"{'metric':<16}{'n':>4}{'min':>9}{'mean':>9}{'median':>9}{'p95':>9}{'max':>9}"
     print(header)
@@ -505,7 +505,7 @@ def main() -> None:
         perps_contract=Addr(PERPS_CONTRACT),
     )
     # NOTE: unlike native_basic_order.py we must NOT pass skip_ws=True — this
-    # script needs the WebSocket for the perps_events2 subscription.
+    # script needs the WebSocket for the perps_events subscription.
 
     awaiter = _EventAwaiter()
 
@@ -515,7 +515,7 @@ def main() -> None:
     # base, so collisions with other testnet traders are negligible.) Annotate
     # as list[str] so the PairId NewType doesn't trip list-invariance.
     pair_filter: list[str] = [PAIR_ID]
-    sub_id = info.subscribe_perps_events2(
+    sub_id = info.subscribe_perps_events(
         _make_callback(awaiter),
         pair_ids=pair_filter,
         event_types=_AWAITED_EVENT_TYPES,
@@ -653,26 +653,30 @@ def main() -> None:
                 f"{_gap_note(place_block, cancel_block)}"
             )
 
-            rows.append({
-                "cycle": i + 1,
-                "action": "place",
-                "broadcast_utc": _utc_ms(place_wall),
-                "mempool_ms": f"{pm:.1f}",
-                "confirm_ms": f"{pc:.1f}",
-                "landed_block": place_block,
-                "block_created_at": place_match.block_created_at,
-                "event_recv_utc": _utc_ms(place_match.arrived_wall),
-            })
-            rows.append({
-                "cycle": i + 1,
-                "action": "cancel",
-                "broadcast_utc": _utc_ms(cancel_wall),
-                "mempool_ms": f"{cm:.1f}",
-                "confirm_ms": f"{cc:.1f}",
-                "landed_block": cancel_block,
-                "block_created_at": cancel_match.block_created_at,
-                "event_recv_utc": _utc_ms(cancel_match.arrived_wall),
-            })
+            rows.append(
+                {
+                    "cycle": i + 1,
+                    "action": "place",
+                    "broadcast_utc": _utc_ms(place_wall),
+                    "mempool_ms": f"{pm:.1f}",
+                    "confirm_ms": f"{pc:.1f}",
+                    "landed_block": place_block,
+                    "block_created_at": place_match.block_created_at,
+                    "event_recv_utc": _utc_ms(place_match.arrived_wall),
+                }
+            )
+            rows.append(
+                {
+                    "cycle": i + 1,
+                    "action": "cancel",
+                    "broadcast_utc": _utc_ms(cancel_wall),
+                    "mempool_ms": f"{cm:.1f}",
+                    "confirm_ms": f"{cc:.1f}",
+                    "landed_block": cancel_block,
+                    "block_created_at": cancel_match.block_created_at,
+                    "event_recv_utc": _utc_ms(cancel_match.arrived_wall),
+                }
+            )
 
             if PAUSE_BETWEEN_S:
                 time.sleep(PAUSE_BETWEEN_S)
