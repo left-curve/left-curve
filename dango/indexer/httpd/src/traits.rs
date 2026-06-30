@@ -20,14 +20,6 @@ pub trait QueryApp {
         height: Option<u64>,
     ) -> AppResult<(QueryResponse, u64)>;
 
-    /// Query the app's underlying key-value store, return `(value, proof, height)`.
-    async fn query_store(
-        &self,
-        key: &[u8],
-        height: Option<u64>,
-        prove: bool,
-    ) -> AppResult<(Option<Vec<u8>>, Option<Vec<u8>>, u64)>;
-
     /// Simulate a transaction.
     async fn simulate(&self, unsigned_tx: UnsignedTx) -> AppResult<TxOutcome>;
 
@@ -53,15 +45,6 @@ where
         height: Option<u64>,
     ) -> AppResult<(QueryResponse, u64)> {
         Ok(self.do_query_app_with_height(raw_req, height, false)?)
-    }
-
-    async fn query_store(
-        &self,
-        key: &[u8],
-        height: Option<u64>,
-        prove: bool,
-    ) -> AppResult<(Option<Vec<u8>>, Option<Vec<u8>>, u64)> {
-        self.do_query_store_with_height(key, height, prove)
     }
 
     async fn simulate(&self, unsigned_tx: UnsignedTx) -> AppResult<TxOutcome> {

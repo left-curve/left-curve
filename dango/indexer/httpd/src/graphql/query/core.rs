@@ -1,14 +1,11 @@
 use {
     crate::{
         context::MinimalContext,
-        graphql::types::{
-            query_response::QueryResponseWithBlockHeight, status::Status, store::Store,
-        },
+        graphql::types::{query_response::QueryResponseWithBlockHeight, status::Status},
         request_ip::RequesterIp,
     },
     async_graphql::*,
-    dango_primitives::{Binary, Inner, Query, QueryResponse, TxOutcome, UnsignedTx},
-    std::str::FromStr,
+    dango_primitives::{Query, QueryResponse, TxOutcome, UnsignedTx},
 };
 #[cfg(feature = "metrics")]
 use {metrics::histogram, std::time::Instant};
@@ -32,38 +29,6 @@ impl CoreQuery {
 
         Ok(QueryResponseWithBlockHeight {
             response,
-            block_height,
-        })
-    }
-
-    pub async fn _query_store(
-        app_ctx: &MinimalContext,
-        key: String,
-        height: Option<u64>,
-        prove: bool,
-    ) -> Result<Store, Error> {
-        let key = Binary::from_str(&key)?;
-
-        #[cfg(feature = "metrics")]
-        let start = Instant::now();
-
-        let (value, proof, block_height) = app_ctx
-            .dango_app
-            .query_store(key.inner(), height, prove)
-            .await?;
-
-        #[cfg(feature = "metrics")]
-        histogram!("http.grug.query_store.duration").record(start.elapsed().as_secs_f64());
-
-        let value = if let Some(value) = value {
-            Binary::from(value).to_string()
-        } else {
-            return Err(Error::new(format!("Key not found: {key}")));
-        };
-
-        Ok(Store {
-            value,
-            proof: proof.map(|proof| Binary::from(proof).to_string()),
             block_height,
         })
     }

@@ -859,15 +859,6 @@ where
         self.app.query_app(raw_req, height).await
     }
 
-    async fn query_store(
-        &self,
-        key: &[u8],
-        height: Option<u64>,
-        prove: bool,
-    ) -> AppResult<(Option<Vec<u8>>, Option<Vec<u8>>, u64)> {
-        self.app.query_store(key, height, prove).await
-    }
-
     async fn simulate(&self, unsigned_tx: UnsignedTx) -> AppResult<TxOutcome> {
         self.app.simulate(unsigned_tx).await
     }

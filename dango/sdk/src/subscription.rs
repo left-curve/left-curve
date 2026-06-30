@@ -531,5 +531,4 @@ impl SubscriptionVariables for dango_indexer_graphql_types::subscribe_perps_cand
 // `HttpClient::subscribe_perps_events`.
 impl SubscriptionVariables for dango_indexer_graphql_types::subscribe_perps_trades::Variables {}
 impl SubscriptionVariables for dango_indexer_graphql_types::subscribe_query_app::Variables {}
-impl SubscriptionVariables for dango_indexer_graphql_types::subscribe_query_store::Variables {}
 impl SubscriptionVariables for dango_indexer_graphql_types::subscribe_query_status::Variables {}
