@@ -139,15 +139,18 @@ class WsStreamManager:
                 return
 
             channel = msg.get("channel")
-            if channel == "perpsEvents":
+            if "error" in msg:
+                # An error is co-located on the operation's own channel as an
+                # `error`-keyed frame (a connection-level error uses the
+                # dedicated `error` channel). Either way it is terminal for this
+                # subscription: notify, then close so the worker thread winds
+                # down.
+                callback({"_error": msg.get("error")})
+                ws.close()
+            elif channel == "perpsEvents":
                 # The data frame's payload is the bare batch (no GraphQL `data`
                 # wrapper), delivered straight to the callback.
                 callback(msg.get("data", {}) or {})
-            elif channel == "error":
-                # Terminal for this subscription (e.g. `resync`): notify, then
-                # close so the worker thread winds down.
-                callback({"_error": msg.get("data")})
-                ws.close()
             # `subscriptionResponse` / `pong` carry no payload for the caller.
 
         def on_error(ws: websocket.WebSocketApp, error: Any) -> None:
