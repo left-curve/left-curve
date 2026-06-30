@@ -4196,6 +4196,7 @@ dependencies = [
  "dango-sdk",
  "dango-testing",
  "dango-types",
+ "futures",
  "postgresql_embedded",
  "reqwest 0.13.4",
  "sea-orm",

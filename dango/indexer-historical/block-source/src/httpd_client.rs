@@ -89,7 +89,10 @@ impl HttpdClient {
     ///
     /// The **shared live path**: both block sources call it — the local one
     /// against the in-process `dango-httpd`, the remote one against a sentinel.
-    pub(crate) async fn subscribe_full_blocks(
+    /// `pub` so the live tail can be exercised in isolation (see the
+    /// `live_subscriber` integration test), without a block source in front of
+    /// it that could mask a broken subscription behind its REST healer.
+    pub async fn subscribe_full_blocks(
         &self,
     ) -> AnyResult<BoxStream<'static, AnyResult<BlockData>>> {
         let (ws, _response) = connect_async(self.ws_url.as_str())
