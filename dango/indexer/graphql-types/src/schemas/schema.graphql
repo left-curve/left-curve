@@ -615,12 +615,6 @@ type Query {
 		"""
 		request: GrugQueryInput!,		height: Int
 	): JSON!
-	queryStore(
-		"""
-		Key as B64 string
-		"""
-		key: String!,		height: Int,		prove: Boolean! = false
-	): Store!
 	queryStatus: Status!
 	requesterIp: RequesterIp!
 	simulate(

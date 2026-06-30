@@ -21,13 +21,6 @@ pub trait QueryClient: Send + Sync {
         height: Option<u64>,
     ) -> Result<QueryResponse, Self::Error>;
 
-    async fn query_store(
-        &self,
-        key: Binary,
-        height: Option<u64>,
-        prove: bool,
-    ) -> Result<(Option<Binary>, Option<Self::Proof>), Self::Error>;
-
     async fn simulate(&self, tx: UnsignedTx) -> Result<TxOutcome, Self::Error>;
 }
 

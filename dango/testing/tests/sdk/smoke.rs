@@ -12,12 +12,12 @@ use {
     assertor::*,
     dango_genesis::GenesisOption,
     dango_sdk::{
-        QueryApp, QueryStore, Simulate, SubscribeAccounts, SubscribeBlock,
-        SubscribeEventByAddresses, SubscribeEvents, SubscribeMessages, SubscribePerpsCandles,
-        SubscribePerpsTrades, SubscribeQueryApp, SubscribeQueryStatus, SubscribeQueryStore,
-        SubscribeTransactions, SubscribeTransfers, WsClient, query_app, query_store, simulate,
-        subscribe_accounts, subscribe_block, subscribe_event_by_addresses, subscribe_events,
-        subscribe_messages, subscribe_perps_candles, subscribe_perps_trades, subscribe_query_app,
+        QueryApp, Simulate, SubscribeAccounts, SubscribeBlock, SubscribeEventByAddresses,
+        SubscribeEvents, SubscribeMessages, SubscribePerpsCandles, SubscribePerpsTrades,
+        SubscribeQueryApp, SubscribeQueryStatus, SubscribeQueryStore, SubscribeTransactions,
+        SubscribeTransfers, WsClient, query_app, simulate, subscribe_accounts, subscribe_block,
+        subscribe_event_by_addresses, subscribe_events, subscribe_messages,
+        subscribe_perps_candles, subscribe_perps_trades, subscribe_query_app,
         subscribe_query_status, subscribe_query_store, subscribe_transactions, subscribe_transfers,
     },
     dango_testing::{
@@ -97,12 +97,6 @@ macro_rules! query_smoke_test {
 query_smoke_test!(test_query_app, QueryApp, query_app::Variables {
     request: json!({"config":{}}),
     height: None,
-});
-
-query_smoke_test!(test_query_store, QueryStore, query_store::Variables {
-    key: "Y2hhaW5faWQ=".to_string(),
-    height: None,
-    prove: true,
 });
 
 query_smoke_test!(test_simulate, Simulate, simulate::Variables {

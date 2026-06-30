@@ -99,18 +99,6 @@ impl CoreQuery {
             .map(|res| res.response)
     }
 
-    async fn query_store(
-        &self,
-        ctx: &async_graphql::Context<'_>,
-        #[graphql(desc = "Key as B64 string")] key: String,
-        height: Option<u64>,
-        #[graphql(default = false)] prove: bool,
-    ) -> Result<Store, Error> {
-        let app_ctx = ctx.data::<MinimalContext>()?;
-
-        Self::_query_store(app_ctx, key, height, prove).await
-    }
-
     async fn query_status(&self, ctx: &async_graphql::Context<'_>) -> Result<Status, Error> {
         let app_ctx = ctx.data::<MinimalContext>()?;
 

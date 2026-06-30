@@ -4,13 +4,12 @@ use {
     dango_backtrace::BacktracedError,
     dango_indexer_graphql_types::{
         PageInfo, Variables, accounts, blocks, broadcast_tx_sync, events, messages, query_app,
-        query_store, search_tx, simulate, transactions, transfers,
+        search_tx, simulate, transactions, transfers,
     },
     dango_primitives::{
-        Addr, Binary, Block, BlockClient, BlockOutcome, BorshDeExt, BroadcastClient,
-        BroadcastTxOutcome, GenericResult, Hash256, Inner, Json, JsonDeExt, JsonSerExt, NonEmpty,
-        Query, QueryClient, QueryResponse, SearchTxClient, SearchTxOutcome, Tx, TxOutcome,
-        UnsignedTx,
+        Addr, Block, BlockClient, BlockOutcome, BroadcastClient, BroadcastTxOutcome, GenericResult,
+        Hash256, Inner, Json, JsonDeExt, JsonSerExt, NonEmpty, Query, QueryClient, QueryResponse,
+        SearchTxClient, SearchTxOutcome, Tx, TxOutcome, UnsignedTx,
     },
     futures::{SinkExt, Stream, StreamExt, channel::mpsc},
     graphql_client::{GraphQLQuery, Response},
@@ -420,28 +419,6 @@ impl QueryClient for HttpClient {
 
         // TODO
         Ok(serde_json::from_value(response.query_app)?)
-    }
-
-    async fn query_store(
-        &self,
-        key: Binary,
-        height: Option<u64>,
-        prove: bool,
-    ) -> Result<(Option<Binary>, Option<Self::Proof>), Self::Error> {
-        let response = self
-            .post_graphql(query_store::Variables {
-                key: key.to_string(),
-                height: height.map(|h| h as i64),
-                prove,
-            })
-            .await?;
-
-        let proof = match response.query_store.proof {
-            Some(proof) => Binary::from_str(&proof)?.into_inner().deserialize_borsh()?,
-            None => None,
-        };
-
-        Ok((Some(Binary::from_str(&response.query_store.value)?), proof))
     }
 
     async fn simulate(&self, tx: UnsignedTx) -> Result<TxOutcome, Self::Error> {

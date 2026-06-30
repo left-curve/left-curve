@@ -531,7 +531,6 @@ function rustSidebar() {
             { text: "paginate_events", link: "/rust/api/methods/http-client/paginate_events" },
             { text: "paginate_messages", link: "/rust/api/methods/http-client/paginate_messages" },
             { text: "query_app", link: "/rust/api/methods/http-client/query_app" },
-            { text: "query_store", link: "/rust/api/methods/http-client/query_store" },
             { text: "simulate", link: "/rust/api/methods/http-client/simulate" },
             { text: "query_block", link: "/rust/api/methods/http-client/query_block" },
             { text: "query_block_outcome", link: "/rust/api/methods/http-client/query_block_outcome" },

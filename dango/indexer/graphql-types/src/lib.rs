@@ -62,10 +62,6 @@ generate_types! {
         path: "src/schemas/queries/queryApp.graphql",
     },
     {
-        name: QueryStore,
-        path: "src/schemas/queries/queryStore.graphql",
-    },
-    {
         name: Simulate,
         path: "src/schemas/queries/simulate.graphql",
     },
