@@ -831,7 +831,7 @@ where
     /// Return the query response, as well as the block height this query was
     /// performed at.
     pub fn do_query_app_with_height(&self, req: Query) -> AppResult<(QueryResponse, u64)> {
-        // Use the state storage at the given version to perform the query.
+        // Use the state storage at the latest version to perform the query.
         let storage = self.db.state_storage_with_comment(None, "query_app")?;
         let block = LAST_FINALIZED_BLOCK.load(&storage)?;
 
