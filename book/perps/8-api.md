@@ -2794,17 +2794,20 @@ curl -X POST https://<host>/simulate \
 
 ```json
 {
-  "gas_limit": null,
+  "gas_limit": 100000000,
   "gas_used": 750000,
   "result": {
-    "ok": [ ... ]
-  }
+    "Ok": null
+  },
+  "events": { ... }
 }
 ```
 
+`result` is the standard-library `Result` serialization: `{"Ok": null}` on success (the `Ok` value is `()`), or `{"Err": {"error": "...", "backtrace": "..."}}` on failure. `events` is the per-stage event tree (`withhold`, `authenticate`, `msgs_and_backrun`, `finalize`). `gas_limit` is the simulation ceiling (the node's `query_gas_limit`), not the gas you should set on the final transaction — use `gas_used` for that.
+
 ### 11.3 Broadcast
 
-Submit a signed `Tx` to the mempool. The body is the `Tx`; the response is the `BroadcastTxOutcome`. This is a mempool receipt, **not** block inclusion: a transaction accepted into the mempool returns `200` with `check_tx.code` equal to `0`, and a mempool-rejected transaction also returns `200` but with a non-zero `check_tx.code` (it never entered a block). Only a transport failure to the consensus node returns `500`.
+Submit a signed `Tx` to the mempool. The body is the `Tx`; the response is the `BroadcastTxOutcome`. This is a mempool receipt, **not** block inclusion: an accepted transaction returns `200` with `check_tx.result` set to `{"Ok": null}`, and a mempool-rejected transaction also returns `200` but with `check_tx.result` an `{"Err": ...}` object (it never entered a block). Only a transport failure to the consensus node returns `500`.
 
 **Request body** — a signed `Tx`:
 
@@ -2842,11 +2845,17 @@ curl -X POST https://<host>/broadcast \
 {
   "tx_hash": "...",
   "check_tx": {
-    "code": 0,
-    "gas_used": 750000
+    "gas_limit": 1500000,
+    "gas_used": 12000,
+    "result": {
+      "Ok": null
+    },
+    "events": { ... }
   }
 }
 ```
+
+`check_tx` is a `CheckTxOutcome` produced by mempool admission (the `withhold` and `authenticate` stages only), so its `gas_used` is small and its `events` cover just those stages. `result` is `{"Ok": null}` if admitted, or `{"Err": {"error": "...", "backtrace": "..."}}` if rejected.
 
 ## 12. New in v0.26.0: WebSocket API
 
