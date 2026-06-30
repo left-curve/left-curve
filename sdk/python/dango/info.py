@@ -281,6 +281,17 @@ class Info(API):
 
         return cast("dict[str, Any]", self.post("/broadcast", tx))
 
+    def broadcast_tx_ws(self, tx: Tx) -> dict[str, Any]:
+        """Submit a signed Tx over the native WebSocket `broadcast` channel.
+
+        An alternative to `broadcast_tx_sync` (REST `POST /broadcast`, the
+        default) for clients already holding a `/ws` connection. Returns the
+        same BroadcastTxOutcome; a mempool-rejected tx returns normally (the
+        rejection rides `check_tx.result`).
+        """
+
+        return self._ws_stream.broadcast(cast("dict[str, Any]", tx))
+
     # --- Perps queries -------------------------------------------------------
     #
     # Each method below is a typed wrapper around `query_app_smart` against

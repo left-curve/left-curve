@@ -19,9 +19,11 @@ import contextlib
 import json
 import threading
 from collections.abc import Callable
-from typing import Any, Final
+from typing import Any, Final, cast
 
 import websocket  # from websocket-client
+
+from dango.utils.error import ServerError
 
 # Frame-level keepalive interval. The server closes a connection it has not
 # heard from for 60s; a 20s ping (and the automatic pong to the server's own
@@ -105,6 +107,60 @@ class WsStreamManager:
 
         for thread in threads:
             thread.join(timeout=timeout)
+
+    def broadcast(self, tx: dict[str, Any], *, timeout: float = 10.0) -> dict[str, Any]:
+        """Broadcast a signed tx over the `broadcast` channel; return the `BroadcastTxOutcome`.
+
+        A one-shot request/response on a dedicated short-lived connection
+        (unlike `subscribe`, which is a long-lived stream on its own thread).
+        `Info.broadcast_tx_sync` (REST `POST /broadcast`) is the default; this
+        avoids a second HTTP connection for callers already on `/ws`. A
+        mempool-rejected tx returns normally (the rejection rides
+        `check_tx.result`); only a transport failure raises `ServerError`.
+        """
+
+        try:
+            ws = websocket.create_connection(self._ws_url, timeout=timeout)
+        except Exception as exc:
+            raise ServerError(f"WebSocket connection to {self._ws_url} failed: {exc}") from exc
+
+        try:
+            ws.send(json.dumps({"method": "broadcast", "id": 1, "tx": tx}))
+
+            while True:
+                try:
+                    raw = ws.recv()
+                except Exception as exc:
+                    raise ServerError(f"WebSocket broadcast failed: {exc}") from exc
+
+                if not raw:
+                    raise ServerError("WebSocket closed before broadcast reply")
+
+                try:
+                    msg = json.loads(raw)
+                except Exception as exc:
+                    raise ServerError(f"non-JSON WebSocket frame: {raw!r}") from exc
+
+                if not isinstance(msg, dict):
+                    continue
+
+                # A transport failure to the consensus node is an `error` frame;
+                # a mempool rejection arrives as a `data` frame instead.
+                if "error" in msg:
+                    error = msg.get("error")
+                    if isinstance(error, dict):
+                        detail = f"{error.get('code', 'error')}: {error.get('message', '')}"
+                    else:
+                        detail = str(error)
+                    raise ServerError(f"broadcast failed: {detail}")
+
+                if msg.get("channel") == "broadcast":
+                    return cast("dict[str, Any]", msg.get("data", {}) or {})
+
+                # Ignore anything else (e.g. a `pong`).
+        finally:
+            with contextlib.suppress(Exception):
+                ws.close()
 
     # --- internals -----------------------------------------------------------
 

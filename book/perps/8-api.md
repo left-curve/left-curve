@@ -2994,9 +2994,34 @@ Stream every finalized block in full — the same `FullBlock` shape (`block` + `
 {"channel": "fullBlock", "id": 2, "data": {"block": { ... }, "outcome": { ... }}}
 ```
 
+#### `broadcast`
+
+Submit a signed transaction to the mempool — a **write** request/response (one request, one reply), not a subscription stream. The REST `POST /broadcast` ([§11.3](#113-broadcast)) is the default; this lets a client already holding a `/ws` connection broadcast without opening a separate HTTP request. Like REST, it returns a mempool receipt (`BroadcastTxOutcome`), **not** block inclusion.
+
+```json
+{"method": "broadcast", "id": 1, "tx": { ... signed Tx ... }}
+```
+
+| Field | Type     | Description                                                     |
+| ----- | -------- | --------------------------------------------------------------- |
+| `id`  | `Int`    | Echoed on the reply frame                                       |
+| `tx`  | `Object` | The signed `Tx` (see [§2](#2-authentication-and-transactions))  |
+
+The reply rides the `broadcast` channel. Success — **including a mempool-rejected tx**, whose rejection is carried in `check_tx.result` — is a `data` frame holding the `BroadcastTxOutcome` (same shape as [§11.3](#113-broadcast)):
+
+```json
+{"channel": "broadcast", "id": 1, "data": {"tx_hash": "...", "check_tx": { ... }}}
+```
+
+Only a transport failure to the consensus node is an `error` frame:
+
+```json
+{"channel": "broadcast", "id": 1, "error": {"code": "broadcastFailed", "message": "..."}}
+```
+
 ### 12.3 Reconnect and errors
 
-Both channels are served from an in-memory window of recent blocks. Every data frame carries the block height (`blockHeight`, or `block.info.height` for `fullBlock`), so a client tracks the last height it saw and, on reconnect, resubscribes with `since` set to that height plus one. Subscriptions are not persisted across reconnects: a client that reconnects must resend its `subscribe` messages.
+Both subscription channels (`perpsEvents` and `fullBlock`) are served from an in-memory window of recent blocks. Every data frame carries the block height (`blockHeight`, or `block.info.height` for `fullBlock`), so a client tracks the last height it saw and, on reconnect, resubscribes with `since` set to that height plus one. Subscriptions are not persisted across reconnects: a client that reconnects must resend its `subscribe` messages.
 
 Problems are delivered as `error`-keyed frames. An error that concerns a specific subscription rides that subscription's own channel and `id` — an `error` sibling of the `data` frames it would otherwise send — so a client handles a feed's failure on the same channel it reads from. An error with no subscription to attribute it to (an unparseable message, or an `unsubscribe` for an unknown `id`) arrives on the dedicated `error` channel instead, carrying the offending `id` when there is one.
 
