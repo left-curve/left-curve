@@ -327,6 +327,89 @@ impl HttpClient {
 
         Ok(rx)
     }
+
+    /// Broadcast a signed transaction over the native WebSocket (`GET /ws`,
+    /// `broadcast` channel) rather than REST: open a short-lived connection,
+    /// send one `broadcast` request, and await its reply.
+    ///
+    /// [`HttpClient::broadcast_tx`] (REST `POST /broadcast`) is the default;
+    /// this exists for callers that prefer a single WebSocket round-trip. As
+    /// with REST, a mempool-rejected tx returns `Ok` (the rejection rides
+    /// [`BroadcastTxOutcome::check_tx`]); only a transport failure to the node
+    /// is `Err`.
+    pub async fn broadcast_tx_ws(&self, tx: Tx) -> anyhow::Result<BroadcastTxOutcome> {
+        // Derive the `/ws` URL from the HTTP base (same as
+        // `subscribe_perps_events`).
+        let mut ws_url = self.url.join("ws")?;
+        match ws_url.scheme() {
+            "http" => ws_url
+                .set_scheme("ws")
+                .map_err(|_| anyhow!("failed to set ws scheme"))?,
+            "https" => ws_url
+                .set_scheme("wss")
+                .map_err(|_| anyhow!("failed to set wss scheme"))?,
+            "ws" | "wss" => {},
+            scheme => bail!("invalid URL scheme: {scheme}"),
+        }
+
+        let request = serde_json::json!({
+            "method": "broadcast",
+            "id": 1,
+            "tx": serde_json::to_value(&tx)?,
+        });
+
+        let (ws, _response) = connect_async(ws_url.as_str())
+            .await
+            .map_err(|err| anyhow!("WebSocket connection failed: {err}"))?;
+
+        let (mut sink, mut stream) = ws.split();
+        sink.send(Message::text(request.to_string()))
+            .await
+            .map_err(|err| anyhow!("failed to send broadcast: {err}"))?;
+
+        // Await the single `broadcast` reply, answering control pings meanwhile.
+        loop {
+            match stream.next().await {
+                Some(Ok(Message::Text(text))) => {
+                    let value: serde_json::Value = serde_json::from_str(&text)?;
+
+                    // Co-located error model: an `error` key is a transport
+                    // failure (a mempool rejection arrives as a `data` frame).
+                    if let Some(error) = value.get("error") {
+                        let code = error
+                            .get("code")
+                            .and_then(serde_json::Value::as_str)
+                            .unwrap_or("error");
+                        let message = error
+                            .get("message")
+                            .and_then(serde_json::Value::as_str)
+                            .unwrap_or_default();
+                        let _ = sink.close().await;
+                        bail!("{code}: {message}");
+                    }
+
+                    if value.get("channel").and_then(serde_json::Value::as_str) == Some("broadcast")
+                    {
+                        let data = value.get("data").cloned().unwrap_or_default();
+                        let outcome: BroadcastTxOutcome = serde_json::from_value(data)?;
+                        let _ = sink.close().await;
+                        return Ok(outcome);
+                    }
+
+                    // Ignore anything else (e.g. a `pong`).
+                },
+                Some(Ok(Message::Ping(data))) => {
+                    let _ = sink.send(Message::Pong(data)).await;
+                },
+                Some(Ok(Message::Close(frame))) => {
+                    bail!("WebSocket closed before broadcast reply: {frame:?}")
+                },
+                Some(Ok(_)) => {},
+                Some(Err(err)) => bail!("WebSocket error: {err}"),
+                None => bail!("WebSocket closed before broadcast reply"),
+            }
+        }
+    }
 }
 
 /// Macro to generate pagination methods for GraphQL queries.

@@ -34,6 +34,32 @@ async fn broadcast() -> anyhow::Result<()> {
     Ok(())
 }
 
+/// The same broadcast, but over the native WebSocket `broadcast` channel
+/// instead of REST `POST /broadcast`.
+#[tokio::test(flavor = "multi_thread")]
+async fn broadcast_ws() -> anyhow::Result<()> {
+    let (client, mut accounts) = setup_client_test().await?;
+
+    let tx = accounts.user1.sign_transaction(
+        NonEmpty::new_unchecked(vec![Message::transfer(
+            accounts.user2.address.into_inner(),
+            Coins::one(usdc::DENOM.clone(), 100)?,
+        )?]),
+        MOCK_CHAIN_ID,
+        1000000,
+    )?;
+
+    let res = client.broadcast_tx_ws(tx).await?;
+
+    tokio::time::sleep(std::time::Duration::from_secs(1)).await;
+
+    let tx_hash = res.tx_hash;
+
+    client.search_tx(tx_hash).await?.outcome.should_succeed();
+
+    Ok(())
+}
+
 #[tokio::test(flavor = "multi_thread")]
 async fn simulate() -> anyhow::Result<()> {
     let (client, accounts) = setup_client_test().await?;
