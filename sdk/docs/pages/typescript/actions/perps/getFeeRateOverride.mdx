@@ -12,7 +12,6 @@ function getFeeRateOverride(
   client: Client,
   parameters: {
     user: Address
-    height?: number
   },
 ): Promise<FeeRateOverride | null>
 ```
@@ -32,8 +31,6 @@ const override = await client.getFeeRateOverride({ user })
 ## Parameters
 
 **`user`** — `Address`. The trader.
-
-**`height`** — `number`, optional. Block height. Default `0` (latest).
 
 ## Returns
 

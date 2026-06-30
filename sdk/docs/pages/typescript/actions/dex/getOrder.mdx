@@ -14,7 +14,6 @@ function getOrder(
   client: Client,
   parameters: {
     orderId: OrderId
-    height?: number
   },
 ): Promise<OrderResponse>
 ```
@@ -31,8 +30,6 @@ const order = await client.getOrder({ orderId: "12345" })
 ## Parameters
 
 **`orderId`** — `OrderId`. The order id.
-
-**`height`** — `number`, optional. Block height. Default `0` (latest).
 
 ## Returns
 

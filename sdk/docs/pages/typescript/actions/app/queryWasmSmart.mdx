@@ -10,7 +10,6 @@ function queryWasmSmart<value extends JsonValue = JsonValue>(
   parameters: {
     contract: Address
     msg: Json
-    height?: number
   },
 ): Promise<WasmSmartResponse<value>>
 ```
@@ -36,8 +35,6 @@ const config = await client.queryWasmSmart<Config>({
 **`contract`** — `Address`. The contract to query.
 
 **`msg`** — `Json`. The query message. Always camelCase — the SDK converts to snake_case on the wire.
-
-**`height`** — `number`, optional. Block height to query at. Default `0` (latest).
 
 ## Returns
 

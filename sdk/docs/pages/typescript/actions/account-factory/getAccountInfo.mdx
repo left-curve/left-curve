@@ -9,7 +9,6 @@ function getAccountInfo(
   client: Client,
   parameters: {
     address: Address
-    height?: number
   },
 ): Promise<AccountDetails | null>
 ```
@@ -30,8 +29,6 @@ console.log(info?.username, info?.index)
 ## Parameters
 
 **`address`** — `Address`. The account address.
-
-**`height`** — `number`, optional. Block height. Default `0` (latest).
 
 ## Returns
 

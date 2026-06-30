@@ -10,7 +10,6 @@ function getWithdrawalFee(
   parameters: {
     denom: Denom
     remote: Remote
-    height?: number
   },
 ): Promise<string>
 ```
@@ -32,8 +31,6 @@ const fee = await client.gateway.getWithdrawalFee({
 **`denom`** — `Denom`. Token denom.
 
 **`remote`** — `Remote`. `{ warp: { domain, contract: Addr32 } }` or `"bitcoin"`.
-
-**`height`** — `number`, optional. Block height. Default `0` (latest).
 
 ## Returns
 

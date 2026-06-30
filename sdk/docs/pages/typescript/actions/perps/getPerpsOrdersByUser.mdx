@@ -13,7 +13,6 @@ function getPerpsOrdersByUser(
   client: Client,
   parameters: {
     user: Address
-    height?: number
   },
 ): Promise<PerpsOrdersByUserResponse>
 ```
@@ -33,8 +32,6 @@ const orders = await client.getPerpsOrdersByUser({ user })
 ## Parameters
 
 **`user`** — `Address`. The trader.
-
-**`height`** — `number`, optional. Block height. Default `0` (latest).
 
 ## Returns
 

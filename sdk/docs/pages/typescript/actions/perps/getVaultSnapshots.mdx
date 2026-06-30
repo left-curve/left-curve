@@ -10,7 +10,6 @@ function getVaultSnapshots(
   parameters?: {
     min?: number
     max?: number
-    height?: number
   },
 ): Promise<Record<string, VaultSnapshot>>
 ```
@@ -29,8 +28,6 @@ const snapshots = await client.getVaultSnapshots({ min: 1_000, max: 5_000 })
 **`min`** — `number`, optional. Inclusive lower bound (converted to string before sending).
 
 **`max`** — `number`, optional. Inclusive upper bound (converted to string).
-
-**`height`** — `number`, optional. Block height for the query itself. Default `0` (latest).
 
 ## Returns
 

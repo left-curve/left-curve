@@ -15,7 +15,6 @@ function getPerpsLiquidityDepth(
     pairId: string
     bucketSize: string
     limit?: number
-    height?: number
   },
 ): Promise<PerpsLiquidityDepthResponse>
 ```
@@ -40,8 +39,6 @@ const depth = await client.getPerpsLiquidityDepth({
 **`bucketSize`** — `string`. Price bucket width.
 
 **`limit`** — `number`, optional. Maximum buckets per side.
-
-**`height`** — `number`, optional. Block height. Default `0` (latest).
 
 ## Returns
 

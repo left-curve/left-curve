@@ -41,11 +41,7 @@ export {
   getPerpsPairParams,
 } from "./queries/getPairParams.js";
 
-export {
-  type GetPerpsParamParameters,
-  type GetPerpsParamReturnType,
-  getPerpsParam,
-} from "./queries/getParam.js";
+export { type GetPerpsParamReturnType, getPerpsParam } from "./queries/getParam.js";
 
 export {
   type QueryPerpsCandlesParameters,
@@ -76,11 +72,7 @@ export {
   getPerpsPairState,
 } from "./queries/getPerpsPairState.js";
 
-export {
-  type GetPerpsStateParameters,
-  type GetPerpsStateReturnType,
-  getPerpsState,
-} from "./queries/getPerpsState.js";
+export { type GetPerpsStateReturnType, getPerpsState } from "./queries/getPerpsState.js";
 
 export {
   type DepositMarginParameters,
@@ -119,7 +111,6 @@ export {
 } from "./mutations/setFeeShareRatio.js";
 
 export {
-  type GetPerpsVaultStateParameters,
   type GetPerpsVaultStateReturnType,
   getPerpsVaultState,
 } from "./queries/getVaultState.js";

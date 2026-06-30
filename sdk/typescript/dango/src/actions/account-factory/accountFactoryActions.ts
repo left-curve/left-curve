@@ -24,11 +24,7 @@ import {
   getAccountSessionSeenNonces,
 } from "./queries/getAccountSessionSeenNonces.js";
 
-import {
-  type GetCodeHashParameters,
-  type GetCodeHashReturnType,
-  getCodeHash,
-} from "./queries/getCodeHash.js";
+import { type GetCodeHashReturnType, getCodeHash } from "./queries/getCodeHash.js";
 
 import {
   type GetAllAccountInfoParameters,
@@ -89,7 +85,7 @@ export type AccountFactoryQueryActions = {
   getAccountSessionSeenNonces: (
     args: GetAccountSessionSeenNoncesParameters,
   ) => GetAccountSessionSeenNoncesReturnType;
-  getCodeHash: (args?: GetCodeHashParameters) => GetCodeHashReturnType;
+  getCodeHash: () => GetCodeHashReturnType;
   getAllAccountInfo: (args: GetAllAccountInfoParameters) => GetAllAccountInfoReturnType;
   getNextAccountIndex: (args: GetNextAccountIndexParameters) => GetNextAccountIndexReturnType;
   getUser: (args: GetUserParameters) => GetUserReturnType;
@@ -114,7 +110,7 @@ export function accountFactoryQueryActions(client: Client): AccountFactoryQueryA
     getAccountInfo: (args) => getAccountInfo(client, args),
     getAccountSeenNonces: (args) => getAccountSeenNonces(client, args),
     getAccountSessionSeenNonces: (args) => getAccountSessionSeenNonces(client, args),
-    getCodeHash: (args) => getCodeHash(client, args),
+    getCodeHash: () => getCodeHash(client),
     getAllAccountInfo: (args) => getAllAccountInfo(client, args),
     getNextAccountIndex: (args) => getNextAccountIndex(client, args),
     getUser: (args) => getUser(client, args),

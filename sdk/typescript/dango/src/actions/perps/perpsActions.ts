@@ -36,11 +36,7 @@ import {
   getPerpsPairParams,
 } from "./queries/getPairParams.js";
 
-import {
-  type GetPerpsParamParameters,
-  type GetPerpsParamReturnType,
-  getPerpsParam,
-} from "./queries/getParam.js";
+import { type GetPerpsParamReturnType, getPerpsParam } from "./queries/getParam.js";
 
 import {
   type QueryPerpsCandlesParameters,
@@ -71,11 +67,7 @@ import {
   getPerpsPairState,
 } from "./queries/getPerpsPairState.js";
 
-import {
-  type GetPerpsStateParameters,
-  type GetPerpsStateReturnType,
-  getPerpsState,
-} from "./queries/getPerpsState.js";
+import { type GetPerpsStateReturnType, getPerpsState } from "./queries/getPerpsState.js";
 
 import {
   type DepositMarginParameters,
@@ -113,11 +105,7 @@ import {
   setFeeShareRatio,
 } from "./mutations/setFeeShareRatio.js";
 
-import {
-  type GetPerpsVaultStateParameters,
-  type GetPerpsVaultStateReturnType,
-  getPerpsVaultState,
-} from "./queries/getVaultState.js";
+import { type GetPerpsVaultStateReturnType, getPerpsVaultState } from "./queries/getVaultState.js";
 
 import {
   type GetVaultSnapshotsParameters,
@@ -172,14 +160,14 @@ export type PerpsQueryActions = {
   ) => GetPerpsLiquidityDepthReturnType;
   getPerpsPairParam: (args: GetPerpsPairParamParameters) => GetPerpsPairParamReturnType;
   getPerpsPairParams: (args?: GetPerpsPairParamsParameters) => GetPerpsPairParamsReturnType;
-  getPerpsParam: (args?: GetPerpsParamParameters) => GetPerpsParamReturnType;
+  getPerpsParam: () => GetPerpsParamReturnType;
   queryPerpsCandles: (args: QueryPerpsCandlesParameters) => QueryPerpsCandlesReturnType;
   queryPerpsEvents: (args: QueryPerpsEventsParameters) => QueryPerpsEventsReturnType;
   getPerpsPairStats: (args: GetPerpsPairStatsParameters) => GetPerpsPairStatsReturnType;
   getAllPerpsPairStats: () => GetAllPerpsPairStatsReturnType;
   getPerpsPairState: (args: GetPerpsPairStateParameters) => GetPerpsPairStateReturnType;
-  getPerpsState: (args?: GetPerpsStateParameters) => GetPerpsStateReturnType;
-  getPerpsVaultState: (args?: GetPerpsVaultStateParameters) => GetPerpsVaultStateReturnType;
+  getPerpsState: () => GetPerpsStateReturnType;
+  getPerpsVaultState: () => GetPerpsVaultStateReturnType;
   getVaultSnapshots: (args?: GetVaultSnapshotsParameters) => GetVaultSnapshotsReturnType;
   getFeeRateOverride: (args: GetFeeRateOverrideParameters) => GetFeeRateOverrideReturnType;
 };
@@ -192,14 +180,14 @@ export function perpsQueryActions(client: Client): PerpsQueryActions {
     getPerpsLiquidityDepth: (args) => getPerpsLiquidityDepth(client, args),
     getPerpsPairParam: (args) => getPerpsPairParam(client, args),
     getPerpsPairParams: (args) => getPerpsPairParams(client, args),
-    getPerpsParam: (args) => getPerpsParam(client, args),
+    getPerpsParam: () => getPerpsParam(client),
     queryPerpsCandles: (args) => queryPerpsCandles(client, args),
     queryPerpsEvents: (args) => queryPerpsEvents(client, args),
     getPerpsPairStats: (args) => getPerpsPairStats(client, args),
     getAllPerpsPairStats: () => getAllPerpsPairStats(client),
     getPerpsPairState: (args) => getPerpsPairState(client, args),
-    getPerpsState: (args) => getPerpsState(client, args),
-    getPerpsVaultState: (args) => getPerpsVaultState(client, args),
+    getPerpsState: () => getPerpsState(client),
+    getPerpsVaultState: () => getPerpsVaultState(client),
     getVaultSnapshots: (args) => getVaultSnapshots(client, args),
     getFeeRateOverride: (args) => getFeeRateOverride(client, args),
   };

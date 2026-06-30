@@ -9,7 +9,6 @@ function getContractInfo(
   client: Client,
   parameters: {
     address: Address
-    height?: number
   },
 ): Promise<ContractInfo>
 ```
@@ -30,8 +29,6 @@ console.log(info.codeHash, info.admin)
 ## Parameters
 
 **`address`** — `Address`. The contract to query.
-
-**`height`** — `number`, optional. Block height to query at. Default `0` (latest).
 
 ## Returns
 

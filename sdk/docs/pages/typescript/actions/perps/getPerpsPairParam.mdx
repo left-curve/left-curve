@@ -15,7 +15,6 @@ function getPerpsPairParam(
   client: Client,
   parameters: {
     pairId: string
-    height?: number
   },
 ): Promise<PerpsPairParam | null>
 ```
@@ -32,8 +31,6 @@ const params = await client.getPerpsPairParam({ pairId: "BTC-PERP" })
 ## Parameters
 
 **`pairId`** — `string`. Perps pair identifier.
-
-**`height`** — `number`, optional. Block height. Default `0` (latest).
 
 ## Returns
 

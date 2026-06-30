@@ -15,7 +15,6 @@ function getPerpsUserState(
   client: Client,
   parameters: {
     user: Address
-    height?: number
   },
 ): Promise<PerpsUserState | null>
 ```
@@ -35,8 +34,6 @@ const state = await client.getPerpsUserState({ user })
 ## Parameters
 
 **`user`** — `Address`. The trader.
-
-**`height`** — `number`, optional. Block height. Default `0` (latest).
 
 ## Returns
 

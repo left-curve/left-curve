@@ -15,7 +15,6 @@ function getPairs(
   parameters?: {
     limit?: number
     startAfter?: PairId
-    height?: number
   },
 ): Promise<PairUpdate[]>
 ```
@@ -34,8 +33,6 @@ const pairs = await client.getPairs({ limit: 50 })
 **`limit`** — `number`, optional. Maximum pairs to return.
 
 **`startAfter`** — `PairId`, optional. `{ baseDenom, quoteDenom }` to start after.
-
-**`height`** — `number`, optional. Block height. Default `0` (latest).
 
 ## Returns
 

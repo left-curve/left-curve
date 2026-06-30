@@ -3,7 +3,6 @@ import { queryApp } from "./queryApp.js";
 
 export type GetSupplyParameters = {
   denom: Denom;
-  height?: number;
 };
 
 export type GetSupplyReturnType = Promise<Coin>;
@@ -12,19 +11,18 @@ export type GetSupplyReturnType = Promise<Coin>;
  * Get the supply of a token.
  * @param parameters
  * @param parameters.denom The denomination of the token.
- * @param parameters.height The height at which to query the supply.
  * @returns The supply of the token.
  */
 export async function getSupply(
   client: Client,
   parameters: GetSupplyParameters,
 ): GetSupplyReturnType {
-  const { denom, height = 0 } = parameters;
+  const { denom } = parameters;
   const query = {
     supply: { denom },
   };
 
-  const res = await queryApp(client, { query, height });
+  const res = await queryApp(client, { query });
 
   if ("supply" in res) return res.supply;
   throw new Error(`expecting supply response, got ${JSON.stringify(res)}`);

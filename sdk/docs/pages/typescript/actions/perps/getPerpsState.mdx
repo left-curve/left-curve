@@ -13,7 +13,6 @@ external liquidation losses never touch vault margin. See protocol book:
 ```ts
 function getPerpsState(
   client: Client,
-  parameters?: { height?: number },
 ): Promise<PerpsState>
 ```
 
@@ -25,10 +24,6 @@ import { createPublicClient, createTransport, testnet } from "@left-curve/sdk"
 const client = createPublicClient({ chain: testnet, transport: createTransport() })
 const state = await client.getPerpsState()
 ```
-
-## Parameters
-
-**`height`** — `number`, optional. Block height. Default `0` (latest).
 
 ## Returns
 

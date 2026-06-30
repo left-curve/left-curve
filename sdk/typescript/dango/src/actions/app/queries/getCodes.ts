@@ -5,7 +5,6 @@ export type GetCodesParameters =
   | {
       startAfter?: string;
       limit?: number;
-      height?: number;
     }
   | undefined;
 
@@ -16,16 +15,15 @@ export type GetCodesReturnType = Promise<CodesResponse>;
  * @param parameters
  * @param parameters.startAfter The code to start after.
  * @param parameters.limit The number of codes to return.
- * @param parameters.height The height at which to query the codes.
  * @returns The codes.
  */
 export async function getCodes(client: Client, parameters: GetCodesParameters): GetCodesReturnType {
-  const { startAfter, limit, height = 0 } = parameters || {};
+  const { startAfter, limit } = parameters || {};
   const query = {
     codes: { startAfter, limit },
   };
 
-  const res = await queryApp(client, { query, height });
+  const res = await queryApp(client, { query });
 
   if ("codes" in res) return res.codes;
   throw new Error(`expecting codes response, got ${JSON.stringify(res)}`);

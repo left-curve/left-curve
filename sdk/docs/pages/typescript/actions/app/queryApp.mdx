@@ -9,7 +9,6 @@ function queryApp(
   client: Client,
   parameters: {
     query: Json
-    height?: number
   },
 ): Promise<QueryResponse>
 ```
@@ -34,8 +33,6 @@ if ("balance" in res) {
 ## Parameters
 
 **`query`** — `Json`. A `QueryRequest` variant — e.g. `{ balance: { address, denom } }`, `{ contracts: {...} }`, `{ wasmSmart: {...} }`.
-
-**`height`** — `number`, optional. Block height to query at. Default `0` (latest).
 
 ## Returns
 
