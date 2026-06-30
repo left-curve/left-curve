@@ -39,19 +39,21 @@ pub async fn broadcast_tx(
         "`broadcast_tx` called",
     );
 
-    match app_ctx.consensus_client.broadcast_tx(tx.clone()).await {
-        Ok(response) => Ok(response),
-        Err(e) => {
+    app_ctx
+        .consensus_client
+        .broadcast_tx(tx.clone())
+        .await
+        .inspect_err(|_e| {
             #[cfg(feature = "tracing")]
-            tracing::error!(error = ?e, tx = ?tx, "`broadcast_tx` failed");
+            tracing::error!(error = ?_e, tx = ?tx, "`broadcast_tx` failed");
 
-            let tx = tx.to_json_value()?.into_inner();
-            configure_scope(|scope| {
-                // NOTE: Sentry might truncate data if too large.
-                scope.set_extra("transaction", tx);
-            });
-
-            Err(e)
-        },
-    }
+            // Best-effort: attach the tx to the Sentry scope. A serialization
+            // failure here must not mask the original broadcast error.
+            if let Ok(tx) = tx.to_json_value() {
+                configure_scope(|scope| {
+                    // NOTE: Sentry might truncate data if too large.
+                    scope.set_extra("transaction", tx.into_inner());
+                });
+            }
+        })
 }
