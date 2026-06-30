@@ -269,8 +269,6 @@ class _QueryClient(Protocol):
         self,
         contract: Addr,
         msg: dict[str, Any],
-        *,
-        height: int | None = None,
     ) -> Any: ...
 
 

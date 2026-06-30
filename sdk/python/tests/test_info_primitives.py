@@ -1,4 +1,4 @@
-"""Tests for dango.info.Info — GraphQL query primitives."""
+"""Tests for dango.info.Info — query primitives."""
 
 from __future__ import annotations
 
@@ -37,6 +37,27 @@ def _capture_request(
         return Response(json.dumps(response), mimetype="application/json")
 
     httpserver.expect_request("/graphql", method="POST").respond_with_handler(handler)
+    return captured
+
+
+def _capture_rest(
+    httpserver: HTTPServer,
+    path: str,
+    response: Any,
+) -> list[Any]:
+    """Stub a REST `path` to return `response` and capture each inbound JSON body.
+
+    Unlike `_capture_request`, the captured body is the raw posted object (no
+    GraphQL `{query, variables}` envelope) and `response` is returned verbatim.
+    """
+
+    captured: list[Any] = []
+
+    def handler(request: Request) -> Response:
+        captured.append(request.get_json())
+        return Response(json.dumps(response), mimetype="application/json")
+
+    httpserver.expect_request(path, method="POST").respond_with_handler(handler)
     return captured
 
 
@@ -98,56 +119,45 @@ class TestConstruction:
 
 
 class TestQueryStatus:
-    def test_returns_chain_id_and_block(self, httpserver: HTTPServer) -> None:
-        """Posts QueryStatus and unwraps to {chainId, block}."""
+    def test_returns_status(self, httpserver: HTTPServer) -> None:
+        """Unwraps the `status` envelope to the raw QueryStatusResponse."""
 
-        block = {"blockHeight": 42, "timestamp": "2025-01-01T00:00:00Z", "hash": "0xabc"}
-        _capture_request(
+        block = {"height": 42, "timestamp": "2025-01-01T00:00:00Z", "hash": "0xabc"}
+        _capture_rest(
             httpserver,
-            {"data": {"queryStatus": {"chainId": "dango-1", "block": block}}},
+            "/query",
+            {"status": {"chain_id": "dango-1", "last_finalized_block": block}},
         )
         result = _info(httpserver).query_status()
-        assert result == {"chainId": "dango-1", "block": block}
+        assert result == {"chain_id": "dango-1", "last_finalized_block": block}
 
-    def test_posts_query_status_document(self, httpserver: HTTPServer) -> None:
-        """The wire body has the QueryStatus GraphQL document."""
+    def test_posts_status_query(self, httpserver: HTTPServer) -> None:
+        """The wire body is the bare `{status: {}}` Query object."""
 
-        captured = _capture_request(
+        captured = _capture_rest(
             httpserver,
-            {"data": {"queryStatus": {"chainId": "dango-1", "block": {}}}},
+            "/query",
+            {"status": {"chain_id": "dango-1", "last_finalized_block": {}}},
         )
         _info(httpserver).query_status()
-        assert "QueryStatus" in captured[0]["query"]
-        assert "queryStatus" in captured[0]["query"]
-        # query_status has no variables; API.query() sends {} for that case.
-        assert captured[0]["variables"] == {}
+        assert captured[0] == {"status": {}}
 
 
 class TestQueryApp:
-    def test_passes_request_and_height(self, httpserver: HTTPServer) -> None:
-        """request and height are forwarded as GraphQL variables."""
+    def test_posts_request_body(self, httpserver: HTTPServer) -> None:
+        """The request object is POSTed to /query as the raw JSON body."""
 
-        captured = _capture_request(
-            httpserver,
-            {"data": {"queryApp": {"some": "value"}}},
-        )
-        _info(httpserver).query_app({"config": {}}, height=100)
-        assert captured[0]["variables"] == {"request": {"config": {}}, "height": 100}
+        captured = _capture_rest(httpserver, "/query", {"config": {"some": "value"}})
+        _info(httpserver).query_app({"config": {}})
+        assert captured[0] == {"config": {}}
 
-    def test_returns_raw_query_app_value(self, httpserver: HTTPServer) -> None:
-        """The unwrapped `queryApp` field is returned untouched."""
+    def test_returns_raw_response(self, httpserver: HTTPServer) -> None:
+        """The response body is returned untouched (no envelope)."""
 
         # Use a non-dict value to prove we don't wrap or coerce the response.
-        _capture_request(httpserver, {"data": {"queryApp": [1, 2, 3]}})
+        _capture_rest(httpserver, "/query", [1, 2, 3])
         result = _info(httpserver).query_app({"some": "request"})
         assert result == [1, 2, 3]
-
-    def test_default_height_is_null(self, httpserver: HTTPServer) -> None:
-        """Omitting height sends `null` so the server uses latest block."""
-
-        captured = _capture_request(httpserver, {"data": {"queryApp": {}}})
-        _info(httpserver).query_app({"config": {}})
-        assert captured[0]["variables"] == {"request": {"config": {}}, "height": None}
 
 
 class TestQueryAppSmart:
@@ -155,16 +165,11 @@ class TestQueryAppSmart:
         """The request becomes {wasm_smart: {contract, msg}}."""
 
         # Response is also wrapped: the chain returns
-        # `{"queryApp": {"wasm_smart": <inner>}}` and `query_app_smart`
-        # unwraps the `wasm_smart` envelope before returning.
-        captured = _capture_request(
-            httpserver,
-            {"data": {"queryApp": {"wasm_smart": {"result": "ok"}}}},
-        )
+        # `{"wasm_smart": <inner>}` and `query_app_smart` unwraps the
+        # `wasm_smart` envelope before returning.
+        captured = _capture_rest(httpserver, "/query", {"wasm_smart": {"result": "ok"}})
         _info(httpserver).query_app_smart(_CONTRACT_ADDRESS, {"foo": "bar"})
-        assert captured[0]["variables"]["request"] == {
-            "wasm_smart": {"contract": _CONTRACT_ADDRESS, "msg": {"foo": "bar"}}
-        }
+        assert captured[0] == {"wasm_smart": {"contract": _CONTRACT_ADDRESS, "msg": {"foo": "bar"}}}
 
     def test_unwraps_wasm_smart_envelope(self, httpserver: HTTPServer) -> None:
         """The contract's response is unwrapped from the `wasm_smart` envelope."""
@@ -173,10 +178,7 @@ class TestQueryAppSmart:
         # for every queryApp request kind. `query_app_smart` is the typed
         # convenience method that promises callers see the contract's own
         # response shape, NOT the wrapper.
-        _capture_request(
-            httpserver,
-            {"data": {"queryApp": {"wasm_smart": {"some": "payload"}}}},
-        )
+        _capture_rest(httpserver, "/query", {"wasm_smart": {"some": "payload"}})
         result = _info(httpserver).query_app_smart(_CONTRACT_ADDRESS, {"foo": "bar"})
         assert result == {"some": "payload"}
 
@@ -198,12 +200,9 @@ class TestQueryAppMulti:
         """The request becomes {multi: [...]}."""
 
         queries: list[dict[str, Any]] = [{"config": {}}, {"info": {}}]
-        captured = _capture_request(
-            httpserver,
-            {"data": {"queryApp": {"multi": [{"Ok": 1}, {"Ok": 2}]}}},
-        )
+        captured = _capture_rest(httpserver, "/query", {"multi": [{"Ok": 1}, {"Ok": 2}]})
         _info(httpserver).query_app_multi(queries)
-        assert captured[0]["variables"]["request"] == {"multi": queries}
+        assert captured[0] == {"multi": queries}
 
     def test_returns_raw_ok_err_wrappers(self, httpserver: HTTPServer) -> None:
         """Heterogeneous results are returned with their Ok/Err wrappers intact."""
@@ -211,53 +210,50 @@ class TestQueryAppMulti:
         # The list is heterogeneous on purpose — one Ok and one Err — to prove
         # that Info does not auto-unwrap or short-circuit on the first Err.
         wrappers = [{"Ok": {"value": 1}}, {"Err": "boom"}]
-        _capture_request(
-            httpserver,
-            {"data": {"queryApp": {"multi": wrappers}}},
-        )
+        _capture_rest(httpserver, "/query", {"multi": wrappers})
         result = _info(httpserver).query_app_multi([{"q1": {}}, {"q2": {}}])
         assert result == wrappers
 
 
 class TestSimulate:
-    def test_passes_tx_variable(self, httpserver: HTTPServer) -> None:
-        """The UnsignedTx is forwarded as the `tx` GraphQL variable."""
+    def test_posts_tx_body(self, httpserver: HTTPServer) -> None:
+        """The UnsignedTx is POSTed to /simulate as the raw JSON body."""
 
         tx = _demo_unsigned_tx()
-        captured = _capture_request(
+        captured = _capture_rest(
             httpserver,
-            {"data": {"simulate": {"gas_used": 1, "gas_limit": 2, "result": {}}}},
+            "/simulate",
+            {"gas_used": 1, "gas_limit": 2, "result": {}},
         )
         _info(httpserver).simulate(tx)
-        assert captured[0]["variables"] == {"tx": tx}
+        assert captured[0] == tx
 
-    def test_returns_simulate_envelope(self, httpserver: HTTPServer) -> None:
+    def test_returns_outcome(self, httpserver: HTTPServer) -> None:
         """Returns {gas_used, gas_limit, result}."""
 
-        envelope = {"gas_used": 12_345, "gas_limit": 100_000, "result": {"Ok": []}}
-        _capture_request(httpserver, {"data": {"simulate": envelope}})
+        outcome = {"gas_used": 12_345, "gas_limit": 100_000, "result": {"Ok": []}}
+        _capture_rest(httpserver, "/simulate", outcome)
         result = _info(httpserver).simulate(_demo_unsigned_tx())
-        assert result == envelope
+        assert result == outcome
 
 
 class TestBroadcastTxSync:
-    def test_posts_mutation_document(self, httpserver: HTTPServer) -> None:
-        """The wire body has the BroadcastTxSync GraphQL mutation document."""
+    def test_posts_tx_body(self, httpserver: HTTPServer) -> None:
+        """The signed Tx is POSTed to /broadcast as the raw JSON body."""
 
         tx = _demo_tx()
-        captured = _capture_request(
+        captured = _capture_rest(
             httpserver,
-            {"data": {"broadcastTxSync": {"check_tx": {}, "deliver_tx": {}}}},
+            "/broadcast",
+            {"tx_hash": "0x00", "check_tx": {}},
         )
         _info(httpserver).broadcast_tx_sync(tx)
-        assert "mutation" in captured[0]["query"]
-        assert "BroadcastTxSync" in captured[0]["query"]
-        assert captured[0]["variables"] == {"tx": tx}
+        assert captured[0] == tx
 
     def test_returns_broadcast_outcome(self, httpserver: HTTPServer) -> None:
-        """The unwrapped `broadcastTxSync` envelope is returned."""
+        """The BroadcastTxOutcome is returned untouched."""
 
-        outcome = {"check_tx": {"code": 0}, "deliver_tx": {"code": 0, "events": []}}
-        _capture_request(httpserver, {"data": {"broadcastTxSync": outcome}})
+        outcome = {"tx_hash": "0xabc", "check_tx": {"code": 0}}
+        _capture_rest(httpserver, "/broadcast", outcome)
         result = _info(httpserver).broadcast_tx_sync(_demo_tx())
         assert result == outcome

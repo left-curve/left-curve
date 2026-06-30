@@ -96,7 +96,7 @@ class Exchange(API):
         # tests, multi-Exchange sharing a status query) skip this by
         # passing `chain_id=` explicitly.
         if chain_id is None:
-            chain_id = str(self._info.query_status()["chainId"])
+            chain_id = str(self._info.query_status()["chain_id"])
 
         self._chain_id: str = chain_id
 
