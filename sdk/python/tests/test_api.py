@@ -112,6 +112,63 @@ class TestQuery:
             api.query("query { foo }")
 
 
+class TestPost:
+    def test_success_returns_raw_json(self, httpserver: HTTPServer) -> None:
+        """200 OK returns the parsed JSON body as-is (no GraphQL envelope)."""
+
+        httpserver.expect_request("/query", method="POST").respond_with_json(
+            {"config": {"owner": "0xabc"}}
+        )
+        result = _api(httpserver).post("/query", {"config": {}})
+
+        assert result == {"config": {"owner": "0xabc"}}
+
+    def test_success_returns_non_dict_json(self, httpserver: HTTPServer) -> None:
+        """A non-dict JSON body is returned untouched (no envelope unwrapping)."""
+
+        httpserver.expect_request("/query", method="POST").respond_with_json([1, 2, 3])
+        assert _api(httpserver).post("/query", {"multi": []}) == [1, 2, 3]
+
+    def test_sends_body_as_json(self, httpserver: HTTPServer) -> None:
+        """The body is POSTed verbatim as JSON to the given path (no wrapper)."""
+
+        httpserver.expect_request(
+            "/broadcast",
+            method="POST",
+            json={"sender": "0xabc", "msgs": []},
+        ).respond_with_json({"tx_hash": "0x00"})
+
+        _api(httpserver).post("/broadcast", {"sender": "0xabc", "msgs": []})
+
+    def test_4xx_raises_client_error(self, httpserver: HTTPServer) -> None:
+        """Any 4xx HTTP response is mapped to ClientError."""
+
+        httpserver.expect_request("/query").respond_with_data("bad request", status=400)
+        with pytest.raises(ClientError, match="400"):
+            _api(httpserver).post("/query", {"config": {}})
+
+    def test_5xx_raises_server_error(self, httpserver: HTTPServer) -> None:
+        """Any 5xx HTTP response is mapped to ServerError."""
+
+        httpserver.expect_request("/query").respond_with_data("oops", status=500)
+        with pytest.raises(ServerError, match="500"):
+            _api(httpserver).post("/query", {"config": {}})
+
+    def test_non_json_response_raises_server_error(self, httpserver: HTTPServer) -> None:
+        """A 200 response with a non-JSON body is treated as a server malformation."""
+
+        httpserver.expect_request("/query").respond_with_data("not json", status=200)
+        with pytest.raises(ServerError, match="non-JSON"):
+            _api(httpserver).post("/query", {"config": {}})
+
+    def test_connection_refused_raises_server_error(self) -> None:
+        """A network-level connection failure is wrapped as ServerError, not leaked."""
+
+        api = API("http://127.0.0.1:1")
+        with pytest.raises(ServerError, match="request to http://127.0.0.1:1"):
+            api.post("/query", {"config": {}})
+
+
 class TestQueryTyped:
     def test_returns_cast_value(self, httpserver: HTTPServer) -> None:
         """query_typed returns the same data dict as query, just typed."""

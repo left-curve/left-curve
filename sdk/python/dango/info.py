@@ -40,14 +40,8 @@ from dango.ws_stream_manager import WsStreamManager
 # imports, and editable installs alike, where naive `open(__file__/..)` would
 # break. Reading once here also avoids repeating the disk I/O on every query.
 _QUERIES = files("dango._graphql.queries")
-_MUTATIONS = files("dango._graphql.mutations")
 
 _QUERY_STATUS: Final[str] = _QUERIES.joinpath("queryStatus.graphql").read_text(encoding="utf-8")
-_QUERY_APP: Final[str] = _QUERIES.joinpath("queryApp.graphql").read_text(encoding="utf-8")
-_QUERY_SIMULATE: Final[str] = _QUERIES.joinpath("simulate.graphql").read_text(encoding="utf-8")
-_MUTATION_BROADCAST_TX_SYNC: Final[str] = _MUTATIONS.joinpath("broadcastTxSync.graphql").read_text(
-    encoding="utf-8"
-)
 
 # Indexer-side documents (Phase 8). These run against the indexer DB rather
 # than the chain's `query_app` endpoint, but the transport is the same
@@ -246,12 +240,7 @@ class Info(API):
 
         return cast("dict[str, Any]", data["queryStatus"])
 
-    def query_app(
-        self,
-        request: dict[str, Any],
-        *,
-        height: int | None = None,
-    ) -> Any:
+    def query_app(self, request: dict[str, Any]) -> Any:
         """Generic `queryApp` wrapper. Returns the raw kind-keyed envelope."""
 
         # The chain returns `{<kind>: <data>}` for every request variant —
@@ -260,38 +249,19 @@ class Info(API):
         # so kind-specific callers can pick their own typed return shape;
         # the convenience methods `query_app_smart` and `query_app_multi`
         # do the unwrap.
-        data = self.query(
-            _QUERY_APP,
-            variables={"request": request, "height": height},
-        )
+        return self.post("/query", request)
 
-        return data["queryApp"]
-
-    def query_app_smart(
-        self,
-        contract: Addr,
-        msg: dict[str, Any],
-        *,
-        height: int | None = None,
-    ) -> Any:
+    def query_app_smart(self, contract: Addr, msg: dict[str, Any]) -> Any:
         """Convenience for `{wasm_smart: {contract, msg}}` queries; unwraps the envelope."""
 
         # `query_app` returns the kind-keyed wrapper `{"wasm_smart": <inner>}`;
         # unwrap so callers see the contract's own response shape directly.
         # `query_app_multi` does the same with its `["multi"]` unwrap.
 
-        return self.query_app(
-            {"wasm_smart": {"contract": contract, "msg": msg}},
-            height=height,
-        )["wasm_smart"]
+        return self.query_app({"wasm_smart": {"contract": contract, "msg": msg}})["wasm_smart"]
 
-    def query_app_multi(
-        self,
-        queries: list[dict[str, Any]],
-        *,
-        height: int | None = None,
-    ) -> list[dict[str, Any]]:
-        """Atomically run multiple queries at one block height (API §1.4)."""
+    def query_app_multi(self, queries: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        """Atomically run multiple queries against the latest finalized state (API §1.4)."""
 
         # Each result is wrapped as `{"Ok": <value>}` or `{"Err": "<msg>"}`.
         # We deliberately return the raw wrappers instead of auto-unwrapping
@@ -299,29 +269,19 @@ class Info(API):
         # by design, one query in the batch may fail without aborting the
         # whole batch, and an auto-unwrap that raised on the first Err would
         # collapse that signal.
-        result = self.query_app({"multi": queries}, height=height)
+        result = self.query_app({"multi": queries})
 
         return cast("list[dict[str, Any]]", result["multi"])
 
     def simulate(self, tx: UnsignedTx) -> dict[str, Any]:
         """Dry-run an UnsignedTx; returns gas_used, gas_limit, and result."""
 
-        data = self.query(_QUERY_SIMULATE, variables={"tx": tx})
-
-        return cast("dict[str, Any]", data["simulate"])
+        return cast("dict[str, Any]", self.post("/simulate", tx))
 
     def broadcast_tx_sync(self, tx: Tx) -> dict[str, Any]:
-        """Submit a signed Tx; returns the BroadcastTxOutcome envelope."""
+        """Submit a signed Tx; returns the BroadcastTxOutcome."""
 
-        # broadcastTxSync is a GraphQL mutation, not a query. We still send
-        # it through `self.query()` because that helper is HTTP-level: it
-        # POSTs `{query, variables}` to /graphql and the GraphQL server
-        # routes by the document's operation keyword. The query/mutation
-        # distinction lives inside the document string, not in the
-        # transport.
-        data = self.query(_MUTATION_BROADCAST_TX_SYNC, variables={"tx": tx})
-
-        return cast("dict[str, Any]", data["broadcastTxSync"])
+        return cast("dict[str, Any]", self.post("/broadcast", tx))
 
     # --- Perps queries -------------------------------------------------------
     #

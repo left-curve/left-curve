@@ -33,12 +33,13 @@ def _capture_request(
     httpserver: HTTPServer,
     response: dict[str, Any],
 ) -> list[dict[str, Any]]:
-    """Stub /graphql to return `response` and capture each inbound JSON body.
+    """Stub the REST `/query` endpoint to return `response` and capture each inbound JSON body.
 
-    Mirrors the Phase 6 helper from `test_info_primitives.py` so the test
-    surface stays consistent across phases. Returning the captured-bodies
-    list lets the caller assert on the on-the-wire query / variables shape
-    after invoking the SDK method under test.
+    `query_app_smart` POSTs `{wasm_smart: {contract, msg}}` to `/query` and the
+    chain replies with the bare `QueryResponse` (`{wasm_smart: <payload>}`),
+    which `response` carries directly. Returning the captured-bodies list lets
+    the caller assert on the on-the-wire request shape after invoking the SDK
+    method under test.
     """
 
     captured: list[dict[str, Any]] = []
@@ -47,24 +48,21 @@ def _capture_request(
         captured.append(cast("dict[str, Any]", request.get_json()))
         return Response(json.dumps(response), mimetype="application/json")
 
-    httpserver.expect_request("/graphql", method="POST").respond_with_handler(handler)
+    httpserver.expect_request("/query", method="POST").respond_with_handler(handler)
     return captured
 
 
 def _wasm_smart_msg(captured: dict[str, Any]) -> dict[str, Any]:
-    """Drill into the captured GraphQL body and return the wasm_smart `msg` dict."""
+    """Drill into the captured `/query` request body and return the wasm_smart `msg` dict."""
 
-    # The wire body is `{query, variables: {request: {wasm_smart: {contract, msg}}, height}}`
-    # so we navigate through it once and reuse the helper across many tests.
-    request = captured["variables"]["request"]
-    return cast("dict[str, Any]", request["wasm_smart"]["msg"])
+    # The wire body is the bare request object `{wasm_smart: {contract, msg}}`.
+    return cast("dict[str, Any]", captured["wasm_smart"]["msg"])
 
 
 def _wasm_smart_contract(captured: dict[str, Any]) -> str:
-    """Drill into the captured GraphQL body and return the wasm_smart `contract` address."""
+    """Return the wasm_smart `contract` address from the captured `/query` request body."""
 
-    request = captured["variables"]["request"]
-    return cast("str", request["wasm_smart"]["contract"])
+    return cast("str", captured["wasm_smart"]["contract"])
 
 
 # --- Constructor -------------------------------------------------------------
@@ -108,11 +106,8 @@ class TestGlobalQueries:
             "vault_deposit_cap": None,
             "max_action_batch_size": 5,
         }
-        captured = _capture_request(
-            httpserver, {"data": {"queryApp": {"wasm_smart": param_payload}}}
-        )
+        captured = _capture_request(httpserver, {"wasm_smart": param_payload})
         result = _info(httpserver).perps_param()
-        assert "QueryApp" in captured[0]["query"]
         assert _wasm_smart_contract(captured[0]) == PERPS_CONTRACT_MAINNET
         assert _wasm_smart_msg(captured[0]) == {"param": {}}
         assert result == param_payload
@@ -126,9 +121,7 @@ class TestGlobalQueries:
             "insurance_fund": "25000.000000",
             "treasury": "12000.000000",
         }
-        captured = _capture_request(
-            httpserver, {"data": {"queryApp": {"wasm_smart": state_payload}}}
-        )
+        captured = _capture_request(httpserver, {"wasm_smart": state_payload})
         result = _info(httpserver).perps_state()
         assert _wasm_smart_msg(captured[0]) == {"state": {}}
         assert result == state_payload
@@ -160,9 +153,7 @@ class TestPairQueries:
             "funding_rate_multiplier": "1.000000",
             "bucket_sizes": ["1.000000", "5.000000", "10.000000"],
         }
-        captured = _capture_request(
-            httpserver, {"data": {"queryApp": {"wasm_smart": pair_payload}}}
-        )
+        captured = _capture_request(httpserver, {"wasm_smart": pair_payload})
         result = _info(httpserver).pair_param(_DEMO_PAIR)
         assert _wasm_smart_msg(captured[0]) == {"pair_param": {"pair_id": _DEMO_PAIR}}
         assert result == pair_payload
@@ -170,7 +161,7 @@ class TestPairQueries:
     def test_pair_param_returns_none_for_missing_pair(self, httpserver: HTTPServer) -> None:
         """Contract returns `null` for an unconfigured pair; SDK surfaces `None`."""
 
-        _capture_request(httpserver, {"data": {"queryApp": {"wasm_smart": None}}})
+        _capture_request(httpserver, {"wasm_smart": None})
         assert _info(httpserver).pair_param(PairId("perp/unknown")) is None
 
     def test_pair_params_pagination(self, httpserver: HTTPServer) -> None:
@@ -178,7 +169,7 @@ class TestPairQueries:
 
         captured = _capture_request(
             httpserver,
-            {"data": {"queryApp": {"wasm_smart": {_DEMO_PAIR: {}}}}},
+            {"wasm_smart": {_DEMO_PAIR: {}}},
         )
         _info(httpserver).pair_params(start_after=_DEMO_PAIR, limit=10)
         assert _wasm_smart_msg(captured[0]) == {
@@ -191,7 +182,7 @@ class TestPairQueries:
     ) -> None:
         """Default kwargs send `start_after=null` and `limit=30` (the roadmap default)."""
 
-        captured = _capture_request(httpserver, {"data": {"queryApp": {"wasm_smart": {}}}})
+        captured = _capture_request(httpserver, {"wasm_smart": {}})
         _info(httpserver).pair_params()
         assert _wasm_smart_msg(captured[0]) == {
             "pair_params": {"start_after": None, "limit": 30},
@@ -206,9 +197,7 @@ class TestPairQueries:
             "funding_per_unit": "0.000123",
             "funding_rate": "0.000050",
         }
-        captured = _capture_request(
-            httpserver, {"data": {"queryApp": {"wasm_smart": state_payload}}}
-        )
+        captured = _capture_request(httpserver, {"wasm_smart": state_payload})
         result = _info(httpserver).pair_state(_DEMO_PAIR)
         assert _wasm_smart_msg(captured[0]) == {"pair_state": {"pair_id": _DEMO_PAIR}}
         assert result == state_payload
@@ -216,13 +205,13 @@ class TestPairQueries:
     def test_pair_state_returns_none_for_missing_pair(self, httpserver: HTTPServer) -> None:
         """Unconfigured pair => `null` => `None`."""
 
-        _capture_request(httpserver, {"data": {"queryApp": {"wasm_smart": None}}})
+        _capture_request(httpserver, {"wasm_smart": None})
         assert _info(httpserver).pair_state(PairId("perp/unknown")) is None
 
     def test_pair_states_pagination(self, httpserver: HTTPServer) -> None:
         """`pair_states(start_after=, limit=)` forwards both knobs verbatim."""
 
-        captured = _capture_request(httpserver, {"data": {"queryApp": {"wasm_smart": {}}}})
+        captured = _capture_request(httpserver, {"wasm_smart": {}})
         _info(httpserver).pair_states(start_after=_DEMO_PAIR, limit=5)
         assert _wasm_smart_msg(captured[0]) == {
             "pair_states": {"start_after": _DEMO_PAIR, "limit": 5},
@@ -244,9 +233,7 @@ class TestLiquidityDepth:
                 "65010.000000": {"size": "10.000000", "notional": "650100.000000"},
             },
         }
-        captured = _capture_request(
-            httpserver, {"data": {"queryApp": {"wasm_smart": depth_payload}}}
-        )
+        captured = _capture_request(httpserver, {"wasm_smart": depth_payload})
         result = _info(httpserver).liquidity_depth(
             _DEMO_PAIR,
             bucket_size="10.000000",
@@ -268,9 +255,7 @@ class TestLiquidityDepth:
         # We test for the explicit-null path because the SDK builds the dict
         # eagerly rather than conditionally including `limit` only when set —
         # which means downstream JSON inspection always sees the key.
-        captured = _capture_request(
-            httpserver, {"data": {"queryApp": {"wasm_smart": {"bids": {}, "asks": {}}}}}
-        )
+        captured = _capture_request(httpserver, {"wasm_smart": {"bids": {}, "asks": {}}})
         _info(httpserver).liquidity_depth(_DEMO_PAIR, bucket_size="10.000000")
         msg = _wasm_smart_msg(captured[0])
         assert msg["liquidity_depth"]["limit"] is None
@@ -291,9 +276,7 @@ class TestUserQueries:
             "reserved_margin": "0.000000",
             "open_order_count": 0,
         }
-        captured = _capture_request(
-            httpserver, {"data": {"queryApp": {"wasm_smart": state_payload}}}
-        )
+        captured = _capture_request(httpserver, {"wasm_smart": state_payload})
         result = _info(httpserver).user_state(_DEMO_USER)
         assert _wasm_smart_msg(captured[0]) == {"user_state": {"user": _DEMO_USER}}
         assert result == state_payload
@@ -301,13 +284,13 @@ class TestUserQueries:
     def test_user_state_returns_none_for_unknown_user(self, httpserver: HTTPServer) -> None:
         """Unknown user => contract returns `null` => SDK surfaces `None`."""
 
-        _capture_request(httpserver, {"data": {"queryApp": {"wasm_smart": None}}})
+        _capture_request(httpserver, {"wasm_smart": None})
         assert _info(httpserver).user_state(_DEMO_USER) is None
 
     def test_user_state_extended_default_knobs(self, httpserver: HTTPServer) -> None:
         """Default knobs match the roadmap: 5 true, `include_liquidation_price=False`."""
 
-        captured = _capture_request(httpserver, {"data": {"queryApp": {"wasm_smart": {}}}})
+        captured = _capture_request(httpserver, {"wasm_smart": {}})
         _info(httpserver).user_state_extended(_DEMO_USER)
         msg = _wasm_smart_msg(captured[0])
         assert msg == {
@@ -325,7 +308,7 @@ class TestUserQueries:
     def test_user_state_extended_overridden_knobs(self, httpserver: HTTPServer) -> None:
         """Each knob is independently overridable via kwargs."""
 
-        captured = _capture_request(httpserver, {"data": {"queryApp": {"wasm_smart": {}}}})
+        captured = _capture_request(httpserver, {"wasm_smart": {}})
         _info(httpserver).user_state_extended(
             _DEMO_USER,
             include_equity=False,
@@ -350,7 +333,7 @@ class TestUserQueries:
         # serde, and exposing it on the Python signature would create two
         # ways to say the same thing. The wire body must never carry it,
         # whether the user used default knobs or overrides.
-        captured = _capture_request(httpserver, {"data": {"queryApp": {"wasm_smart": {}}}})
+        captured = _capture_request(httpserver, {"wasm_smart": {}})
         _info(httpserver).user_state_extended(_DEMO_USER, include_liquidation_price=True)
         msg = _wasm_smart_msg(captured[0])
         assert "include_all" not in msg["user_state_extended"]
@@ -373,9 +356,7 @@ class TestOrderQueries:
                 "created_at": "1700000000000000000",
             },
         }
-        captured = _capture_request(
-            httpserver, {"data": {"queryApp": {"wasm_smart": orders_payload}}}
-        )
+        captured = _capture_request(httpserver, {"wasm_smart": orders_payload})
         result = _info(httpserver).orders_by_user(_DEMO_USER)
         assert _wasm_smart_msg(captured[0]) == {"orders_by_user": {"user": _DEMO_USER}}
         assert result == orders_payload
@@ -392,9 +373,7 @@ class TestOrderQueries:
             "reserved_margin": "1575.000000",
             "created_at": "1700000000000000000",
         }
-        captured = _capture_request(
-            httpserver, {"data": {"queryApp": {"wasm_smart": order_payload}}}
-        )
+        captured = _capture_request(httpserver, {"wasm_smart": order_payload})
         result = _info(httpserver).order(_DEMO_ORDER_ID)
         assert _wasm_smart_msg(captured[0]) == {"order": {"order_id": _DEMO_ORDER_ID}}
         assert result == order_payload
@@ -402,7 +381,7 @@ class TestOrderQueries:
     def test_order_returns_none_for_missing(self, httpserver: HTTPServer) -> None:
         """Missing order => `null` => `None`."""
 
-        _capture_request(httpserver, {"data": {"queryApp": {"wasm_smart": None}}})
+        _capture_request(httpserver, {"wasm_smart": None})
         assert _info(httpserver).order(_DEMO_ORDER_ID) is None
 
 
@@ -413,9 +392,7 @@ class TestVolume:
     def test_lifetime_volume(self, httpserver: HTTPServer) -> None:
         """`since=None` (default) sends `since: null` and returns the UsdValue string."""
 
-        captured = _capture_request(
-            httpserver, {"data": {"queryApp": {"wasm_smart": "1250000.000000"}}}
-        )
+        captured = _capture_request(httpserver, {"wasm_smart": "1250000.000000"})
         result = _info(httpserver).volume(_DEMO_USER)
         assert _wasm_smart_msg(captured[0]) == {
             "volume": {"user": _DEMO_USER, "since": None},
@@ -428,9 +405,7 @@ class TestVolume:
     def test_volume_since(self, httpserver: HTTPServer) -> None:
         """An explicit `since` timestamp is forwarded as an integer in the request."""
 
-        captured = _capture_request(
-            httpserver, {"data": {"queryApp": {"wasm_smart": "500.000000"}}}
-        )
+        captured = _capture_request(httpserver, {"wasm_smart": "500.000000"})
         result = _info(httpserver).volume(_DEMO_USER, since=1700000000000000000)
         assert _wasm_smart_msg(captured[0]) == {
             "volume": {"user": _DEMO_USER, "since": 1700000000000000000},

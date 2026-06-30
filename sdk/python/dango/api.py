@@ -1,4 +1,4 @@
-"""GraphQL HTTP client; base class for Info and Exchange."""
+"""HTTP client (GraphQL + REST); base class for Info and Exchange."""
 
 from __future__ import annotations
 
@@ -12,7 +12,8 @@ T = TypeVar("T")
 
 
 class API:
-    """Sync GraphQL POST client. Reads `<base_url>/graphql`; raises on HTTP and GraphQL errors."""
+    """Sync HTTP client. `query` posts GraphQL to `<base_url>/graphql`; `post` makes
+    plain REST calls. Raises on HTTP and GraphQL errors."""
 
     def __init__(self, base_url: str, *, timeout: float | None = None) -> None:
         self.base_url: str = base_url.rstrip("/")
@@ -85,6 +86,37 @@ class API:
         """Same as `query` but cast the result to `response_type`. No runtime validation."""
 
         return cast(T, self.query(document, variables))
+
+    def post(self, path: str, body: Any) -> Any:
+        """POST `body` as JSON to `<base_url><path>`; return the parsed JSON response.
+
+        Unlike `query`, this is a plain REST call with no GraphQL envelope: the
+        request body is the raw object and the response body is returned as-is.
+
+        Raises:
+            ServerError: on network-level failures (connection refused, DNS failure,
+                timeout, SSL issues, etc), 5xx HTTP responses, or non-JSON bodies.
+            ClientError: on 4xx HTTP responses.
+        """
+
+        url = f"{self.base_url}{path}"
+
+        try:
+            response = self._session.post(url, json=body, timeout=self.timeout)
+        except requests.RequestException as exc:
+            # Wrap network-level failures (connection / DNS / timeout / SSL)
+            # so callers never see a raw `requests` exception.
+            raise ServerError(f"request to {self.base_url} failed: {exc}") from exc
+
+        if 400 <= response.status_code < 500:
+            raise ClientError(f"HTTP {response.status_code}: {response.text[:500]}")
+        if response.status_code >= 500:
+            raise ServerError(f"HTTP {response.status_code}: {response.text[:500]}")
+
+        try:
+            return response.json()
+        except ValueError as exc:
+            raise ServerError(f"non-JSON response: {response.text[:500]!r}") from exc
 
 
 def _format_graphql_errors(errors: list[dict[str, Any]]) -> str:
