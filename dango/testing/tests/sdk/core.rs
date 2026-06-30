@@ -11,7 +11,7 @@ use {
 };
 
 #[tokio::test]
-async fn graphql_returns_config() -> anyhow::Result<()> {
+async fn returns_config() -> anyhow::Result<()> {
     let port = mock_httpd_get_socket_addr();
 
     // Spawn server in separate thread with its own runtime

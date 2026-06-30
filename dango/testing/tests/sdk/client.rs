@@ -1,7 +1,8 @@
 use {
     crate::utils::{setup_client_test, setup_client_test_with_port},
     dango_primitives::{
-        BroadcastClient, Coins, MOCK_CHAIN_ID, Message, NonEmpty, ResultExt, SearchTxClient, Signer,
+        BroadcastClient, Coins, MOCK_CHAIN_ID, Message, NonEmpty, QueryClient, ResultExt,
+        SearchTxClient, Signer,
     },
     dango_sdk::{SubscribeBlock, WsClient, subscribe_block},
     dango_types::constants::usdc,
@@ -29,6 +30,26 @@ async fn broadcast() -> anyhow::Result<()> {
     let tx_hash = res.tx_hash;
 
     client.search_tx(tx_hash).await?.outcome.should_succeed();
+
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn simulate() -> anyhow::Result<()> {
+    let (client, accounts) = setup_client_test().await?;
+
+    let unsigned = accounts.user1.unsigned_transaction(
+        NonEmpty::new_unchecked(vec![Message::transfer(
+            accounts.user2.address.into_inner(),
+            Coins::one(usdc::DENOM.clone(), 100)?,
+        )?]),
+        MOCK_CHAIN_ID,
+    )?;
+
+    let outcome = client.simulate(unsigned).await?;
+
+    // A dry-run still consumes gas, even though the signature is not verified.
+    assert!(outcome.gas_used > 0);
 
     Ok(())
 }
