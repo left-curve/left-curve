@@ -17,12 +17,11 @@ impl CoreQuery {
     pub async fn _query_app(
         app_ctx: &MinimalContext,
         request: Query,
-        height: Option<u64>,
     ) -> Result<QueryResponseWithBlockHeight, Error> {
         #[cfg(feature = "metrics")]
         let start = Instant::now();
 
-        let (response, block_height) = app_ctx.dango_app.query_app(request, height).await?;
+        let (response, block_height) = app_ctx.dango_app.query_app(request).await?;
 
         #[cfg(feature = "metrics")]
         histogram!("http.grug.query_app.duration").record(start.elapsed().as_secs_f64());
@@ -66,7 +65,7 @@ impl CoreQuery {
 
         let app_ctx = ctx.data::<MinimalContext>()?;
 
-        Self::_query_app(app_ctx, request, None)
+        Self::_query_app(app_ctx, request)
             .await
             .map(|res| res.response)
     }

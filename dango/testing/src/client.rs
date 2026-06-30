@@ -137,16 +137,11 @@ where
     type Proof = dango_primitives::Proof;
 
     async fn query_app(&self, query: Query) -> Result<QueryResponse, Self::Error> {
-        Ok(self
-            .suite
-            .read()
-            .await
-            .app
-            .do_query_app(query, None, false)?)
+        Ok(self.suite.read().await.app.do_query_app(query)?)
     }
 
     async fn simulate(&self, tx: UnsignedTx) -> Result<TxOutcome, Self::Error> {
-        Ok(self.suite.read().await.app.do_simulate(tx, 0, false)?)
+        Ok(self.suite.read().await.app.do_simulate(tx)?)
     }
 }
 

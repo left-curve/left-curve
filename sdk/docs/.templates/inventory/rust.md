@@ -33,7 +33,7 @@ Macro-generated per-query paginators (each: `pub async fn(&self, page_size: i64,
 
 Trait methods reachable on `HttpClient` (via `#[async_trait]` impls of grug traits — these are the canonical "Client actions"):
 - `impl QueryClient` (`type Error = anyhow::Error; type Proof = dango_primitives::Proof;`)
-  - `async fn query_app(&self, query: Query, height: Option<u64>) -> Result<QueryResponse, Self::Error>`
+  - `async fn query_app(&self, query: Query) -> Result<QueryResponse, Self::Error>`
   - `async fn simulate(&self, tx: UnsignedTx) -> Result<TxOutcome, Self::Error>`
 - `impl BlockClient` (`type Error = anyhow::Error;`)
   - `async fn query_block(&self, height: Option<u64>) -> Result<Block, Self::Error>` — REST `block/info[/{height}]`

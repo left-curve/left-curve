@@ -230,11 +230,9 @@ where
 
     /// Simulate the gas cost and event outputs of an unsigned transaction.
     pub fn simulate_tx(&self, unsigned_tx: UnsignedTx) -> TxOutcome {
-        self.app
-            .do_simulate(unsigned_tx, 0, false)
-            .unwrap_or_else(|err| {
-                panic!("fatal error while simulating tx: {err}");
-            })
+        self.app.do_simulate(unsigned_tx).unwrap_or_else(|err| {
+            panic!("fatal error while simulating tx: {err}");
+        })
     }
 
     /// Perform ABCI `CheckTx` call of a transaction.
@@ -785,7 +783,7 @@ where
 {
     fn query_chain(&self, req: Query) -> StdResult<QueryResponse> {
         self.app
-            .do_query_app(req, None, false)
+            .do_query_app(req)
             .map_err(|err| StdError::Host(err.into_generic_backtraced_error()))
     }
 }
@@ -851,12 +849,8 @@ where
     ID: Indexer + Send + Sync + 'static,
     App<DB, VM, PP, ID>: QueryApp,
 {
-    async fn query_app(
-        &self,
-        raw_req: Query,
-        height: Option<u64>,
-    ) -> AppResult<(QueryResponse, u64)> {
-        self.app.query_app(raw_req, height).await
+    async fn query_app(&self, raw_req: Query) -> AppResult<(QueryResponse, u64)> {
+        self.app.query_app(raw_req).await
     }
 
     async fn simulate(&self, unsigned_tx: UnsignedTx) -> AppResult<TxOutcome> {

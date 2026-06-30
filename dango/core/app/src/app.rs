@@ -823,32 +823,16 @@ where
         Ok((version, root_hash))
     }
 
-    pub fn do_query_app(
-        &self,
-        req: Query,
-        height: Option<u64>,
-        prove: bool,
-    ) -> AppResult<QueryResponse> {
-        let (res, _height) = self.do_query_app_with_height(req, height, prove)?;
+    pub fn do_query_app(&self, req: Query) -> AppResult<QueryResponse> {
+        let (res, _height) = self.do_query_app_with_height(req)?;
         Ok(res)
     }
 
     /// Return the query response, as well as the block height this query was
     /// performed at.
-    pub fn do_query_app_with_height(
-        &self,
-        req: Query,
-        height: Option<u64>,
-        prove: bool,
-    ) -> AppResult<(QueryResponse, u64)> {
-        if prove {
-            // We can't do Merkle proof for smart queries. Only raw store query
-            // can be Merkle proved.
-            return Err(AppError::proof_not_supported());
-        }
-
+    pub fn do_query_app_with_height(&self, req: Query) -> AppResult<(QueryResponse, u64)> {
         // Use the state storage at the given version to perform the query.
-        let storage = self.db.state_storage_with_comment(height, "query_app")?;
+        let storage = self.db.state_storage_with_comment(None, "query_app")?;
         let block = LAST_FINALIZED_BLOCK.load(&storage)?;
 
         let res = process_query(
@@ -863,28 +847,13 @@ where
         Ok((res, block.height))
     }
 
-    pub fn do_simulate(
-        &self,
-        unsigned_tx: UnsignedTx,
-        height: u64,
-        prove: bool,
-    ) -> AppResult<TxOutcome> {
+    pub fn do_simulate(&self, unsigned_tx: UnsignedTx) -> AppResult<TxOutcome> {
         let buffer = Buffer::new(
             self.db.state_storage_with_comment(None, "simulate")?,
             None,
             "simulate",
         );
         let block = LAST_FINALIZED_BLOCK.load(&buffer)?;
-
-        // We can't "prove" a gas simulation
-        if prove {
-            return Err(AppError::proof_not_supported());
-        }
-
-        // We can't simulate gas at a block height
-        if height != 0 && height != block.height {
-            return Err(AppError::past_height_not_supported());
-        }
 
         // Create a `Tx` from the unsigned transaction.
         // Use using the node's query gas limit as the transaction gas limit,
@@ -991,23 +960,31 @@ where
         height: u64,
         prove: bool,
     ) -> AppResult<Vec<u8>> {
+        if height != 0 {
+            return Err(AppError::past_height_not_supported());
+        }
+
+        if prove {
+            return Err(AppError::proof_not_supported());
+        }
+
         let tx = raw_unsigned_tx.deserialize_json()?;
-        let res = self.do_simulate(tx, height, prove)?;
+        let res = self.do_simulate(tx)?;
 
         Ok(res.to_json_vec()?)
     }
 
     pub fn do_query_app_raw(&self, raw_req: &[u8], height: u64, prove: bool) -> AppResult<Vec<u8>> {
-        let height = if height == 0 {
-            // Height being zero means unspecified (Protobuf doesn't have a null
-            // type) in which case we use the latest version.
-            None
-        } else {
-            Some(height)
+        if height != 0 {
+            return Err(AppError::past_height_not_supported());
         };
 
+        if prove {
+            return Err(AppError::proof_not_supported());
+        }
+
         let req = raw_req.deserialize_json()?;
-        let res = self.do_query_app(req, height, prove)?;
+        let res = self.do_query_app(req)?;
 
         Ok(res.to_json_vec()?)
     }

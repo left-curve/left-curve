@@ -44,7 +44,7 @@ impl CoreSubscription {
         ));
 
         let stream = app_ctx.pubsub.subscribe().await?;
-        let initial_response = CoreQuery::_query_app(&app_ctx.base, request.clone(), None).await?;
+        let initial_response = CoreQuery::_query_app(&app_ctx.base, request.clone()).await?;
         let latest_block_height = initial_response.block_height;
 
         Ok(guard_subscription_stream(
@@ -73,7 +73,7 @@ impl CoreSubscription {
                         let _guard = gauge_guard.clone();
                         let request = request.clone();
 
-                        async move { CoreQuery::_query_app(&app_ctx.base, request, None).await }
+                        async move { CoreQuery::_query_app(&app_ctx.base, request).await }
                     }),
             ),
             sub_guard,
