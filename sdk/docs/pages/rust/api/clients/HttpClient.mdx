@@ -54,8 +54,7 @@ The methods are split between own pagination helpers and the four trait impls. B
 
 | Method | Description |
 |--------|-------------|
-| [`query_app`](../methods/http-client/query_app)     | Run an app-level query at a given height. |
-| [`query_store`](../methods/http-client/query_store) | Read a raw key from store, optionally with a proof. |
+| [`query_app`](../methods/http-client/query_app)     | Run an app-level query. |
 | [`simulate`](../methods/http-client/simulate)       | Dry-run an `UnsignedTx` and return its outcome. |
 
 ### `impl BlockClient` 
@@ -114,7 +113,7 @@ async fn main() -> Result<()> {
     println!("height: {}", block.info.height);
 
     let cfg = client
-        .query_app_config::<dango_types::config::AppConfig>(None)
+        .query_app_config::<dango_types::config::AppConfig>()
         .await?;
     println!("account factory: {}", cfg.addresses.account_factory);
 

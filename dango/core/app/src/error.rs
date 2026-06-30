@@ -41,7 +41,7 @@ pub enum AppError {
     )]
     UpgradeIncorrectVersion { current: String, upgrade: String },
 
-    #[error("merkle proof is not supported for `/app` query; use `/store` instead")]
+    #[error("merkle proof is not supported for `/app` query")]
     ProofNotSupported,
 
     #[error("simulating a transaction at past block height is not supported")]

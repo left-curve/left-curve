@@ -4,7 +4,7 @@ use {
     crate::{
         graphql::{
             query::core::CoreQuery,
-            types::{query_response::QueryResponseWithBlockHeight, status::Status, store::Store},
+            types::{query_response::QueryResponseWithBlockHeight, status::Status},
         },
         subscription_limiter::{acquire_subscription, guard_subscription_stream},
     },
@@ -44,7 +44,7 @@ impl CoreSubscription {
         ));
 
         let stream = app_ctx.pubsub.subscribe().await?;
-        let initial_response = CoreQuery::_query_app(&app_ctx.base, request.clone(), None).await?;
+        let initial_response = CoreQuery::_query_app(&app_ctx.base, request.clone()).await?;
         let latest_block_height = initial_response.block_height;
 
         Ok(guard_subscription_stream(
@@ -73,79 +73,11 @@ impl CoreSubscription {
                         let _guard = gauge_guard.clone();
                         let request = request.clone();
 
-                        async move { CoreQuery::_query_app(&app_ctx.base, request, None).await }
+                        async move { CoreQuery::_query_app(&app_ctx.base, request).await }
                     }),
             ),
             sub_guard,
         ))
-    }
-
-    async fn query_store<'a>(
-        &self,
-        ctx: &async_graphql::Context<'a>,
-        #[graphql(desc = "Key as B64 string")] key: String,
-        #[graphql(default = false)] prove: bool,
-        #[graphql(
-            default = 10,
-            desc = "Receive updates every N blocks from the initial block height when subscription starts"
-        )]
-        block_interval: u64,
-    ) -> Result<impl Stream<Item = Result<Store, Error>> + 'a> {
-        let sub_guard = acquire_subscription(ctx)?;
-
-        if block_interval == 0 {
-            return Err(Error::new("blockInterval must be >= 1"));
-        }
-
-        let app_ctx = ctx.data::<crate::context::FullContext>()?;
-
-        #[cfg(feature = "metrics")]
-        let gauge_guard = Arc::new(GaugeGuard::new(
-            "graphql.subscriptions.active",
-            "query_store",
-            "subscription",
-        ));
-
-        let stream = app_ctx.pubsub.subscribe().await?;
-        let initial_response =
-            CoreQuery::_query_store(&app_ctx.base, key.clone(), None, prove).await?;
-        let latest_block_height = initial_response.block_height;
-
-        Ok(
-            guard_subscription_stream(
-                once({
-                    #[cfg(feature = "metrics")]
-                    let _guard = gauge_guard.clone();
-
-                    async { Ok(initial_response) }
-                })
-                .chain(
-                    stream
-                        .scan(latest_block_height, move |last_processed, block_height| {
-                            let result = if block_height > *last_processed
-                                && (block_height - latest_block_height) % block_interval == 0
-                            {
-                                *last_processed = block_height;
-                                Some(Some(block_height))
-                            } else {
-                                Some(None)
-                            };
-                            futures::future::ready(result)
-                        })
-                        .filter_map(|opt_height| async move { opt_height })
-                        .then(move |_block_height| {
-                            #[cfg(feature = "metrics")]
-                            let _guard = gauge_guard.clone();
-                            let key = key.clone();
-
-                            async move {
-                                CoreQuery::_query_store(&app_ctx.base, key, None, prove).await
-                            }
-                        }),
-                ),
-                sub_guard,
-            ),
-        )
     }
 
     async fn query_status<'a>(

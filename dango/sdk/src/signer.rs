@@ -43,19 +43,15 @@ where
         anyhow::Error: From<C::Error>,
     {
         let account_factory = client
-            .query_app_config::<dango_types::config::AppConfig>(None)
+            .query_app_config::<dango_types::config::AppConfig>()
             .await?
             .addresses
             .account_factory;
 
         Ok(client
-            .query_wasm_smart(
-                account_factory,
-                account_factory::QueryAccountRequest {
-                    address: self.address,
-                },
-                None,
-            )
+            .query_wasm_smart(account_factory, account_factory::QueryAccountRequest {
+                address: self.address,
+            })
             .await?
             .owner)
     }
@@ -68,7 +64,7 @@ where
         // If the account hasn't sent any transaction yet, use 0 as nonce.
         // Otherwise, use the latest seen nonce + 1.
         let nonce = client
-            .query_wasm_smart(self.address, account::QuerySeenNoncesRequest {}, None)
+            .query_wasm_smart(self.address, account::QuerySeenNoncesRequest {})
             .await?
             .last()
             .map(|newest_nonce| newest_nonce + 1)
@@ -112,7 +108,7 @@ where
             Some(cfg) => cfg.addresses.account_factory,
             None => {
                 client
-                    .query_app_config::<AppConfig>(None)
+                    .query_app_config::<AppConfig>()
                     .await?
                     .addresses
                     .account_factory
@@ -122,15 +118,11 @@ where
         let key_hash = secret.key_hash();
 
         let user_index = client
-            .query_wasm_smart(
-                factory_addr,
-                account_factory::QueryForgotUsernameRequest {
-                    key_hash,
-                    start_after: None,
-                    limit: Some(1),
-                },
-                None,
-            )
+            .query_wasm_smart(factory_addr, account_factory::QueryForgotUsernameRequest {
+                key_hash,
+                start_after: None,
+                limit: Some(1),
+            })
             .await?
             .first()
             .ok_or_else(|| anyhow!("no user index found for key hash {key_hash}"))?
@@ -140,7 +132,6 @@ where
             .query_wasm_smart(
                 factory_addr,
                 account_factory::QueryUserRequest(UserIndexOrName::Index(user_index)),
-                None,
             )
             .await?
             .master_account();

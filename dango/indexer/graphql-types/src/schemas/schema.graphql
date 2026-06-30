@@ -615,12 +615,6 @@ type Query {
 		"""
 		request: GrugQueryInput!,		height: Int
 	): JSON!
-	queryStore(
-		"""
-		Key as B64 string
-		"""
-		key: String!,		height: Int,		prove: Boolean! = false
-	): Store!
 	queryStatus: Status!
 	requesterIp: RequesterIp!
 	simulate(
@@ -801,21 +795,6 @@ type Status {
 	chainId: String!
 }
 
-type Store {
-	"""
-	The base64 encoded value
-	"""
-	value: String!
-	"""
-	The base64 encoded proof
-	"""
-	proof: String
-	"""
-	The block height at which this query was performed at
-	"""
-	blockHeight: Int!
-}
-
 type Subscription {
 	block: Block!
 	transactions(sinceBlockHeight: Int): [Transaction!]!
@@ -832,16 +811,6 @@ type Subscription {
 		"""
 		blockInterval: Int! = 10
 	): QueryResponseWithBlockHeight!
-	queryStore(
-		"""
-		Key as B64 string
-		"""
-		key: String!,		prove: Boolean! = false,
-		"""
-		Receive updates every N blocks from the initial block height when subscription starts
-		"""
-		blockInterval: Int! = 10
-	): Store!
 	queryStatus(
 		"""
 		Receive updates every N blocks from the initial block height when subscription starts

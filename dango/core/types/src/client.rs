@@ -8,7 +8,7 @@ pub use {block::*, broadcast::*, options::*, query::*, search_tx::*};
 
 use {
     crate::{
-        Binary, Block, BlockOutcome, BroadcastTxOutcome, Hash256, Proof, Query, QueryResponse,
+        Block, BlockOutcome, BroadcastTxOutcome, Hash256, Proof, Query, QueryResponse,
         SearchTxOutcome, StdError, Tx, TxOutcome, UnsignedTx,
     },
     async_trait::async_trait,
@@ -57,21 +57,8 @@ where
     type Error = E;
     type Proof = P;
 
-    async fn query_app(
-        &self,
-        query: Query,
-        height: Option<u64>,
-    ) -> Result<QueryResponse, Self::Error> {
-        self.client.query_app(query, height).await
-    }
-
-    async fn query_store(
-        &self,
-        key: Binary,
-        height: Option<u64>,
-        prove: bool,
-    ) -> Result<(Option<Binary>, Option<Self::Proof>), Self::Error> {
-        self.client.query_store(key, height, prove).await
+    async fn query_app(&self, query: Query) -> Result<QueryResponse, Self::Error> {
+        self.client.query_app(query).await
     }
 
     async fn simulate(&self, tx: UnsignedTx) -> Result<TxOutcome, Self::Error> {
