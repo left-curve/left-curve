@@ -598,24 +598,31 @@ enum ServerFrame {
 
 fn parse_server_frame(text: &str) -> anyhow::Result<ServerFrame> {
     let value: serde_json::Value = serde_json::from_str(text)?;
+    // An error is co-located on the operation's own channel as an `error`-keyed
+    // frame; a connection-level error uses the dedicated `error` channel. Check
+    // for `error` first, regardless of channel, so a terminal `resync` on the
+    // `perpsEvents` channel is surfaced as an error rather than parsed as data.
+    if let Some(error) = value.get("error") {
+        return Ok(ServerFrame::Error {
+            code: error
+                .get("code")
+                .and_then(serde_json::Value::as_str)
+                .unwrap_or("error")
+                .to_string(),
+            message: error
+                .get("message")
+                .and_then(serde_json::Value::as_str)
+                .unwrap_or_default()
+                .to_string(),
+        });
+    }
+
     match value.get("channel").and_then(serde_json::Value::as_str) {
         Some("subscriptionResponse") => Ok(ServerFrame::Ack),
         Some("perpsEvents") => {
             let data = value.get("data").cloned().unwrap_or_default();
             Ok(ServerFrame::Data(serde_json::from_value(data)?))
         },
-        Some("error") => Ok(ServerFrame::Error {
-            code: value
-                .pointer("/data/code")
-                .and_then(serde_json::Value::as_str)
-                .unwrap_or("error")
-                .to_string(),
-            message: value
-                .pointer("/data/message")
-                .and_then(serde_json::Value::as_str)
-                .unwrap_or_default()
-                .to_string(),
-        }),
         _ => Ok(ServerFrame::Other),
     }
 }
