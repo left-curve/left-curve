@@ -15,9 +15,13 @@ use {
     reqwest::IntoUrl,
     serde::{Deserialize, Serialize},
     std::{fmt::Debug, str::FromStr, time::Duration},
-    tokio_tungstenite::{connect_async, tungstenite::Message},
+    tokio_tungstenite::{MaybeTlsStream, WebSocketStream, connect_async, tungstenite::Message},
     url::Url,
 };
+
+/// The WebSocket connection [`connect_async`] yields for a `ws(s)://` URL.
+/// Aliased so the `/ws` helpers can name it without the full generic spelling.
+type WsConn = WebSocketStream<MaybeTlsStream<tokio::net::TcpStream>>;
 
 #[derive(Debug, Clone)]
 pub struct HttpClient {
@@ -202,6 +206,24 @@ impl HttpClient {
         Ok(ws_url)
     }
 
+    /// Open a `/ws` connection and send one opening message — a `subscribe` or
+    /// `broadcast` request. Returns the un-split socket; callers read replies
+    /// with [`recv_text`] and split only when they need concurrent reads and
+    /// writes (the long-lived subscription task does; a one-shot does not).
+    async fn ws_connect(&self, message: serde_json::Value) -> anyhow::Result<WsConn> {
+        let ws_url = self.ws_url()?;
+
+        let (mut ws, _response) = connect_async(ws_url.as_str())
+            .await
+            .map_err(|err| anyhow!("WebSocket connection failed: {err}"))?;
+
+        ws.send(Message::text(message.to_string()))
+            .await
+            .map_err(|err| anyhow!("failed to send WebSocket message: {err}"))?;
+
+        Ok(ws)
+    }
+
     /// Subscribe to perps-exchange events over the WebSocket endpoint
     /// (`GET /ws`, `perpsEvents` channel) — the transport replacement for the
     /// `perps_events` GraphQL subscription. Yields one [`PerpsEventsBatch`] per
@@ -222,8 +244,6 @@ impl HttpClient {
         order_ids: Option<Vec<String>>,
         client_order_ids: Option<Vec<String>>,
     ) -> anyhow::Result<impl Stream<Item = anyhow::Result<PerpsEventsBatch>> + Send> {
-        let ws_url = self.ws_url()?;
-
         // Build the subscribe message. Absent filters are omitted (match-all);
         // present ones are sent as JSON arrays.
         let subscribe = {
@@ -253,35 +273,24 @@ impl HttpClient {
             })
         };
 
-        let (ws, _response) = connect_async(ws_url.as_str())
-            .await
-            .map_err(|err| anyhow!("WebSocket connection failed: {err}"))?;
-
-        let (mut sink, mut stream) = ws.split();
-        sink.send(Message::text(subscribe.to_string()))
-            .await
-            .map_err(|err| anyhow!("failed to send subscribe: {err}"))?;
+        let mut ws = self.ws_connect(subscribe).await?;
 
         // Await the acknowledgement, mapping a `resync` / `tooManyRequests`
         // error frame to a connect-time error (no data frame precedes the ack).
         loop {
-            match stream.next().await {
-                Some(Ok(Message::Text(text))) => match parse_server_frame(&text)? {
-                    ServerFrame::Ack => break,
-                    ServerFrame::Error { code, message } => bail!("{code}: {message}"),
-                    ServerFrame::Data(_) | ServerFrame::Other => {},
-                },
-                Some(Ok(Message::Ping(data))) => {
-                    let _ = sink.send(Message::Pong(data)).await;
-                },
-                Some(Ok(Message::Close(frame))) => {
-                    bail!("WebSocket closed before acknowledgement: {frame:?}")
-                },
-                Some(Ok(_)) => {},
-                Some(Err(err)) => bail!("WebSocket error before acknowledgement: {err}"),
-                None => bail!("WebSocket closed before acknowledgement"),
+            let Some(text) = recv_text(&mut ws).await? else {
+                bail!("WebSocket closed before acknowledgement");
+            };
+            match parse_server_frame(&text)? {
+                ServerFrame::Ack => break,
+                ServerFrame::Error { code, message } => bail!("{code}: {message}"),
+                ServerFrame::Data(_) | ServerFrame::Other => {},
             }
         }
+
+        // Hand the socket to the background task split, so its keepalive writes
+        // and its reads can run concurrently.
+        let (mut sink, mut stream) = ws.split();
 
         // Drive the socket on a background task: forward batches to the stream,
         // answer control pings, and send an app-level ping on a fixed schedule
@@ -343,65 +352,47 @@ impl HttpClient {
     /// [`BroadcastTxOutcome::check_tx`]); only a transport failure to the node
     /// is `Err`.
     pub async fn broadcast_tx_ws(&self, tx: Tx) -> anyhow::Result<BroadcastTxOutcome> {
-        let ws_url = self.ws_url()?;
-
         let request = serde_json::json!({
             "method": "broadcast",
             "id": 1,
             "tx": serde_json::to_value(&tx)?,
         });
 
-        let (ws, _response) = connect_async(ws_url.as_str())
-            .await
-            .map_err(|err| anyhow!("WebSocket connection failed: {err}"))?;
+        let mut ws = self.ws_connect(request).await?;
 
-        let (mut sink, mut stream) = ws.split();
-        sink.send(Message::text(request.to_string()))
-            .await
-            .map_err(|err| anyhow!("failed to send broadcast: {err}"))?;
+        // Await the single `broadcast` reply.
+        let outcome = loop {
+            let Some(text) = recv_text(&mut ws).await? else {
+                bail!("WebSocket closed before broadcast reply");
+            };
 
-        // Await the single `broadcast` reply, answering control pings meanwhile.
-        loop {
-            match stream.next().await {
-                Some(Ok(Message::Text(text))) => {
-                    let value: serde_json::Value = serde_json::from_str(&text)?;
+            let value: serde_json::Value = serde_json::from_str(&text)?;
 
-                    // Co-located error model: an `error` key is a transport
-                    // failure (a mempool rejection arrives as a `data` frame).
-                    if let Some(error) = value.get("error") {
-                        let code = error
-                            .get("code")
-                            .and_then(serde_json::Value::as_str)
-                            .unwrap_or("error");
-                        let message = error
-                            .get("message")
-                            .and_then(serde_json::Value::as_str)
-                            .unwrap_or_default();
-                        let _ = sink.close().await;
-                        bail!("{code}: {message}");
-                    }
-
-                    if value.get("channel").and_then(serde_json::Value::as_str) == Some("broadcast")
-                    {
-                        let data = value.get("data").cloned().unwrap_or_default();
-                        let outcome: BroadcastTxOutcome = serde_json::from_value(data)?;
-                        let _ = sink.close().await;
-                        return Ok(outcome);
-                    }
-
-                    // Ignore anything else (e.g. a `pong`).
-                },
-                Some(Ok(Message::Ping(data))) => {
-                    let _ = sink.send(Message::Pong(data)).await;
-                },
-                Some(Ok(Message::Close(frame))) => {
-                    bail!("WebSocket closed before broadcast reply: {frame:?}")
-                },
-                Some(Ok(_)) => {},
-                Some(Err(err)) => bail!("WebSocket error: {err}"),
-                None => bail!("WebSocket closed before broadcast reply"),
+            // Co-located error model: an `error` key is a transport failure (a
+            // mempool rejection arrives as a `data` frame).
+            if let Some(error) = value.get("error") {
+                let code = error
+                    .get("code")
+                    .and_then(serde_json::Value::as_str)
+                    .unwrap_or("error");
+                let message = error
+                    .get("message")
+                    .and_then(serde_json::Value::as_str)
+                    .unwrap_or_default();
+                bail!("{code}: {message}");
             }
-        }
+
+            if value.get("channel").and_then(serde_json::Value::as_str) == Some("broadcast") {
+                let data = value.get("data").cloned().unwrap_or_default();
+                break serde_json::from_value::<BroadcastTxOutcome>(data)?;
+            }
+
+            // Ignore anything else (e.g. a `pong`).
+        };
+
+        let _ = ws.close(None).await;
+
+        Ok(outcome)
     }
 }
 
@@ -635,6 +626,26 @@ enum ServerFrame {
 
     /// Anything else (e.g. `pong`).
     Other,
+}
+
+/// Read the next text frame from a `/ws` socket, transparently answering server
+/// pings. `Ok(None)` means the socket closed cleanly; a transport error is
+/// `Err`. The caller parses the returned JSON and decides when it has its
+/// terminal frame. Serves the one-shot read loops (the subscription ack and
+/// `broadcast`); the long-lived subscription task drives its split socket
+/// directly, so its keepalive writes and reads run concurrently.
+async fn recv_text(ws: &mut WsConn) -> anyhow::Result<Option<String>> {
+    loop {
+        match ws.next().await {
+            Some(Ok(Message::Text(text))) => return Ok(Some(text.to_string())),
+            Some(Ok(Message::Ping(data))) => {
+                let _ = ws.send(Message::Pong(data)).await;
+            },
+            Some(Ok(Message::Close(_))) | None => return Ok(None),
+            Some(Ok(_)) => {},
+            Some(Err(err)) => bail!("WebSocket error: {err}"),
+        }
+    }
 }
 
 fn parse_server_frame(text: &str) -> anyhow::Result<ServerFrame> {
