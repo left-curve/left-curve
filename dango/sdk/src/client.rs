@@ -28,7 +28,7 @@ pub struct HttpClient {
 }
 
 impl HttpClient {
-    pub fn new<U>(url: U) -> Result<Self, anyhow::Error>
+    pub fn new<U>(url: U) -> anyhow::Result<Self>
     where
         U: IntoUrl,
     {
@@ -38,18 +38,18 @@ impl HttpClient {
         })
     }
 
-    async fn get(&self, path: &str) -> Result<reqwest::Response, anyhow::Error> {
+    async fn get(&self, path: &str) -> anyhow::Result<reqwest::Response> {
         error_for_status(self.inner.get(self.url.join(path)?).send().await?).await
     }
 
     async fn post_graphql<V>(
         &self,
         variables: V,
-    ) -> Result<<V::Query as GraphQLQuery>::ResponseData, anyhow::Error>
+    ) -> anyhow::Result<<V::Query as GraphQLQuery>::ResponseData>
     where
-        V: Variables + Serialize + std::fmt::Debug,
+        V: Variables + Serialize + Debug,
         <<V as dango_indexer_graphql_types::Variables>::Query as graphql_client::GraphQLQuery>::ResponseData:
-            std::fmt::Debug,
+            Debug,
     {
         let query = V::Query::build_query(variables);
         let response = error_for_status(
@@ -86,36 +86,38 @@ impl HttpClient {
     /// It supports both forward pagination (using `first`) and backward pagination
     /// (using `last`).
     ///
-    /// # Arguments
+    /// ## Arguments
     ///
-    /// * `first` - Number of items to fetch per page when paginating forward (use with `None` for `last`)
-    /// * `last` - Number of items to fetch per page when paginating backward (use with `None` for `first`)
-    /// * `build_variables` - Closure that builds the query variables given pagination cursors
-    /// * `extract_page` - Closure that extracts the nodes and page info from the response data
+    /// - `first` - Number of items to fetch per page when paginating forward (use with `None` for `last`)
+    /// - `last` - Number of items to fetch per page when paginating backward (use with `None` for `first`)
+    /// - `build_variables` - Closure that builds the query variables given pagination cursors
+    /// - `extract_page` - Closure that extracts the nodes and page info from the response data
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```ignore
-    /// let all_accounts = client.paginate_all(
-    ///     Some(10), // fetch 10 per page, forward pagination
-    ///     None,
-    ///     |after, before, first, last| accounts::Variables {
-    ///         after,
-    ///         before,
-    ///         first: first.map(|f| f as i64),
-    ///         last: last.map(|l| l as i64),
-    ///         ..Default::default()
-    ///     },
-    ///     |data| {
-    ///         let page_info = PageInfo {
-    ///             start_cursor: data.accounts.page_info.start_cursor,
-    ///             end_cursor: data.accounts.page_info.end_cursor,
-    ///             has_next_page: data.accounts.page_info.has_next_page,
-    ///             has_previous_page: data.accounts.page_info.has_previous_page,
-    ///         };
-    ///         (data.accounts.nodes, page_info)
-    ///     },
-    /// ).await?;
+    /// let all_accounts = client
+    ///     .paginate_all(
+    ///         Some(10), // fetch 10 per page, forward pagination
+    ///         None,
+    ///         |after, before, first, last| accounts::Variables {
+    ///             after,
+    ///             before,
+    ///             first: first.map(|f| f as i64),
+    ///             last: last.map(|l| l as i64),
+    ///             ..Default::default()
+    ///         },
+    ///         |data| {
+    ///             let page_info = PageInfo {
+    ///                 start_cursor: data.accounts.page_info.start_cursor,
+    ///                 end_cursor: data.accounts.page_info.end_cursor,
+    ///                 has_next_page: data.accounts.page_info.has_next_page,
+    ///                 has_previous_page: data.accounts.page_info.has_previous_page,
+    ///             };
+    ///             (data.accounts.nodes, page_info)
+    ///         },
+    ///     )
+    ///     .await?;
     /// ```
     pub async fn paginate_all<V, N, BuildVariables, ExtractPage>(
         &self,
@@ -123,7 +125,7 @@ impl HttpClient {
         last: Option<i64>,
         build_variables: BuildVariables,
         extract_page: ExtractPage,
-    ) -> Result<Vec<N>, anyhow::Error>
+    ) -> anyhow::Result<Vec<N>>
     where
         V: Variables + Serialize + Debug,
         <V::Query as GraphQLQuery>::ResponseData: Debug,
@@ -131,8 +133,8 @@ impl HttpClient {
         ExtractPage: Fn(<V::Query as GraphQLQuery>::ResponseData) -> (Vec<N>, PageInfo),
     {
         let mut all_items = vec![];
-        let mut after: Option<String> = None;
-        let mut before: Option<String> = None;
+        let mut after = None;
+        let mut before = None;
 
         loop {
             let variables = build_variables(after.clone(), before.clone(), first, last);
@@ -191,8 +193,7 @@ impl HttpClient {
         users: Option<Vec<String>>,
         order_ids: Option<Vec<String>>,
         client_order_ids: Option<Vec<String>>,
-    ) -> Result<impl Stream<Item = Result<PerpsEventsBatch, anyhow::Error>> + Send, anyhow::Error>
-    {
+    ) -> anyhow::Result<impl Stream<Item = anyhow::Result<PerpsEventsBatch>> + Send> {
         // Derive the `/ws` URL from the HTTP base.
         let mut ws_url = self.url.join("ws")?;
         match ws_url.scheme() {
@@ -208,31 +209,37 @@ impl HttpClient {
 
         // Build the subscribe message. Absent filters are omitted (match-all);
         // present ones are sent as JSON arrays.
-        let mut subscription = serde_json::Map::new();
-        subscription.insert("type".into(), "perpsEvents".into());
-        if let Some(since) = since_block_height {
-            subscription.insert("since".into(), since.into());
-        }
-        for (key, values) in [
-            ("eventTypes", event_types),
-            ("pairIds", pair_ids),
-            ("users", users),
-            ("orderIds", order_ids),
-            ("clientOrderIds", client_order_ids),
-        ] {
-            if let Some(values) = values {
-                subscription.insert(key.into(), values.into());
+        let subscribe = {
+            let mut subscription = serde_json::Map::new();
+            subscription.insert("type".into(), "perpsEvents".into());
+
+            if let Some(since) = since_block_height {
+                subscription.insert("since".into(), since.into());
             }
-        }
-        let subscribe = serde_json::json!({
-            "method": "subscribe",
-            "id": 1,
-            "subscription": serde_json::Value::Object(subscription),
-        });
+
+            for (key, values) in [
+                ("eventTypes", event_types),
+                ("pairIds", pair_ids),
+                ("users", users),
+                ("orderIds", order_ids),
+                ("clientOrderIds", client_order_ids),
+            ] {
+                if let Some(values) = values {
+                    subscription.insert(key.into(), values.into());
+                }
+            }
+
+            serde_json::json!({
+                "method": "subscribe",
+                "id": 1,
+                "subscription": serde_json::Value::Object(subscription),
+            })
+        };
 
         let (ws, _response) = connect_async(ws_url.as_str())
             .await
             .map_err(|err| anyhow!("WebSocket connection failed: {err}"))?;
+
         let (mut sink, mut stream) = ws.split();
         sink.send(Message::text(subscribe.to_string()))
             .await
@@ -262,7 +269,7 @@ impl HttpClient {
         // Drive the socket on a background task: forward batches to the stream,
         // answer control pings, and send an app-level ping on a fixed schedule
         // so an idle subscription is not reaped by the server's idle timeout.
-        let (tx, rx) = mpsc::unbounded::<Result<PerpsEventsBatch, anyhow::Error>>();
+        let (tx, rx) = mpsc::unbounded::<anyhow::Result<PerpsEventsBatch>>();
         tokio::spawn(async move {
             let mut keepalive = tokio::time::interval(Duration::from_secs(20));
             keepalive.tick().await; // The first tick is immediate; skip it.
@@ -346,7 +353,7 @@ macro_rules! impl_paginate_method {
                 &self,
                 page_size: i64,
                 mut variables: $module::Variables,
-            ) -> Result<Vec<$module::$node_type>, anyhow::Error> {
+            ) -> anyhow::Result<Vec<$module::$node_type>> {
                 let mut all_items = vec![];
                 let mut after: Option<String> = None;
 
@@ -578,22 +585,25 @@ pub struct PerpsEvent {
 enum ServerFrame {
     /// `subscriptionResponse` acknowledgement.
     Ack,
+
     /// A `perpsEvents` data frame.
     Data(PerpsEventsBatch),
+
     /// An `error` frame (e.g. `resync`, `tooManyRequests`).
     Error { code: String, message: String },
+
     /// Anything else (e.g. `pong`).
     Other,
 }
 
-fn parse_server_frame(text: &str) -> Result<ServerFrame, anyhow::Error> {
+fn parse_server_frame(text: &str) -> anyhow::Result<ServerFrame> {
     let value: serde_json::Value = serde_json::from_str(text)?;
     match value.get("channel").and_then(serde_json::Value::as_str) {
+        Some("subscriptionResponse") => Ok(ServerFrame::Ack),
         Some("perpsEvents") => {
             let data = value.get("data").cloned().unwrap_or_default();
             Ok(ServerFrame::Data(serde_json::from_value(data)?))
         },
-        Some("subscriptionResponse") => Ok(ServerFrame::Ack),
         Some("error") => Ok(ServerFrame::Error {
             code: value
                 .pointer("/data/code")
@@ -610,7 +620,7 @@ fn parse_server_frame(text: &str) -> Result<ServerFrame, anyhow::Error> {
     }
 }
 
-async fn error_for_status(response: reqwest::Response) -> Result<reqwest::Response, anyhow::Error> {
+async fn error_for_status(response: reqwest::Response) -> anyhow::Result<reqwest::Response> {
     if let Err(e) = response.error_for_status_ref() {
         bail!("{}: {}", e, response.text().await?)
     } else {

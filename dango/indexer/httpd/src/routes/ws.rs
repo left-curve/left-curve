@@ -30,7 +30,6 @@ use {
     actix_web::{HttpRequest, HttpResponse, Resource, guard, web},
     actix_ws::{AggregatedMessage, Session},
     dango_indexer_stream::{Context, make_perps_filter},
-    dango_primitives::FullBlock,
     futures_util::{StreamExt, stream},
     serde::{Deserialize, Serialize},
     std::{collections::HashSet, pin::Pin, sync::Arc, time::Duration},
@@ -77,12 +76,11 @@ enum ClientMessage {
     /// Open a subscription. `id` is the client-chosen handle echoed on the
     /// acknowledgement and every resulting data frame, and used to
     /// `unsubscribe`.
-    Subscribe {
-        id: u64,
-        subscription: Box<Subscription>,
-    },
+    Subscribe { id: u64, subscription: Subscription },
+
     /// Close the subscription opened with this `id`.
     Unsubscribe { id: u64 },
+
     /// Application-level heartbeat; answered with a `pong` carrying the same
     /// `id`.
     Ping {
@@ -91,43 +89,50 @@ enum ClientMessage {
     },
 }
 
-/// The feed a `subscribe` selects, discriminated by `type`. The boxed
-/// `perpsEvents` parameters keep the variants similarly sized.
+/// The feed a `subscribe` selects, discriminated by `type`.
 #[derive(Debug, Deserialize)]
-#[serde(tag = "type", rename_all = "camelCase")]
+#[serde(
+    tag = "type",
+    rename_all = "camelCase",
+    rename_all_fields = "camelCase"
+)]
 enum Subscription {
-    PerpsEvents(Box<PerpsEventsParams>),
+    /// Per-block perps-contract events — order lifecycle, fills, liquidations,
+    /// and deleveraging — narrowed by the [`PerpsEventsParams`] filters.
+    /// Delivered on the `perpsEvents` channel.
+    PerpsEvents {
+        #[serde(default)]
+        since: Option<u64>,
+
+        #[serde(default)]
+        event_types: Option<HashSet<String>>,
+
+        #[serde(default)]
+        pair_ids: Option<HashSet<String>>,
+
+        #[serde(default)]
+        users: Option<HashSet<String>>,
+
+        #[serde(default)]
+        order_ids: Option<HashSet<String>>,
+
+        #[serde(default)]
+        client_order_ids: Option<HashSet<String>>,
+    },
+
+    /// Every finalized block in full (`Block` + `BlockOutcome`). Delivered on
+    /// the `fullBlock` channel.
     FullBlock {
         #[serde(default)]
         since: Option<u64>,
     },
 }
 
-/// Filters for a `perpsEvents` subscription, mirroring the former
-/// `perps_events` GraphQL arguments: an absent/`null` set does not filter on
-/// that field; an empty set matches nothing; the sets AND together.
-#[derive(Debug, Deserialize)]
-#[serde(rename_all = "camelCase")]
-struct PerpsEventsParams {
-    #[serde(default)]
-    since: Option<u64>,
-    #[serde(default)]
-    event_types: Option<HashSet<String>>,
-    #[serde(default)]
-    pair_ids: Option<HashSet<String>>,
-    #[serde(default)]
-    users: Option<HashSet<String>>,
-    #[serde(default)]
-    order_ids: Option<HashSet<String>>,
-    #[serde(default)]
-    client_order_ids: Option<HashSet<String>>,
-}
-
 impl Subscription {
     /// The channel name data frames from this subscription carry.
     fn channel(&self) -> &'static str {
         match self {
-            Subscription::PerpsEvents(_) => "perpsEvents",
+            Subscription::PerpsEvents { .. } => "perpsEvents",
             Subscription::FullBlock { .. } => "fullBlock",
         }
     }
@@ -211,10 +216,11 @@ async fn connection_loop(
     conn_limiter: ConnectionLimiter,
 ) {
     let mut msg_stream = msg_stream.aggregate_continuations();
-    let mut streams: StreamMap<u64, FrameStream> = StreamMap::new();
+    let mut streams = StreamMap::new();
 
     let mut keepalive = interval(KEEPALIVE_INTERVAL);
     keepalive.set_missed_tick_behavior(MissedTickBehavior::Skip);
+
     let mut last_seen = Instant::now();
 
     loop {
@@ -222,7 +228,9 @@ async fn connection_loop(
             // Inbound control messages from the client.
             inbound = msg_stream.next() => {
                 let Some(Ok(message)) = inbound else { break };
+
                 last_seen = Instant::now();
+
                 match message {
                     AggregatedMessage::Text(text) => {
                         if !handle_text(&text, &mut session, &mut streams, &stream_ctx, &conn_limiter).await {
@@ -234,9 +242,10 @@ async fn connection_loop(
                             break;
                         }
                     },
+                    AggregatedMessage::Pong(_) | AggregatedMessage::Binary(_) => {
+                        // Pong (answer to our keepalive) and Binary are no-ops.
+                    },
                     AggregatedMessage::Close(_) => break,
-                    // Pong (answer to our keepalive) and Binary are no-ops.
-                    AggregatedMessage::Pong(_) | AggregatedMessage::Binary(_) => {},
                 }
             },
 
@@ -338,29 +347,39 @@ fn open_stream(
     stream_ctx: &Context,
 ) -> Result<FrameStream, String> {
     match subscription {
-        Subscription::PerpsEvents(params) => {
+        Subscription::PerpsEvents {
+            since,
+            event_types,
+            pair_ids,
+            users,
+            order_ids,
+            client_order_ids,
+        } => {
             let filter = make_perps_filter(
-                params.event_types.clone(),
-                params.pair_ids.clone(),
-                params.users.clone(),
-                params.order_ids.clone(),
-                params.client_order_ids.clone(),
+                event_types.clone(),
+                pair_ids.clone(),
+                users.clone(),
+                order_ids.clone(),
+                client_order_ids.clone(),
             );
+
             let raw = stream_ctx
                 .perps()
-                .subscribe(params.since, filter)
+                .subscribe(*since, filter)
                 .map_err(|resync| resync.to_string())?;
             let frames = guard_subscription_stream(raw, Some(guard))
                 .map(move |block| data_frame("perpsEvents", id, &block));
+
             Ok(with_terminal(id, frames))
         },
         Subscription::FullBlock { since } => {
             let raw = stream_ctx
                 .blocks()
-                .subscribe(*since, |block: &FullBlock| Some(block.clone()))
+                .subscribe(*since, |block| Some(block.clone()))
                 .map_err(|resync| resync.to_string())?;
             let frames = guard_subscription_stream(raw, Some(guard))
                 .map(move |block| data_frame("fullBlock", id, &block));
+
             Ok(with_terminal(id, frames))
         },
     }
@@ -382,6 +401,7 @@ where
             "subscription ended; reconnect with a newer `since`",
         )
     });
+
     Box::pin(frames.chain(terminal))
 }
 
@@ -420,6 +440,8 @@ where
         .unwrap_or_else(|err| error_frame(Some(id), "internal", &err.to_string()))
 }
 
+// ----------------------------------- Tests -----------------------------------
+
 #[cfg(test)]
 mod tests {
     use {super::*, serde_json::json};
@@ -434,25 +456,32 @@ mod tests {
         let ClientMessage::Subscribe { id, subscription } = message else {
             panic!("expected a subscribe message");
         };
+
         assert_eq!(id, 1);
         assert_eq!(subscription.channel(), "perpsEvents");
 
-        let Subscription::PerpsEvents(params) = *subscription else {
+        let Subscription::PerpsEvents {
+            since,
+            event_types,
+            pair_ids,
+            users,
+            order_ids,
+            client_order_ids,
+        } = subscription
+        else {
             panic!("expected a perpsEvents subscription");
         };
-        assert_eq!(params.since, Some(42));
+
+        assert_eq!(since, Some(42));
         assert_eq!(
-            params.event_types,
+            event_types,
             Some(HashSet::from(["order_filled".to_string()]))
         );
-        assert_eq!(
-            params.pair_ids,
-            Some(HashSet::from(["perp/btcusd".to_string()]))
-        );
+        assert_eq!(pair_ids, Some(HashSet::from(["perp/btcusd".to_string()])));
         // Absent filters deserialize to `None` (match-all).
-        assert_eq!(params.users, None);
-        assert_eq!(params.order_ids, None);
-        assert_eq!(params.client_order_ids, None);
+        assert_eq!(users, None);
+        assert_eq!(order_ids, None);
+        assert_eq!(client_order_ids, None);
     }
 
     #[test]
@@ -461,15 +490,21 @@ mod tests {
             r#"{"method":"subscribe","id":1,"subscription":{"type":"perpsEvents","pairIds":[]}}"#,
         )
         .unwrap();
+
         let ClientMessage::Subscribe { subscription, .. } = message else {
             panic!("expected a subscribe message");
         };
-        let Subscription::PerpsEvents(params) = *subscription else {
+
+        let Subscription::PerpsEvents {
+            pair_ids, users, ..
+        } = subscription
+        else {
             panic!("expected a perpsEvents subscription");
         };
+
         // An empty set matches nothing; an absent one is `None` (match-all).
-        assert_eq!(params.pair_ids, Some(HashSet::new()));
-        assert_eq!(params.users, None);
+        assert_eq!(pair_ids, Some(HashSet::new()));
+        assert_eq!(users, None);
     }
 
     #[test]
@@ -481,14 +516,17 @@ mod tests {
             .unwrap(),
             ClientMessage::Subscribe { id: 2, .. }
         ));
+
         assert!(matches!(
             serde_json::from_str::<ClientMessage>(r#"{"method":"unsubscribe","id":2}"#).unwrap(),
             ClientMessage::Unsubscribe { id: 2 }
         ));
+
         assert!(matches!(
             serde_json::from_str::<ClientMessage>(r#"{"method":"ping","id":9}"#).unwrap(),
             ClientMessage::Ping { id: Some(9) }
         ));
+
         // `id` is optional on ping.
         assert!(matches!(
             serde_json::from_str::<ClientMessage>(r#"{"method":"ping"}"#).unwrap(),
@@ -504,20 +542,24 @@ mod tests {
             parse(&ack(1, "subscribe", Some("perpsEvents"))),
             json!({"channel": "subscriptionResponse", "id": 1, "data": {"method": "subscribe", "type": "perpsEvents"}}),
         );
+
         // The unsubscribe ack omits the channel `type`.
         assert_eq!(
             parse(&ack(2, "unsubscribe", None)),
             json!({"channel": "subscriptionResponse", "id": 2, "data": {"method": "unsubscribe"}}),
         );
+
         assert_eq!(
             parse(&control(&ServerControl::Pong { id: Some(9) })),
             json!({"channel": "pong", "id": 9}),
         );
+
         // A null `id` is omitted, not serialized.
         assert_eq!(
             parse(&control(&ServerControl::Pong { id: None })),
             json!({"channel": "pong"}),
         );
+
         assert_eq!(
             parse(&error_frame(Some(3), "resync", "stale")),
             json!({"channel": "error", "id": 3, "data": {"code": "resync", "message": "stale"}}),

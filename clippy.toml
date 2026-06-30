@@ -1,5 +1,6 @@
 # Reference: https://doc.rust-lang.org/nightly/clippy/lint_configuration.html
 
 avoid-breaking-exported-api  = false
+enum-variant-size-threshold  = 256
 too-many-arguments-threshold = 999
 type-complexity-threshold    = 999
