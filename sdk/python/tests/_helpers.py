@@ -45,14 +45,14 @@ class FakeInfo:
     def query_status(self) -> dict[str, Any]:
         self.queried_status_count += 1
 
-        # Mirror the GraphQL `queryStatus` shape (see
-        # `dango/_graphql/queries/queryStatus.graphql`): a `chainId` and
-        # a `block` sub-object. Only `chainId` is consumed by Exchange,
-        # but the shape must stay realistic so future Phase-X consumers
-        # of this fake don't trip on missing fields.
+        # Mirror the REST `/query {"status":{}}` shape: the raw
+        # `QueryStatusResponse` (`{chain_id, last_finalized_block}`,
+        # snake_case). Only `chain_id` is consumed by Exchange, but the
+        # shape must stay realistic so future consumers of this fake
+        # don't trip on missing fields.
         return {
-            "chainId": "dango-mock-1",
-            "block": {"blockHeight": 1, "timestamp": "x", "hash": "y"},
+            "chain_id": "dango-mock-1",
+            "last_finalized_block": {"height": 1, "timestamp": "x", "hash": "y"},
         }
 
     def query_app_smart(

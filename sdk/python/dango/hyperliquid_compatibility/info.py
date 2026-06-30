@@ -771,8 +771,8 @@ class Info:
         # Dango doesn't include a server-side timestamp on the depth
         # response. For now we return 0; HL clients can use their own
         # arrival time. A future refinement could thread the
-        # `query_status().block.timestamp` through but that's an extra
-        # round-trip per call.
+        # `query_status()["last_finalized_block"]["timestamp"]` through, but
+        # that's an extra round-trip per call.
         return _reshape_l2_to_hl(cast("dict[str, Any]", depth), name, time_ms=0)
 
     def candles_snapshot(

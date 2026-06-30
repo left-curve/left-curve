@@ -41,8 +41,6 @@ from dango.ws_stream_manager import WsStreamManager
 # break. Reading once here also avoids repeating the disk I/O on every query.
 _QUERIES = files("dango._graphql.queries")
 
-_QUERY_STATUS: Final[str] = _QUERIES.joinpath("queryStatus.graphql").read_text(encoding="utf-8")
-
 # Indexer-side documents (Phase 8). These run against the indexer DB rather
 # than the chain's `query_app` endpoint, but the transport is the same
 # /graphql POST so they sit alongside the chain queries above.
@@ -234,11 +232,11 @@ class Info(API):
         self._ws_stream_manager: WsStreamManager | None = None
 
     def query_status(self) -> dict[str, Any]:
-        """Chain ID and latest block info."""
+        """Chain ID and latest finalized block: `{chain_id, last_finalized_block}`."""
 
-        data = self.query(_QUERY_STATUS)
-
-        return cast("dict[str, Any]", data["queryStatus"])
+        # `Query::Status` over REST returns the raw `QueryStatusResponse`
+        # (snake_case), keyed under `status` like every other queryApp variant.
+        return cast("dict[str, Any]", self.query_app({"status": {}})["status"])
 
     def query_app(self, request: dict[str, Any]) -> Any:
         """Generic `queryApp` wrapper. Returns the raw kind-keyed envelope."""

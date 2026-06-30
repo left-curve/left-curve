@@ -119,29 +119,28 @@ class TestConstruction:
 
 
 class TestQueryStatus:
-    def test_returns_chain_id_and_block(self, httpserver: HTTPServer) -> None:
-        """Posts QueryStatus and unwraps to {chainId, block}."""
+    def test_returns_status(self, httpserver: HTTPServer) -> None:
+        """Unwraps the `status` envelope to the raw QueryStatusResponse."""
 
-        block = {"blockHeight": 42, "timestamp": "2025-01-01T00:00:00Z", "hash": "0xabc"}
-        _capture_request(
+        block = {"height": 42, "timestamp": "2025-01-01T00:00:00Z", "hash": "0xabc"}
+        _capture_rest(
             httpserver,
-            {"data": {"queryStatus": {"chainId": "dango-1", "block": block}}},
+            "/query",
+            {"status": {"chain_id": "dango-1", "last_finalized_block": block}},
         )
         result = _info(httpserver).query_status()
-        assert result == {"chainId": "dango-1", "block": block}
+        assert result == {"chain_id": "dango-1", "last_finalized_block": block}
 
-    def test_posts_query_status_document(self, httpserver: HTTPServer) -> None:
-        """The wire body has the QueryStatus GraphQL document."""
+    def test_posts_status_query(self, httpserver: HTTPServer) -> None:
+        """The wire body is the bare `{status: {}}` Query object."""
 
-        captured = _capture_request(
+        captured = _capture_rest(
             httpserver,
-            {"data": {"queryStatus": {"chainId": "dango-1", "block": {}}}},
+            "/query",
+            {"status": {"chain_id": "dango-1", "last_finalized_block": {}}},
         )
         _info(httpserver).query_status()
-        assert "QueryStatus" in captured[0]["query"]
-        assert "queryStatus" in captured[0]["query"]
-        # query_status has no variables; API.query() sends {} for that case.
-        assert captured[0]["variables"] == {}
+        assert captured[0] == {"status": {}}
 
 
 class TestQueryApp:
