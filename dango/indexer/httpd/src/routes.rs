@@ -1,5 +1,7 @@
 pub mod blocks;
+pub mod broadcast;
 pub mod graphql;
 pub mod index;
-pub mod rest;
+pub mod query;
+pub mod simulate;
 pub mod ws;
