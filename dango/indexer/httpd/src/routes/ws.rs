@@ -3,10 +3,17 @@
 //! One socket carries any number of subscriptions, each identified by a
 //! client-chosen `id`. Client messages are `method`-tagged
 //! (`subscribe` / `unsubscribe` / `ping`); server messages are `channel`-tagged
-//! (`subscriptionResponse` / `<channel>` data / `pong` / `error`). The `id` of a
-//! `subscribe` is echoed on its acknowledgement and on every data frame it
-//! produces, so concurrent subscriptions (e.g. several `perpsEvents` feeds with
-//! different filters) are demultiplexable on the client.
+//! (`subscriptionResponse` / `<channel>` / `pong`). The `id` of a `subscribe` is
+//! echoed on its acknowledgement and on every frame it produces, so concurrent
+//! subscriptions (e.g. several `perpsEvents` feeds with different filters) are
+//! demultiplexable on the client.
+//!
+//! Errors are co-located with the operation they concern: a problem opening or
+//! running a subscription rides that subscription's own channel and `id`, as an
+//! `error`-keyed frame alongside its `data`-keyed frames, so a client handles a
+//! feed's failure on the same channel it reads from. Only errors with no
+//! channel to attribute them to — an unparseable frame, or an `unsubscribe` for
+//! an unknown `id` — use the dedicated `error` channel.
 //!
 //! Two channel types are served, both reusing the in-memory validator stream
 //! that backed the `full_block` / `perps_events` GraphQL subscriptions:
@@ -152,10 +159,14 @@ enum ServerControl<'a> {
         #[serde(skip_serializing_if = "Option::is_none")]
         id: Option<u64>,
     },
+    /// A connection-level error with no subscription channel to attribute it to
+    /// — an unparseable frame, or an `unsubscribe` for an unknown `id`. Errors
+    /// that concern a specific subscription instead ride its channel; see
+    /// [`ErrorFrame`].
     Error {
         #[serde(skip_serializing_if = "Option::is_none")]
         id: Option<u64>,
-        data: ErrorData<'a>,
+        error: ErrorData<'a>,
     },
 }
 
@@ -180,6 +191,17 @@ struct DataFrame<'a, T> {
     channel: &'static str,
     id: u64,
     data: &'a T,
+}
+
+/// An error scoped to a subscription, delivered on that subscription's own
+/// channel and `id` — mirroring its data frames — so a client handles a feed's
+/// failure on the same channel it reads from. Connection-level errors that have
+/// no channel to attribute them to use [`ServerControl::Error`] instead.
+#[derive(Debug, Serialize)]
+struct ErrorFrame<'a> {
+    channel: &'static str,
+    id: u64,
+    error: ErrorData<'a>,
 }
 
 // ---- handler ----
@@ -289,10 +311,14 @@ async fn handle_text(
 
     match message {
         ClientMessage::Subscribe { id, subscription } => {
+            // Subscription-scoped errors ride this channel + `id`, mirroring the
+            // data frames the subscription would have produced.
+            let channel = subscription.channel();
+
             if streams.contains_key(&id) {
                 return send(
                     session,
-                    error_frame(Some(id), "badRequest", "id already in use"),
+                    channel_error(channel, id, "badRequest", "id already in use"),
                 )
                 .await;
             }
@@ -305,19 +331,18 @@ async fn handle_text(
                 Err(err) => {
                     return send(
                         session,
-                        error_frame(Some(id), "tooManyRequests", &err.message),
+                        channel_error(channel, id, "tooManyRequests", &err.message),
                     )
                     .await;
                 },
             };
 
-            let channel = subscription.channel();
             match open_stream(id, &subscription, guard, stream_ctx) {
                 Ok(frames) => {
                     streams.insert(id, frames);
                     send(session, ack(id, "subscribe", Some(channel))).await
                 },
-                Err(resync) => send(session, error_frame(Some(id), "resync", &resync)).await,
+                Err(resync) => send(session, channel_error(channel, id, "resync", &resync)).await,
             }
         },
         ClientMessage::Unsubscribe { id } => {
@@ -370,7 +395,7 @@ fn open_stream(
             let frames = guard_subscription_stream(raw, Some(guard))
                 .map(move |block| data_frame("perpsEvents", id, &block));
 
-            Ok(with_terminal(id, frames))
+            Ok(with_terminal("perpsEvents", id, frames))
         },
         Subscription::FullBlock { since } => {
             let raw = stream_ctx
@@ -380,7 +405,7 @@ fn open_stream(
             let frames = guard_subscription_stream(raw, Some(guard))
                 .map(move |block| data_frame("fullBlock", id, &block));
 
-            Ok(with_terminal(id, frames))
+            Ok(with_terminal("fullBlock", id, frames))
         },
     }
 }
@@ -390,13 +415,14 @@ fn open_stream(
 /// feed closed — the client learns to resync instead of seeing the feed go
 /// silent. An explicit `unsubscribe` removes the stream from the map before this
 /// runs, so it never fires spuriously.
-fn with_terminal<S>(id: u64, frames: S) -> FrameStream
+fn with_terminal<S>(channel: &'static str, id: u64, frames: S) -> FrameStream
 where
     S: stream::Stream<Item = String> + Send + 'static,
 {
     let terminal = stream::once(async move {
-        error_frame(
-            Some(id),
+        channel_error(
+            channel,
+            id,
             "resync",
             "subscription ended; reconnect with a newer `since`",
         )
@@ -413,7 +439,7 @@ async fn send(session: &mut Session, text: String) -> bool {
 
 fn control(message: &ServerControl) -> String {
     serde_json::to_string(message).unwrap_or_else(|_| {
-        r#"{"channel":"error","data":{"code":"internal","message":"serialization failed"}}"#
+        r#"{"channel":"error","error":{"code":"internal","message":"serialization failed"}}"#
             .to_string()
     })
 }
@@ -428,8 +454,19 @@ fn ack(id: u64, method: &str, channel: Option<&str>) -> String {
 fn error_frame(id: Option<u64>, code: &str, message: &str) -> String {
     control(&ServerControl::Error {
         id,
-        data: ErrorData { code, message },
+        error: ErrorData { code, message },
     })
+}
+
+/// Serialize an error scoped to a subscription, delivered on that subscription's
+/// own `channel` and `id` — the co-located counterpart to [`data_frame`].
+fn channel_error(channel: &'static str, id: u64, code: &str, message: &str) -> String {
+    serde_json::to_string(&ErrorFrame {
+        channel,
+        id,
+        error: ErrorData { code, message },
+    })
+    .unwrap_or_else(|_| error_frame(Some(id), "internal", "serialization failed"))
 }
 
 fn data_frame<T>(channel: &'static str, id: u64, data: &T) -> String
@@ -562,7 +599,7 @@ mod tests {
 
         assert_eq!(
             parse(&error_frame(Some(3), "resync", "stale")),
-            json!({"channel": "error", "id": 3, "data": {"code": "resync", "message": "stale"}}),
+            json!({"channel": "error", "id": 3, "error": {"code": "resync", "message": "stale"}}),
         );
     }
 
@@ -576,6 +613,22 @@ mod tests {
             ))
             .unwrap(),
             json!({"channel": "perpsEvents", "id": 1, "data": {"blockHeight": 5}}),
+        );
+    }
+
+    #[test]
+    fn serializes_colocated_error_on_its_subscription_channel() {
+        // A subscription-scoped error rides that subscription's own channel and
+        // `id`, as an `error`-keyed sibling of its `data`-keyed frames.
+        assert_eq!(
+            serde_json::from_str::<serde_json::Value>(&channel_error(
+                "perpsEvents",
+                1,
+                "resync",
+                "stale",
+            ))
+            .unwrap(),
+            json!({"channel": "perpsEvents", "id": 1, "error": {"code": "resync", "message": "stale"}}),
         );
     }
 }
