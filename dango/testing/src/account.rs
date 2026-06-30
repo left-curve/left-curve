@@ -458,7 +458,6 @@ impl SequencedSigner for TestAccount {
             .query_wasm_smart(
                 self.address.into_inner(),
                 account::QuerySeenNoncesRequest {},
-                None,
             )
             .await?
             .last()

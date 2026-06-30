@@ -15,51 +15,44 @@ pub trait QueryClient: Send + Sync {
     type Error: From<StdError>;
     type Proof;
 
-    async fn query_app(
-        &self,
-        query: Query,
-        height: Option<u64>,
-    ) -> Result<QueryResponse, Self::Error>;
+    async fn query_app(&self, query: Query) -> Result<QueryResponse, Self::Error>;
 
     async fn simulate(&self, tx: UnsignedTx) -> Result<TxOutcome, Self::Error>;
 }
 
 #[async_trait]
 pub trait QueryClientExt: QueryClient {
-    async fn query_status(&self, height: Option<u64>) -> Result<QueryStatusResponse, Self::Error> {
-        self.query_app(Query::status(), height)
+    async fn query_status(&self) -> Result<QueryStatusResponse, Self::Error> {
+        self.query_app(Query::status())
             .await
             .map(|res| res.into_status())
     }
 
-    async fn query_config(&self, height: Option<u64>) -> Result<Config, Self::Error> {
-        self.query_app(Query::config(), height)
+    async fn query_config(&self) -> Result<Config, Self::Error> {
+        self.query_app(Query::config())
             .await
             .map(|res| res.into_config())
     }
 
-    async fn query_owner(&self, height: Option<u64>) -> Result<Addr, Self::Error> {
-        self.query_config(height).await.map(|res| res.owner)
+    async fn query_owner(&self) -> Result<Addr, Self::Error> {
+        self.query_config().await.map(|res| res.owner)
     }
 
-    async fn query_bank(&self, height: Option<u64>) -> Result<Addr, Self::Error> {
-        self.query_config(height).await.map(|res| res.bank)
+    async fn query_bank(&self) -> Result<Addr, Self::Error> {
+        self.query_config().await.map(|res| res.bank)
     }
 
-    async fn query_app_config<T>(&self, height: Option<u64>) -> Result<T, Self::Error>
+    async fn query_app_config<T>(&self) -> Result<T, Self::Error>
     where
         T: DeserializeOwned,
     {
-        self.query_app(Query::app_config(), height)
+        self.query_app(Query::app_config())
             .await
             .and_then(|res| res.into_app_config().deserialize_json().map_err(Into::into))
     }
 
-    async fn query_next_upgrade(
-        &self,
-        height: Option<u64>,
-    ) -> Result<Option<NextUpgrade>, Self::Error> {
-        self.query_app(Query::next_upgrade(), height)
+    async fn query_next_upgrade(&self) -> Result<Option<NextUpgrade>, Self::Error> {
+        self.query_app(Query::next_upgrade())
             .await
             .map(|res| res.into_next_upgrade())
     }
@@ -68,20 +61,14 @@ pub trait QueryClientExt: QueryClient {
         &self,
         start_after: Option<u64>,
         limit: Option<u32>,
-        height: Option<u64>,
     ) -> Result<BTreeMap<u64, PastUpgrade>, Self::Error> {
-        self.query_app(Query::past_upgrades(start_after, limit), height)
+        self.query_app(Query::past_upgrades(start_after, limit))
             .await
             .map(|res| res.into_past_upgrades())
     }
 
-    async fn query_balance(
-        &self,
-        address: Addr,
-        denom: Denom,
-        height: Option<u64>,
-    ) -> Result<Uint128, Self::Error> {
-        self.query_app(Query::balance(address, denom), height)
+    async fn query_balance(&self, address: Addr, denom: Denom) -> Result<Uint128, Self::Error> {
+        self.query_app(Query::balance(address, denom))
             .await
             .map(|res| res.into_balance().amount)
     }
@@ -91,19 +78,14 @@ pub trait QueryClientExt: QueryClient {
         address: Addr,
         start_after: Option<Denom>,
         limit: Option<u32>,
-        height: Option<u64>,
     ) -> Result<Coins, Self::Error> {
-        self.query_app(Query::balances(address, start_after, limit), height)
+        self.query_app(Query::balances(address, start_after, limit))
             .await
             .map(|res| res.into_balances())
     }
 
-    async fn query_supply(
-        &self,
-        denom: Denom,
-        height: Option<u64>,
-    ) -> Result<Uint128, Self::Error> {
-        self.query_app(Query::supply(denom), height)
+    async fn query_supply(&self, denom: Denom) -> Result<Uint128, Self::Error> {
+        self.query_app(Query::supply(denom))
             .await
             .map(|res| res.into_supply().amount)
     }
@@ -112,15 +94,14 @@ pub trait QueryClientExt: QueryClient {
         &self,
         start_after: Option<Denom>,
         limit: Option<u32>,
-        height: Option<u64>,
     ) -> Result<Coins, Self::Error> {
-        self.query_app(Query::supplies(start_after, limit), height)
+        self.query_app(Query::supplies(start_after, limit))
             .await
             .map(|res| res.into_supplies())
     }
 
-    async fn query_code(&self, hash: Hash256, height: Option<u64>) -> Result<Code, Self::Error> {
-        self.query_app(Query::code(hash), height)
+    async fn query_code(&self, hash: Hash256) -> Result<Code, Self::Error> {
+        self.query_app(Query::code(hash))
             .await
             .map(|res| res.into_code())
     }
@@ -129,19 +110,14 @@ pub trait QueryClientExt: QueryClient {
         &self,
         start_after: Option<Hash256>,
         limit: Option<u32>,
-        height: Option<u64>,
     ) -> Result<BTreeMap<Hash256, Code>, Self::Error> {
-        self.query_app(Query::codes(start_after, limit), height)
+        self.query_app(Query::codes(start_after, limit))
             .await
             .map(|res| res.into_codes())
     }
 
-    async fn query_contract(
-        &self,
-        address: Addr,
-        height: Option<u64>,
-    ) -> Result<ContractInfo, Self::Error> {
-        self.query_app(Query::contract(address), height)
+    async fn query_contract(&self, address: Addr) -> Result<ContractInfo, Self::Error> {
+        self.query_app(Query::contract(address))
             .await
             .map(|res| res.into_contract())
     }
@@ -150,9 +126,8 @@ pub trait QueryClientExt: QueryClient {
         &self,
         start_after: Option<Addr>,
         limit: Option<u32>,
-        height: Option<u64>,
     ) -> Result<BTreeMap<Addr, ContractInfo>, Self::Error> {
-        self.query_app(Query::contracts(start_after, limit), height)
+        self.query_app(Query::contracts(start_after, limit))
             .await
             .map(|res| res.into_contracts())
     }
@@ -162,26 +137,16 @@ pub trait QueryClientExt: QueryClient {
     ///
     /// The only case where `query_wasm_raw` is preferred is if you just want to
     /// know whether a data exists or not, without needing to deserialize it.
-    async fn query_wasm_raw<B>(
-        &self,
-        contract: Addr,
-        key: B,
-        height: Option<u64>,
-    ) -> Result<Option<Binary>, Self::Error>
+    async fn query_wasm_raw<B>(&self, contract: Addr, key: B) -> Result<Option<Binary>, Self::Error>
     where
         B: Into<Binary> + Send,
     {
-        self.query_app(Query::wasm_raw(contract, key), height)
+        self.query_app(Query::wasm_raw(contract, key))
             .await
             .map(|res| res.into_wasm_raw())
     }
 
-    async fn query_wasm_smart<R>(
-        &self,
-        contract: Addr,
-        req: R,
-        height: Option<u64>,
-    ) -> Result<R::Response, Self::Error>
+    async fn query_wasm_smart<R>(&self, contract: Addr, req: R) -> Result<R::Response, Self::Error>
     where
         R: QueryRequest + Send,
         R::Message: Serialize + Send,
@@ -189,7 +154,7 @@ pub trait QueryClientExt: QueryClient {
     {
         let msg = R::Message::from(req);
 
-        self.query_app(Query::wasm_smart(contract, &msg)?, height)
+        self.query_app(Query::wasm_smart(contract, &msg)?)
             .await
             .and_then(|res| res.into_wasm_smart().deserialize_json().map_err(Into::into))
     }
@@ -197,9 +162,8 @@ pub trait QueryClientExt: QueryClient {
     async fn query_multi<const N: usize>(
         &self,
         requests: [Query; N],
-        height: Option<u64>,
     ) -> Result<[Result<QueryResponse, Self::Error>; N], Self::Error> {
-        self.query_app(Query::Multi(requests.into()), height)
+        self.query_app(Query::Multi(requests.into()))
             .await
             .map(|res| {
                 // We trust that the host has properly implemented the multi

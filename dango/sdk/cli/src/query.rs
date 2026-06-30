@@ -12,10 +12,6 @@ use {
 
 #[derive(Parser)]
 pub struct QueryCmd {
-    /// The block height at which to perform queries [default: last finalized height]
-    #[arg(long)]
-    height: Option<u64>,
-
     #[command(subcommand)]
     subcmd: SubCmd,
 }
@@ -218,9 +214,6 @@ impl QueryCmd {
             },
         };
 
-        client
-            .query_app(req, self.height)
-            .await
-            .and_then(print_json_pretty)
+        client.query_app(req).await.and_then(print_json_pretty)
     }
 }

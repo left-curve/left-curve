@@ -405,15 +405,11 @@ impl QueryClient for HttpClient {
     type Error = anyhow::Error;
     type Proof = dango_primitives::Proof;
 
-    async fn query_app(
-        &self,
-        query: Query,
-        height: Option<u64>,
-    ) -> Result<QueryResponse, Self::Error> {
+    async fn query_app(&self, query: Query) -> Result<QueryResponse, Self::Error> {
         let response = self
             .post_graphql(query_app::Variables {
                 request: query.to_json_value()?.into_inner(),
-                height: height.map(|h| h as i64),
+                height: None,
             })
             .await?;
 

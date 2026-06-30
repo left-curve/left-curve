@@ -1,6 +1,6 @@
 # query_app
 
-Run an app-level query against the node at a given height.
+Run an app-level query against the node.
 
 ## Signature
 
@@ -9,11 +9,7 @@ impl QueryClient for HttpClient {
     type Error = anyhow::Error;
     type Proof = dango_primitives::Proof;
 
-    async fn query_app(
-        &self,
-        query: Query,
-        height: Option<u64>,
-    ) -> Result<QueryResponse, Self::Error>;
+    async fn query_app(&self, query: Query) -> Result<QueryResponse, Self::Error>;
 }
 ```
 
@@ -31,7 +27,7 @@ use {
 #[tokio::main]
 async fn main() -> Result<()> {
     let client   = HttpClient::new("https://api-mainnet.dango.zone")?;
-    let response = client.query_app(Query::Config(QueryConfigRequest {}), None).await?;
+    let response = client.query_app(Query::Config(QueryConfigRequest {})).await?;
     println!("{response:?}");
     Ok(())
 }

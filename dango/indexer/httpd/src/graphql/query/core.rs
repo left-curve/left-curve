@@ -92,9 +92,16 @@ impl CoreQuery {
         #[graphql(desc = "Request as JSON")] request: Query,
         height: Option<u64>,
     ) -> Result<QueryResponse, Error> {
+        // Historical queries are not supported; only the latest finalized block
+        // can be queried. Reject a non-`None` height explicitly rather than
+        // silently ignoring it.
+        if height.is_some() {
+            return Err(Error::new("non-None `height` is not supported"));
+        }
+
         let app_ctx = ctx.data::<MinimalContext>()?;
 
-        Self::_query_app(app_ctx, request, height)
+        Self::_query_app(app_ctx, request, None)
             .await
             .map(|res| res.response)
     }

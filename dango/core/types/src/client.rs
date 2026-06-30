@@ -57,12 +57,8 @@ where
     type Error = E;
     type Proof = P;
 
-    async fn query_app(
-        &self,
-        query: Query,
-        height: Option<u64>,
-    ) -> Result<QueryResponse, Self::Error> {
-        self.client.query_app(query, height).await
+    async fn query_app(&self, query: Query) -> Result<QueryResponse, Self::Error> {
+        self.client.query_app(query).await
     }
 
     async fn simulate(&self, tx: UnsignedTx) -> Result<TxOutcome, Self::Error> {
