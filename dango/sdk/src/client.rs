@@ -186,6 +186,22 @@ impl HttpClient {
         Ok(all_items)
     }
 
+    /// Derive the `ws(s)://…/ws` endpoint URL from this client's HTTP base.
+    fn ws_url(&self) -> anyhow::Result<Url> {
+        let mut ws_url = self.url.join("ws")?;
+        match ws_url.scheme() {
+            "http" => ws_url
+                .set_scheme("ws")
+                .map_err(|_| anyhow!("failed to set ws scheme"))?,
+            "https" => ws_url
+                .set_scheme("wss")
+                .map_err(|_| anyhow!("failed to set wss scheme"))?,
+            "ws" | "wss" => {},
+            scheme => bail!("invalid URL scheme: {scheme}"),
+        }
+        Ok(ws_url)
+    }
+
     /// Subscribe to perps-exchange events over the WebSocket endpoint
     /// (`GET /ws`, `perpsEvents` channel) — the transport replacement for the
     /// `perps_events` GraphQL subscription. Yields one [`PerpsEventsBatch`] per
@@ -206,18 +222,7 @@ impl HttpClient {
         order_ids: Option<Vec<String>>,
         client_order_ids: Option<Vec<String>>,
     ) -> anyhow::Result<impl Stream<Item = anyhow::Result<PerpsEventsBatch>> + Send> {
-        // Derive the `/ws` URL from the HTTP base.
-        let mut ws_url = self.url.join("ws")?;
-        match ws_url.scheme() {
-            "http" => ws_url
-                .set_scheme("ws")
-                .map_err(|_| anyhow!("failed to set ws scheme"))?,
-            "https" => ws_url
-                .set_scheme("wss")
-                .map_err(|_| anyhow!("failed to set wss scheme"))?,
-            "ws" | "wss" => {},
-            scheme => bail!("invalid URL scheme: {scheme}"),
-        }
+        let ws_url = self.ws_url()?;
 
         // Build the subscribe message. Absent filters are omitted (match-all);
         // present ones are sent as JSON arrays.
@@ -338,19 +343,7 @@ impl HttpClient {
     /// [`BroadcastTxOutcome::check_tx`]); only a transport failure to the node
     /// is `Err`.
     pub async fn broadcast_tx_ws(&self, tx: Tx) -> anyhow::Result<BroadcastTxOutcome> {
-        // Derive the `/ws` URL from the HTTP base (same as
-        // `subscribe_perps_events`).
-        let mut ws_url = self.url.join("ws")?;
-        match ws_url.scheme() {
-            "http" => ws_url
-                .set_scheme("ws")
-                .map_err(|_| anyhow!("failed to set ws scheme"))?,
-            "https" => ws_url
-                .set_scheme("wss")
-                .map_err(|_| anyhow!("failed to set wss scheme"))?,
-            "ws" | "wss" => {},
-            scheme => bail!("invalid URL scheme: {scheme}"),
-        }
+        let ws_url = self.ws_url()?;
 
         let request = serde_json::json!({
             "method": "broadcast",
