@@ -11,7 +11,9 @@ import type { HyperlaneConfig, HyperlaneEvmChainConfig } from "@left-curve/types
 import { useAccount } from "./useAccount.js";
 
 const SUPPORTED_BRIDGE_SYMBOLS = new Set(["USDC"]);
+const DEPOSIT_ASSET_SYMBOL = "USDC";
 const ETHEREUM_MAINNET_CHAIN_ID = 1;
+const ARBITRUM_CHAIN_IDS = new Set(["42161", "421614"]);
 
 type BridgeAction = "deposit" | "withdraw";
 
@@ -95,20 +97,36 @@ export function useBridgeState(params: UseBridgeStateParameters) {
       }));
   }, [action, evm]);
 
+  const depositCoin = useMemo(() => {
+    return Object.values(allCoins.byDenom).find(
+      ({ symbol }) => normalizeSymbol(symbol) === DEPOSIT_ASSET_SYMBOL,
+    );
+  }, [allCoins.byDenom]);
+
+  const getDefaultDepositNetwork = useCallback(
+    (nextCoin: AnyCoin | undefined) => {
+      const supportedNetworks = configuredNetworks.filter(({ id }) =>
+        hasSupportedRoute("deposit", evm[id], nextCoin),
+      );
+
+      return (
+        supportedNetworks.find(({ id }) => ARBITRUM_CHAIN_IDS.has(id)) ?? supportedNetworks[0]
+      )?.id;
+    },
+    [configuredNetworks, evm],
+  );
+
   const changeCoin = useCallback(
     (denom: string) => {
       const nextCoin = allCoins.byDenom[denom];
+      if (action === "deposit" && (!depositCoin || nextCoin?.denom !== depositCoin.denom)) return;
+
       setCoin(nextCoin);
 
-      // Deposit pre-selects the highest-priority supported network (lowest `order`);
-      // in production that's Arbitrum. Withdraw still requires an explicit choice.
       if (action !== "deposit") return;
-      const [defaultNetwork] = configuredNetworks.filter(({ id }) =>
-        hasSupportedRoute(action, evm[id], nextCoin),
-      );
-      setNetwork(defaultNetwork?.id);
+      setNetwork(getDefaultDepositNetwork(nextCoin));
     },
-    [action, allCoins, configuredNetworks, evm],
+    [action, allCoins.byDenom, depositCoin, getDefaultDepositNetwork],
   );
 
   const networks = useMemo(() => {
@@ -182,6 +200,15 @@ export function useBridgeState(params: UseBridgeStateParameters) {
   useEffect(() => {
     reset();
   }, [action, isConnected]);
+
+  useEffect(() => {
+    if (action !== "deposit" || !depositCoin) return;
+
+    setCoin((currentCoin) =>
+      currentCoin?.denom === depositCoin.denom ? currentCoin : depositCoin,
+    );
+    setNetwork((currentNetwork) => currentNetwork ?? getDefaultDepositNetwork(depositCoin));
+  }, [action, depositCoin, getDefaultDepositNetwork]);
 
   return {
     action,

@@ -32,17 +32,19 @@ import {
   CoinSelector,
   IconArrowDown,
   Input,
-  ResizerContainer,
   NetworkSelector,
+  ResizerContainer,
   Tabs,
   WarningContainer,
 } from "@left-curve/applets-kit";
 
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type React from "react";
 import type { PropsWithChildren } from "react";
 import type { AnyCoin } from "@left-curve/store/types";
 import type { NonNullablePropertiesBy } from "@left-curve/types";
+import { DepositFreeBadge, MoreDepositOptionsCard } from "./DepositOptions";
+import { SwapperDeposit } from "./SwapperDeposit";
 
 const [BridgeProvider, useBridge] = createContext<{
   state: ReturnType<typeof useBridgeState>;
@@ -54,6 +56,34 @@ const [BridgeProvider, useBridge] = createContext<{
 type BridgeProps = {
   action: "deposit" | "withdraw";
   changeAction: (action: "deposit" | "withdraw") => void;
+};
+
+const compactTokenAmountFormatter = new Intl.NumberFormat("en", {
+  maximumFractionDigits: 3,
+  notation: "compact",
+});
+
+const formatCompactTokenAmount = (amount: string) => {
+  const numericAmount = Number(amount);
+  if (!Number.isFinite(numericAmount)) return amount;
+  return compactTokenAmountFormatter.format(numericAmount);
+};
+
+const formatWithdrawLiquidity = (rawBalance: string, coin: AnyCoin) => {
+  const amount = formatUnits(rawBalance, coin.decimals);
+  return `${m["bridge.withdrawLiquidity"]()}: ${formatCompactTokenAmount(amount)} ${coin.symbol}`;
+};
+
+const MoreDepositOptionsGate: React.FC<{ onClick: () => void }> = ({ onClick }) => {
+  const { isConnected } = useAccount();
+  const { showModal } = useApp();
+  const handleSignin = () => showModal(Modals.Authenticate, { action: "signin" });
+
+  if (!isConnected) {
+    return <MoreDepositOptionsCard cta={m["common.signin"]()} onClick={handleSignin} />;
+  }
+
+  return <MoreDepositOptionsCard onClick={onClick} />;
 };
 
 const BridgeContainer: React.FC<PropsWithChildren<BridgeProps>> = ({
@@ -86,49 +116,77 @@ const BridgeContainer: React.FC<PropsWithChildren<BridgeProps>> = ({
 const BridgeDeposit: React.FC = () => {
   const { state } = useBridge();
   const { action, network, coin, config } = state;
+  const [showSwapperDeposit, setShowSwapperDeposit] = useState(false);
+
+  useEffect(() => {
+    if (action !== "deposit") setShowSwapperDeposit(false);
+  }, [action]);
 
   if (action !== "deposit") return null;
 
+  if (showSwapperDeposit) return <SwapperDeposit onBack={() => setShowSwapperDeposit(false)} />;
+
   const isEvmNetwork = !!network && !["bitcoin", "solana"].includes(network);
   const showUnsupportedFallback = isEvmNetwork && !!coin && !config?.router;
+  const openSwapperDeposit = () => setShowSwapperDeposit(true);
 
   return (
     <>
-      <BridgeSelectors />
+      <WarningContainer description={m["bridge.rateLimitWarning"]()} />
+
+      <BridgeSelectors showCoinSelector={false} />
 
       {network === "bitcoin" && <BitcoinDeposit />}
 
-      {isEvmNetwork && config?.router && <EvmDeposit />}
+      {isEvmNetwork && config?.router && <EvmDeposit onMoreOptionsClick={openSwapperDeposit} />}
 
       {showUnsupportedFallback && (
-        <WarningContainer description="This network does not support this asset." />
+        <div className="flex flex-col gap-4">
+          <WarningContainer description={m["bridge.unsupportedAsset"]()} />
+          <MoreDepositOptionsGate onClick={openSwapperDeposit} />
+        </div>
       )}
 
-      <WarningContainer description={m["bridge.rateLimitWarning"]()} />
+      {!isEvmNetwork && network !== "bitcoin" && (
+        <MoreDepositOptionsGate onClick={openSwapperDeposit} />
+      )}
     </>
   );
 };
 
-const BridgeSelectors: React.FC = () => {
-  const { isConnected } = useAccount();
+const BridgeSelectors: React.FC<{ showCoinSelector?: boolean }> = ({ showCoinSelector = true }) => {
+  const { account, isConnected } = useAccount();
+  const { data: balances = {} } = useBalances({ address: account?.address });
 
   const { state } = useBridge();
   const { coin, changeCoin, coins, network, setNetwork, networks } = state;
+  const withdrawBalance = coin ? (balances[coin.denom] ?? "0") : undefined;
+  const networkOptions = useMemo(() => {
+    if (state.action !== "withdraw" || !coin || withdrawBalance === undefined) return networks;
+
+    const withdrawLiquidity = formatWithdrawLiquidity(withdrawBalance, coin);
+    return networks.map((network) => ({
+      ...network,
+      withdrawLiquidity,
+    }));
+  }, [coin, networks, state.action, withdrawBalance]);
 
   return (
     <>
-      <CoinSelector
-        isDisabled={!isConnected}
-        label={m["bridge.selectCoin"]()}
-        placeholder={m["bridge.selectCoin"]()}
-        variant="boxed"
-        classNames={{ base: "w-full", trigger: "h-[56px]", listboxWrapper: "top-[4rem]" }}
-        value={coin?.denom}
-        onChange={changeCoin}
-        coins={coins}
-        withName
-        withPrice
-      />
+      {showCoinSelector && (
+        <CoinSelector
+          isDisabled={!isConnected}
+          label={m["bridge.selectCoin"]()}
+          placeholder={m["bridge.selectCoin"]()}
+          variant="boxed"
+          classNames={{ base: "w-full", trigger: "h-[56px]", listboxWrapper: "top-[4rem]" }}
+          value={coin?.denom}
+          onChange={changeCoin}
+          coins={coins}
+          withName
+          withPrice
+        />
+      )}
 
       <NetworkSelector
         isDisabled={!coin}
@@ -137,7 +195,7 @@ const BridgeSelectors: React.FC = () => {
         label={m["bridge.selectNetwork"]()}
         placeholder={m["bridge.selectNetwork"]()}
         onNetworkChange={({ id }) => setNetwork(id)}
-        networks={networks}
+        networks={networkOptions}
       />
     </>
   );
@@ -148,7 +206,7 @@ const BitcoinDeposit: React.FC = () => {
   return <DepositAddressBox address={depositAddress} network="bitcoin" />;
 };
 
-const EvmDeposit: React.FC = () => {
+const EvmDeposit: React.FC<{ onMoreOptionsClick: () => void }> = ({ onMoreOptionsClick }) => {
   const { userStatus } = useAccount();
   const { getPrice } = usePrices();
   const { showModal } = useApp();
@@ -185,7 +243,12 @@ const EvmDeposit: React.FC = () => {
   });
 
   if (!connector || !coin) {
-    return <ConnectWalletWithModal fullWidth onWalletSelected={(id) => setConnectorId(id)} />;
+    return (
+      <div className="flex w-full flex-col gap-4">
+        <ConnectWalletWithModal fullWidth onWalletSelected={(id) => setConnectorId(id)} />
+        <MoreDepositOptionsGate onClick={onMoreOptionsClick} />
+      </div>
+    );
   }
 
   const handleDeposit = () =>
@@ -287,14 +350,19 @@ const EvmDeposit: React.FC = () => {
         isDisabled={!!errors.amount || amount === "0"}
         className="mt-4"
       >
-        {m["bridge.deposit.title"]()}
+        <span className="flex items-center justify-center gap-2">
+          <span>{m["bridge.deposit.title"]()}</span>
+          <DepositFreeBadge />
+        </span>
       </Button>
+
+      <MoreDepositOptionsGate onClick={onMoreOptionsClick} />
     </div>
   );
 };
 
 const BridgeWithdraw: React.FC = () => {
-  const { account } = useAccount();
+  const { account, isConnected } = useAccount();
   const { state, controllers } = useBridge();
   const { data: balances = {} } = useBalances({ address: account?.address });
   const { getPrice } = usePrices();
@@ -331,6 +399,8 @@ const BridgeWithdraw: React.FC = () => {
       fee,
     });
 
+  const handleSignin = () => showModal(Modals.Authenticate, { action: "signin" });
+
   const handleAddressSet = (address: string, walletName?: string, walletIcon?: string) => {
     setDestinationAddress({ address, walletName, walletIcon });
     controllers.setValue("recipient", address);
@@ -347,29 +417,33 @@ const BridgeWithdraw: React.FC = () => {
   if (action !== "withdraw") return null;
 
   const withdrawHintParts = m["bridge.withdrawTransferHint"]({ app: "{app}" }).split("{app}");
+  const withdrawWarning = (
+    <ul className="list-disc pl-4 flex flex-col gap-1">
+      <li>
+        {withdrawHintParts[0]}
+        <Button as={Link} to="/transfer" variant="link" size="xs" className="p-0 h-fit m-0 inline">
+          {m["sendAndReceive.title"]()}
+        </Button>
+        {withdrawHintParts[1]}
+      </li>
+      <li>{m["bridge.rateLimitWarning"]()}</li>
+    </ul>
+  );
+
+  if (!isConnected) {
+    return (
+      <>
+        <WarningContainer description={withdrawWarning} />
+        <Button fullWidth onClick={handleSignin}>
+          {m["common.signin"]()}
+        </Button>
+      </>
+    );
+  }
 
   return (
     <>
-      <WarningContainer
-        description={
-          <ul className="list-disc pl-4 flex flex-col gap-1">
-            <li>
-              {withdrawHintParts[0]}
-              <Button
-                as={Link}
-                to="/transfer"
-                variant="link"
-                size="xs"
-                className="p-0 h-fit m-0 inline"
-              >
-                {m["sendAndReceive.title"]()}
-              </Button>
-              {withdrawHintParts[1]}
-            </li>
-            <li>{m["bridge.rateLimitWarning"]()}</li>
-          </ul>
-        }
-      />
+      <WarningContainer description={withdrawWarning} />
 
       <BridgeSelectors />
 
