@@ -2,12 +2,12 @@
 
 from __future__ import annotations
 
-from typing import Any, cast
+from typing import Any
 
 import pytest
 
 from dango.info import Info
-from dango.utils.types import Addr, CandleInterval, PairId, Tx
+from dango.utils.types import Addr, CandleInterval, PairId
 
 
 class _FakeWebsocketManager:
@@ -60,74 +60,6 @@ def _make_info_with_fake_ws() -> tuple[Info, _FakeWebsocketManager]:
     return info, fake
 
 
-class _FakeWsStreamManager:
-    """Captures native-WS subscribe/unsubscribe calls without real I/O."""
-
-    def __init__(self) -> None:
-        # Each entry is (subscription, callback): the subscription object sent
-        # on the wire, plus the callback the manager would invoke per frame.
-        self.subscriptions: list[tuple[dict[str, Any], Any]] = []
-        self.unsubscribed: list[int] = []
-        self.stopped: bool = False
-        self._next_id: int = 0
-        # One-shot broadcasts: the txs sent, and the canned outcome returned.
-        self.broadcasts: list[dict[str, Any]] = []
-        self.broadcast_result: dict[str, Any] = {
-            "tx_hash": "0xabc",
-            "check_tx": {"result": {"Ok": None}},
-        }
-
-    def subscribe(self, subscription: dict[str, Any], callback: Any) -> int:
-        self._next_id += 1
-        self.subscriptions.append((subscription, callback))
-        return self._next_id
-
-    def unsubscribe(self, subscription_id: int) -> bool:
-        self.unsubscribed.append(subscription_id)
-        return True
-
-    def stop(self) -> None:
-        self.stopped = True
-
-    def join(self, timeout: float | None = None) -> None:
-        pass
-
-    def broadcast(self, tx: dict[str, Any]) -> dict[str, Any]:
-        self.broadcasts.append(tx)
-        return self.broadcast_result
-
-
-def _make_info_with_fake_ws_stream() -> tuple[Info, _FakeWsStreamManager]:
-    """Build an Info and inject a fake WsStreamManager into its slot."""
-
-    info = Info("http://localhost:8080", skip_ws=False)
-    fake = _FakeWsStreamManager()
-    info._ws_stream_manager = fake  # type: ignore[assignment]
-    return info, fake
-
-
-class TestBroadcastWs:
-    def test_delegates_to_ws_stream(self) -> None:
-        """`broadcast_tx_ws` forwards the tx to the manager and returns its outcome."""
-
-        info, fake = _make_info_with_fake_ws_stream()
-        tx = cast(
-            Tx,
-            {
-                "sender": "0x000000000000000000000000000000000000beef",
-                "gas_limit": 1000000,
-                "msgs": [],
-                "data": {},
-                "credential": {},
-            },
-        )
-
-        result = info.broadcast_tx_ws(tx)
-
-        assert fake.broadcasts == [tx]
-        assert result == fake.broadcast_result
-
-
 class TestLazyWsConstruction:
     def test_skip_ws_raises_on_subscribe(self) -> None:
         """skip_ws=True turns subscribe_* into a hard error, not a silent no-op."""
@@ -176,68 +108,6 @@ class TestSubscribePerpsTrades:
         _doc, _vars, cb = fake.subscriptions[-1]
         cb({"_error": "boom"})
         # Pass-through, not unwrapping — the user handles errors uniformly.
-        assert received == [{"_error": "boom"}]
-
-
-class TestSubscribePerpsEvents:
-    def test_no_filter_sends_type_only(self) -> None:
-        """With no filter args, the subscription carries only its type (match all)."""
-
-        info, fake = _make_info_with_fake_ws_stream()
-        info.subscribe_perps_events(lambda _: None)
-        subscription, _cb = fake.subscriptions[-1]
-        # Absent filters are omitted entirely (the server treats an absent set
-        # as match-all); only the channel type is sent.
-        assert subscription == {"type": "perpsEvents"}
-
-    def test_filters_passed_through(self) -> None:
-        """Each keyword filter is sent as its camelCase subscription field."""
-
-        info, fake = _make_info_with_fake_ws_stream()
-        info.subscribe_perps_events(
-            lambda _: None,
-            since_block_height=42,
-            event_types=["order_filled"],
-            pair_ids=["perp/btcusd"],
-            users=["0xabc"],
-            order_ids=["100"],
-            client_order_ids=["7"],
-        )
-        subscription, _cb = fake.subscriptions[-1]
-        assert subscription == {
-            "type": "perpsEvents",
-            "since": 42,
-            "eventTypes": ["order_filled"],
-            "pairIds": ["perp/btcusd"],
-            "users": ["0xabc"],
-            "orderIds": ["100"],
-            "clientOrderIds": ["7"],
-        }
-
-    def test_callback_receives_batch(self) -> None:
-        """The callback gets the whole PerpsEvent2Batch (the bare data frame)."""
-
-        info, fake = _make_info_with_fake_ws_stream()
-        received: list[Any] = []
-        info.subscribe_perps_events(received.append)
-        _subscription, cb = fake.subscriptions[-1]
-        # One `perpsEvents` frame's payload = one block's batch.
-        batch = {
-            "blockHeight": 7,
-            "createdAt": "2026-06-18T00:00:00Z",
-            "events": [{"idx": 0, "eventType": "order_filled"}],
-        }
-        cb(batch)
-        assert received == [batch]
-
-    def test_callback_forwards_error_envelope(self) -> None:
-        """Server errors flow through to the user as {"_error": payload}."""
-
-        info, fake = _make_info_with_fake_ws_stream()
-        received: list[Any] = []
-        info.subscribe_perps_events(received.append)
-        _subscription, cb = fake.subscriptions[-1]
-        cb({"_error": "boom"})
         assert received == [{"_error": "boom"}]
 
 

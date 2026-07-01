@@ -1,9 +1,10 @@
-"""Native Dango API: stream BTC perps events from testnet.
+"""Native Dango API: stream BTC perps events over a shared `WsConnection`.
 
 Subscribes to the ``perpsEvents`` feed filtered to the BTC pair and the order
 lifecycle / forced-exit event types — ``order_persisted``, ``order_removed``,
 ``order_resized``, ``order_filled``, ``liquidated``, ``deleveraged`` — grouped
-per block. Runnable with no ``.env``: it only reads public chain state.
+per block, over the multiplexed native `/ws` connection (`dango.ws.WsConnection`).
+Runnable with no ``.env``: it only reads public chain state.
 
 Run with::
 
@@ -12,12 +13,13 @@ Run with::
 
 from __future__ import annotations
 
-import time
-
-import example_utils
+import threading
+from typing import cast
 
 from dango.utils.constants import TESTNET_API_URL
+from dango.utils.error import ServerError
 from dango.utils.types import PerpsEvent2Batch
+from dango.ws import WsConnection
 
 # Order lifecycle plus the two forced-exit events. The filters AND together, so
 # pairing these with `pair_ids` keeps only BTC events of these types.
@@ -32,13 +34,7 @@ _EVENT_TYPES = [
 
 
 def _print_batch(batch: PerpsEvent2Batch) -> None:
-    """Print one line per event; pass error envelopes through verbatim."""
-
-    # Server-side errors arrive as `{"_error": ...}` (see
-    # `dango.info._unwrap_node`); surface them and skip this message.
-    if "_error" in batch:
-        print("error:", batch)
-        return
+    """Print one line per event in a block's batch."""
 
     for event in batch["events"]:
         print(
@@ -50,21 +46,25 @@ def _print_batch(batch: PerpsEvent2Batch) -> None:
 
 
 def main() -> None:
-    info = example_utils.setup_read_only(TESTNET_API_URL)
+    with WsConnection.connect(TESTNET_API_URL) as conn:
+        events = conn.subscribe_perps_events(
+            pair_ids=["perp/btcusd"],
+            event_types=_EVENT_TYPES,
+        )
 
-    sub_id = info.subscribe_perps_events(
-        _print_batch,
-        pair_ids=["perp/btcusd"],
-        event_types=_EVENT_TYPES,
-    )
+        print("subscribed; streaming BTC perps events from testnet for 30s...")
 
-    print(f"subscribed: {sub_id}; streaming BTC perps events from testnet for 30s...")
+        # Each `next` blocks until the next block's batch arrives; closing the
+        # socket after 30s ends the iterator (the loop sees `StopIteration`), so
+        # the demo self-terminates even when the market is quiet.
+        threading.Timer(30.0, conn.close).start()
 
-    time.sleep(30)
-
-    # Drop the subscription and close the WebSocket.
-    info.unsubscribe(sub_id)
-    info.disconnect_websocket()
+        try:
+            for batch in events:
+                _print_batch(cast("PerpsEvent2Batch", batch))
+        except ServerError as exc:
+            # A terminal `resync` / `tooManyRequests` frame surfaces here.
+            print("stream error:", exc)
 
 
 if __name__ == "__main__":
