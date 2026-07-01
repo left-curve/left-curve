@@ -117,18 +117,23 @@ enum Command {
 }
 
 impl WsConnection {
-    /// Open a `/ws` connection and spawn its background actor.
+    /// Open a native `/ws` connection and spawn its background actor.
     ///
-    /// `url` is the HTTP base (e.g. `https://api.dango.zone`); the `ws(s)://…/ws`
-    /// endpoint is derived from it. Native `/ws` has no handshake, so this just
-    /// splits the socket and spawns the manager.
+    /// `url` must be a `ws://` or `wss://` URL pointing at the server's `/ws`
+    /// endpoint (e.g. `wss://api.dango.zone/ws`); any other scheme is rejected.
+    /// Native `/ws` has no handshake, so this just splits the socket and spawns
+    /// the manager.
     pub async fn connect<U>(url: U) -> anyhow::Result<Self>
     where
         U: IntoUrl,
     {
-        let ws_url = to_ws_url(url.into_url()?)?;
+        let url = url.into_url()?;
+        match url.scheme() {
+            "ws" | "wss" => {},
+            scheme => bail!("WsConnection requires a ws:// or wss:// URL, got scheme `{scheme}`"),
+        }
 
-        let (ws, _response) = connect_async(ws_url.as_str())
+        let (ws, _response) = connect_async(url.as_str())
             .await
             .map_err(|err| anyhow!("WebSocket connection failed: {err}"))?;
 
@@ -446,45 +451,18 @@ fn error_detail(error: &serde_json::Value) -> String {
     format!("{code}: {message}")
 }
 
-/// Derive the `ws(s)://…/ws` endpoint from an HTTP base URL.
-fn to_ws_url(base: Url) -> anyhow::Result<Url> {
-    let mut ws_url = base.join("ws")?;
-    match ws_url.scheme() {
-        "http" => ws_url
-            .set_scheme("ws")
-            .map_err(|_| anyhow!("failed to set ws scheme"))?,
-        "https" => ws_url
-            .set_scheme("wss")
-            .map_err(|_| anyhow!("failed to set wss scheme"))?,
-        "ws" | "wss" => {},
-        scheme => bail!("invalid URL scheme: {scheme}"),
-    }
-
-    Ok(ws_url)
-}
-
 // ----------------------------------- Tests -----------------------------------
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
-    #[test]
-    fn ws_url_derivation() {
-        // http(s) map to ws(s), and the `/ws` path is appended to the base.
-        for (base, expected) in [
-            ("https://api.dango.zone", "wss://api.dango.zone/ws"),
-            ("https://api.dango.zone/", "wss://api.dango.zone/ws"),
-            ("http://localhost:8080", "ws://localhost:8080/ws"),
-            ("ws://localhost:8080", "ws://localhost:8080/ws"),
-        ] {
-            let url = to_ws_url(Url::parse(base).unwrap()).unwrap();
-            assert_eq!(url.as_str(), expected, "base={base}");
-        }
-    }
-
-    #[test]
-    fn ws_url_rejects_unknown_scheme() {
-        assert!(to_ws_url(Url::parse("ftp://example.com").unwrap()).is_err());
+    #[tokio::test]
+    async fn connect_rejects_non_ws_scheme() {
+        // WsConnection is WS-only: an http(s) URL is rejected before any I/O.
+        let err = WsConnection::connect("https://api.dango.zone/ws")
+            .await
+            .unwrap_err();
+        assert!(err.to_string().contains("ws:// or wss://"), "{err}");
     }
 }
