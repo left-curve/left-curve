@@ -11,7 +11,7 @@ import type { HyperlaneConfig, HyperlaneEvmChainConfig } from "@left-curve/types
 import { useAccount } from "./useAccount.js";
 
 const SUPPORTED_BRIDGE_SYMBOLS = new Set(["USDC"]);
-const DEPOSIT_COIN_SYMBOL = "USDC";
+const DEPOSIT_ASSET_SYMBOL = "USDC";
 const ETHEREUM_MAINNET_CHAIN_ID = 1;
 const ARBITRUM_CHAIN_IDS = new Set(["42161", "421614"]);
 
@@ -50,10 +50,6 @@ function hasSupportedRoute(
     if (!coin) return true;
     return routeSymbol === normalizeSymbol(coin.symbol);
   });
-}
-
-function isDepositCoin(coin: AnyCoin | undefined) {
-  return coin ? normalizeSymbol(coin.symbol) === DEPOSIT_COIN_SYMBOL : false;
 }
 
 export type UseBridgeStateParameters = {
@@ -101,8 +97,10 @@ export function useBridgeState(params: UseBridgeStateParameters) {
       }));
   }, [action, evm]);
 
-  const defaultDepositCoin = useMemo(() => {
-    return Object.values(allCoins.byDenom).find(isDepositCoin);
+  const depositCoin = useMemo(() => {
+    return Object.values(allCoins.byDenom).find(
+      ({ symbol }) => normalizeSymbol(symbol) === DEPOSIT_ASSET_SYMBOL,
+    );
   }, [allCoins.byDenom]);
 
   const getDefaultDepositNetwork = useCallback(
@@ -121,14 +119,14 @@ export function useBridgeState(params: UseBridgeStateParameters) {
   const changeCoin = useCallback(
     (denom: string) => {
       const nextCoin = allCoins.byDenom[denom];
-      if (action === "deposit" && !isDepositCoin(nextCoin)) return;
+      if (action === "deposit" && (!depositCoin || nextCoin?.denom !== depositCoin.denom)) return;
 
       setCoin(nextCoin);
 
       if (action !== "deposit") return;
       setNetwork(getDefaultDepositNetwork(nextCoin));
     },
-    [action, allCoins, getDefaultDepositNetwork],
+    [action, allCoins.byDenom, depositCoin, getDefaultDepositNetwork],
   );
 
   const networks = useMemo(() => {
@@ -204,11 +202,13 @@ export function useBridgeState(params: UseBridgeStateParameters) {
   }, [action, isConnected]);
 
   useEffect(() => {
-    if (action !== "deposit" || !defaultDepositCoin) return;
+    if (action !== "deposit" || !depositCoin) return;
 
-    setCoin((currentCoin) => (isDepositCoin(currentCoin) ? currentCoin : defaultDepositCoin));
-    setNetwork((currentNetwork) => currentNetwork ?? getDefaultDepositNetwork(defaultDepositCoin));
-  }, [action, defaultDepositCoin, getDefaultDepositNetwork]);
+    setCoin((currentCoin) =>
+      currentCoin?.denom === depositCoin.denom ? currentCoin : depositCoin,
+    );
+    setNetwork((currentNetwork) => currentNetwork ?? getDefaultDepositNetwork(depositCoin));
+  }, [action, depositCoin, getDefaultDepositNetwork]);
 
   return {
     action,
