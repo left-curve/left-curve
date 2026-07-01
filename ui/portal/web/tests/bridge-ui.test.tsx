@@ -528,7 +528,7 @@ describe("bridge UI", () => {
 
     renderBridgeDeposit();
 
-    expect(screen.getByText("This network does not support this asset.")).toBeInTheDocument();
+    expect(screen.getByText(m["bridge.unsupportedAsset"]())).toBeInTheDocument();
     expect(screen.getByText(m["bridge.rateLimitWarning"]())).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "connect wallet" })).not.toBeInTheDocument();
     expect(
