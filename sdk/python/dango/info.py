@@ -22,7 +22,6 @@ from dango.utils.types import (
     Param,
     PerpsCandle,
     PerpsEvent,
-    PerpsEvent2Batch,
     PerpsEventSortBy,
     PerpsPairStats,
     State,
@@ -33,13 +32,20 @@ from dango.utils.types import (
     UserStateExtended,
 )
 from dango.websocket_manager import WebsocketManager
-from dango.ws_stream_manager import WsStreamManager
 
 # Load the vendored .graphql documents at import time. importlib.resources is
 # the standard way to read package data files; it works under wheels, zip
 # imports, and editable installs alike, where naive `open(__file__/..)` would
 # break. Reading once here also avoids repeating the disk I/O on every query.
 _QUERIES = files("dango._graphql.queries")
+_MUTATIONS = files("dango._graphql.mutations")
+
+_QUERY_STATUS: Final[str] = _QUERIES.joinpath("queryStatus.graphql").read_text(encoding="utf-8")
+_QUERY_APP: Final[str] = _QUERIES.joinpath("queryApp.graphql").read_text(encoding="utf-8")
+_QUERY_SIMULATE: Final[str] = _QUERIES.joinpath("simulate.graphql").read_text(encoding="utf-8")
+_MUTATION_BROADCAST_TX_SYNC: Final[str] = _MUTATIONS.joinpath("broadcastTxSync.graphql").read_text(
+    encoding="utf-8"
+)
 
 # Indexer-side documents (Phase 8). These run against the indexer DB rather
 # than the chain's `query_app` endpoint, but the transport is the same
@@ -68,9 +74,9 @@ _SUB_PERPS_CANDLES: Final[str] = _SUBSCRIPTIONS.joinpath("perpsCandles.graphql")
 _SUB_BLOCK: Final[str] = _SUBSCRIPTIONS.joinpath("block.graphql").read_text(encoding="utf-8")
 _SUB_EVENTS: Final[str] = _SUBSCRIPTIONS.joinpath("events.graphql").read_text(encoding="utf-8")
 _SUB_QUERY_APP: Final[str] = _SUBSCRIPTIONS.joinpath("queryApp.graphql").read_text(encoding="utf-8")
-# `perpsEvents` is served over the native WebSocket `/ws` endpoint — see
-# `Info.subscribe_perps_events`, which uses `WsStreamManager` instead of a
-# graphql-transport-ws document.
+# `perpsEvents` is served over the native WebSocket `/ws` endpoint, not
+# graphql-transport-ws — see `dango.ws.WsConnection`, the standalone
+# multiplexed client for that transport.
 
 # perpsTrades is supported by the chain — `Subscription.perpsTrades` is
 # defined in indexer/graphql-types/src/schemas/schema.graphql, and
@@ -226,17 +232,12 @@ class Info(API):
         # who only do read queries or who pass `skip_ws=True`.
         self._ws_manager: WebsocketManager | None = None
 
-        # WsStreamManager is the native-WebSocket transport behind
-        # `subscribe_perps_events`, created lazily via the `_ws_stream`
-        # property (same rationale as `_ws`).
-        self._ws_stream_manager: WsStreamManager | None = None
-
     def query_status(self) -> dict[str, Any]:
-        """Chain ID and latest finalized block: `{chain_id, last_finalized_block}`."""
+        """Chain ID and latest block info."""
 
-        # `Query::Status` over REST returns the raw `QueryStatusResponse`
-        # (snake_case), keyed under `status` like every other queryApp variant.
-        return cast("dict[str, Any]", self.query_app({"status": {}})["status"])
+        data = self.query(_QUERY_STATUS)
+
+        return cast("dict[str, Any]", data["queryStatus"])
 
     def query_app(self, request: dict[str, Any]) -> Any:
         """Generic `queryApp` wrapper. Returns the raw kind-keyed envelope."""
@@ -247,7 +248,9 @@ class Info(API):
         # so kind-specific callers can pick their own typed return shape;
         # the convenience methods `query_app_smart` and `query_app_multi`
         # do the unwrap.
-        return self.post("/query", request)
+        data = self.query(_QUERY_APP, variables={"request": request, "height": None})
+
+        return data["queryApp"]
 
     def query_app_smart(self, contract: Addr, msg: dict[str, Any]) -> Any:
         """Convenience for `{wasm_smart: {contract, msg}}` queries; unwraps the envelope."""
@@ -274,23 +277,22 @@ class Info(API):
     def simulate(self, tx: UnsignedTx) -> dict[str, Any]:
         """Dry-run an UnsignedTx; returns gas_used, gas_limit, and result."""
 
-        return cast("dict[str, Any]", self.post("/simulate", tx))
+        data = self.query(_QUERY_SIMULATE, variables={"tx": tx})
+
+        return cast("dict[str, Any]", data["simulate"])
 
     def broadcast_tx_sync(self, tx: Tx) -> dict[str, Any]:
-        """Submit a signed Tx; returns the BroadcastTxOutcome."""
+        """Submit a signed Tx; returns the BroadcastTxOutcome envelope."""
 
-        return cast("dict[str, Any]", self.post("/broadcast", tx))
+        # broadcastTxSync is a GraphQL mutation, not a query. We still send
+        # it through `self.query()` because that helper is HTTP-level: it
+        # POSTs `{query, variables}` to /graphql and the GraphQL server
+        # routes by the document's operation keyword. The query/mutation
+        # distinction lives inside the document string, not in the
+        # transport.
+        data = self.query(_MUTATION_BROADCAST_TX_SYNC, variables={"tx": tx})
 
-    def broadcast_tx_ws(self, tx: Tx) -> dict[str, Any]:
-        """Submit a signed Tx over the native WebSocket `broadcast` channel.
-
-        An alternative to `broadcast_tx_sync` (REST `POST /broadcast`, the
-        default) for clients already holding a `/ws` connection. Returns the
-        same BroadcastTxOutcome; a mempool-rejected tx returns normally (the
-        rejection rides `check_tx.result`).
-        """
-
-        return self._ws_stream.broadcast(cast("dict[str, Any]", tx))
+        return cast("dict[str, Any]", data["broadcastTxSync"])
 
     # --- Perps queries -------------------------------------------------------
     #
@@ -640,24 +642,6 @@ class Info(API):
 
         return self._ws_manager
 
-    @property
-    def _ws_stream(self) -> WsStreamManager:
-        """Lazily create the WsStreamManager on first native-WS subscription."""
-
-        # Same lazy rationale as `_ws`: callers who only run read queries (or
-        # pass `skip_ws=True`) never pay for an idle streaming transport. Each
-        # `_ws_stream` subscription opens its own `/ws` connection on demand.
-        if self._ws_stream_manager is None:
-            if self.skip_ws:
-                raise RuntimeError(
-                    "subscriptions disabled (skip_ws=True); "
-                    "construct Info with skip_ws=False to enable subscriptions",
-                )
-
-            self._ws_stream_manager = WsStreamManager(self.base_url)
-
-        return self._ws_stream_manager
-
     def subscribe_perps_trades(
         self,
         pair_id: PairId,
@@ -798,90 +782,28 @@ class Info(API):
             lambda payload: callback(_unwrap_node(payload, "block", Block)),
         )
 
-    def subscribe_perps_events(
-        self,
-        callback: Callable[[PerpsEvent2Batch], None],
-        *,
-        since_block_height: int | None = None,
-        event_types: list[str] | None = None,
-        pair_ids: list[str] | None = None,
-        users: list[str] | None = None,
-        order_ids: list[str] | None = None,
-        client_order_ids: list[str] | None = None,
-    ) -> int:
-        """Stream every perps-contract event, grouped per block, over WebSocket.
-
-        The richer superset of `subscribe_perps_trades` (which streams fills
-        only): order lifecycle, fills, liquidations, and deleveraging. With no
-        filter the full firehose is streamed. Each `perpsEvents` frame is one
-        block's batch, so the callback receives a `PerpsEvent2Batch` (block
-        height/timestamp + the matching events) — not one event at a time. A
-        resync, a subscription-limit hit, or a connection error is delivered as
-        `{"_error": ...}`, the same envelope the other transports use.
-        """
-
-        # Each filter defaults to None (not filtered on that field) and is
-        # omitted from the subscription; an empty list is sent and matches
-        # nothing. The five filters AND together — see API doc §11. A
-        # `client_order_id` is unique only per sender, so combine
-        # `client_order_ids` with `users` to single out one trader's order.
-        subscription: dict[str, Any] = {"type": "perpsEvents"}
-        if since_block_height is not None:
-            subscription["since"] = since_block_height
-        for key, values in (
-            ("eventTypes", event_types),
-            ("pairIds", pair_ids),
-            ("users", users),
-            ("orderIds", order_ids),
-            ("clientOrderIds", client_order_ids),
-        ):
-            if values is not None:
-                subscription[key] = values
-
-        # The data frame's payload is already the bare batch (no GraphQL `data`
-        # wrapper), so the callback is passed straight through. The cast bridges
-        # the batch-typed public callback to the manager's generic dict callback
-        # — which also carries the `{"_error": ...}` envelope.
-        return self._ws_stream.subscribe(
-            subscription,
-            cast("Callable[[dict[str, Any]], None]", callback),
-        )
-
     def unsubscribe(self, subscription_id: int) -> bool:
-        """Drop a subscription locally and tell the server to stop streaming.
-
-        The graphql-WS and native-WS transports keep independent id spaces; this
-        tries the WS manager first, then the native-WS manager, so a single id
-        resolves to whichever transport owns it.
-        """
+        """Drop a subscription locally and tell the server to stop streaming."""
 
         # Returning False (rather than raising) when no manager exists
         # mirrors `WebsocketManager.unsubscribe`'s "id-not-found" return
         # — callers can blanket-call this on shutdown without first
         # checking whether they ever opened a subscription.
-        if self._ws_manager is not None and self._ws_manager.unsubscribe(subscription_id):
-            return True
-
-        if self._ws_stream_manager is not None:
-            return self._ws_stream_manager.unsubscribe(subscription_id)
+        if self._ws_manager is not None:
+            return self._ws_manager.unsubscribe(subscription_id)
 
         return False
 
     def disconnect_websocket(self) -> None:
-        """Close the streaming connections and clean up the manager threads."""
+        """Close the streaming connection and clean up the manager threads."""
 
-        # 5s grace period is generous for each manager to wind down after
+        # 5s grace period is generous for the manager to wind down after
         # `stop()`. The worker threads are daemons, so even if `join` returns
         # without a thread actually finishing (e.g. socket stuck), Python won't
-        # hang on interpreter exit waiting for it. Clearing the references lets
-        # a future `_ws` / `_ws_stream` access spin up a fresh manager — useful
-        # if the user reconnects after an explicit disconnect.
+        # hang on interpreter exit waiting for it. Clearing the reference lets
+        # a future `_ws` access spin up a fresh manager — useful if the user
+        # reconnects after an explicit disconnect.
         if self._ws_manager is not None:
             self._ws_manager.stop()
             self._ws_manager.join(timeout=5.0)
             self._ws_manager = None
-
-        if self._ws_stream_manager is not None:
-            self._ws_stream_manager.stop()
-            self._ws_stream_manager.join(timeout=5.0)
-            self._ws_stream_manager = None

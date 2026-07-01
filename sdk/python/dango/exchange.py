@@ -34,6 +34,7 @@ from dango.utils.types import (
     SubmitOrderRequest,
     TimeInForce,
     TriggerDirection,
+    Tx,
     dango_decimal,
 )
 
@@ -96,7 +97,7 @@ class Exchange(API):
         # tests, multi-Exchange sharing a status query) skip this by
         # passing `chain_id=` explicitly.
         if chain_id is None:
-            chain_id = str(self._info.query_status()["chain_id"])
+            chain_id = str(self._info.query_status()["chainId"])
 
         self._chain_id: str = chain_id
 
@@ -154,6 +155,26 @@ class Exchange(API):
         for running out of gas.
         """
 
+        signed = self.sign_action(messages, gas_limit=gas_limit)
+
+        return self._info.broadcast_tx_sync(signed)
+
+    def sign_action(
+        self,
+        messages: list[Message],
+        *,
+        gas_limit: int | None = None,
+    ) -> Tx:
+        """Build, (optionally simulate to size gas,) and sign a Tx WITHOUT broadcasting.
+
+        The sign half of `_send_action`, exposed so callers can broadcast the
+        signed Tx over an alternative transport — e.g. `dango.ws.WsConnection`,
+        which multiplexes broadcasts onto the same socket as its subscriptions.
+        As with `_send_action`, passing ``gas_limit`` skips the pre-broadcast
+        `simulate` round-trip. Note the signer's local nonce advances here, so a
+        signed-but-never-broadcast Tx leaves a nonce gap.
+        """
+
         # Reject bool first (it is an int subclass, so `gas_limit=True` would
         # otherwise slip through as a 1-unit limit) and then non-positive
         # values — mirrors the int-arg guards elsewhere in this module.
@@ -183,9 +204,7 @@ class Exchange(API):
         # decrement on broadcast failure: the chain rejects duplicate
         # nonces, so an optimistic increment is strictly safer than
         # waiting until success and risking a same-nonce retry.
-        signed = self._signer.sign_tx(messages, self._chain_id, gas_limit)
-
-        return self._info.broadcast_tx_sync(signed)
+        return self._signer.sign_tx(messages, self._chain_id, gas_limit)
 
     # --- Margin --------------------------------------------------------------
 
@@ -398,6 +417,28 @@ class Exchange(API):
             gas_limit=gas_limit,
         )
 
+    def prepare_cancel_order(
+        self,
+        spec: OrderId | ClientOrderIdRef | Literal["all"],
+        *,
+        gas_limit: int | None = None,
+    ) -> Tx:
+        """Sign an order cancellation WITHOUT broadcasting; return the signed Tx.
+
+        The `cancel_order` counterpart for callers that broadcast over an
+        alternative transport (e.g. `dango.ws.WsConnection`).
+        """
+
+        return self.sign_action(
+            [
+                self._wrap_perps_execute(
+                    "trade",
+                    {"cancel_order": self._build_cancel_order_wire(spec)},
+                ),
+            ],
+            gas_limit=gas_limit,
+        )
+
     def batch_update_orders(
         self,
         actions: list[SubmitOrCancelAction],
@@ -498,6 +539,24 @@ class Exchange(API):
     ) -> dict[str, Any]:
         """Place a limit order; defaults to GTC and no client-side id."""
 
+        return self.submit_order(
+            pair_id,
+            size,
+            self._limit_order_kind(limit_price, time_in_force, client_order_id),
+            reduce_only=reduce_only,
+            tp=tp,
+            sl=sl,
+            gas_limit=gas_limit,
+        )
+
+    def _limit_order_kind(
+        self,
+        limit_price: float | str | Decimal,
+        time_in_force: TimeInForce,
+        client_order_id: int | None,
+    ) -> OrderKind:
+        """Build the `{limit: {...}}` OrderKind wire payload for a limit order."""
+
         # Store `time_in_force.value` rather than the enum itself so
         # downstream `json.dumps` and equality assertions both treat
         # it as a plain str ("GTC"/"IOC"/"POST"). `StrEnum` would
@@ -510,15 +569,40 @@ class Exchange(API):
             "client_order_id": str(client_order_id) if client_order_id is not None else None,
         }
 
-        kind = cast("OrderKind", {"limit": limit_payload})
+        return cast("OrderKind", {"limit": limit_payload})
 
-        return self.submit_order(
+    def prepare_submit_limit_order(
+        self,
+        pair_id: PairId,
+        size: float | int | str | Decimal,
+        limit_price: float | str | Decimal,
+        *,
+        time_in_force: TimeInForce = TimeInForce.GTC,
+        client_order_id: int | None = None,
+        reduce_only: bool = False,
+        tp: ChildOrder | None = None,
+        sl: ChildOrder | None = None,
+        gas_limit: int | None = None,
+    ) -> Tx:
+        """Sign a limit order WITHOUT broadcasting; return the signed Tx.
+
+        The `submit_limit_order` counterpart for callers that broadcast over an
+        alternative transport — e.g. `dango.ws.WsConnection`, which sends the tx
+        on the same socket it streams events over. Pass ``gas_limit`` to skip
+        the pre-sign `simulate` round-trip.
+        """
+
+        request = self._build_submit_order_wire(
             pair_id,
             size,
-            kind,
+            self._limit_order_kind(limit_price, time_in_force, client_order_id),
             reduce_only=reduce_only,
             tp=tp,
             sl=sl,
+        )
+
+        return self.sign_action(
+            [self._wrap_perps_execute("trade", {"submit_order": request})],
             gas_limit=gas_limit,
         )
 

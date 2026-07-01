@@ -1,5 +1,6 @@
-//! Subscribe to BTC perps events on Dango testnet over the WebSocket endpoint
-//! (`GET /ws`, `perpsEvents` channel). The feed is filtered to the BTC pair and
+//! Subscribe to BTC perps events on Dango testnet over the multiplexed native
+//! WebSocket ([`WsConnection`], `GET /ws`, `perpsEvents` channel). The feed is
+//! filtered to the BTC pair and
 //! the order-lifecycle / forced-exit event types (`order_persisted`,
 //! `order_removed`, `order_resized`, `order_filled`, `liquidated`,
 //! `deleveraged`), and arrives grouped per block.
@@ -17,7 +18,7 @@ use {
     anyhow::Result,
     dango_order_book::{OrderPersisted, OrderRemoved, OrderResized},
     dango_primitives::EventName,
-    dango_sdk::HttpClient,
+    dango_sdk::WsConnection,
     dango_types::{
         constants::perp_btc,
         perps::{Deleveraged, Liquidated, OrderFilled},
@@ -25,32 +26,31 @@ use {
     futures::StreamExt,
 };
 
-const HTTP_URL: &str = "https://api-testnet.dango.zone";
+const WS_URL: &str = "wss://api-testnet.dango.zone/ws";
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    let client = HttpClient::new(HTTP_URL)?;
+    let conn = WsConnection::connect(WS_URL).await?;
 
     // Filters AND together, so only BTC events of the listed types stream.
-    let mut events = client
-        .subscribe_perps_events(
-            None,
-            Some(vec![
-                OrderPersisted::EVENT_NAME.to_string(),
-                OrderRemoved::EVENT_NAME.to_string(),
-                OrderResized::EVENT_NAME.to_string(),
-                OrderFilled::EVENT_NAME.to_string(),
-                Liquidated::EVENT_NAME.to_string(),
-                Deleveraged::EVENT_NAME.to_string(),
-            ]),
-            Some(vec![perp_btc::DENOM.to_string()]),
-            None,
-            None,
-            None,
-        )
-        .await?;
+    // `subscribe` is sync: it registers the stream on the already-open socket.
+    let mut events = conn.subscribe_perps_events(
+        None,
+        Some(vec![
+            OrderPersisted::EVENT_NAME.to_string(),
+            OrderRemoved::EVENT_NAME.to_string(),
+            OrderResized::EVENT_NAME.to_string(),
+            OrderFilled::EVENT_NAME.to_string(),
+            Liquidated::EVENT_NAME.to_string(),
+            Deleveraged::EVENT_NAME.to_string(),
+        ]),
+        Some(vec![perp_btc::DENOM.to_string()]),
+        None,
+        None,
+        None,
+    );
 
-    println!("subscribed to perps events for BTC at {HTTP_URL}");
+    println!("subscribed to perps events for BTC at {WS_URL}");
 
     while let Some(item) = events.next().await {
         match item {

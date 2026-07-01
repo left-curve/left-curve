@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import cast
+from typing import Any, cast
 
 import pytest
 
@@ -337,3 +337,64 @@ class TestSubmitLimitOrder:
         ex.submit_limit_order(_DEMO_PAIR, 1.0, 30_000.0)
         kind = _last_inner_msg(info)["trade"]["submit_order"]["kind"]
         assert kind["limit"]["client_order_id"] is None
+
+
+class TestPrepareOrders:
+    """`prepare_*` build + sign a Tx WITHOUT broadcasting (for alt transports)."""
+
+    def test_prepare_submit_limit_order_signs_without_broadcast(self) -> None:
+        """A signed Tx comes back; nothing is simulated (gas given) or broadcast."""
+
+        info = FakeInfo()
+        ex = _exchange(info)
+        starting_nonce = ex.signer.next_nonce
+
+        tx = cast(
+            "dict[str, Any]",
+            ex.prepare_submit_limit_order(
+                _DEMO_PAIR, 1.0, 30_000.0, client_order_id=7, gas_limit=200_000
+            ),
+        )
+
+        # Signed, not sent: explicit gas_limit skips simulate, and no broadcast.
+        assert info.simulated == []
+        assert info.broadcasted == []
+        assert tx["gas_limit"] == 200_000
+        # Signing still advances the local nonce (documented on sign_action).
+        assert ex.signer.next_nonce == (starting_nonce or 0) + 1
+
+        kind = tx["msgs"][0]["execute"]["msg"]["trade"]["submit_order"]["kind"]
+        assert kind["limit"]["limit_price"] == "30000.000000"
+        assert kind["limit"]["client_order_id"] == "7"
+
+    def test_prepare_cancel_order_signs_without_broadcast(self) -> None:
+        """The cancel Tx carries the client-order-id variant and is not broadcast."""
+
+        info = FakeInfo()
+        ex = _exchange(info)
+
+        tx = cast(
+            "dict[str, Any]",
+            ex.prepare_cancel_order(ClientOrderIdRef(value=7), gas_limit=200_000),
+        )
+
+        assert info.simulated == []
+        assert info.broadcasted == []
+        inner: dict[str, Any] = tx["msgs"][0]["execute"]["msg"]
+        assert inner == {"trade": {"cancel_order": {"one_by_client_order_id": "7"}}}
+
+    def test_prepare_without_gas_limit_simulates_but_does_not_broadcast(self) -> None:
+        """Omitting gas_limit sizes gas via one simulate — but still no broadcast."""
+
+        info = FakeInfo()
+        ex = _exchange(info)
+
+        tx = cast(
+            "dict[str, Any]",
+            ex.prepare_submit_limit_order(_DEMO_PAIR, 1.0, 30_000.0),
+        )
+
+        assert len(info.simulated) == 1
+        assert info.broadcasted == []
+        # 230_000 (simulated gas_used) + DEFAULT_GAS_OVERHEAD (770_000) = 1_000_000.
+        assert tx["gas_limit"] == 1_000_000
