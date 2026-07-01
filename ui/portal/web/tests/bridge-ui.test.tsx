@@ -7,6 +7,12 @@ import type React from "react";
 
 import { Bridge } from "../src/components/bridge/Bridge";
 
+type BridgeMockConnector = {
+  icon: string;
+  id: string;
+  name: string;
+};
+
 const swapperCssVariableColors = {
   "--color-ink-primary-900": "rgb(17, 17, 17)",
   "--color-surface-primary-rice": "rgb(255, 252, 246)",
@@ -25,7 +31,7 @@ const bridgeUiMocks = vi.hoisted(() => ({
   changeCoin: vi.fn(),
   changeAction: vi.fn(),
   chainId: "dango-dev-1",
-  connector: null as { icon: string; id: string; name: string } | null,
+  connector: null as BridgeMockConnector | null,
   deposit: {
     isPending: false,
     mutate: vi.fn(),
@@ -54,6 +60,7 @@ const bridgeUiMocks = vi.hoisted(() => ({
     onEvent?: (event: { type: string }) => void;
     styles?: { componentStyles?: Record<string, string | undefined>; themeMode?: string };
     supportedDepositOptions?: string[];
+    wallet?: { signer: unknown };
   }>,
   userStatus: "active" as "active" | "inactive",
   withdraw: {
@@ -290,12 +297,14 @@ vi.mock("@left-curve/applets-kit", async (importOriginal) => {
 });
 
 vi.mock("@left-curve/store", () => ({
+  isEvmProviderConnector: () => false,
   useAccount: () => ({
     account: bridgeUiMocks.isConnected
       ? {
           address: "0x6272696467657573657200000000000000000000",
         }
       : undefined,
+    connector: undefined,
     isConnected: bridgeUiMocks.isConnected,
     refreshUserStatus: bridgeUiMocks.refreshUserStatus,
     userStatus: bridgeUiMocks.userStatus,
@@ -355,6 +364,7 @@ vi.mock("@left-curve/store", () => ({
       data: bridgeUiMocks.withdrawFeeData,
     },
   }),
+  useConnectorWalletClient: () => ({ data: undefined, error: null }),
   useEvmBalances: () => ({
     data: bridgeUiMocks.evmBalances,
     refetch: bridgeUiMocks.refetchEvmBalances,

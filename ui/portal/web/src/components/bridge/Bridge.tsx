@@ -115,7 +115,7 @@ const BridgeContainer: React.FC<PropsWithChildren<BridgeProps>> = ({
 
 const BridgeDeposit: React.FC = () => {
   const { state } = useBridge();
-  const { action, network, coin, config } = state;
+  const { action, network, coin, config, connector } = state;
   const [showSwapperDeposit, setShowSwapperDeposit] = useState(false);
 
   useEffect(() => {
@@ -124,7 +124,11 @@ const BridgeDeposit: React.FC = () => {
 
   if (action !== "deposit") return null;
 
-  if (showSwapperDeposit) return <SwapperDeposit onBack={() => setShowSwapperDeposit(false)} />;
+  if (showSwapperDeposit) {
+    return (
+      <SwapperDeposit signerConnector={connector} onBack={() => setShowSwapperDeposit(false)} />
+    );
+  }
 
   const isEvmNetwork = !!network && !["bitcoin", "solana"].includes(network);
   const showUnsupportedFallback = isEvmNetwork && !!coin && !config?.router;
