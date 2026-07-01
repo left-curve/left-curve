@@ -90,6 +90,10 @@ INTERNAL_API_URL = "https://api-testnet-internal-hetzner4.dango.zone/"
 API_URL = INTERNAL_API_URL if USE_INTERNAL_URL else TESTNET_API_URL
 PERPS_CONTRACT = PERPS_CONTRACT_TESTNET
 
+# `WsConnection` is WS-only, so it takes a `ws://` / `wss://` URL directly (no
+# http→ws conversion). Derive the `wss://…/ws` endpoint from the HTTP base above.
+WS_URL = "wss://" + API_URL.split("://", 1)[-1].rstrip("/") + "/ws"
+
 # Market and order. A BUY (positive, signed size) resting 1% BELOW the index
 # never crosses the book, so it stays unfilled until we cancel it. Keep the size
 # small; if the chain rejects placement on a minimum-size / notional rule,
@@ -437,7 +441,7 @@ def main() -> None:
     pending_coid: int | None = None
 
     # One socket for the whole run: subscriptions AND broadcasts.
-    with WsConnection.connect(API_URL) as conn:
+    with WsConnection.connect(WS_URL) as conn:
         try:
             for i in range(ITERATIONS):
                 coid = coid_base + i

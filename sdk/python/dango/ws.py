@@ -84,10 +84,14 @@ class WsConnection:
     """One long-lived `/ws` socket multiplexing subscriptions and broadcasts."""
 
     @classmethod
-    def connect(cls, base_url: str, *, timeout: float = 10.0) -> WsConnection:
-        """Open the socket and start the reader + keepalive threads."""
+    def connect(cls, url: str, *, timeout: float = 10.0) -> WsConnection:
+        """Open the socket and start the reader + keepalive threads.
 
-        self = cls(base_url)
+        `url` must be a `ws://` or `wss://` URL pointing at the server's `/ws`
+        endpoint (e.g. `wss://api.dango.zone/ws`); any other scheme is rejected.
+        """
+
+        self = cls(url)
 
         try:
             ws = websocket.create_connection(self._ws_url, timeout=timeout)
@@ -107,8 +111,8 @@ class WsConnection:
 
         return self
 
-    def __init__(self, base_url: str) -> None:
-        self._ws_url: str = _make_ws_url(base_url)
+    def __init__(self, url: str) -> None:
+        self._ws_url: str = url
         self._ws: websocket.WebSocket | None = None
 
         # `_lock` guards the id allocator and both registries, touched by the
@@ -371,22 +375,3 @@ class Subscription:
 
     def __exit__(self, *_exc: object) -> None:
         self.unsubscribe()
-
-
-def _make_ws_url(base_url: str) -> str:
-    """Convert an http(s) base_url to the matching ws(s)://...ws endpoint."""
-
-    if base_url.startswith("https://"):
-        endpoint = "wss://" + base_url[len("https://") :]
-    elif base_url.startswith("http://"):
-        endpoint = "ws://" + base_url[len("http://") :]
-    elif base_url.startswith(("wss://", "ws://")):
-        endpoint = base_url
-    else:
-        raise ValueError(f"unsupported base_url scheme: {base_url!r}")
-
-    endpoint = endpoint.rstrip("/")
-    if not endpoint.endswith("/ws"):
-        endpoint = endpoint + "/ws"
-
-    return endpoint

@@ -26,11 +26,11 @@ use {
     futures::StreamExt,
 };
 
-const HTTP_URL: &str = "https://api-testnet.dango.zone";
+const WS_URL: &str = "wss://api-testnet.dango.zone/ws";
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    let conn = WsConnection::connect(HTTP_URL).await?;
+    let conn = WsConnection::connect(WS_URL).await?;
 
     // Filters AND together, so only BTC events of the listed types stream.
     // `subscribe` is sync: it registers the stream on the already-open socket.
@@ -50,7 +50,7 @@ async fn main() -> Result<()> {
         None,
     );
 
-    println!("subscribed to perps events for BTC at {HTTP_URL}");
+    println!("subscribed to perps events for BTC at {WS_URL}");
 
     while let Some(item) = events.next().await {
         match item {

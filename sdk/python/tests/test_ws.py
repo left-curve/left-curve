@@ -63,7 +63,7 @@ class _FakeSocket:
 def _connect(monkeypatch: pytest.MonkeyPatch) -> tuple[WsConnection, _FakeSocket]:
     fake = _FakeSocket()
     monkeypatch.setattr(websocket, "create_connection", lambda *_a, **_k: fake)
-    conn = WsConnection.connect("http://localhost:8080")
+    conn = WsConnection.connect("ws://localhost:8080/ws")
     return conn, fake
 
 

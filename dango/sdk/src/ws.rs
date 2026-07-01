@@ -1,5 +1,5 @@
 use {
-    anyhow::{anyhow, bail},
+    anyhow::anyhow,
     dango_primitives::{BroadcastTxOutcome, Tx},
     futures::{
         SinkExt, Stream, StreamExt,
@@ -20,13 +20,15 @@ use {
         time::Duration,
     },
     tokio_tungstenite::{MaybeTlsStream, WebSocketStream, connect_async, tungstenite::Message},
-    url::Url,
 };
 
 /// App-level keepalive interval. The server closes a connection it has not heard
 /// from for 60s; a 20s ping keeps an idle connection alive with a comfortable
 /// margin (any inbound frame resets the server's idle timer).
 const KEEP_ALIVE_INTERVAL: Duration = Duration::from_secs(20);
+
+/// The app-level keepalive frame, sent every [`KEEP_ALIVE_INTERVAL`].
+const PING: &str = r#"{"method":"ping"}"#;
 
 /// The WebSocket connection [`connect_async`] yields for a `ws(s)://` URL.
 type WsConn = WebSocketStream<MaybeTlsStream<tokio::net::TcpStream>>;
@@ -120,18 +122,14 @@ impl WsConnection {
     /// Open a native `/ws` connection and spawn its background actor.
     ///
     /// `url` must be a `ws://` or `wss://` URL pointing at the server's `/ws`
-    /// endpoint (e.g. `wss://api.dango.zone/ws`); any other scheme is rejected.
-    /// Native `/ws` has no handshake, so this just splits the socket and spawns
-    /// the manager.
+    /// endpoint (e.g. `wss://api.dango.zone/ws`); the WebSocket transport
+    /// rejects any other scheme. Native `/ws` has no handshake, so this just
+    /// splits the socket and spawns the manager.
     pub async fn connect<U>(url: U) -> anyhow::Result<Self>
     where
         U: IntoUrl,
     {
         let url = url.into_url()?;
-        match url.scheme() {
-            "ws" | "wss" => {},
-            scheme => bail!("WsConnection requires a ws:// or wss:// URL, got scheme `{scheme}`"),
-        }
 
         let (ws, _response) = connect_async(url.as_str())
             .await
@@ -313,56 +311,45 @@ struct WsManager {
 }
 
 impl WsManager {
-    async fn run(self) {
-        // Destructure into locals so the `select!` can borrow the socket ends,
-        // the command channel, and the registries independently.
-        let Self {
-            mut sink,
-            mut stream,
-            mut commands,
-            mut subs,
-            mut pending,
-        } = self;
-
+    async fn run(mut self) {
         let mut keepalive = tokio::time::interval(KEEP_ALIVE_INTERVAL);
         // First tick is immediate; skip it so we don't ping right after connect.
         keepalive.tick().await;
-        let ping = serde_json::json!({ "method": "ping" }).to_string();
 
         let reason = loop {
             tokio::select! {
                 _ = keepalive.tick() => {
-                    if sink.send(Message::text(ping.clone())).await.is_err() {
+                    if self.sink.send(Message::text(PING)).await.is_err() {
                         break "keepalive send failed";
                     }
                 }
-                cmd = commands.next() => match cmd {
+                cmd = self.commands.next() => match cmd {
                     Some(Command::Subscribe { id, message, tx }) => {
-                        subs.insert(id, tx);
-                        if sink.send(Message::text(message.to_string())).await.is_err() {
+                        self.subs.insert(id, tx);
+                        if self.sink.send(Message::text(message.to_string())).await.is_err() {
                             break "subscribe send failed";
                         }
                     }
                     Some(Command::Unsubscribe { id }) => {
-                        subs.remove(&id);
+                        self.subs.remove(&id);
                         let msg = serde_json::json!({ "method": "unsubscribe", "id": id });
-                        if sink.send(Message::text(msg.to_string())).await.is_err() {
+                        if self.sink.send(Message::text(msg.to_string())).await.is_err() {
                             break "unsubscribe send failed";
                         }
                     }
                     Some(Command::Broadcast { id, message, reply }) => {
-                        pending.insert(id, reply);
-                        if sink.send(Message::text(message.to_string())).await.is_err() {
+                        self.pending.insert(id, reply);
+                        if self.sink.send(Message::text(message.to_string())).await.is_err() {
                             break "broadcast send failed";
                         }
                     }
                     // The last handle dropped (or an explicit close): shut down.
                     Some(Command::Close) | None => break "connection closed",
                 },
-                frame = stream.next() => match frame {
-                    Some(Ok(Message::Text(text))) => dispatch(&mut subs, &mut pending, &text),
+                frame = self.stream.next() => match frame {
+                    Some(Ok(Message::Text(text))) => self.dispatch(&text),
                     Some(Ok(Message::Ping(data))) => {
-                        if sink.send(Message::Pong(data)).await.is_err() {
+                        if self.sink.send(Message::Pong(data)).await.is_err() {
                             break "pong send failed";
                         }
                     }
@@ -373,67 +360,63 @@ impl WsManager {
         };
 
         // Notify every outstanding subscription and broadcast so nobody hangs.
-        for (_, tx) in subs.drain() {
+        for (_, tx) in self.subs.drain() {
             let _ = tx.unbounded_send(Err(anyhow!("{reason}")));
         }
-        for (_, reply) in pending.drain() {
+        for (_, reply) in self.pending.drain() {
             let _ = reply.send(Err(anyhow!("{reason}")));
         }
-        let _ = sink.close().await;
+        let _ = self.sink.close().await;
     }
-}
 
-/// Route one inbound text frame to the subscription or broadcast that owns its
-/// `id`. An `error` key is co-located on the operation's own channel and is
-/// terminal for that operation.
-fn dispatch(
-    subs: &mut HashMap<u64, FrameSender>,
-    pending: &mut HashMap<u64, oneshot::Sender<anyhow::Result<BroadcastTxOutcome>>>,
-    text: &str,
-) {
-    let Ok(value) = serde_json::from_str::<serde_json::Value>(text) else {
-        return;
-    };
-    let id = value.get("id").and_then(serde_json::Value::as_u64);
+    /// Route one inbound text frame to the subscription or broadcast that owns
+    /// its `id`. An `error` key is co-located on the operation's own channel and
+    /// is terminal for that operation.
+    fn dispatch(&mut self, text: &str) {
+        let Ok(value) = serde_json::from_str::<serde_json::Value>(text) else {
+            return;
+        };
+        let id = value.get("id").and_then(serde_json::Value::as_u64);
 
-    match value.get("channel").and_then(serde_json::Value::as_str) {
-        // Mempool rejection is a `data` frame; only a transport failure to the
-        // node is an `error` frame. Either way the broadcast is one-shot.
-        Some("broadcast") => {
-            if let Some(id) = id
-                && let Some(reply) = pending.remove(&id)
-            {
-                let result = match value.get("error") {
-                    Some(error) => Err(anyhow!("{}", error_detail(error))),
-                    None => {
-                        let data = value.get("data").cloned().unwrap_or_default();
-                        serde_json::from_value::<BroadcastTxOutcome>(data).map_err(Into::into)
-                    },
-                };
-                let _ = reply.send(result);
-            }
-        },
-        Some("perpsEvents" | "fullBlock") => {
-            if let Some(id) = id {
-                match value.get("error") {
-                    // Terminal: drop the registration and end the stream.
-                    Some(error) => {
-                        if let Some(tx) = subs.remove(&id) {
-                            let _ = tx.unbounded_send(Err(anyhow!("{}", error_detail(error))));
-                        }
-                    },
-                    None => {
-                        if let Some(tx) = subs.get(&id) {
+        match value.get("channel").and_then(serde_json::Value::as_str) {
+            // Mempool rejection is a `data` frame; only a transport failure to
+            // the node is an `error` frame. Either way the broadcast is one-shot.
+            Some("broadcast") => {
+                if let Some(id) = id
+                    && let Some(reply) = self.pending.remove(&id)
+                {
+                    let result = match value.get("error") {
+                        Some(error) => Err(anyhow!("{}", error_detail(error))),
+                        None => {
                             let data = value.get("data").cloned().unwrap_or_default();
-                            let _ = tx.unbounded_send(Ok(data));
-                        }
-                    },
+                            serde_json::from_value::<BroadcastTxOutcome>(data).map_err(Into::into)
+                        },
+                    };
+                    let _ = reply.send(result);
                 }
-            }
-        },
-        // `subscriptionResponse` / `pong` / a connection-level `error` (no id)
-        // route to no single caller, so they are ignored.
-        _ => {},
+            },
+            Some("perpsEvents" | "fullBlock") => {
+                if let Some(id) = id {
+                    match value.get("error") {
+                        // Terminal: drop the registration and end the stream.
+                        Some(error) => {
+                            if let Some(tx) = self.subs.remove(&id) {
+                                let _ = tx.unbounded_send(Err(anyhow!("{}", error_detail(error))));
+                            }
+                        },
+                        None => {
+                            if let Some(tx) = self.subs.get(&id) {
+                                let data = value.get("data").cloned().unwrap_or_default();
+                                let _ = tx.unbounded_send(Ok(data));
+                            }
+                        },
+                    }
+                }
+            },
+            // `subscriptionResponse` / `pong` / a connection-level `error` (no
+            // id) route to no single caller, so they are ignored.
+            _ => {},
+        }
     }
 }
 
@@ -449,20 +432,4 @@ fn error_detail(error: &serde_json::Value) -> String {
         .unwrap_or_default();
 
     format!("{code}: {message}")
-}
-
-// ----------------------------------- Tests -----------------------------------
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[tokio::test]
-    async fn connect_rejects_non_ws_scheme() {
-        // WsConnection is WS-only: an http(s) URL is rejected before any I/O.
-        let err = WsConnection::connect("https://api.dango.zone/ws")
-            .await
-            .unwrap_err();
-        assert!(err.to_string().contains("ws:// or wss://"), "{err}");
-    }
 }

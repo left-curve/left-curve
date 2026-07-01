@@ -16,10 +16,13 @@ from __future__ import annotations
 import threading
 from typing import cast
 
-from dango.utils.constants import TESTNET_API_URL
 from dango.utils.error import ServerError
 from dango.utils.types import PerpsEvent2Batch
 from dango.ws import WsConnection
+
+# Native `/ws` endpoint (testnet). `WsConnection` is WS-only, so it takes a
+# `ws://` / `wss://` URL directly.
+WS_URL = "wss://api-testnet.dango.zone/ws"
 
 # Order lifecycle plus the two forced-exit events. The filters AND together, so
 # pairing these with `pair_ids` keeps only BTC events of these types.
@@ -46,7 +49,7 @@ def _print_batch(batch: PerpsEvent2Batch) -> None:
 
 
 def main() -> None:
-    with WsConnection.connect(TESTNET_API_URL) as conn:
+    with WsConnection.connect(WS_URL) as conn:
         events = conn.subscribe_perps_events(
             pair_ids=["perp/btcusd"],
             event_types=_EVENT_TYPES,

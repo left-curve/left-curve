@@ -58,9 +58,13 @@ use {
 
 // --- Configuration -----------------------------------------------------------
 
-/// Target endpoint. Testnet by default. The HTTP base; the `ws(s)://…/ws`
-/// endpoint is derived from it by [`WsConnection::connect`].
+/// HTTP base URL (testnet), used by `HttpClient` for the index-price / tick
+/// queries.
 const API_URL: &str = "https://api-testnet.dango.zone";
+
+/// Native `/ws` endpoint (testnet), used by `WsConnection` for the subscription
+/// and both broadcasts. Must be a `ws://` / `wss://` URL.
+const WS_URL: &str = "wss://api-testnet.dango.zone/ws";
 
 /// Number of place + cancel cycles to sample.
 const ITERATIONS: usize = 30;
@@ -311,7 +315,7 @@ async fn main() -> Result<()> {
     println!("one WsConnection carries the perps_events feed AND both broadcasts\n");
 
     // One socket for the whole run: subscriptions AND broadcasts.
-    let conn = WsConnection::connect(API_URL).await?;
+    let conn = WsConnection::connect(WS_URL).await?;
 
     // Per-run client_order_id base (ms since epoch); each cycle adds its index.
     let coid_base = std::time::SystemTime::now()

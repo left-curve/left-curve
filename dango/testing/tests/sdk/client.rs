@@ -40,7 +40,7 @@ async fn broadcast() -> anyhow::Result<()> {
 async fn broadcast_ws() -> anyhow::Result<()> {
     let (client, mut accounts, port) = setup_client_test_with_port().await?;
 
-    let conn = WsConnection::connect(format!("http://localhost:{port}")).await?;
+    let conn = WsConnection::connect(format!("ws://localhost:{port}/ws")).await?;
 
     let tx = accounts.user1.sign_transaction(
         NonEmpty::new_unchecked(vec![Message::transfer(
