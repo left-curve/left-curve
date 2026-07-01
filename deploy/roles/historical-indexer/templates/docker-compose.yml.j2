@@ -1,0 +1,29 @@
+name: historical-indexer-{{ instance.name }}
+
+services:
+  historical-indexer:
+    image: {{ historical_indexer_image }}:{{ historical_indexer_tag }}
+    pull_policy: always
+    container_name: historical-indexer-{{ instance.name }}
+    restart: always
+    command: ["indexer-historical", "start"]
+    # Injected as env vars into the container; config-rs picks up POSTGRES__URL
+    # as an override of [postgres].url in app.toml (it carries the secret).
+    env_file:
+      - .env
+    volumes:
+      - ./config/app.toml:/root/.indexer-historical/config/app.toml:ro
+      - ./data:/root/.indexer-historical/data
+    ports:
+      # Metrics published on the tailscale IP for Prometheus to scrape. The read
+      # API (8080) is not published — Traefik reaches it over the docker network.
+      - "{{ tailscale_ip }}:{{ instance.metrics_host_port }}:9191"
+    networks:
+      - traefik
+      - postgres
+
+networks:
+  traefik:
+    external: true
+  postgres:
+    external: true

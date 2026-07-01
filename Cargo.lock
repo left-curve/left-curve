@@ -26,7 +26,7 @@ dependencies = [
  "futures-util",
  "log",
  "once_cell",
- "parking_lot",
+ "parking_lot 0.12.5",
  "pin-project-lite",
  "smallvec",
  "tokio",
@@ -831,7 +831,7 @@ dependencies = [
  "futures",
  "futures-utils-wasm",
  "lru 0.16.4",
- "parking_lot",
+ "parking_lot 0.12.5",
  "pin-project",
  "reqwest 0.13.4",
  "serde",
@@ -1138,7 +1138,7 @@ dependencies = [
  "derive_more 2.1.1",
  "futures",
  "futures-utils-wasm",
- "parking_lot",
+ "parking_lot 0.12.5",
  "serde",
  "serde_json",
  "thiserror 2.0.18",
@@ -3855,7 +3855,7 @@ dependencies = [
  "itertools 0.14.0",
  "metrics",
  "num_cpus",
- "parking_lot",
+ "parking_lot 0.12.5",
  "proptest",
  "rocksdb",
  "thiserror 2.0.18",
@@ -3873,7 +3873,7 @@ dependencies = [
  "dango-backtrace",
  "dango-primitives",
  "ouroboros",
- "parking_lot",
+ "parking_lot 0.12.5",
  "thiserror 2.0.18",
 ]
 
@@ -4066,6 +4066,153 @@ dependencies = [
  "paste",
  "serde",
  "serde_json",
+]
+
+[[package]]
+name = "dango-indexer-historical-app"
+version = "0.0.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "chrono",
+ "clickhouse",
+ "dango-indexer-historical-block-source",
+ "dango-indexer-historical-httpd",
+ "dango-indexer-historical-projection",
+ "dango-indexer-historical-types",
+ "futures",
+ "metrics",
+ "sea-orm",
+ "sea-orm-migration",
+ "tokio",
+ "tracing",
+]
+
+[[package]]
+name = "dango-indexer-historical-block-source"
+version = "0.0.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "borsh",
+ "dango-indexer-cache",
+ "dango-indexer-historical-types",
+ "dango-primitives",
+ "dango-temp-rocksdb",
+ "futures",
+ "metrics",
+ "rangemap",
+ "reqwest 0.13.4",
+ "rocksdb",
+ "serde",
+ "serde_json",
+ "tokio",
+ "tokio-tungstenite 0.29.0",
+ "tracing",
+ "url",
+]
+
+[[package]]
+name = "dango-indexer-historical-cli"
+version = "0.0.0"
+dependencies = [
+ "anyhow",
+ "clap",
+ "dango-config-parser",
+ "dango-indexer-cache",
+ "dango-indexer-historical-app",
+ "dango-indexer-historical-block-source",
+ "dango-indexer-historical-httpd",
+ "dango-indexer-historical-projection",
+ "dango-indexer-metrics",
+ "dango-primitives",
+ "dango-sdk",
+ "futures",
+ "home",
+ "metrics",
+ "metrics-exporter-prometheus",
+ "sea-orm",
+ "serde",
+ "tokio",
+ "tracing",
+ "tracing-subscriber",
+]
+
+[[package]]
+name = "dango-indexer-historical-httpd"
+version = "0.0.0"
+dependencies = [
+ "actix-cors",
+ "actix-web",
+ "anyhow",
+ "dango-indexer-historical-block-source",
+ "dango-indexer-historical-types",
+ "futures",
+ "hex",
+ "metrics",
+ "sea-orm",
+ "serde",
+ "serde_json",
+ "tokio",
+ "tracing",
+]
+
+[[package]]
+name = "dango-indexer-historical-projection"
+version = "0.0.0"
+dependencies = [
+ "actix-web",
+ "anyhow",
+ "async-trait",
+ "borsh",
+ "clickhouse",
+ "dango-indexer-historical-block-source",
+ "dango-indexer-historical-httpd",
+ "dango-indexer-historical-types",
+ "dango-primitives",
+ "futures",
+ "metrics",
+ "sea-orm",
+ "sea-orm-migration",
+ "serde",
+ "serde_json",
+ "tokio",
+ "tracing",
+ "uuid",
+ "zstd",
+]
+
+[[package]]
+name = "dango-indexer-historical-testing"
+version = "0.0.0"
+dependencies = [
+ "anyhow",
+ "dango-genesis",
+ "dango-indexer-historical-app",
+ "dango-indexer-historical-block-source",
+ "dango-indexer-historical-httpd",
+ "dango-indexer-historical-projection",
+ "dango-primitives",
+ "dango-sdk",
+ "dango-testing",
+ "dango-types",
+ "futures",
+ "postgresql_embedded",
+ "reqwest 0.13.4",
+ "sea-orm",
+ "serde_json",
+ "tempfile",
+ "tokio",
+ "uuid",
+]
+
+[[package]]
+name = "dango-indexer-historical-types"
+version = "0.0.0"
+dependencies = [
+ "anyhow",
+ "borsh",
+ "dango-primitives",
 ]
 
 [[package]]
@@ -4286,7 +4433,7 @@ dependencies = [
  "hex-literal",
  "metrics",
  "ouroboros",
- "parking_lot",
+ "parking_lot 0.12.5",
  "paste",
  "prost 0.14.4",
  "ripemd",
@@ -4749,7 +4896,7 @@ dependencies = [
  "hashbrown 0.14.5",
  "lock_api",
  "once_cell",
- "parking_lot_core",
+ "parking_lot_core 0.9.12",
 ]
 
 [[package]]
@@ -5566,7 +5713,7 @@ checksum = "1d930c203dd0b6ff06e0201a4a2fe9149b43c684fd4420555b26d21b1a02956f"
 dependencies = [
  "futures-core",
  "lock_api",
- "parking_lot",
+ "parking_lot 0.12.5",
 ]
 
 [[package]]
@@ -6532,6 +6679,9 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e0242819d153cba4b4b05a5a8f2a7e9bbf97b6055b2a002b395c96b5ff3c0222"
 dependencies = [
  "cfg-if",
+ "js-sys",
+ "wasm-bindgen",
+ "web-sys",
 ]
 
 [[package]]
@@ -7384,6 +7534,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "521739c6d2bac4aa25192232afe6841231376b2b26d4d9fae5ecf8ca5772e441"
 
 [[package]]
+name = "num-format"
+version = "0.4.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a652d9771a63711fd3c3deb670acfbe5c30a4072e664d7a3bf5a9e1056ac72c3"
+dependencies = [
+ "arrayvec",
+ "itoa",
+]
+
+[[package]]
 name = "num-integer"
 version = "0.1.46"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -7952,12 +8112,37 @@ checksum = "f38d5652c16fde515bb1ecef450ab0f6a219d619a7274976324d5e377f7dceba"
 
 [[package]]
 name = "parking_lot"
+version = "0.11.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7d17b78036a60663b797adeaee46f5c9dfebb86948d1255007a1d6be0271ff99"
+dependencies = [
+ "instant",
+ "lock_api",
+ "parking_lot_core 0.8.6",
+]
+
+[[package]]
+name = "parking_lot"
 version = "0.12.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "93857453250e3077bd71ff98b6a65ea6621a19bb0f559a85248955ac12c45a1a"
 dependencies = [
  "lock_api",
- "parking_lot_core",
+ "parking_lot_core 0.9.12",
+]
+
+[[package]]
+name = "parking_lot_core"
+version = "0.8.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "60a2cfe6f0ad2bfc16aefa463b497d5c7a5ecd44a23efa72aa342d90177356dc"
+dependencies = [
+ "cfg-if",
+ "instant",
+ "libc",
+ "redox_syscall 0.2.16",
+ "smallvec",
+ "winapi",
 ]
 
 [[package]]
@@ -8263,6 +8448,65 @@ name = "portable-atomic"
 version = "1.13.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c33a9471896f1c69cecef8d20cbe2f7accd12527ce60845ff44c153bb2a21b49"
+
+[[package]]
+name = "postgresql_archive"
+version = "0.20.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e80b519badc77389e9bb48944da8b639eaddc0ab9bb0e921be233c11348f3655"
+dependencies = [
+ "async-trait",
+ "flate2",
+ "futures-util",
+ "hex",
+ "num-format",
+ "regex-lite",
+ "reqwest 0.12.28",
+ "reqwest-middleware",
+ "reqwest-retry",
+ "reqwest-tracing",
+ "semver 1.0.28",
+ "serde",
+ "serde_json",
+ "sha2 0.10.9",
+ "tar",
+ "target-triple",
+ "tempfile",
+ "thiserror 2.0.18",
+ "tracing",
+ "url",
+]
+
+[[package]]
+name = "postgresql_commands"
+version = "0.20.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "20698f9f0fddfa20bb0f8db60c47c7c1996b781c8e4bc2d09182d6cab66da25c"
+dependencies = [
+ "thiserror 2.0.18",
+ "tokio",
+ "tracing",
+]
+
+[[package]]
+name = "postgresql_embedded"
+version = "0.20.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c73524453412018db32b4929cc0b58ecb2d04cff679e9d397ab32880fbe7a0ca"
+dependencies = [
+ "anyhow",
+ "postgresql_archive",
+ "postgresql_commands",
+ "rand 0.9.4",
+ "semver 1.0.28",
+ "sqlx",
+ "target-triple",
+ "tempfile",
+ "thiserror 2.0.18",
+ "tokio",
+ "tracing",
+ "url",
+]
 
 [[package]]
 name = "potential_utf"
@@ -8905,6 +9149,15 @@ dependencies = [
 
 [[package]]
 name = "redox_syscall"
+version = "0.2.16"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "fb5a58c1855b4b6819d59012155603f0b22ad30cad752600aadfcb695265519a"
+dependencies = [
+ "bitflags 1.3.2",
+]
+
+[[package]]
+name = "redox_syscall"
 version = "0.5.18"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ed2bf2547551a7053d6fdfafda3f938979645c44812fbfcda098faae3f1a362d"
@@ -9089,6 +9342,7 @@ dependencies = [
  "pin-project-lite",
  "quinn",
  "rustls 0.23.40",
+ "rustls-native-certs 0.8.4",
  "rustls-pki-types",
  "serde",
  "serde_json",
@@ -9097,12 +9351,14 @@ dependencies = [
  "tokio",
  "tokio-native-tls",
  "tokio-rustls 0.26.4",
+ "tokio-util",
  "tower",
  "tower-http",
  "tower-service",
  "url",
  "wasm-bindgen",
  "wasm-bindgen-futures",
+ "wasm-streams 0.4.2",
  "web-sys",
  "webpki-roots 1.0.7",
 ]
@@ -9152,8 +9408,70 @@ dependencies = [
  "url",
  "wasm-bindgen",
  "wasm-bindgen-futures",
- "wasm-streams",
+ "wasm-streams 0.5.0",
  "web-sys",
+]
+
+[[package]]
+name = "reqwest-middleware"
+version = "0.4.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "57f17d28a6e6acfe1733fe24bcd30774d13bffa4b8a22535b4c8c98423088d4e"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "http 1.4.2",
+ "reqwest 0.12.28",
+ "serde",
+ "thiserror 1.0.69",
+ "tower-service",
+]
+
+[[package]]
+name = "reqwest-retry"
+version = "0.7.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "29c73e4195a6bfbcb174b790d9b3407ab90646976c55de58a6515da25d851178"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "futures",
+ "getrandom 0.2.17",
+ "http 1.4.2",
+ "hyper 1.10.1",
+ "parking_lot 0.11.2",
+ "reqwest 0.12.28",
+ "reqwest-middleware",
+ "retry-policies",
+ "thiserror 1.0.69",
+ "tokio",
+ "tracing",
+ "wasm-timer",
+]
+
+[[package]]
+name = "reqwest-tracing"
+version = "0.5.8"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d70ea85f131b2ee9874f0b160ac5976f8af75f3c9badfe0d955880257d10bd83"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "getrandom 0.2.17",
+ "http 1.4.2",
+ "matchit",
+ "reqwest 0.12.28",
+ "reqwest-middleware",
+ "tracing",
+]
+
+[[package]]
+name = "retry-policies"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5875471e6cab2871bc150ecb8c727db5113c9338cc3354dc5ee3425b6aa40a1c"
+dependencies = [
+ "rand 0.8.6",
 ]
 
 [[package]]
@@ -11027,6 +11345,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "adb6935a6f5c20170eeceb1a3835a49e12e19d792f6dd344ccc76a985ca5a6ca"
 
 [[package]]
+name = "target-triple"
+version = "0.1.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1ac9aa371f599d22256307c24a9d748c041e548cbf599f35d890f9d365361790"
+
+[[package]]
 name = "tempfile"
 version = "3.27.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -11313,7 +11637,7 @@ dependencies = [
  "bytes",
  "libc",
  "mio",
- "parking_lot",
+ "parking_lot 0.12.5",
  "pin-project-lite",
  "signal-hook-registry",
  "socket2 0.6.4",
@@ -12195,12 +12519,40 @@ dependencies = [
 
 [[package]]
 name = "wasm-streams"
+version = "0.4.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "15053d8d85c7eccdbefef60f06769760a563c7f0a9d6902a13d35c7800b0ad65"
+dependencies = [
+ "futures-util",
+ "js-sys",
+ "wasm-bindgen",
+ "wasm-bindgen-futures",
+ "web-sys",
+]
+
+[[package]]
+name = "wasm-streams"
 version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9d1ec4f6517c9e11ae630e200b2b65d193279042e28edd4a2cda233e46670bbb"
 dependencies = [
  "futures-util",
  "js-sys",
+ "wasm-bindgen",
+ "wasm-bindgen-futures",
+ "web-sys",
+]
+
+[[package]]
+name = "wasm-timer"
+version = "0.2.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "be0ecb0db480561e9a7642b5d3e4187c128914e58aa84330b9493e3eb68c5e7f"
+dependencies = [
+ "futures",
+ "js-sys",
+ "parking_lot 0.11.2",
+ "pin-utils",
  "wasm-bindgen",
  "wasm-bindgen-futures",
  "web-sys",
@@ -12385,7 +12737,7 @@ dependencies = [
  "mach2 0.6.0",
  "memoffset 0.9.1",
  "more-asserts",
- "parking_lot",
+ "parking_lot 0.12.5",
  "region",
  "rustversion",
  "scopeguard",
@@ -12443,7 +12795,7 @@ checksum = "1c598d6b99ea013e35844697fc4670d08339d5cda15588f193c6beedd12f644b"
 dependencies = [
  "futures",
  "js-sys",
- "parking_lot",
+ "parking_lot 0.12.5",
  "pin-utils",
  "slab",
  "wasm-bindgen",

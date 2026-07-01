@@ -1,0 +1,36 @@
+[package]
+authors       = { workspace = true }
+categories    = { workspace = true }
+documentation = { workspace = true }
+edition       = { workspace = true }
+license       = { workspace = true }
+name          = "dango-indexer-historical-cli"
+repository    = { workspace = true }
+rust-version  = { workspace = true }
+version       = { workspace = true }
+
+[[bin]]
+name = "indexer-historical"
+path = "src/main.rs"
+
+[dependencies]
+anyhow                                = { workspace = true }
+clap                                  = { workspace = true, features = ["wrap_help"] }
+dango-config-parser                   = { workspace = true }
+dango-indexer-cache                   = { workspace = true, features = ["metrics", "tracing"] }
+dango-indexer-historical-app          = { workspace = true, features = ["metrics", "tracing"] }
+dango-indexer-historical-block-source = { workspace = true, features = ["metrics", "tracing"] }
+dango-indexer-historical-httpd        = { workspace = true, features = ["metrics", "tracing"] }
+dango-indexer-historical-projection   = { workspace = true, features = ["metrics", "tracing"] }
+dango-indexer-metrics                 = { workspace = true, features = ["tracing"] }
+dango-primitives                      = { workspace = true }
+dango-sdk                             = { workspace = true, features = ["tracing"] }
+futures                               = { workspace = true }
+home                                  = { workspace = true }
+metrics                               = { workspace = true }
+metrics-exporter-prometheus           = { workspace = true }
+sea-orm                               = { workspace = true }
+serde                                 = { workspace = true, features = ["derive"] }
+tokio                                 = { workspace = true }
+tracing                               = { workspace = true }
+tracing-subscriber                    = { workspace = true }
