@@ -3,6 +3,7 @@ mod metrics;
 mod perps_candles;
 mod perps_events;
 mod perps_pair_stats;
+mod rest;
 mod shutdown;
 mod transfers;
 mod users;

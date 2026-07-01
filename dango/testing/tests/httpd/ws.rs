@@ -267,8 +267,9 @@ async fn ws_perps_events_stream_absent_filter_matches_all() -> anyhow::Result<()
 }
 
 /// A `since` older than the retained in-memory window does not open a stream; it
-/// replies with an `error` frame tagged `resync` and the offending `id` (the WS
-/// analogue of the SSE `409 Conflict`).
+/// replies with an `error`-keyed frame tagged `resync` (carrying the offending
+/// `id`) on the subscription's own `perpsEvents` channel — the WS analogue of
+/// the SSE `409 Conflict`.
 #[tokio::test(flavor = "multi_thread")]
 async fn ws_perps_events_stream_resync_required_is_error_frame() -> anyhow::Result<()> {
     let (mut suite, mut accounts, _, contracts, _, ctx, _, _, _db_guard) =
@@ -303,9 +304,12 @@ async fn ws_perps_events_stream_resync_required_is_error_frame() -> anyhow::Resu
                 )
                 .await?;
 
-                let error = recv_until(&mut framed, |m| channel(m) == Some("error")).await?;
+                let error = recv_until(&mut framed, |m| {
+                    channel(m) == Some("perpsEvents") && m.get("error").is_some()
+                })
+                .await?;
                 assert_eq!(error["id"].as_u64(), Some(3));
-                assert_eq!(error["data"]["code"].as_str(), Some("resync"));
+                assert_eq!(error["error"]["code"].as_str(), Some("resync"));
 
                 Ok::<(), anyhow::Error>(())
             })

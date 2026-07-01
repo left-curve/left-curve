@@ -48,8 +48,8 @@ class FakeInfo:
         # Mirror the GraphQL `queryStatus` shape (see
         # `dango/_graphql/queries/queryStatus.graphql`): a `chainId` and
         # a `block` sub-object. Only `chainId` is consumed by Exchange,
-        # but the shape must stay realistic so future Phase-X consumers
-        # of this fake don't trip on missing fields.
+        # but the shape must stay realistic so future consumers of this
+        # fake don't trip on missing fields.
         return {
             "chainId": "dango-mock-1",
             "block": {"blockHeight": 1, "timestamp": "x", "hash": "y"},

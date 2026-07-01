@@ -3,10 +3,17 @@
 //! One socket carries any number of subscriptions, each identified by a
 //! client-chosen `id`. Client messages are `method`-tagged
 //! (`subscribe` / `unsubscribe` / `ping`); server messages are `channel`-tagged
-//! (`subscriptionResponse` / `<channel>` data / `pong` / `error`). The `id` of a
-//! `subscribe` is echoed on its acknowledgement and on every data frame it
-//! produces, so concurrent subscriptions (e.g. several `perpsEvents` feeds with
-//! different filters) are demultiplexable on the client.
+//! (`subscriptionResponse` / `<channel>` / `pong`). The `id` of a `subscribe` is
+//! echoed on its acknowledgement and on every frame it produces, so concurrent
+//! subscriptions (e.g. several `perpsEvents` feeds with different filters) are
+//! demultiplexable on the client.
+//!
+//! Errors are co-located with the operation they concern: a problem opening or
+//! running a subscription rides that subscription's own channel and `id`, as an
+//! `error`-keyed frame alongside its `data`-keyed frames, so a client handles a
+//! feed's failure on the same channel it reads from. Only errors with no
+//! channel to attribute them to — an unparseable frame, or an `unsubscribe` for
+//! an unknown `id` — use the dedicated `error` channel.
 //!
 //! Two channel types are served, both reusing the in-memory validator stream
 //! that backed the `full_block` / `perps_events` GraphQL subscriptions:
@@ -25,11 +32,13 @@
 use {
     crate::{
         context::FullContext,
+        request_ip::RequesterIp,
         subscription_limiter::{ConnectionLimiter, SubscriptionLimiter, guard_subscription_stream},
     },
     actix_web::{HttpRequest, HttpResponse, Resource, guard, web},
     actix_ws::{AggregatedMessage, Session},
     dango_indexer_stream::{Context, make_perps_filter},
+    dango_primitives::{HttpRequestDetails, Tx},
     futures_util::{StreamExt, stream},
     serde::{Deserialize, Serialize},
     std::{collections::HashSet, pin::Pin, sync::Arc, time::Duration},
@@ -87,6 +96,14 @@ enum ClientMessage {
         #[serde(default)]
         id: Option<u64>,
     },
+
+    /// Broadcast a signed transaction to the mempool. Answered on the
+    /// `broadcast` channel: a `BroadcastTxOutcome` (`data`) — including a mempool
+    /// rejection, which rides `check_tx.result` — or an `error` frame only on a
+    /// transport failure to the consensus node. The REST `POST /broadcast` is the
+    /// default; this lets a client already holding a `/ws` connection broadcast
+    /// without a separate HTTP request.
+    Broadcast { id: u64, tx: Tx },
 }
 
 /// The feed a `subscribe` selects, discriminated by `type`.
@@ -152,10 +169,14 @@ enum ServerControl<'a> {
         #[serde(skip_serializing_if = "Option::is_none")]
         id: Option<u64>,
     },
+    /// A connection-level error with no subscription channel to attribute it to
+    /// — an unparseable frame, or an `unsubscribe` for an unknown `id`. Errors
+    /// that concern a specific subscription instead ride its channel; see
+    /// [`ErrorFrame`].
     Error {
         #[serde(skip_serializing_if = "Option::is_none")]
         id: Option<u64>,
-        data: ErrorData<'a>,
+        error: ErrorData<'a>,
     },
 }
 
@@ -182,6 +203,17 @@ struct DataFrame<'a, T> {
     data: &'a T,
 }
 
+/// An error scoped to a subscription, delivered on that subscription's own
+/// channel and `id` — mirroring its data frames — so a client handles a feed's
+/// failure on the same channel it reads from. Connection-level errors that have
+/// no channel to attribute them to use [`ServerControl::Error`] instead.
+#[derive(Debug, Serialize)]
+struct ErrorFrame<'a> {
+    channel: &'static str,
+    id: u64,
+    error: ErrorData<'a>,
+}
+
 // ---- handler ----
 
 /// Accept the WebSocket upgrade and drive the connection on a detached task.
@@ -194,13 +226,19 @@ pub async fn ws_index(
 ) -> actix_web::Result<HttpResponse> {
     let (response, session, msg_stream) = actix_ws::handle(&req, body)?;
 
-    let stream_ctx = app_ctx.stream_context.clone();
+    // Computed once per connection and reused by every `broadcast` on this
+    // socket, mirroring how the REST/GraphQL broadcast paths capture it per
+    // request.
+    let http_details = RequesterIp::from_request(&req).into_http_request_details();
     let conn_limiter = limiter.new_connection();
 
+    // The connection loop runs on a detached task, so it owns the context (a
+    // cheap `Arc`-cloning `FullContext`) rather than borrowing `web::Data`.
     actix_web::rt::spawn(connection_loop(
         session,
         msg_stream,
-        stream_ctx,
+        app_ctx.as_ref().clone(),
+        http_details,
         conn_limiter,
     ));
 
@@ -212,7 +250,8 @@ pub async fn ws_index(
 async fn connection_loop(
     mut session: Session,
     msg_stream: actix_ws::MessageStream,
-    stream_ctx: Context,
+    app_ctx: FullContext,
+    http_details: HttpRequestDetails,
     conn_limiter: ConnectionLimiter,
 ) {
     let mut msg_stream = msg_stream.aggregate_continuations();
@@ -233,7 +272,7 @@ async fn connection_loop(
 
                 match message {
                     AggregatedMessage::Text(text) => {
-                        if !handle_text(&text, &mut session, &mut streams, &stream_ctx, &conn_limiter).await {
+                        if !handle_text(&text, &mut session, &mut streams, &app_ctx, &http_details, &conn_limiter).await {
                             break;
                         }
                     },
@@ -279,7 +318,8 @@ async fn handle_text(
     text: &str,
     session: &mut Session,
     streams: &mut StreamMap<u64, FrameStream>,
-    stream_ctx: &Context,
+    app_ctx: &FullContext,
+    http_details: &HttpRequestDetails,
     conn_limiter: &ConnectionLimiter,
 ) -> bool {
     let message = match serde_json::from_str::<ClientMessage>(text) {
@@ -289,10 +329,14 @@ async fn handle_text(
 
     match message {
         ClientMessage::Subscribe { id, subscription } => {
+            // Subscription-scoped errors ride this channel + `id`, mirroring the
+            // data frames the subscription would have produced.
+            let channel = subscription.channel();
+
             if streams.contains_key(&id) {
                 return send(
                     session,
-                    error_frame(Some(id), "badRequest", "id already in use"),
+                    channel_error(channel, id, "badRequest", "id already in use"),
                 )
                 .await;
             }
@@ -305,19 +349,18 @@ async fn handle_text(
                 Err(err) => {
                     return send(
                         session,
-                        error_frame(Some(id), "tooManyRequests", &err.message),
+                        channel_error(channel, id, "tooManyRequests", &err.message),
                     )
                     .await;
                 },
             };
 
-            let channel = subscription.channel();
-            match open_stream(id, &subscription, guard, stream_ctx) {
+            match open_stream(id, &subscription, guard, &app_ctx.stream_context) {
                 Ok(frames) => {
                     streams.insert(id, frames);
                     send(session, ack(id, "subscribe", Some(channel))).await
                 },
-                Err(resync) => send(session, error_frame(Some(id), "resync", &resync)).await,
+                Err(resync) => send(session, channel_error(channel, id, "resync", &resync)).await,
             }
         },
         ClientMessage::Unsubscribe { id } => {
@@ -332,6 +375,32 @@ async fn handle_text(
             }
         },
         ClientMessage::Ping { id } => send(session, control(&ServerControl::Pong { id })).await,
+        ClientMessage::Broadcast { id, tx } => {
+            // Reject an `id` already bound to a live subscription on this socket,
+            // so the client can demultiplex the `broadcast` reply unambiguously.
+            if streams.contains_key(&id) {
+                return send(
+                    session,
+                    channel_error("broadcast", id, "badRequest", "id already in use"),
+                )
+                .await;
+            }
+
+            // Awaited inline: `broadcast_tx` is a fast mempool admission, so
+            // briefly pausing this connection's other arms is acceptable. A
+            // mempool rejection comes back as `Ok` (carried in
+            // `check_tx.result`); only a transport failure is an `error` frame.
+            match crate::broadcast::broadcast_tx(app_ctx, http_details, tx).await {
+                Ok(outcome) => send(session, data_frame("broadcast", id, &outcome)).await,
+                Err(err) => {
+                    send(
+                        session,
+                        channel_error("broadcast", id, "broadcastFailed", &err.to_string()),
+                    )
+                    .await
+                },
+            }
+        },
     }
 }
 
@@ -370,7 +439,7 @@ fn open_stream(
             let frames = guard_subscription_stream(raw, Some(guard))
                 .map(move |block| data_frame("perpsEvents", id, &block));
 
-            Ok(with_terminal(id, frames))
+            Ok(with_terminal("perpsEvents", id, frames))
         },
         Subscription::FullBlock { since } => {
             let raw = stream_ctx
@@ -380,7 +449,7 @@ fn open_stream(
             let frames = guard_subscription_stream(raw, Some(guard))
                 .map(move |block| data_frame("fullBlock", id, &block));
 
-            Ok(with_terminal(id, frames))
+            Ok(with_terminal("fullBlock", id, frames))
         },
     }
 }
@@ -390,13 +459,14 @@ fn open_stream(
 /// feed closed — the client learns to resync instead of seeing the feed go
 /// silent. An explicit `unsubscribe` removes the stream from the map before this
 /// runs, so it never fires spuriously.
-fn with_terminal<S>(id: u64, frames: S) -> FrameStream
+fn with_terminal<S>(channel: &'static str, id: u64, frames: S) -> FrameStream
 where
     S: stream::Stream<Item = String> + Send + 'static,
 {
     let terminal = stream::once(async move {
-        error_frame(
-            Some(id),
+        channel_error(
+            channel,
+            id,
             "resync",
             "subscription ended; reconnect with a newer `since`",
         )
@@ -413,7 +483,7 @@ async fn send(session: &mut Session, text: String) -> bool {
 
 fn control(message: &ServerControl) -> String {
     serde_json::to_string(message).unwrap_or_else(|_| {
-        r#"{"channel":"error","data":{"code":"internal","message":"serialization failed"}}"#
+        r#"{"channel":"error","error":{"code":"internal","message":"serialization failed"}}"#
             .to_string()
     })
 }
@@ -428,8 +498,19 @@ fn ack(id: u64, method: &str, channel: Option<&str>) -> String {
 fn error_frame(id: Option<u64>, code: &str, message: &str) -> String {
     control(&ServerControl::Error {
         id,
-        data: ErrorData { code, message },
+        error: ErrorData { code, message },
     })
+}
+
+/// Serialize an error scoped to a subscription, delivered on that subscription's
+/// own `channel` and `id` — the co-located counterpart to [`data_frame`].
+fn channel_error(channel: &'static str, id: u64, code: &str, message: &str) -> String {
+    serde_json::to_string(&ErrorFrame {
+        channel,
+        id,
+        error: ErrorData { code, message },
+    })
+    .unwrap_or_else(|_| error_frame(Some(id), "internal", "serialization failed"))
 }
 
 fn data_frame<T>(channel: &'static str, id: u64, data: &T) -> String
@@ -562,7 +643,7 @@ mod tests {
 
         assert_eq!(
             parse(&error_frame(Some(3), "resync", "stale")),
-            json!({"channel": "error", "id": 3, "data": {"code": "resync", "message": "stale"}}),
+            json!({"channel": "error", "id": 3, "error": {"code": "resync", "message": "stale"}}),
         );
     }
 
@@ -576,6 +657,63 @@ mod tests {
             ))
             .unwrap(),
             json!({"channel": "perpsEvents", "id": 1, "data": {"blockHeight": 5}}),
+        );
+    }
+
+    #[test]
+    fn serializes_colocated_error_on_its_subscription_channel() {
+        // A subscription-scoped error rides that subscription's own channel and
+        // `id`, as an `error`-keyed sibling of its `data`-keyed frames.
+        assert_eq!(
+            serde_json::from_str::<serde_json::Value>(&channel_error(
+                "perpsEvents",
+                1,
+                "resync",
+                "stale",
+            ))
+            .unwrap(),
+            json!({"channel": "perpsEvents", "id": 1, "error": {"code": "resync", "message": "stale"}}),
+        );
+    }
+
+    #[test]
+    fn deserializes_broadcast_with_tx() {
+        let message: ClientMessage = serde_json::from_str(
+            r#"{"method":"broadcast","id":5,"tx":{"sender":"0x33361de42571d6aa20c37daa6da4b5ab67bfaad9","gas_limit":1000000,"msgs":[{"transfer":{"0x01bba610cbbfe9df0c99b8862f3ad41b2f646553":{"hyp/all/btc":"100"}}}],"data":{"chain_id":"dev-1","nonce":1,"username":"owner"},"credential":{}}}"#,
+        )
+        .unwrap();
+
+        assert!(matches!(message, ClientMessage::Broadcast { id: 5, .. }));
+    }
+
+    #[test]
+    fn serializes_broadcast_success_frame() {
+        // A successful broadcast rides a `data` frame on the `broadcast`
+        // channel, exactly like a subscription's data frame.
+        assert_eq!(
+            serde_json::from_str::<serde_json::Value>(&data_frame(
+                "broadcast",
+                5,
+                &json!({"tx_hash": "0xabc", "check_tx": {"result": {"Ok": null}}}),
+            ))
+            .unwrap(),
+            json!({"channel": "broadcast", "id": 5, "data": {"tx_hash": "0xabc", "check_tx": {"result": {"Ok": null}}}}),
+        );
+    }
+
+    #[test]
+    fn serializes_broadcast_error_frame() {
+        // A transport failure to the consensus node is an `error` frame on the
+        // `broadcast` channel (a mempool rejection would be a `data` frame).
+        assert_eq!(
+            serde_json::from_str::<serde_json::Value>(&channel_error(
+                "broadcast",
+                5,
+                "broadcastFailed",
+                "connection refused",
+            ))
+            .unwrap(),
+            json!({"channel": "broadcast", "id": 5, "error": {"code": "broadcastFailed", "message": "connection refused"}}),
         );
     }
 }

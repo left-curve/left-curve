@@ -63,7 +63,7 @@ async fn system_contracts(node_url: &str) -> anyhow::Result<HashSet<Addr>> {
 
     let mut last_err = None;
     for attempt in 1..=APP_CONFIG_ATTEMPTS {
-        match client.query_app_config::<Json>(None).await {
+        match client.query_app_config::<Json>().await {
             Ok(app_config) => {
                 let mut addresses = HashSet::new();
                 app_config.extract_addresses(&mut addresses);

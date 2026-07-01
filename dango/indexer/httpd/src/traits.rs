@@ -14,19 +14,7 @@ impl<T> ConsensusClient for T where T: BroadcastClient<Error = anyhow::Error> {}
 pub trait QueryApp {
     /// Query the app, return the query response and the block height this query
     /// was performed at.
-    async fn query_app(
-        &self,
-        raw_req: Query,
-        height: Option<u64>,
-    ) -> AppResult<(QueryResponse, u64)>;
-
-    /// Query the app's underlying key-value store, return `(value, proof, height)`.
-    async fn query_store(
-        &self,
-        key: &[u8],
-        height: Option<u64>,
-        prove: bool,
-    ) -> AppResult<(Option<Vec<u8>>, Option<Vec<u8>>, u64)>;
+    async fn query_app(&self, raw_req: Query) -> AppResult<(QueryResponse, u64)>;
 
     /// Simulate a transaction.
     async fn simulate(&self, unsigned_tx: UnsignedTx) -> AppResult<TxOutcome>;
@@ -47,25 +35,12 @@ where
     ID: Indexer + Send + Sync + 'static,
     AppError: From<DB::Error> + From<VM::Error> + From<PP::Error>,
 {
-    async fn query_app(
-        &self,
-        raw_req: Query,
-        height: Option<u64>,
-    ) -> AppResult<(QueryResponse, u64)> {
-        Ok(self.do_query_app_with_height(raw_req, height, false)?)
-    }
-
-    async fn query_store(
-        &self,
-        key: &[u8],
-        height: Option<u64>,
-        prove: bool,
-    ) -> AppResult<(Option<Vec<u8>>, Option<Vec<u8>>, u64)> {
-        self.do_query_store_with_height(key, height, prove)
+    async fn query_app(&self, raw_req: Query) -> AppResult<(QueryResponse, u64)> {
+        self.do_query_app_with_height(raw_req)
     }
 
     async fn simulate(&self, unsigned_tx: UnsignedTx) -> AppResult<TxOutcome> {
-        Ok(self.do_simulate(unsigned_tx, 0, false)?)
+        self.do_simulate(unsigned_tx)
     }
 
     async fn chain_id(&self) -> AppResult<String> {

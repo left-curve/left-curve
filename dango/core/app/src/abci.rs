@@ -6,7 +6,6 @@ use {
     },
     prost::bytes::Bytes,
     std::{
-        any::type_name,
         future::Future,
         num::NonZeroU32,
         pin::Pin,
@@ -17,7 +16,6 @@ use {
         AppHash, Hash, Time,
         abci::{self, Code, request, response, types::ExecTxResult},
         block::Height,
-        merkle::proof::{ProofOp, ProofOps},
         v0_38::abci::{Request, Response},
     },
     tower::Service,
@@ -333,30 +331,6 @@ where
                 Err(err) => response::Query {
                     code: into_tm_code_error(1),
                     codespace: "simulate".into(),
-                    log: err.to_string(),
-                    ..Default::default()
-                },
-            },
-            "/store" => match self.do_query_store_raw(&req.data, req.height.value(), req.prove) {
-                Ok((value, proof)) => {
-                    let proof = proof.map(|proof| ProofOps {
-                        ops: vec![ProofOp {
-                            field_type: type_name::<DB::Proof>().into(),
-                            key: req.data.into(),
-                            data: proof,
-                        }],
-                    });
-                    response::Query {
-                        code: Code::Ok,
-                        value: value.unwrap_or_default().into(),
-                        height: req.height,
-                        proof,
-                        ..Default::default()
-                    }
-                },
-                Err(err) => response::Query {
-                    code: into_tm_code_error(1),
-                    codespace: "store".into(),
                     log: err.to_string(),
                     ..Default::default()
                 },

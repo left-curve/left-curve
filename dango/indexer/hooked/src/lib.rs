@@ -99,14 +99,6 @@ impl HookedIndexer {
             "Start called, found LAST_FINALIZED_BLOCK"
         );
 
-        let cfg = CONFIG
-            .load(storage)
-            .map_err(|e| IndexerError::storage(format!("Failed to load CONFIG: {e}")))?;
-
-        let app_cfg = APP_CONFIG
-            .load(storage)
-            .map_err(|e| IndexerError::storage(format!("Failed to load APP_CONFIG: {e}")))?;
-
         // Lowest last-indexed height across components decides where we resume.
         // Cache has no DB-backed counter; only SQL/Clickhouse contribute. (See
         // the inherent `last_indexed_block_height` impls.)
@@ -131,6 +123,19 @@ impl HookedIndexer {
             );
             return Ok(());
         }
+
+        // `CONFIG` / `APP_CONFIG` are only needed for the replay below, so
+        // they're loaded after the "already caught up" early return, never
+        // before it: a node booting on the post-fork binary hasn't run the
+        // upgrade block that migrates `CONFIG` yet, so the committed state
+        // still holds old-format bytes the new struct can't deserialize.
+        let cfg = CONFIG
+            .load(storage)
+            .map_err(|e| IndexerError::storage(format!("Failed to load CONFIG: {e}")))?;
+
+        let app_cfg = APP_CONFIG
+            .load(storage)
+            .map_err(|e| IndexerError::storage(format!("Failed to load APP_CONFIG: {e}")))?;
 
         // The realtime stream (`perps_events`) is intentionally NOT replayed
         // here: it is an ephemeral, live-only feed with no subscribers during a

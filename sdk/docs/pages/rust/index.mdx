@@ -4,7 +4,7 @@ The Rust SDK is a thin GraphQL + REST client over a Dango node, plus key-managem
 
 It exposes:
 
-- [`HttpClient`](./api/clients/HttpClient) — queries (`query_app`, `query_store`, `simulate`, `query_block`, …), tx broadcast, and macro-generated paginators for indexer connections.
+- [`HttpClient`](./api/clients/HttpClient) — queries (`query_app`, `simulate`, `query_block`, …), tx broadcast, and macro-generated paginators for indexer connections.
 - [`WsClient`](./api/clients/WsClient) and [`Session`](./api/clients/Session) — GraphQL subscriptions over `graphql-transport-ws`.
 - [`SingleSigner`](./api/clients/SingleSigner) — typestate signer for Dango single-signature accounts.
 - [`Secret`](./api/traits/Secret) trait with `Secp256k1` and `Eip712` implementations, and [`Keystore`](./api/clients/Keystore) for AES-256-GCM at-rest encryption.

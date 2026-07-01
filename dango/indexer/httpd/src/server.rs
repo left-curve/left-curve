@@ -44,6 +44,9 @@ where
             .service(routes::index::sentry_raise)
             .service(routes::blocks::services())
             .service(routes::ws::services())
+            .service(routes::query::query)
+            .service(routes::simulate::simulate)
+            .service(routes::broadcast::broadcast)
             .service(graphql_route::<
                 crate::graphql::query::FullQuery,
                 crate::graphql::mutation::IndexerMutation,

@@ -194,17 +194,42 @@ enum Frame {
     Ack,
     /// A `fullBlock` data frame's `data` payload (the `{block, outcome}` value).
     Data(serde_json::Value),
-    /// An `error` frame (e.g. `resync`, `tooManyRequests`).
+    /// An error frame — connection-level (the `error` channel) or a
+    /// subscription-scoped failure co-located on the `fullBlock` channel (e.g.
+    /// `resync`, `tooManyRequests`). Both carry an `error` object.
     Error { code: String, message: String },
     /// `pong` or any other channel — ignored.
     Other,
 }
 
-/// Classify a `/ws` server text frame by its `channel` tag (see the node's
-/// `routes::ws`): `subscriptionResponse` / `fullBlock` / `error` / other.
+/// Classify a `/ws` server text frame (see the node's `routes::ws`).
+///
+/// Errors are **co-located on the channel they concern**: a subscription-scoped
+/// failure (`resync`, `tooManyRequests`, or the terminal "subscription ended")
+/// rides its own channel — `fullBlock` — as an `error`-keyed sibling of its
+/// `data`-keyed frames, while a connection-level error uses the dedicated
+/// `error` channel. Both carry an `error` object, so its presence is tested
+/// first — otherwise the channel match would read an absent `data` off a
+/// `fullBlock` error frame and mislabel it.
 fn classify_frame(text: &str) -> AnyResult<Frame> {
     let value: serde_json::Value =
         serde_json::from_str(text).map_err(|err| anyhow!("malformed websocket frame: {err}"))?;
+
+    // An `error` object — subscription-scoped (on `fullBlock`) or connection
+    // level (on `error`) — is an error frame first, whatever its channel.
+    if let Some(error) = value.get("error") {
+        let code = error
+            .get("code")
+            .and_then(|c| c.as_str())
+            .unwrap_or("error")
+            .to_string();
+        let message = error
+            .get("message")
+            .and_then(|m| m.as_str())
+            .unwrap_or_default()
+            .to_string();
+        return Ok(Frame::Error { code, message });
+    }
 
     match value.get("channel").and_then(|c| c.as_str()) {
         Some("subscriptionResponse") => Ok(Frame::Ack),
@@ -214,20 +239,6 @@ fn classify_frame(text: &str) -> AnyResult<Frame> {
                 .cloned()
                 .context("fullBlock frame missing `data`")?,
         )),
-        Some("error") => {
-            let data = value.get("data");
-            let code = data
-                .and_then(|d| d.get("code"))
-                .and_then(|c| c.as_str())
-                .unwrap_or("error")
-                .to_string();
-            let message = data
-                .and_then(|d| d.get("message"))
-                .and_then(|m| m.as_str())
-                .unwrap_or_default()
-                .to_string();
-            Ok(Frame::Error { code, message })
-        },
         _ => Ok(Frame::Other),
     }
 }
@@ -254,5 +265,79 @@ impl BlockRangeClient for HttpdClient {
             .await?;
 
         Ok(serde_json::from_slice::<Vec<BlockData>>(&bytes)?)
+    }
+}
+
+// ---- frame classification ----
+
+#[cfg(test)]
+mod tests {
+    use super::{Frame, classify_frame};
+
+    #[test]
+    fn subscription_response_is_an_ack() {
+        assert!(matches!(
+            classify_frame(r#"{"channel":"subscriptionResponse","id":1,"type":"fullBlock"}"#)
+                .unwrap(),
+            Frame::Ack,
+        ));
+    }
+
+    #[test]
+    fn full_block_data_frame_yields_its_payload() {
+        let frame =
+            classify_frame(r#"{"channel":"fullBlock","id":1,"data":{"block":{},"outcome":{}}}"#)
+                .unwrap();
+        match frame {
+            Frame::Data(data) => {
+                assert!(
+                    data.get("block").is_some(),
+                    "the `data` payload is forwarded"
+                );
+            },
+            _ => panic!("expected a data frame"),
+        }
+    }
+
+    #[test]
+    fn subscription_scoped_error_rides_the_full_block_channel() {
+        // The regression this guards: since main co-located errors, a `resync`
+        // on the `fullBlock` channel carries an `error` (not `data`) key. It must
+        // classify as an error, not fall through the channel match as missing
+        // data.
+        let frame = classify_frame(
+            r#"{"channel":"fullBlock","id":1,"error":{"code":"resync","message":"stale"}}"#,
+        )
+        .unwrap();
+        match frame {
+            Frame::Error { code, message } => {
+                assert_eq!(code, "resync");
+                assert_eq!(message, "stale");
+            },
+            _ => panic!("expected an error frame"),
+        }
+    }
+
+    #[test]
+    fn connection_level_error_is_read_from_the_error_key() {
+        let frame = classify_frame(
+            r#"{"channel":"error","id":3,"error":{"code":"tooManyRequests","message":"slow down"}}"#,
+        )
+        .unwrap();
+        match frame {
+            Frame::Error { code, message } => {
+                assert_eq!(code, "tooManyRequests");
+                assert_eq!(message, "slow down");
+            },
+            _ => panic!("expected an error frame"),
+        }
+    }
+
+    #[test]
+    fn pong_and_unknown_channels_are_ignored() {
+        assert!(matches!(
+            classify_frame(r#"{"channel":"pong","id":1}"#).unwrap(),
+            Frame::Other,
+        ));
     }
 }

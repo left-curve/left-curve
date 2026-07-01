@@ -4,20 +4,17 @@ use {
     dango_backtrace::BacktracedError,
     dango_indexer_graphql_types::{
         PageInfo, Variables, accounts, blocks, broadcast_tx_sync, events, messages, query_app,
-        query_store, search_tx, simulate, transactions, transfers,
+        search_tx, simulate, transactions, transfers,
     },
     dango_primitives::{
-        Addr, Binary, Block, BlockClient, BlockOutcome, BorshDeExt, BroadcastClient,
-        BroadcastTxOutcome, GenericResult, Hash256, Inner, Json, JsonDeExt, JsonSerExt, NonEmpty,
-        Query, QueryClient, QueryResponse, SearchTxClient, SearchTxOutcome, Tx, TxOutcome,
-        UnsignedTx,
+        Addr, Block, BlockClient, BlockOutcome, BroadcastClient, BroadcastTxOutcome, GenericResult,
+        Hash256, Inner, Json, JsonDeExt, JsonSerExt, NonEmpty, Query, QueryClient, QueryResponse,
+        SearchTxClient, SearchTxOutcome, Tx, TxOutcome, UnsignedTx,
     },
-    futures::{SinkExt, Stream, StreamExt, channel::mpsc},
     graphql_client::{GraphQLQuery, Response},
     reqwest::IntoUrl,
-    serde::{Deserialize, Serialize},
-    std::{fmt::Debug, str::FromStr, time::Duration},
-    tokio_tungstenite::{connect_async, tungstenite::Message},
+    serde::Serialize,
+    std::{fmt::Debug, str::FromStr},
     url::Url,
 };
 
@@ -173,148 +170,6 @@ impl HttpClient {
 
         Ok(all_items)
     }
-
-    /// Subscribe to perps-exchange events over the WebSocket endpoint
-    /// (`GET /ws`, `perpsEvents` channel) — the transport replacement for the
-    /// `perps_events` GraphQL subscription. Yields one [`PerpsEventsBatch`] per
-    /// block that has at least one matching event.
-    ///
-    /// The five filters are sets that AND together; `None` (or an empty list)
-    /// does not filter on that field. `since_block_height` replays the retained
-    /// in-memory window from that height (inclusive) before the live tail; a
-    /// height that predates the window fails this call with an error (the
-    /// server's `resync` reply). The subscription is also subject to the
-    /// server's limit (`tooManyRequests`).
-    pub async fn subscribe_perps_events(
-        &self,
-        since_block_height: Option<u64>,
-        event_types: Option<Vec<String>>,
-        pair_ids: Option<Vec<String>>,
-        users: Option<Vec<String>>,
-        order_ids: Option<Vec<String>>,
-        client_order_ids: Option<Vec<String>>,
-    ) -> anyhow::Result<impl Stream<Item = anyhow::Result<PerpsEventsBatch>> + Send> {
-        // Derive the `/ws` URL from the HTTP base.
-        let mut ws_url = self.url.join("ws")?;
-        match ws_url.scheme() {
-            "http" => ws_url
-                .set_scheme("ws")
-                .map_err(|_| anyhow!("failed to set ws scheme"))?,
-            "https" => ws_url
-                .set_scheme("wss")
-                .map_err(|_| anyhow!("failed to set wss scheme"))?,
-            "ws" | "wss" => {},
-            scheme => bail!("invalid URL scheme: {scheme}"),
-        }
-
-        // Build the subscribe message. Absent filters are omitted (match-all);
-        // present ones are sent as JSON arrays.
-        let subscribe = {
-            let mut subscription = serde_json::Map::new();
-            subscription.insert("type".into(), "perpsEvents".into());
-
-            if let Some(since) = since_block_height {
-                subscription.insert("since".into(), since.into());
-            }
-
-            for (key, values) in [
-                ("eventTypes", event_types),
-                ("pairIds", pair_ids),
-                ("users", users),
-                ("orderIds", order_ids),
-                ("clientOrderIds", client_order_ids),
-            ] {
-                if let Some(values) = values {
-                    subscription.insert(key.into(), values.into());
-                }
-            }
-
-            serde_json::json!({
-                "method": "subscribe",
-                "id": 1,
-                "subscription": serde_json::Value::Object(subscription),
-            })
-        };
-
-        let (ws, _response) = connect_async(ws_url.as_str())
-            .await
-            .map_err(|err| anyhow!("WebSocket connection failed: {err}"))?;
-
-        let (mut sink, mut stream) = ws.split();
-        sink.send(Message::text(subscribe.to_string()))
-            .await
-            .map_err(|err| anyhow!("failed to send subscribe: {err}"))?;
-
-        // Await the acknowledgement, mapping a `resync` / `tooManyRequests`
-        // error frame to a connect-time error (no data frame precedes the ack).
-        loop {
-            match stream.next().await {
-                Some(Ok(Message::Text(text))) => match parse_server_frame(&text)? {
-                    ServerFrame::Ack => break,
-                    ServerFrame::Error { code, message } => bail!("{code}: {message}"),
-                    ServerFrame::Data(_) | ServerFrame::Other => {},
-                },
-                Some(Ok(Message::Ping(data))) => {
-                    let _ = sink.send(Message::Pong(data)).await;
-                },
-                Some(Ok(Message::Close(frame))) => {
-                    bail!("WebSocket closed before acknowledgement: {frame:?}")
-                },
-                Some(Ok(_)) => {},
-                Some(Err(err)) => bail!("WebSocket error before acknowledgement: {err}"),
-                None => bail!("WebSocket closed before acknowledgement"),
-            }
-        }
-
-        // Drive the socket on a background task: forward batches to the stream,
-        // answer control pings, and send an app-level ping on a fixed schedule
-        // so an idle subscription is not reaped by the server's idle timeout.
-        let (tx, rx) = mpsc::unbounded::<anyhow::Result<PerpsEventsBatch>>();
-        tokio::spawn(async move {
-            let mut keepalive = tokio::time::interval(Duration::from_secs(20));
-            keepalive.tick().await; // The first tick is immediate; skip it.
-            let ping = serde_json::json!({"method": "ping"}).to_string();
-
-            loop {
-                tokio::select! {
-                    _ = keepalive.tick() => {
-                        if sink.send(Message::text(ping.clone())).await.is_err() {
-                            break;
-                        }
-                    },
-                    message = stream.next() => match message {
-                        Some(Ok(Message::Text(text))) => match parse_server_frame(&text) {
-                            Ok(ServerFrame::Data(batch)) => {
-                                if tx.unbounded_send(Ok(batch)).is_err() {
-                                    break;
-                                }
-                            },
-                            Ok(ServerFrame::Error { code, message }) => {
-                                let _ = tx.unbounded_send(Err(anyhow!("{code}: {message}")));
-                                break;
-                            },
-                            Ok(ServerFrame::Ack | ServerFrame::Other) => {},
-                            Err(err) => {
-                                let _ = tx.unbounded_send(Err(err));
-                                break;
-                            },
-                        },
-                        Some(Ok(Message::Ping(data))) => {
-                            if sink.send(Message::Pong(data)).await.is_err() {
-                                break;
-                            }
-                        },
-                        Some(Ok(Message::Close(_))) | Some(Err(_)) | None => break,
-                        Some(Ok(_)) => {},
-                    },
-                }
-            }
-
-            let _ = sink.close().await;
-        });
-
-        Ok(rx)
-    }
 }
 
 /// Macro to generate pagination methods for GraphQL queries.
@@ -406,42 +261,15 @@ impl QueryClient for HttpClient {
     type Error = anyhow::Error;
     type Proof = dango_primitives::Proof;
 
-    async fn query_app(
-        &self,
-        query: Query,
-        height: Option<u64>,
-    ) -> Result<QueryResponse, Self::Error> {
+    async fn query_app(&self, query: Query) -> Result<QueryResponse, Self::Error> {
         let response = self
             .post_graphql(query_app::Variables {
                 request: query.to_json_value()?.into_inner(),
-                height: height.map(|h| h as i64),
+                height: None,
             })
             .await?;
 
-        // TODO
         Ok(serde_json::from_value(response.query_app)?)
-    }
-
-    async fn query_store(
-        &self,
-        key: Binary,
-        height: Option<u64>,
-        prove: bool,
-    ) -> Result<(Option<Binary>, Option<Self::Proof>), Self::Error> {
-        let response = self
-            .post_graphql(query_store::Variables {
-                key: key.to_string(),
-                height: height.map(|h| h as i64),
-                prove,
-            })
-            .await?;
-
-        let proof = match response.query_store.proof {
-            Some(proof) => Binary::from_str(&proof)?.into_inner().deserialize_borsh()?,
-            None => None,
-        };
-
-        Ok((Some(Binary::from_str(&response.query_store.value)?), proof))
     }
 
     async fn simulate(&self, tx: UnsignedTx) -> Result<TxOutcome, Self::Error> {
@@ -552,71 +380,6 @@ impl SearchTxClient for HttpClient {
                     .deserialize_json()?,
             },
         })
-    }
-}
-
-// ---- perps events WebSocket feed ----
-
-/// One block's matching perps-contract events, as delivered by the `/ws`
-/// `perpsEvents` channel. Mirrors the `perps_events` payload shape.
-#[derive(Debug, Clone, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct PerpsEventsBatch {
-    pub block_height: u64,
-    /// Block timestamp, RFC 3339.
-    pub created_at: String,
-    pub events: Vec<PerpsEvent>,
-}
-
-/// A single perps-contract event within a [`PerpsEventsBatch`].
-#[derive(Debug, Clone, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct PerpsEvent {
-    pub idx: u32,
-    pub event_type: String,
-    pub user: Option<String>,
-    pub pair_id: Option<String>,
-    pub order_id: Option<String>,
-    pub client_order_id: Option<String>,
-    pub data: serde_json::Value,
-}
-
-/// A classified server frame from the `/ws` endpoint.
-enum ServerFrame {
-    /// `subscriptionResponse` acknowledgement.
-    Ack,
-
-    /// A `perpsEvents` data frame.
-    Data(PerpsEventsBatch),
-
-    /// An `error` frame (e.g. `resync`, `tooManyRequests`).
-    Error { code: String, message: String },
-
-    /// Anything else (e.g. `pong`).
-    Other,
-}
-
-fn parse_server_frame(text: &str) -> anyhow::Result<ServerFrame> {
-    let value: serde_json::Value = serde_json::from_str(text)?;
-    match value.get("channel").and_then(serde_json::Value::as_str) {
-        Some("subscriptionResponse") => Ok(ServerFrame::Ack),
-        Some("perpsEvents") => {
-            let data = value.get("data").cloned().unwrap_or_default();
-            Ok(ServerFrame::Data(serde_json::from_value(data)?))
-        },
-        Some("error") => Ok(ServerFrame::Error {
-            code: value
-                .pointer("/data/code")
-                .and_then(serde_json::Value::as_str)
-                .unwrap_or("error")
-                .to_string(),
-            message: value
-                .pointer("/data/message")
-                .and_then(serde_json::Value::as_str)
-                .unwrap_or_default()
-                .to_string(),
-        }),
-        _ => Ok(ServerFrame::Other),
     }
 }
 

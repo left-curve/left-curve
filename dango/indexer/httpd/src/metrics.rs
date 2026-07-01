@@ -41,11 +41,11 @@ pub fn init_core_query_metrics() {
         "Dango query_app duration in seconds"
     );
     describe_histogram!(
-        "http.grug.query_store.duration",
-        "Dango query_store duration in seconds"
-    );
-    describe_histogram!(
         "http.grug.query_status.duration",
         "Dango query_status duration in seconds"
+    );
+    describe_histogram!(
+        "http.grug.simulate.duration",
+        "Dango simulate duration in seconds"
     );
 }
