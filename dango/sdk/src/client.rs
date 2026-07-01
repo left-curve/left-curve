@@ -3,12 +3,13 @@ use {
     async_trait::async_trait,
     dango_backtrace::BacktracedError,
     dango_indexer_graphql_types::{
-        PageInfo, Variables, accounts, blocks, events, messages, search_tx, transactions, transfers,
+        PageInfo, Variables, accounts, blocks, broadcast_tx_sync, events, messages, query_app,
+        search_tx, simulate, transactions, transfers,
     },
     dango_primitives::{
         Addr, Block, BlockClient, BlockOutcome, BroadcastClient, BroadcastTxOutcome, GenericResult,
-        Hash256, Json, JsonDeExt, NonEmpty, Query, QueryClient, QueryResponse, SearchTxClient,
-        SearchTxOutcome, Tx, TxOutcome, UnsignedTx,
+        Hash256, Inner, Json, JsonDeExt, JsonSerExt, NonEmpty, Query, QueryClient, QueryResponse,
+        SearchTxClient, SearchTxOutcome, Tx, TxOutcome, UnsignedTx,
     },
     futures::{SinkExt, Stream, StreamExt, channel::mpsc},
     graphql_client::{GraphQLQuery, Response},
@@ -42,20 +43,6 @@ impl HttpClient {
 
     async fn get(&self, path: &str) -> anyhow::Result<reqwest::Response> {
         error_for_status(self.inner.get(self.url.join(path)?).send().await?).await
-    }
-
-    async fn post<B>(&self, path: &str, body: &B) -> anyhow::Result<reqwest::Response>
-    where
-        B: Serialize,
-    {
-        error_for_status(
-            self.inner
-                .post(self.url.join(path)?)
-                .json(body)
-                .send()
-                .await?,
-        )
-        .await
     }
 
     async fn post_graphql<V>(
@@ -486,11 +473,24 @@ impl QueryClient for HttpClient {
     type Proof = dango_primitives::Proof;
 
     async fn query_app(&self, query: Query) -> Result<QueryResponse, Self::Error> {
-        Ok(self.post("query", &query).await?.json().await?)
+        let response = self
+            .post_graphql(query_app::Variables {
+                request: query.to_json_value()?.into_inner(),
+                height: None,
+            })
+            .await?;
+
+        Ok(serde_json::from_value(response.query_app)?)
     }
 
     async fn simulate(&self, tx: UnsignedTx) -> Result<TxOutcome, Self::Error> {
-        Ok(self.post("simulate", &tx).await?.json().await?)
+        let response = self
+            .post_graphql(simulate::Variables {
+                tx: tx.to_json_value()?.into_inner(),
+            })
+            .await?;
+
+        Ok(serde_json::from_value(response.simulate)?)
     }
 }
 
@@ -522,7 +522,14 @@ impl BroadcastClient for HttpClient {
     type Error = anyhow::Error;
 
     async fn broadcast_tx(&self, tx: Tx) -> Result<BroadcastTxOutcome, Self::Error> {
-        Ok(self.post("broadcast", &tx).await?.json().await?)
+        let response = self
+            .post_graphql(broadcast_tx_sync::Variables {
+                tx: tx.to_json_value()?.into_inner(),
+            })
+            .await?
+            .broadcast_tx_sync;
+
+        Ok(serde_json::from_value(response)?)
     }
 }
 
