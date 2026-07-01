@@ -463,6 +463,8 @@ fn to_ws_url(base: Url) -> anyhow::Result<Url> {
     Ok(ws_url)
 }
 
+// ----------------------------------- Tests -----------------------------------
+
 #[cfg(test)]
 mod tests {
     use super::*;
