@@ -35,6 +35,7 @@ const bridgeUiMocks = vi.hoisted(() => ({
   evmWalletAddress: "0x4444444444444444444444444444444444444444",
   getPrice: vi.fn(),
   hasRouter: true,
+  isConnected: true,
   network: "11155111" as "11155111" | "bitcoin",
   refreshBridgeBalances: vi.fn(),
   refreshUserStatus: vi.fn(),
@@ -248,6 +249,7 @@ vi.mock("@left-curve/applets-kit", async (importOriginal) => {
     ),
     Modals: {
       ...actual.Modals,
+      Authenticate: "authenticate",
       BridgeDeposit: "BridgeDeposit",
       BridgeWithdraw: "BridgeWithdraw",
       DestinationWallet: "DestinationWallet",
@@ -261,7 +263,7 @@ vi.mock("@left-curve/applets-kit", async (importOriginal) => {
     }: {
       isDisabled?: boolean;
       label: string;
-      networks: Array<{ id: string; name: string }>;
+      networks: Array<{ id: string; name: string; withdrawLiquidity?: string }>;
       onNetworkChange: (network: { id: string }) => void;
       value?: string;
     }) => (
@@ -273,7 +275,7 @@ vi.mock("@left-curve/applets-kit", async (importOriginal) => {
       >
         {networks.map((network) => (
           <option key={network.id} value={network.id}>
-            {network.name}
+            {[network.name, network.withdrawLiquidity].filter(Boolean).join(" ")}
           </option>
         ))}
       </select>
@@ -289,10 +291,12 @@ vi.mock("@left-curve/applets-kit", async (importOriginal) => {
 
 vi.mock("@left-curve/store", () => ({
   useAccount: () => ({
-    account: {
-      address: "0x6272696467657573657200000000000000000000",
-    },
-    isConnected: true,
+    account: bridgeUiMocks.isConnected
+      ? {
+          address: "0x6272696467657573657200000000000000000000",
+        }
+      : undefined,
+    isConnected: bridgeUiMocks.isConnected,
     refreshUserStatus: bridgeUiMocks.refreshUserStatus,
     userStatus: bridgeUiMocks.userStatus,
   }),
@@ -408,6 +412,7 @@ describe("bridge UI", () => {
     bridgeUiMocks.getPrice.mockImplementation((amount: string, denom: string) => {
       return `${amount}:${denom}`;
     });
+    bridgeUiMocks.isConnected = true;
     for (const [variable, color] of Object.entries(swapperCssVariableColors)) {
       document.documentElement.style.setProperty(variable, color);
     }
@@ -508,6 +513,25 @@ describe("bridge UI", () => {
     ).toBeInTheDocument();
   });
 
+  it("keeps more deposit options visible and asks users to log in before opening swapper", () => {
+    bridgeUiMocks.isConnected = false;
+
+    renderBridgeDeposit();
+
+    const moreDepositOptions = screen.getByRole("button", {
+      name: new RegExp(m["bridge.deposit.moreOptions.title"]()),
+    });
+
+    expect(moreDepositOptions).toBeInTheDocument();
+    expect(moreDepositOptions).toHaveTextContent(m["common.signin"]());
+    expect(moreDepositOptions).not.toHaveTextContent(m["bridge.deposit.moreOptions.cta"]());
+    expect(screen.queryByTitle("Swapper deposit")).not.toBeInTheDocument();
+
+    fireEvent.click(moreDepositOptions);
+
+    expect(bridgeUiMocks.showModal).toHaveBeenCalledWith("authenticate", { action: "signin" });
+  });
+
   it("shows the Bitcoin deposit address without an EVM wallet flow", () => {
     bridgeUiMocks.network = "bitcoin";
 
@@ -581,6 +605,43 @@ describe("bridge UI", () => {
 
     expect(bridgeUiMocks.changeCoin).toHaveBeenCalledWith("bridge/usdc");
     expect(bridgeUiMocks.setNetwork).toHaveBeenCalledWith("bitcoin");
+  });
+
+  it("shows the withdraw liquidity in each network option", () => {
+    renderBridgeWithdraw();
+
+    const networkSelector = screen.getByRole("combobox", {
+      name: m["bridge.selectNetwork"](),
+    }) as HTMLSelectElement;
+
+    expect(Array.from(networkSelector.options).map((option) => option.textContent)).toEqual([
+      `Sepolia ${m["bridge.withdrawLiquidity"]()}: 10 USDC`,
+      `Bitcoin ${m["bridge.withdrawLiquidity"]()}: 10 USDC`,
+    ]);
+  });
+
+  it("shows a login button instead of withdraw selectors when disconnected", () => {
+    bridgeUiMocks.isConnected = false;
+
+    renderBridgeWithdraw();
+
+    const loginButton = screen.getByRole("button", { name: m["common.signin"]() });
+
+    expect(loginButton).toBeInTheDocument();
+    expect(
+      screen.queryByRole("combobox", {
+        name: m["bridge.selectCoin"](),
+      }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("combobox", {
+        name: m["bridge.selectNetwork"](),
+      }),
+    ).not.toBeInTheDocument();
+
+    fireEvent.click(loginButton);
+
+    expect(bridgeUiMocks.showModal).toHaveBeenCalledWith("authenticate", { action: "signin" });
   });
 
   it("opens deposit confirmation with allowance requirement and refresh reset wiring", async () => {

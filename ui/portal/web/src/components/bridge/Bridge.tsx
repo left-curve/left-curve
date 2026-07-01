@@ -38,7 +38,7 @@ import {
   WarningContainer,
 } from "@left-curve/applets-kit";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type React from "react";
 import type { PropsWithChildren } from "react";
 import type { AnyCoin } from "@left-curve/store/types";
@@ -56,6 +56,34 @@ const [BridgeProvider, useBridge] = createContext<{
 type BridgeProps = {
   action: "deposit" | "withdraw";
   changeAction: (action: "deposit" | "withdraw") => void;
+};
+
+const compactTokenAmountFormatter = new Intl.NumberFormat("en", {
+  maximumFractionDigits: 3,
+  notation: "compact",
+});
+
+const formatCompactTokenAmount = (amount: string) => {
+  const numericAmount = Number(amount);
+  if (!Number.isFinite(numericAmount)) return amount;
+  return compactTokenAmountFormatter.format(numericAmount);
+};
+
+const formatWithdrawLiquidity = (rawBalance: string, coin: AnyCoin) => {
+  const amount = formatUnits(rawBalance, coin.decimals);
+  return `${m["bridge.withdrawLiquidity"]()}: ${formatCompactTokenAmount(amount)} ${coin.symbol}`;
+};
+
+const MoreDepositOptionsGate: React.FC<{ onClick: () => void }> = ({ onClick }) => {
+  const { isConnected } = useAccount();
+  const { showModal } = useApp();
+  const handleSignin = () => showModal(Modals.Authenticate, { action: "signin" });
+
+  if (!isConnected) {
+    return <MoreDepositOptionsCard cta={m["common.signin"]()} onClick={handleSignin} />;
+  }
+
+  return <MoreDepositOptionsCard onClick={onClick} />;
 };
 
 const BridgeContainer: React.FC<PropsWithChildren<BridgeProps>> = ({
@@ -115,22 +143,33 @@ const BridgeDeposit: React.FC = () => {
       {showUnsupportedFallback && (
         <div className="flex flex-col gap-4">
           <WarningContainer description={m["bridge.unsupportedAsset"]()} />
-          <MoreDepositOptionsCard onClick={openSwapperDeposit} />
+          <MoreDepositOptionsGate onClick={openSwapperDeposit} />
         </div>
       )}
 
       {!isEvmNetwork && network !== "bitcoin" && (
-        <MoreDepositOptionsCard onClick={openSwapperDeposit} />
+        <MoreDepositOptionsGate onClick={openSwapperDeposit} />
       )}
     </>
   );
 };
 
 const BridgeSelectors: React.FC<{ showCoinSelector?: boolean }> = ({ showCoinSelector = true }) => {
-  const { isConnected } = useAccount();
+  const { account, isConnected } = useAccount();
+  const { data: balances = {} } = useBalances({ address: account?.address });
 
   const { state } = useBridge();
   const { coin, changeCoin, coins, network, setNetwork, networks } = state;
+  const withdrawBalance = coin ? (balances[coin.denom] ?? "0") : undefined;
+  const networkOptions = useMemo(() => {
+    if (state.action !== "withdraw" || !coin || withdrawBalance === undefined) return networks;
+
+    const withdrawLiquidity = formatWithdrawLiquidity(withdrawBalance, coin);
+    return networks.map((network) => ({
+      ...network,
+      withdrawLiquidity,
+    }));
+  }, [coin, networks, state.action, withdrawBalance]);
 
   return (
     <>
@@ -156,7 +195,7 @@ const BridgeSelectors: React.FC<{ showCoinSelector?: boolean }> = ({ showCoinSel
         label={m["bridge.selectNetwork"]()}
         placeholder={m["bridge.selectNetwork"]()}
         onNetworkChange={({ id }) => setNetwork(id)}
-        networks={networks}
+        networks={networkOptions}
       />
     </>
   );
@@ -207,7 +246,7 @@ const EvmDeposit: React.FC<{ onMoreOptionsClick: () => void }> = ({ onMoreOption
     return (
       <div className="flex w-full flex-col gap-4">
         <ConnectWalletWithModal fullWidth onWalletSelected={(id) => setConnectorId(id)} />
-        <MoreDepositOptionsCard onClick={onMoreOptionsClick} />
+        <MoreDepositOptionsGate onClick={onMoreOptionsClick} />
       </div>
     );
   }
@@ -317,13 +356,13 @@ const EvmDeposit: React.FC<{ onMoreOptionsClick: () => void }> = ({ onMoreOption
         </span>
       </Button>
 
-      <MoreDepositOptionsCard onClick={onMoreOptionsClick} />
+      <MoreDepositOptionsGate onClick={onMoreOptionsClick} />
     </div>
   );
 };
 
 const BridgeWithdraw: React.FC = () => {
-  const { account } = useAccount();
+  const { account, isConnected } = useAccount();
   const { state, controllers } = useBridge();
   const { data: balances = {} } = useBalances({ address: account?.address });
   const { getPrice } = usePrices();
@@ -360,6 +399,8 @@ const BridgeWithdraw: React.FC = () => {
       fee,
     });
 
+  const handleSignin = () => showModal(Modals.Authenticate, { action: "signin" });
+
   const handleAddressSet = (address: string, walletName?: string, walletIcon?: string) => {
     setDestinationAddress({ address, walletName, walletIcon });
     controllers.setValue("recipient", address);
@@ -376,29 +417,33 @@ const BridgeWithdraw: React.FC = () => {
   if (action !== "withdraw") return null;
 
   const withdrawHintParts = m["bridge.withdrawTransferHint"]({ app: "{app}" }).split("{app}");
+  const withdrawWarning = (
+    <ul className="list-disc pl-4 flex flex-col gap-1">
+      <li>
+        {withdrawHintParts[0]}
+        <Button as={Link} to="/transfer" variant="link" size="xs" className="p-0 h-fit m-0 inline">
+          {m["sendAndReceive.title"]()}
+        </Button>
+        {withdrawHintParts[1]}
+      </li>
+      <li>{m["bridge.rateLimitWarning"]()}</li>
+    </ul>
+  );
+
+  if (!isConnected) {
+    return (
+      <>
+        <WarningContainer description={withdrawWarning} />
+        <Button fullWidth onClick={handleSignin}>
+          {m["common.signin"]()}
+        </Button>
+      </>
+    );
+  }
 
   return (
     <>
-      <WarningContainer
-        description={
-          <ul className="list-disc pl-4 flex flex-col gap-1">
-            <li>
-              {withdrawHintParts[0]}
-              <Button
-                as={Link}
-                to="/transfer"
-                variant="link"
-                size="xs"
-                className="p-0 h-fit m-0 inline"
-              >
-                {m["sendAndReceive.title"]()}
-              </Button>
-              {withdrawHintParts[1]}
-            </li>
-            <li>{m["bridge.rateLimitWarning"]()}</li>
-          </ul>
-        }
-      />
+      <WarningContainer description={withdrawWarning} />
 
       <BridgeSelectors />
 

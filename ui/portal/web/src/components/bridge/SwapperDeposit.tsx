@@ -1,12 +1,6 @@
 import { useAccount, useBalances } from "@left-curve/store";
 
-import {
-  AuthenticatedButton,
-  Button,
-  IconChevronRight,
-  WarningContainer,
-  useTheme,
-} from "@left-curve/applets-kit";
+import { Button, IconChevronRight, WarningContainer, useTheme } from "@left-curve/applets-kit";
 
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 import {
@@ -119,11 +113,7 @@ export const SwapperDeposit = ({ onBack }: SwapperDepositProps) => {
         <DepositFeeBadge />
       </div>
 
-      {!isConnected || !account?.address ? (
-        <AuthenticatedButton>
-          <Button fullWidth>{m["common.signin"]()}</Button>
-        </AuthenticatedButton>
-      ) : !swapperIntegratorId ? (
+      {!account?.address || !isConnected || !swapperIntegratorId ? (
         <WarningContainer color="error" description={m["common.failedToLoad"]()} />
       ) : (
         <div

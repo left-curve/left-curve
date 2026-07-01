@@ -29,10 +29,14 @@ export const DepositFeeBadge = () => {
 };
 
 type MoreDepositOptionsCardProps = {
+  cta?: string;
   onClick: () => void;
 };
 
-export const MoreDepositOptionsCard = ({ onClick }: MoreDepositOptionsCardProps) => {
+export const MoreDepositOptionsCard = ({
+  cta = m["bridge.deposit.moreOptions.cta"](),
+  onClick,
+}: MoreDepositOptionsCardProps) => {
   return (
     <button
       type="button"
@@ -50,7 +54,7 @@ export const MoreDepositOptionsCard = ({ onClick }: MoreDepositOptionsCardProps)
           {m["bridge.deposit.moreOptions.description"]()}
         </span>
         <span className="inline-flex shrink-0 items-center gap-1 exposure-sm-italic text-ink-secondary-blue">
-          {m["bridge.deposit.moreOptions.cta"]()}
+          {cta}
           <IconChevronRight className="h-4 w-4" />
         </span>
       </span>

@@ -998,6 +998,7 @@
       }
     ],
     "setDestinationAddress": "Set Destination Address",
+    "withdrawLiquidity": "Withdraw Liquidity",
     "destinationWallet": "Destination Wallet",
     "enterAddressManually": "Enter Address Manually",
     "enterNetworkAddress": "Enter a {network} Address",
