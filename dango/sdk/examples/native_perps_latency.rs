@@ -270,18 +270,19 @@ fn print_summary(metrics: &[(&str, Vec<f64>)]) {
 #[tokio::main]
 async fn main() -> Result<()> {
     // Credentials from the environment (mirrors the Python `examples/.env`).
-    let secret_hex = env::var("DANGO_SECRET_KEY").map_err(|_| {
-        anyhow!("set DANGO_SECRET_KEY to the account's 32-byte secp256k1 secret (hex)")
-    })?;
-    let secret_bytes: [u8; 32] = hex::decode(secret_hex.trim().trim_start_matches("0x"))?
-        .try_into()
-        .map_err(|_| anyhow!("DANGO_SECRET_KEY must be exactly 32 bytes of hex"))?;
-    let secret = Secp256k1::from_bytes(secret_bytes)?;
-    let address = Addr::from_str(
-        env::var("DANGO_ACCOUNT_ADDRESS")
-            .map_err(|_| anyhow!("set DANGO_ACCOUNT_ADDRESS to the funded account address"))?
-            .trim(),
-    )?;
+    let secret = {
+        let secret_hex = env::var("DANGO_SECRET_KEY")
+            .map_err(|_| anyhow!("set DANGO_SECRET_KEY to the 32-byte secp256k1 secret (hex)"))?;
+        let secret_bytes: [u8; 32] = hex::decode(secret_hex.trim().trim_start_matches("0x"))?
+            .try_into()
+            .map_err(|_| anyhow!("DANGO_SECRET_KEY must be exactly 32 bytes of hex"))?;
+        Secp256k1::from_bytes(secret_bytes)?
+    };
+    let address = {
+        let hex = env::var("DANGO_ACCOUNT_ADDRESS")
+            .map_err(|_| anyhow!("set DANGO_ACCOUNT_ADDRESS to the funded account address"))?;
+        Addr::from_str(hex.trim())?
+    };
 
     let client = HttpClient::new(API_URL)?;
 
@@ -340,6 +341,7 @@ async fn main() -> Result<()> {
             None,
             Some(vec![coid_str.clone()]),
         );
+
         if i == 0 {
             tokio::time::sleep(SETTLE).await;
         }
