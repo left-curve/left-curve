@@ -15,7 +15,6 @@ function getPair(
   parameters: {
     baseDenom: Denom
     quoteDenom: Denom
-    height?: number
   },
 ): Promise<PairParams>
 ```
@@ -37,8 +36,6 @@ const params = await client.getPair({
 **`baseDenom`** — `Denom`. Base asset.
 
 **`quoteDenom`** — `Denom`. Quote asset.
-
-**`height`** — `number`, optional. Block height. Default `0` (latest).
 
 ## Returns
 

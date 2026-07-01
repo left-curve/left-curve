@@ -4,7 +4,6 @@ import { queryApp } from "./queryApp.js";
 export type GetContractsInfoParameters = {
   startAfter?: Address;
   limit?: number;
-  height?: number;
 };
 
 export type GetContractsInfoReturnType = Promise<ContractsResponse>;
@@ -14,19 +13,18 @@ export type GetContractsInfoReturnType = Promise<ContractsResponse>;
  * @param parameters
  * @param parameters.startAfter The address to start after.
  * @param parameters.limit The number of contracts to return.
- * @param parameters.height The height at which to query the contracts.
  * @returns The contracts.
  */
 export async function getContractsInfo(
   client: Client,
   parameters?: GetContractsInfoParameters,
 ): GetContractsInfoReturnType {
-  const { startAfter, limit, height = 0 } = parameters || {};
+  const { startAfter, limit } = parameters || {};
   const query = {
     contracts: { startAfter, limit },
   };
 
-  const res = await queryApp(client, { query, height });
+  const res = await queryApp(client, { query });
 
   if (!("contracts" in res)) {
     throw new Error(`expecting contracts response, got ${JSON.stringify(res)}`);

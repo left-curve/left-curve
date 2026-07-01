@@ -16,7 +16,6 @@ function ordersByUser(
     user: Address
     startAfter?: OrderId
     limit?: number
-    height?: number
   },
 ): Promise<Record<OrderId, OrdersByUserResponse>>
 ```
@@ -40,8 +39,6 @@ const orders = await client.ordersByUser({ user, limit: 100 })
 **`startAfter`** — `OrderId`, optional. Order id to start after (exclusive).
 
 **`limit`** — `number`, optional. Maximum entries to return.
-
-**`height`** — `number`, optional. Block height. Default `0` (latest).
 
 ## Returns
 

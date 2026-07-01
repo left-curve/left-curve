@@ -10,7 +10,6 @@ function getPerpsPairParams(
   parameters?: {
     startAfter?: string
     limit?: number
-    height?: number
   },
 ): Promise<Record<string, PerpsPairParam>>
 ```
@@ -29,8 +28,6 @@ const all = await client.getPerpsPairParams({ limit: 50 })
 **`startAfter`** — `string`, optional. Pair id to start after.
 
 **`limit`** — `number`, optional. Maximum entries.
-
-**`height`** — `number`, optional. Block height. Default `0` (latest).
 
 ## Returns
 

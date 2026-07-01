@@ -5,7 +5,6 @@ import { queryIndexer } from "#actions/indexer/queryIndexer.js";
 export type SimulateParameters = {
   simulate: SimulateRequest;
   scale?: number;
-  height?: number;
 };
 
 export type SimulateReturnType = Promise<SimulateResponse>;

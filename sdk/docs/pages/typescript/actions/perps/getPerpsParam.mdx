@@ -14,7 +14,6 @@ referral master switch (`referralActive`, `minReferrerVolume`,
 ```ts
 function getPerpsParam(
   client: Client,
-  parameters?: { height?: number },
 ): Promise<PerpsParam>
 ```
 
@@ -26,10 +25,6 @@ import { createPublicClient, createTransport, testnet } from "@left-curve/sdk"
 const client = createPublicClient({ chain: testnet, transport: createTransport() })
 const param = await client.getPerpsParam()
 ```
-
-## Parameters
-
-**`height`** — `number`, optional. Block height. Default `0` (latest).
 
 ## Returns
 

@@ -10,7 +10,6 @@ function getSupplies(
   parameters?: {
     startAfter?: Denom
     limit?: number
-    height?: number
   },
 ): Promise<Coins>
 ```
@@ -29,8 +28,6 @@ const supplies = await client.getSupplies({ limit: 100 })
 **`startAfter`** — `Denom`, optional. Denom to start after (exclusive).
 
 **`limit`** — `number`, optional. Maximum entries to return.
-
-**`height`** — `number`, optional. Block height to query at. Default `0` (latest).
 
 ## Returns
 

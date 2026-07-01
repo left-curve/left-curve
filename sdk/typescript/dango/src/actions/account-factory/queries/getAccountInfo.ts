@@ -6,7 +6,6 @@ import type { AccountDetails, AccountInfo, Address, Client } from "@left-curve/t
 
 export type GetAccountInfoParameters = {
   address: Address;
-  height?: number;
 };
 
 export type GetAccountInfoReturnType = Promise<AccountDetails | null>;
@@ -15,14 +14,13 @@ export type GetAccountInfoReturnType = Promise<AccountDetails | null>;
  * Given an account address get the account info.
  * @param parameters
  * @param parameters.address The address of the account.
- * @param parameters.height The height at which to get the account info.
  * @returns The account info.
  */
 export async function getAccountInfo(
   client: Client,
   parameters: GetAccountInfoParameters,
 ): GetAccountInfoReturnType {
-  const { address, height = 0 } = parameters;
+  const { address } = parameters;
   const msg = { account: { address } };
 
   const { addresses } = await getAppConfig(client);
@@ -30,12 +28,11 @@ export async function getAccountInfo(
   const account = await queryWasmSmart<AccountInfo>(client, {
     contract: addresses.accountFactory,
     msg,
-    height,
   });
 
   if (!account) return null;
 
-  const user = await getUser(client, { userIndexOrName: { index: account.owner }, height });
+  const user = await getUser(client, { userIndexOrName: { index: account.owner } });
 
   return {
     ...account,

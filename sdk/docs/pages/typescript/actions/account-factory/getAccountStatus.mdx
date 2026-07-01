@@ -9,7 +9,6 @@ function getAccountStatus(
   client: Client,
   parameters: {
     address: Address
-    height?: number
   },
 ): Promise<UserStatus>
 ```
@@ -30,8 +29,6 @@ const status = await client.getAccountStatus({ address })
 ## Parameters
 
 **`address`** — `Address`. The account.
-
-**`height`** — `number`, optional. Block height. Default `0` (latest).
 
 ## Returns
 

@@ -5,9 +5,7 @@ import { getAppConfig } from "#actions/app/queries/getAppConfig.js";
 
 type ActionMsg = GetPerpsQueryMsg<"feeRateOverride">;
 
-export type GetFeeRateOverrideParameters = Prettify<
-  ActionMsg["feeRateOverride"] & { height?: number }
->;
+export type GetFeeRateOverrideParameters = Prettify<ActionMsg["feeRateOverride"]>;
 
 export type GetFeeRateOverrideReturnType = Promise<FeeRateOverride | null>;
 
@@ -15,11 +13,9 @@ export async function getFeeRateOverride(
   client: Client,
   parameters: GetFeeRateOverrideParameters,
 ): GetFeeRateOverrideReturnType {
-  const { height = 0, ...queryMsg } = parameters;
-
   const msg: ActionMsg = {
     feeRateOverride: {
-      ...queryMsg,
+      ...parameters,
     },
   };
 
@@ -28,7 +24,6 @@ export async function getFeeRateOverride(
   const result = (await queryWasmSmart(client, {
     contract: addresses.perps,
     msg,
-    height,
   })) as [string, string] | null;
 
   if (!result) return null;

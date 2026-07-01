@@ -10,7 +10,6 @@ function getBalance(
   parameters: {
     address: Address
     denom: Denom
-    height?: number
   },
 ): Promise<string>
 ```
@@ -36,8 +35,6 @@ const human = Decimal(amount).div(Decimal(10).pow(6)) // assuming 6 decimals
 **`address`** — `Address`. The account to query.
 
 **`denom`** — `Denom`. The token denomination.
-
-**`height`** — `number`, optional. Block height to query at. Default `0` (latest).
 
 ## Returns
 

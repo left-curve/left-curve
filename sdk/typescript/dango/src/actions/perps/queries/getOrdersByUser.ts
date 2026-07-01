@@ -10,9 +10,7 @@ import { getAppConfig } from "#actions/app/queries/getAppConfig.js";
 
 type ActionMsg = GetPerpsQueryMsg<"ordersByUser">;
 
-export type GetPerpsOrdersByUserParameters = Prettify<
-  ActionMsg["ordersByUser"] & { height?: number }
->;
+export type GetPerpsOrdersByUserParameters = Prettify<ActionMsg["ordersByUser"]>;
 
 export type GetPerpsOrdersByUserReturnType = Promise<PerpsOrdersByUserResponse>;
 
@@ -20,15 +18,13 @@ export async function getPerpsOrdersByUser(
   client: Client,
   parameters: GetPerpsOrdersByUserParameters,
 ): GetPerpsOrdersByUserReturnType {
-  const { height = 0, ...queryMsg } = parameters;
-
   const msg: ActionMsg = {
     ordersByUser: {
-      ...queryMsg,
+      ...parameters,
     },
   };
 
   const { addresses } = await getAppConfig(client);
 
-  return await queryWasmSmart(client, { contract: addresses.perps, msg, height });
+  return await queryWasmSmart(client, { contract: addresses.perps, msg });
 }

@@ -9,7 +9,6 @@ function getNextAccountIndex(
   client: Client,
   parameters: {
     username: Username
-    height?: number
   },
 ): Promise<AccountIndex>
 ```
@@ -26,8 +25,6 @@ const index = await client.getNextAccountIndex({ username: "alice" })
 ## Parameters
 
 **`username`** — `Username`. The user owning the new account.
-
-**`height`** — `number`, optional. Block height. Default `0` (latest).
 
 ## Returns
 

@@ -5,7 +5,6 @@ export type GetBalancesParameters = {
   address: Address;
   startAfter?: Denom;
   limit?: number;
-  height?: number;
 };
 
 export type GetBalancesReturnType = Promise<Coins>;
@@ -16,19 +15,18 @@ export type GetBalancesReturnType = Promise<Coins>;
  * @param parameters.address The address to get the balances of.
  * @param parameters.startAfter The token to start after.
  * @param parameters.limit The number of tokens to return.
- * @param parameters.height The height at which to query the balances.
  * @returns The balances.
  */
 export async function getBalances(
   client: Client,
   parameters: GetBalancesParameters,
 ): GetBalancesReturnType {
-  const { address, startAfter, limit, height = 0 } = parameters;
+  const { address, startAfter, limit } = parameters;
   const query = {
     balances: { address, startAfter, limit },
   };
 
-  const res = await queryApp(client, { query, height });
+  const res = await queryApp(client, { query });
 
   if (!("balances" in res)) {
     throw new Error(`expecting balances response, got ${JSON.stringify(res)}`);

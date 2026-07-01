@@ -10,7 +10,6 @@ function getPrices(
   parameters?: {
     startAfter?: Denom
     limit?: number
-    height?: number
   },
 ): Promise<Record<Denom, Price>>
 ```
@@ -30,8 +29,6 @@ console.log(prices["bridge/usdc"]?.humanizedPrice)
 **`startAfter`** — `Denom`, optional. Denom to start after.
 
 **`limit`** — `number`, optional. Maximum entries.
-
-**`height`** — `number`, optional. Block height. Default `0` (latest).
 
 ## Returns
 
