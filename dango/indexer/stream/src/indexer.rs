@@ -17,13 +17,13 @@ use {
 /// Number of recent blocks the `full_block` stream retains in memory.
 pub const DEFAULT_BLOCK_RING_CAPACITY: usize = 100;
 
-/// Number of recent blocks the `perps_events2` stream retains in memory.
+/// Number of recent blocks the `perps_events` stream retains in memory.
 pub const DEFAULT_PERPS_RING_CAPACITY: usize = 1000;
 
 /// The validator-side realtime indexer. Despite implementing
 /// [`dango_app::Indexer`], it does no durable indexing: it maintains an
 /// in-memory ring of recent perps-contract events and broadcasts them to
-/// `perps_events2` subscribers, entirely in-process (lowest latency, no
+/// `perps_events` subscribers, entirely in-process (lowest latency, no
 /// validator -> indexer-node hop).
 ///
 /// FUTURE: once block files / Postgres / ClickHouse move to a dedicated indexer
@@ -53,13 +53,13 @@ struct Inner {
     blocks: RecentStream<FullBlock>,
 
     /// In-memory ring of perpetual futures-related events, backing the
-    /// `perps_events2` subscription.
+    /// `perps_events` subscription.
     perps: RecentStream<PerpsEventBlock>,
 }
 
 impl Indexer {
     /// `perps_ring_capacity` and `block_ring_capacity` size the two in-memory
-    /// rings (reconnect window + broadcast buffer) for the `perps_events2` and
+    /// rings (reconnect window + broadcast buffer) for the `perps_events` and
     /// `full_block` subscriptions respectively. See [`DEFAULT_RING_CAPACITY`]
     /// and [`DEFAULT_BLOCK_RING_CAPACITY`].
     pub fn new(block_ring_capacity: usize, perps_ring_capacity: usize) -> Self {
@@ -171,7 +171,7 @@ impl dango_app::Indexer for Indexer {
                 tracing::warn!(
                     block_height,
                     err = %_err,
-                    "skipping perps_events2 publish: app_cfg deserialize failed"
+                    "skipping perps_events publish: app_cfg deserialize failed"
                 );
 
                 None

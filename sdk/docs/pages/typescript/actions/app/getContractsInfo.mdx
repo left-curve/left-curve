@@ -10,7 +10,6 @@ function getContractsInfo(
   parameters?: {
     startAfter?: Address
     limit?: number
-    height?: number
   },
 ): Promise<ContractsResponse>
 ```
@@ -29,8 +28,6 @@ const contracts = await client.getContractsInfo({ limit: 100 })
 **`startAfter`** — `Address`, optional. Address to start after (exclusive).
 
 **`limit`** — `number`, optional. Maximum entries to return.
-
-**`height`** — `number`, optional. Block height to query at. Default `0` (latest).
 
 ## Returns
 

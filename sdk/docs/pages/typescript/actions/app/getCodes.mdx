@@ -10,7 +10,6 @@ function getCodes(
   parameters?: {
     startAfter?: string
     limit?: number
-    height?: number
   },
 ): Promise<CodesResponse>
 ```
@@ -29,8 +28,6 @@ const codes = await client.getCodes({ limit: 50 })
 **`startAfter`** — `string`, optional. Hash to start after (exclusive).
 
 **`limit`** — `number`, optional. Maximum entries to return.
-
-**`height`** — `number`, optional. Block height to query at. Default `0` (latest).
 
 ## Returns
 

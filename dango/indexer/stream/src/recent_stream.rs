@@ -3,7 +3,7 @@
 //! builder that delivers a connect-time snapshot followed by the live tail,
 //! in strict block-height order, with no silent drops.
 //!
-//! This is the reusable core behind the `perps_events2` subscription. The
+//! This is the reusable core behind the `perps_events` subscription. The
 //! future "new blocks" subscription (see crate docs) is a second instantiation
 //! `RecentStream<BlockAndOutcome>` — it drops onto this same primitive.
 //!

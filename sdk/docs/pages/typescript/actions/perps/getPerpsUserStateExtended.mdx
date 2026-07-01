@@ -22,7 +22,6 @@ function getPerpsUserStateExtended(
     includeUnrealizedFunding?: boolean
     includeLiquidationPrice?: boolean
     includeAll?: boolean
-    height?: number
   },
 ): Promise<PerpsUserStateExtended | null>
 ```
@@ -48,8 +47,6 @@ const state = await client.getPerpsUserStateExtended({
 **`user`** — `Address`. The trader.
 
 **`includeEquity`**, **`includeAvailableMargin`**, **`includeMaintenanceMargin`**, **`includeUnrealizedPnl`**, **`includeUnrealizedFunding`**, **`includeLiquidationPrice`**, **`includeAll`** — `boolean`, optional. Toggle each computed field; `null` when not included.
-
-**`height`** — `number`, optional. Block height. Default `0` (latest).
 
 ## Returns
 

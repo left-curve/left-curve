@@ -9,7 +9,6 @@ function getUser(
   client: Client,
   parameters: {
     userIndexOrName: UserIndexOrName
-    height?: number
   },
 ): Promise<User>
 
@@ -30,8 +29,6 @@ const byName = await client.getUser({ userIndexOrName: { name: "alice" } })
 ## Parameters
 
 **`userIndexOrName`** — `{ index: number } | { name: string }`. Discriminate by which key is present.
-
-**`height`** — `number`, optional. Block height. Default `0` (latest).
 
 ## Returns
 

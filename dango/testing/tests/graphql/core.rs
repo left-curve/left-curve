@@ -46,7 +46,9 @@ async fn graphql_returns_query_app() -> anyhow::Result<()> {
             tokio::task::spawn_local(async move {
                 let variables = query_app::Variables {
                     request: body_request.into_inner(),
-                    height: Some(1),
+                    // Historical queries are no longer supported; query the
+                    // latest finalized block (a non-`None` height is rejected).
+                    height: None,
                 };
 
                 let app = build_app_service(httpd_context);

@@ -11,7 +11,6 @@ function forgotUsername(
     keyHash: KeyHash
     limit?: number
     startAfter?: number
-    height?: number
   },
 ): Promise<User[]>
 ```
@@ -35,8 +34,6 @@ const users = await client.forgotUsername({ keyHash })
 **`limit`** — `number`, optional. Maximum users to return.
 
 **`startAfter`** — `number`, optional. User index to start after (exclusive).
-
-**`height`** — `number`, optional. Block height. Default `0` (latest).
 
 ## Returns
 

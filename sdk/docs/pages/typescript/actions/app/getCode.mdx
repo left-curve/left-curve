@@ -9,7 +9,6 @@ function getCode(
   client: Client,
   parameters: {
     hash: Hex
-    height?: number
   },
 ): Promise<CodeResponse>
 ```
@@ -26,8 +25,6 @@ const code = await client.getCode({ hash: "0xabc123..." })
 ## Parameters
 
 **`hash`** — `Hex`. SHA-256 hash of the Wasm bytecode.
-
-**`height`** — `number`, optional. Block height to query at. Default `0` (latest).
 
 ## Returns
 

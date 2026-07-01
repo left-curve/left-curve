@@ -7,7 +7,6 @@ Fetch the app-level configuration: contract addresses, fee rates, liquidation pa
 ```ts
 function getAppConfig(
   client: Client,
-  parameters?: { height?: number },
 ): Promise<AppConfig>
 ```
 
@@ -21,10 +20,6 @@ const config = await client.getAppConfig()
 console.log(config.addresses.accountFactory)
 ```
 
-## Parameters
-
-**`height`** — `number`, optional. Block height to query at. Default `0` (latest).
-
 ## Returns
 
 **`AppConfig`** — the full app config. Notable fields:
@@ -37,7 +32,7 @@ console.log(config.addresses.accountFactory)
 ## Notes
 
 :::warning
-`getAppConfig` memoizes the result in a module-level cache. The first successful call wins; subsequent calls ignore the `height` argument and return the cached config. If you need to read the config at multiple heights, use [`queryApp`](./queryApp) directly.
+`getAppConfig` memoizes the result in a module-level cache. The first successful call wins; subsequent calls return the cached config.
 :::
 
 ## See also

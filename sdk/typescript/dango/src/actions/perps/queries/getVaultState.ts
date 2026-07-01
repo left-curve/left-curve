@@ -1,5 +1,5 @@
 import { queryWasmSmart } from "#actions/app/queries/queryWasmSmart.js";
-import type { Client, Prettify } from "@left-curve/types";
+import type { Client } from "@left-curve/types";
 
 import { getAppConfig } from "#actions/app/queries/getAppConfig.js";
 import type {
@@ -9,16 +9,9 @@ import type {
   PerpsVaultState,
 } from "@left-curve/types";
 
-export type GetPerpsVaultStateParameters = Prettify<{ height?: number }>;
-
 export type GetPerpsVaultStateReturnType = Promise<PerpsVaultState>;
 
-export async function getPerpsVaultState(
-  client: Client,
-  parameters?: GetPerpsVaultStateParameters,
-): GetPerpsVaultStateReturnType {
-  const { height = 0 } = parameters ?? {};
-
+export async function getPerpsVaultState(client: Client): GetPerpsVaultStateReturnType {
   const { addresses } = await getAppConfig(client);
   const perpsContract = addresses.perps;
 
@@ -26,7 +19,6 @@ export async function getPerpsVaultState(
   const state: PerpsState = await queryWasmSmart(client, {
     contract: perpsContract,
     msg: stateMsg,
-    height,
   });
 
   const userStateMsg: PerpsQueryMsg = {
@@ -43,7 +35,6 @@ export async function getPerpsVaultState(
   const vaultUserState: PerpsUserStateExtended | null = await queryWasmSmart(client, {
     contract: perpsContract,
     msg: userStateMsg,
-    height,
   });
 
   return {

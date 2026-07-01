@@ -4,13 +4,12 @@ use {
     dango_backtrace::BacktracedError,
     dango_indexer_graphql_types::{
         PageInfo, Variables, accounts, blocks, broadcast_tx_sync, events, messages, query_app,
-        query_store, search_tx, simulate, transactions, transfers,
+        search_tx, simulate, transactions, transfers,
     },
     dango_primitives::{
-        Addr, Binary, Block, BlockClient, BlockOutcome, BorshDeExt, BroadcastClient,
-        BroadcastTxOutcome, GenericResult, Hash256, Inner, Json, JsonDeExt, JsonSerExt, NonEmpty,
-        Query, QueryClient, QueryResponse, SearchTxClient, SearchTxOutcome, Tx, TxOutcome,
-        UnsignedTx,
+        Addr, Block, BlockClient, BlockOutcome, BroadcastClient, BroadcastTxOutcome, GenericResult,
+        Hash256, Inner, Json, JsonDeExt, JsonSerExt, NonEmpty, Query, QueryClient, QueryResponse,
+        SearchTxClient, SearchTxOutcome, Tx, TxOutcome, UnsignedTx,
     },
     graphql_client::{GraphQLQuery, Response},
     reqwest::IntoUrl,
@@ -26,7 +25,7 @@ pub struct HttpClient {
 }
 
 impl HttpClient {
-    pub fn new<U>(url: U) -> Result<Self, anyhow::Error>
+    pub fn new<U>(url: U) -> anyhow::Result<Self>
     where
         U: IntoUrl,
     {
@@ -36,18 +35,18 @@ impl HttpClient {
         })
     }
 
-    async fn get(&self, path: &str) -> Result<reqwest::Response, anyhow::Error> {
+    async fn get(&self, path: &str) -> anyhow::Result<reqwest::Response> {
         error_for_status(self.inner.get(self.url.join(path)?).send().await?).await
     }
 
     async fn post_graphql<V>(
         &self,
         variables: V,
-    ) -> Result<<V::Query as GraphQLQuery>::ResponseData, anyhow::Error>
+    ) -> anyhow::Result<<V::Query as GraphQLQuery>::ResponseData>
     where
-        V: Variables + Serialize + std::fmt::Debug,
+        V: Variables + Serialize + Debug,
         <<V as dango_indexer_graphql_types::Variables>::Query as graphql_client::GraphQLQuery>::ResponseData:
-            std::fmt::Debug,
+            Debug,
     {
         let query = V::Query::build_query(variables);
         let response = error_for_status(
@@ -84,36 +83,38 @@ impl HttpClient {
     /// It supports both forward pagination (using `first`) and backward pagination
     /// (using `last`).
     ///
-    /// # Arguments
+    /// ## Arguments
     ///
-    /// * `first` - Number of items to fetch per page when paginating forward (use with `None` for `last`)
-    /// * `last` - Number of items to fetch per page when paginating backward (use with `None` for `first`)
-    /// * `build_variables` - Closure that builds the query variables given pagination cursors
-    /// * `extract_page` - Closure that extracts the nodes and page info from the response data
+    /// - `first` - Number of items to fetch per page when paginating forward (use with `None` for `last`)
+    /// - `last` - Number of items to fetch per page when paginating backward (use with `None` for `first`)
+    /// - `build_variables` - Closure that builds the query variables given pagination cursors
+    /// - `extract_page` - Closure that extracts the nodes and page info from the response data
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```ignore
-    /// let all_accounts = client.paginate_all(
-    ///     Some(10), // fetch 10 per page, forward pagination
-    ///     None,
-    ///     |after, before, first, last| accounts::Variables {
-    ///         after,
-    ///         before,
-    ///         first: first.map(|f| f as i64),
-    ///         last: last.map(|l| l as i64),
-    ///         ..Default::default()
-    ///     },
-    ///     |data| {
-    ///         let page_info = PageInfo {
-    ///             start_cursor: data.accounts.page_info.start_cursor,
-    ///             end_cursor: data.accounts.page_info.end_cursor,
-    ///             has_next_page: data.accounts.page_info.has_next_page,
-    ///             has_previous_page: data.accounts.page_info.has_previous_page,
-    ///         };
-    ///         (data.accounts.nodes, page_info)
-    ///     },
-    /// ).await?;
+    /// let all_accounts = client
+    ///     .paginate_all(
+    ///         Some(10), // fetch 10 per page, forward pagination
+    ///         None,
+    ///         |after, before, first, last| accounts::Variables {
+    ///             after,
+    ///             before,
+    ///             first: first.map(|f| f as i64),
+    ///             last: last.map(|l| l as i64),
+    ///             ..Default::default()
+    ///         },
+    ///         |data| {
+    ///             let page_info = PageInfo {
+    ///                 start_cursor: data.accounts.page_info.start_cursor,
+    ///                 end_cursor: data.accounts.page_info.end_cursor,
+    ///                 has_next_page: data.accounts.page_info.has_next_page,
+    ///                 has_previous_page: data.accounts.page_info.has_previous_page,
+    ///             };
+    ///             (data.accounts.nodes, page_info)
+    ///         },
+    ///     )
+    ///     .await?;
     /// ```
     pub async fn paginate_all<V, N, BuildVariables, ExtractPage>(
         &self,
@@ -121,7 +122,7 @@ impl HttpClient {
         last: Option<i64>,
         build_variables: BuildVariables,
         extract_page: ExtractPage,
-    ) -> Result<Vec<N>, anyhow::Error>
+    ) -> anyhow::Result<Vec<N>>
     where
         V: Variables + Serialize + Debug,
         <V::Query as GraphQLQuery>::ResponseData: Debug,
@@ -129,8 +130,8 @@ impl HttpClient {
         ExtractPage: Fn(<V::Query as GraphQLQuery>::ResponseData) -> (Vec<N>, PageInfo),
     {
         let mut all_items = vec![];
-        let mut after: Option<String> = None;
-        let mut before: Option<String> = None;
+        let mut after = None;
+        let mut before = None;
 
         loop {
             let variables = build_variables(after.clone(), before.clone(), first, last);
@@ -207,7 +208,7 @@ macro_rules! impl_paginate_method {
                 &self,
                 page_size: i64,
                 mut variables: $module::Variables,
-            ) -> Result<Vec<$module::$node_type>, anyhow::Error> {
+            ) -> anyhow::Result<Vec<$module::$node_type>> {
                 let mut all_items = vec![];
                 let mut after: Option<String> = None;
 
@@ -260,42 +261,15 @@ impl QueryClient for HttpClient {
     type Error = anyhow::Error;
     type Proof = dango_primitives::Proof;
 
-    async fn query_app(
-        &self,
-        query: Query,
-        height: Option<u64>,
-    ) -> Result<QueryResponse, Self::Error> {
+    async fn query_app(&self, query: Query) -> Result<QueryResponse, Self::Error> {
         let response = self
             .post_graphql(query_app::Variables {
                 request: query.to_json_value()?.into_inner(),
-                height: height.map(|h| h as i64),
+                height: None,
             })
             .await?;
 
-        // TODO
         Ok(serde_json::from_value(response.query_app)?)
-    }
-
-    async fn query_store(
-        &self,
-        key: Binary,
-        height: Option<u64>,
-        prove: bool,
-    ) -> Result<(Option<Binary>, Option<Self::Proof>), Self::Error> {
-        let response = self
-            .post_graphql(query_store::Variables {
-                key: key.to_string(),
-                height: height.map(|h| h as i64),
-                prove,
-            })
-            .await?;
-
-        let proof = match response.query_store.proof {
-            Some(proof) => Binary::from_str(&proof)?.into_inner().deserialize_borsh()?,
-            None => None,
-        };
-
-        Ok((Some(Binary::from_str(&response.query_store.value)?), proof))
     }
 
     async fn simulate(&self, tx: UnsignedTx) -> Result<TxOutcome, Self::Error> {
@@ -409,7 +383,7 @@ impl SearchTxClient for HttpClient {
     }
 }
 
-async fn error_for_status(response: reqwest::Response) -> Result<reqwest::Response, anyhow::Error> {
+async fn error_for_status(response: reqwest::Response) -> anyhow::Result<reqwest::Response> {
     if let Err(e) = response.error_for_status_ref() {
         bail!("{}: {}", e, response.text().await?)
     } else {

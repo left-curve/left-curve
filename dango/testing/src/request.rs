@@ -244,6 +244,35 @@ where
     call_graphql_query(app, query_body).await
 }
 
+/// Convenience wrapper that builds the app from a `FullContext` and makes a
+/// REST `POST` request with a JSON body, deserializing the JSON response. Used
+/// by tests for the `/query`, `/simulate`, and `/broadcast` endpoints.
+pub async fn call_rest_post_with_context<B, R>(
+    context: FullContext,
+    uri: &str,
+    body: &B,
+    headers: &[(&str, &str)],
+) -> anyhow::Result<R>
+where
+    B: Serialize,
+    R: DeserializeOwned,
+{
+    let app = build_app_service(context);
+    let app = actix_web::test::init_service(app).await;
+
+    let mut request = actix_web::test::TestRequest::post()
+        .uri(uri)
+        .peer_addr("127.0.0.1:12345".parse().expect("valid socket address"));
+    for (name, value) in headers {
+        request = request.insert_header((*name, *value));
+    }
+    let request = request.set_json(body).to_request();
+
+    let response = actix_web::test::call_and_read_body(&app, request).await;
+
+    Ok(serde_json::from_slice(&response)?)
+}
+
 /// Helper function to make typed batched GraphQL queries in tests.
 ///
 /// This takes a vector of typed `QueryBody<V>` from graphql_client and returns

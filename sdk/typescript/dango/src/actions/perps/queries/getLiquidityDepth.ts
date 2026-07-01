@@ -10,9 +10,7 @@ import { getAppConfig } from "#actions/app/queries/getAppConfig.js";
 
 type ActionMsg = GetPerpsQueryMsg<"liquidityDepth">;
 
-export type GetPerpsLiquidityDepthParameters = Prettify<
-  ActionMsg["liquidityDepth"] & { height?: number }
->;
+export type GetPerpsLiquidityDepthParameters = Prettify<ActionMsg["liquidityDepth"]>;
 
 export type GetPerpsLiquidityDepthReturnType = Promise<PerpsLiquidityDepthResponse>;
 
@@ -20,15 +18,13 @@ export async function getPerpsLiquidityDepth(
   client: Client,
   parameters: GetPerpsLiquidityDepthParameters,
 ): GetPerpsLiquidityDepthReturnType {
-  const { height = 0, ...queryMsg } = parameters;
-
   const msg: ActionMsg = {
     liquidityDepth: {
-      ...queryMsg,
+      ...parameters,
     },
   };
 
   const { addresses } = await getAppConfig(client);
 
-  return await queryWasmSmart(client, { contract: addresses.perps, msg, height });
+  return await queryWasmSmart(client, { contract: addresses.perps, msg });
 }

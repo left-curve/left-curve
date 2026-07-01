@@ -20,11 +20,7 @@ export {
   getAccountSessionSeenNonces,
 } from "./queries/getAccountSessionSeenNonces.js";
 
-export {
-  type GetCodeHashParameters,
-  type GetCodeHashReturnType,
-  getCodeHash,
-} from "./queries/getCodeHash.js";
+export { type GetCodeHashReturnType, getCodeHash } from "./queries/getCodeHash.js";
 
 export {
   type GetAllAccountInfoParameters,

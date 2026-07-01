@@ -16,7 +16,6 @@ function simulateWithdrawLiquidity(
     baseDenom: Denom
     quoteDenom: Denom
     lpBurnAmount: string
-    height?: number
   },
 ): Promise<CoinPair>
 ```
@@ -41,8 +40,6 @@ const [base, quote] = await client.simulateWithdrawLiquidity({
 **`quoteDenom`** — `Denom`. Quote asset of the pair.
 
 **`lpBurnAmount`** — `string`. Amount of LP tokens to burn, base units.
-
-**`height`** — `number`, optional. Block height. Default `0` (latest).
 
 ## Returns
 

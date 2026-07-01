@@ -52,7 +52,7 @@ async fn main() -> Result<()> {
     let address = Addr::from_str("0x0000000000000000000000000000000000000000")?;
     let denom   = Denom::from_str("bridge/usdc")?;
 
-    let balance = client.query_balance(address, denom, None).await?;
+    let balance = client.query_balance(address, denom).await?;
     println!("balance: {balance}");
 
     Ok(())

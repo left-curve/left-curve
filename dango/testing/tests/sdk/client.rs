@@ -1,9 +1,10 @@
 use {
     crate::utils::{setup_client_test, setup_client_test_with_port},
     dango_primitives::{
-        BroadcastClient, Coins, MOCK_CHAIN_ID, Message, NonEmpty, ResultExt, SearchTxClient, Signer,
+        BroadcastClient, Coins, MOCK_CHAIN_ID, Message, NonEmpty, QueryClient, ResultExt,
+        SearchTxClient, Signer,
     },
-    dango_sdk::{SubscribeBlock, WsClient, subscribe_block},
+    dango_sdk::{SubscribeBlock, WsClient, WsConnection, subscribe_block},
     dango_types::constants::usdc,
     futures::StreamExt,
     std::time::Duration,
@@ -29,6 +30,54 @@ async fn broadcast() -> anyhow::Result<()> {
     let tx_hash = res.tx_hash;
 
     client.search_tx(tx_hash).await?.outcome.should_succeed();
+
+    Ok(())
+}
+
+/// The same broadcast, but over the native WebSocket `broadcast` channel — via
+/// the multiplexed [`WsConnection`] — instead of REST `POST /broadcast`.
+#[tokio::test(flavor = "multi_thread")]
+async fn broadcast_ws() -> anyhow::Result<()> {
+    let (client, mut accounts, port) = setup_client_test_with_port().await?;
+
+    let conn = WsConnection::connect(format!("ws://localhost:{port}/ws")).await?;
+
+    let tx = accounts.user1.sign_transaction(
+        NonEmpty::new_unchecked(vec![Message::transfer(
+            accounts.user2.address.into_inner(),
+            Coins::one(usdc::DENOM.clone(), 100)?,
+        )?]),
+        MOCK_CHAIN_ID,
+        1000000,
+    )?;
+
+    let res = conn.broadcast(tx).await?;
+
+    tokio::time::sleep(std::time::Duration::from_secs(1)).await;
+
+    let tx_hash = res.tx_hash;
+
+    client.search_tx(tx_hash).await?.outcome.should_succeed();
+
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn simulate() -> anyhow::Result<()> {
+    let (client, accounts) = setup_client_test().await?;
+
+    let unsigned = accounts.user1.unsigned_transaction(
+        NonEmpty::new_unchecked(vec![Message::transfer(
+            accounts.user2.address.into_inner(),
+            Coins::one(usdc::DENOM.clone(), 100)?,
+        )?]),
+        MOCK_CHAIN_ID,
+    )?;
+
+    let outcome = client.simulate(unsigned).await?;
+
+    // A dry-run still consumes gas, even though the signature is not verified.
+    assert!(outcome.gas_used > 0);
 
     Ok(())
 }
