@@ -124,15 +124,15 @@ class TestQueryStatus:
 
 
 class TestQueryApp:
-    def test_passes_request_and_height(self, httpserver: HTTPServer) -> None:
-        """request and height are forwarded as GraphQL variables."""
+    def test_passes_request(self, httpserver: HTTPServer) -> None:
+        """The request is forwarded as the `request` GraphQL variable."""
 
         captured = _capture_request(
             httpserver,
             {"data": {"queryApp": {"some": "value"}}},
         )
-        _info(httpserver).query_app({"config": {}}, height=100)
-        assert captured[0]["variables"] == {"request": {"config": {}}, "height": 100}
+        _info(httpserver).query_app({"config": {}})
+        assert captured[0]["variables"] == {"request": {"config": {}}, "height": None}
 
     def test_returns_raw_query_app_value(self, httpserver: HTTPServer) -> None:
         """The unwrapped `queryApp` field is returned untouched."""
@@ -141,13 +141,6 @@ class TestQueryApp:
         _capture_request(httpserver, {"data": {"queryApp": [1, 2, 3]}})
         result = _info(httpserver).query_app({"some": "request"})
         assert result == [1, 2, 3]
-
-    def test_default_height_is_null(self, httpserver: HTTPServer) -> None:
-        """Omitting height sends `null` so the server uses latest block."""
-
-        captured = _capture_request(httpserver, {"data": {"queryApp": {}}})
-        _info(httpserver).query_app({"config": {}})
-        assert captured[0]["variables"] == {"request": {"config": {}}, "height": None}
 
 
 class TestQueryAppSmart:

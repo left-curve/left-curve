@@ -26,11 +26,11 @@ const buildPresetRange = (days: number): { from: Date; to: Date } => {
   return { from, to };
 };
 
-const initialPreset: TradeHistoryPreset = "1m";
+const initialPreset: TradeHistoryPreset = "1d";
 
 const initialFilter: TradeHistoryFilter = {
   preset: initialPreset,
-  ...buildPresetRange(PRESETS.find((p) => p.id === initialPreset)?.days ?? 30),
+  ...buildPresetRange(PRESETS.find((p) => p.id === initialPreset)?.days ?? 1),
 };
 
 export function useTradeHistoryFilter() {

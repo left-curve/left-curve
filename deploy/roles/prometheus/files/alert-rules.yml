@@ -67,3 +67,60 @@ groups:
     annotations:
       summary: "High error rate detected"
       description: "Error rate is above 10% for more than 5 minutes."
+
+- name: cloudflare-alerts
+  rules:
+  - alert: CloudflaredDown
+    expr: up{job="cloudflared"} == 0
+    for: 5m
+    labels:
+      severity: critical
+    annotations:
+      summary: "Cloudflared metrics down on {{ $labels.instance }}"
+      description: "Prometheus has not been able to scrape cloudflared on {{ $labels.instance }} for more than 5 minutes."
+
+  - alert: CloudflaredTunnelRequestErrors
+    expr: |
+      (
+        sum by(instance, dango_network) (increase(cloudflared_tunnel_request_errors[5m])) >= 10
+      )
+      and
+      (
+        sum by(instance, dango_network) (increase(cloudflared_tunnel_request_errors[5m]))
+        /
+        clamp_min(sum by(instance, dango_network) (increase(cloudflared_tunnel_total_requests[5m])), 1)
+        > 0.001
+      )
+    for: 2m
+    labels:
+      severity: warning
+    annotations:
+      summary: "Cloudflared request errors on {{ $labels.instance }}"
+      description: "cloudflared reported at least 10 origin proxy errors and an error ratio above 0.1% on {{ $labels.instance }} over the last 5 minutes."
+
+  - alert: CloudflaredTunnelDegraded
+    expr: min by(instance, dango_network) (cloudflared_tunnel_ha_connections) < 4
+    for: 5m
+    labels:
+      severity: warning
+    annotations:
+      summary: "Cloudflared HA connections degraded on {{ $labels.instance }}"
+      description: "cloudflared has fewer than 4 active HA connections on {{ $labels.instance }} for more than 5 minutes."
+
+  - alert: CloudflareEdgeObserverDown
+    expr: up{job="cloudflare-edge-observer"} == 0
+    for: 5m
+    labels:
+      severity: warning
+    annotations:
+      summary: "Cloudflare edge observer is down"
+      description: "Prometheus has not been able to scrape the Cloudflare edge observer for more than 5 minutes."
+
+  - alert: CloudflareEdgeObserverPollErrors
+    expr: increase(cloudflare_edge_observer_poll_errors_total[10m]) > 0 or increase(cloudflare_edge_observer_target_poll_errors_total[10m]) > 0
+    for: 5m
+    labels:
+      severity: warning
+    annotations:
+      summary: "Cloudflare edge observer polling errors"
+      description: "The Cloudflare edge observer has failed one or more Cloudflare API polls in the last 10 minutes."

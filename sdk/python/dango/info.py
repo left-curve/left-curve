@@ -74,6 +74,9 @@ _SUB_PERPS_CANDLES: Final[str] = _SUBSCRIPTIONS.joinpath("perpsCandles.graphql")
 _SUB_BLOCK: Final[str] = _SUBSCRIPTIONS.joinpath("block.graphql").read_text(encoding="utf-8")
 _SUB_EVENTS: Final[str] = _SUBSCRIPTIONS.joinpath("events.graphql").read_text(encoding="utf-8")
 _SUB_QUERY_APP: Final[str] = _SUBSCRIPTIONS.joinpath("queryApp.graphql").read_text(encoding="utf-8")
+# `perpsEvents` is served over the native WebSocket `/ws` endpoint, not
+# graphql-transport-ws — see `dango.ws.WsConnection`, the standalone
+# multiplexed client for that transport.
 
 # perpsTrades is supported by the chain — `Subscription.perpsTrades` is
 # defined in indexer/graphql-types/src/schemas/schema.graphql, and
@@ -119,6 +122,15 @@ def _unwrap_node[T](payload: dict[str, Any], field: str, _typ: type[T]) -> Any:
     # (e.g. via pydantic) without reshaping the call signature.
     if "_error" in payload:
         return payload
+
+    # A `next` message can also carry GraphQL errors in-band as
+    # `{"data": null, "errors": [...]}` — e.g. an unknown field on a server
+    # that predates the operation, or a resolver failure. Surface those
+    # through the same `{"_error": ...}` convention so callbacks have a single
+    # error path and never receive a bare `None` they have to guard against.
+    errors = payload.get("errors")
+    if errors:
+        return {"_error": errors}
 
     data = payload.get("data") or {}
 
@@ -227,12 +239,7 @@ class Info(API):
 
         return cast("dict[str, Any]", data["queryStatus"])
 
-    def query_app(
-        self,
-        request: dict[str, Any],
-        *,
-        height: int | None = None,
-    ) -> Any:
+    def query_app(self, request: dict[str, Any]) -> Any:
         """Generic `queryApp` wrapper. Returns the raw kind-keyed envelope."""
 
         # The chain returns `{<kind>: <data>}` for every request variant —
@@ -241,38 +248,21 @@ class Info(API):
         # so kind-specific callers can pick their own typed return shape;
         # the convenience methods `query_app_smart` and `query_app_multi`
         # do the unwrap.
-        data = self.query(
-            _QUERY_APP,
-            variables={"request": request, "height": height},
-        )
+        data = self.query(_QUERY_APP, variables={"request": request, "height": None})
 
         return data["queryApp"]
 
-    def query_app_smart(
-        self,
-        contract: Addr,
-        msg: dict[str, Any],
-        *,
-        height: int | None = None,
-    ) -> Any:
+    def query_app_smart(self, contract: Addr, msg: dict[str, Any]) -> Any:
         """Convenience for `{wasm_smart: {contract, msg}}` queries; unwraps the envelope."""
 
         # `query_app` returns the kind-keyed wrapper `{"wasm_smart": <inner>}`;
         # unwrap so callers see the contract's own response shape directly.
         # `query_app_multi` does the same with its `["multi"]` unwrap.
 
-        return self.query_app(
-            {"wasm_smart": {"contract": contract, "msg": msg}},
-            height=height,
-        )["wasm_smart"]
+        return self.query_app({"wasm_smart": {"contract": contract, "msg": msg}})["wasm_smart"]
 
-    def query_app_multi(
-        self,
-        queries: list[dict[str, Any]],
-        *,
-        height: int | None = None,
-    ) -> list[dict[str, Any]]:
-        """Atomically run multiple queries at one block height (API §1.4)."""
+    def query_app_multi(self, queries: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        """Atomically run multiple queries against the latest finalized state (API §1.4)."""
 
         # Each result is wrapped as `{"Ok": <value>}` or `{"Err": "<msg>"}`.
         # We deliberately return the raw wrappers instead of auto-unwrapping
@@ -280,7 +270,7 @@ class Info(API):
         # by design, one query in the batch may fail without aborting the
         # whole batch, and an auto-unwrap that raised on the first Err would
         # collapse that signal.
-        result = self.query_app({"multi": queries}, height=height)
+        result = self.query_app({"multi": queries})
 
         return cast("list[dict[str, Any]]", result["multi"])
 
@@ -799,27 +789,21 @@ class Info(API):
         # mirrors `WebsocketManager.unsubscribe`'s "id-not-found" return
         # — callers can blanket-call this on shutdown without first
         # checking whether they ever opened a subscription.
-        if self._ws_manager is None:
-            return False
+        if self._ws_manager is not None:
+            return self._ws_manager.unsubscribe(subscription_id)
 
-        return self._ws_manager.unsubscribe(subscription_id)
+        return False
 
     def disconnect_websocket(self) -> None:
-        """Close the WebSocket connection and clean up the manager thread."""
+        """Close the streaming connection and clean up the manager threads."""
 
-        if self._ws_manager is None:
-            return
-
-        self._ws_manager.stop()
-
-        # 5s grace period is generous for the run_forever loop to exit
-        # cleanly after `stop()` calls `ws.close()`. The manager thread
-        # is also a daemon, so even if `join` returns without the thread
-        # actually finishing (e.g. socket stuck), Python won't hang on
-        # interpreter exit waiting for it.
-        self._ws_manager.join(timeout=5.0)
-
-        # Clearing the reference lets a future `_ws` access spin up a
-        # fresh manager — useful if the user reconnects after an explicit
-        # disconnect.
-        self._ws_manager = None
+        # 5s grace period is generous for the manager to wind down after
+        # `stop()`. The worker threads are daemons, so even if `join` returns
+        # without a thread actually finishing (e.g. socket stuck), Python won't
+        # hang on interpreter exit waiting for it. Clearing the reference lets
+        # a future `_ws` access spin up a fresh manager — useful if the user
+        # reconnects after an explicit disconnect.
+        if self._ws_manager is not None:
+            self._ws_manager.stop()
+            self._ws_manager.join(timeout=5.0)
+            self._ws_manager = None

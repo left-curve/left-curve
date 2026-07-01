@@ -9,6 +9,7 @@ ssh_users:
   - rhaki
   - zexsor
 sudo_users:
+  - j0nl1
   - larry
   - penso
 dango_domain: "dango.zone"

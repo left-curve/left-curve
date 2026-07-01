@@ -7,3 +7,4 @@ dango_networks:
   - testnet
 cloudflare_lb_enabled: true
 faucet_bot_enabled: true
+internal_api_enabled: true

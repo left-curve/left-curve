@@ -18,8 +18,9 @@ import {
   useVolume,
   useFeeRateOverride,
   useStorage,
+  usePerpsLiquidityDepth,
 } from "@left-curve/store";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 
 import {
@@ -55,6 +56,7 @@ import { m } from "@left-curve/foundation/paraglide/messages.js";
 import { MarketPair } from "@left-curve/foundation/market-pair";
 import { useGeoblock } from "~/components/foundation/hooks/useGeoblock";
 import { computeOtherPairsUsedMargin } from "../helpers/math";
+import { getTopOfBookMidPrice } from "../helpers/orderBook";
 import { perpsTradeHistoryKeys } from "../helpers/perpsTradeHistoryKeys";
 import { useTPSLPriceSync } from "../hooks/useTPSLPriceSync";
 import { useProTrade } from "./ProTrade";
@@ -71,6 +73,9 @@ const InfoRow: React.FC<{
     <p className="diatype-xs-medium text-ink-secondary-700">{value}</p>
   </div>
 );
+
+const MID_PRICE_DEPTH_LIMIT = 1;
+const MID_PRICE_NOTIFY_INTERVAL_MS = 500;
 
 const TradeSubmitButton: React.FC<{
   action: "buy" | "sell";
@@ -172,6 +177,26 @@ const PerpsTradeMenu: React.FC<TradeMenuProps> = ({ controllers }) => {
   }, [activePairStats?.currentPrice, getPrice, base.denom]);
 
   const params = appConfig.perpsPairs[pairId];
+  const midPriceBucketSize = params.bucketSizes[0] ?? params.tickSize;
+  const { liquidityDepth: midPriceDepth } = usePerpsLiquidityDepth(
+    (s) => ({ liquidityDepth: s.liquidityDepth }),
+    {
+      pairId,
+      bucketSize: midPriceBucketSize,
+      limit: MID_PRICE_DEPTH_LIMIT,
+      enabled: operation === "limit" && Boolean(midPriceBucketSize),
+      notifyIntervalMs: MID_PRICE_NOTIFY_INTERVAL_MS,
+    },
+    shallowEqual,
+  );
+  const midPriceValue = useMemo(
+    () =>
+      getTopOfBookMidPrice(midPriceDepth, {
+        snapDirection: action === "buy" ? "down" : "up",
+        tickSize: params.tickSize,
+      }),
+    [action, midPriceDepth, params.tickSize],
+  );
 
   const accountState = usePerpsUserState(
     (s) => ({
@@ -255,10 +280,37 @@ const PerpsTradeMenu: React.FC<TradeMenuProps> = ({ controllers }) => {
 
   const { register, setValue, inputs, errors } = controllers;
   const size = inputs.size?.value || "0";
-  const priceValue = inputs.price?.value || "0";
+  const priceInputValue = inputs.price?.value || "";
+  const priceValue = priceInputValue || "0";
   const tpPrice = inputs.tpPrice?.value || "";
   const slPrice = inputs.slPrice?.value || "";
   const hasErrors = Object.keys(errors).length > 0;
+  const autoLimitPriceRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (operation !== "limit" || !midPriceValue) {
+      autoLimitPriceRef.current = null;
+      return;
+    }
+
+    const previousAutoPrice = autoLimitPriceRef.current;
+    const shouldAutoFill =
+      priceInputValue === "" ||
+      Decimal(priceInputValue || 0).lte(0) ||
+      priceInputValue === previousAutoPrice;
+
+    if (!shouldAutoFill) return;
+
+    autoLimitPriceRef.current = midPriceValue;
+    if (priceInputValue !== midPriceValue) setValue("price", midPriceValue);
+  }, [operation, midPriceValue, priceInputValue, setValue]);
+
+  const selectMidPrice = useCallback(() => {
+    if (!midPriceValue) return;
+    autoLimitPriceRef.current = midPriceValue;
+    setValue("price", midPriceValue);
+  }, [midPriceValue, setValue]);
+  const priceInputRegistration = register("price", { mask: numberMask });
 
   useEffect(() => {
     setTpslEnabled(false);
@@ -523,11 +575,27 @@ const PerpsTradeMenu: React.FC<TradeMenuProps> = ({ controllers }) => {
         {operation === "limit" ? (
           <Input
             placeholder="0"
-            isDisabled={!isConnected || submission.isPending}
-            label={m["dex.protrade.perps.price"]()}
-            {...register("price", { mask: numberMask })}
+            isDisabled={submission.isPending}
+            label={m["dex.protrade.perps.priceWithQuote"]()}
+            {...priceInputRegistration}
+            onChange={(event) => {
+              autoLimitPriceRef.current = null;
+              priceInputRegistration.onChange(event);
+            }}
             startText="right"
-            endContent="USD"
+            endContent={
+              <Button
+                type="button"
+                variant="secondary"
+                size="xs"
+                radius="sm"
+                className="h-[25px] px-2"
+                isDisabled={!midPriceValue || submission.isPending}
+                onClick={selectMidPrice}
+              >
+                {m["dex.protrade.perps.midPrice"]()}
+              </Button>
+            }
           />
         ) : null}
         {operation === "limit" ? (

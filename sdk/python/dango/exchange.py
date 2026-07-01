@@ -34,6 +34,7 @@ from dango.utils.types import (
     SubmitOrderRequest,
     TimeInForce,
     TriggerDirection,
+    Tx,
     dango_decimal,
 )
 
@@ -142,20 +143,60 @@ class Exchange(API):
         messages: list[Message],
         *,
         funds: dict[str, str] | None = None,  # reserved for Phase 12+; unused here
+        gas_limit: int | None = None,
     ) -> dict[str, Any]:
-        """Run a list of Messages through simulate -> sign -> broadcast."""
+        """Run a list of Messages through (optional simulate ->) sign -> broadcast.
 
-        # Simulate first to learn the gas cost. The chain rejects under-
-        # gas txs, but we don't want to hard-code a guess: simulate
-        # returns the exact post-execute gas, then we add a fixed
-        # overhead for signature verify (which simulate skips — see the
-        # DEFAULT_GAS_OVERHEAD docstring). The Rust SDK does the same
-        # math; mirroring it keeps the Python and Rust paths
-        # interchangeable.
-        unsigned = self._signer.build_unsigned_tx(messages, self._chain_id)
-        sim = self._info.simulate(unsigned)
-        gas_used = int(sim["gas_used"])
-        gas_limit = gas_used + self.DEFAULT_GAS_OVERHEAD
+        When ``gas_limit`` is None (the default) the tx is simulated to discover
+        its gas cost. When the caller supplies ``gas_limit`` we skip simulation
+        entirely and use the value verbatim — one fewer round-trip, which
+        matters for latency-sensitive callers that pre-size their gas. The
+        caller owns the trade-off: set it too low and the chain rejects the tx
+        for running out of gas.
+        """
+
+        signed = self.sign_action(messages, gas_limit=gas_limit)
+
+        return self._info.broadcast_tx_sync(signed)
+
+    def sign_action(
+        self,
+        messages: list[Message],
+        *,
+        gas_limit: int | None = None,
+    ) -> Tx:
+        """Build, (optionally simulate to size gas,) and sign a Tx WITHOUT broadcasting.
+
+        The sign half of `_send_action`, exposed so callers can broadcast the
+        signed Tx over an alternative transport — e.g. `dango.ws.WsConnection`,
+        which multiplexes broadcasts onto the same socket as its subscriptions.
+        As with `_send_action`, passing ``gas_limit`` skips the pre-broadcast
+        `simulate` round-trip. Note the signer's local nonce advances here, so a
+        signed-but-never-broadcast Tx leaves a nonce gap.
+        """
+
+        # Reject bool first (it is an int subclass, so `gas_limit=True` would
+        # otherwise slip through as a 1-unit limit) and then non-positive
+        # values — mirrors the int-arg guards elsewhere in this module.
+        if gas_limit is not None:
+            if isinstance(gas_limit, bool) or not isinstance(gas_limit, int):
+                raise TypeError(
+                    f"gas_limit must be an int or None, got {type(gas_limit).__name__}",
+                )
+            if gas_limit <= 0:
+                raise ValueError(f"gas_limit must be positive, got {gas_limit}")
+
+        if gas_limit is None:
+            # Simulate first to learn the gas cost. The chain rejects under-
+            # gas txs, but we don't want to hard-code a guess: simulate
+            # returns the exact post-execute gas, then we add a fixed
+            # overhead for signature verify (which simulate skips — see the
+            # DEFAULT_GAS_OVERHEAD docstring). The Rust SDK does the same
+            # math; mirroring it keeps the Python and Rust paths
+            # interchangeable.
+            unsigned = self._signer.build_unsigned_tx(messages, self._chain_id)
+            sim = self._info.simulate(unsigned)
+            gas_limit = int(sim["gas_used"]) + self.DEFAULT_GAS_OVERHEAD
 
         # `sign_tx` increments the signer's local nonce — see the Rust
         # source signer.rs:271-272 and the Python mirror in
@@ -163,13 +204,11 @@ class Exchange(API):
         # decrement on broadcast failure: the chain rejects duplicate
         # nonces, so an optimistic increment is strictly safer than
         # waiting until success and risking a same-nonce retry.
-        signed = self._signer.sign_tx(messages, self._chain_id, gas_limit)
-
-        return self._info.broadcast_tx_sync(signed)
+        return self._signer.sign_tx(messages, self._chain_id, gas_limit)
 
     # --- Margin --------------------------------------------------------------
 
-    def deposit_margin(self, amount: int) -> dict[str, Any]:
+    def deposit_margin(self, amount: int, *, gas_limit: int | None = None) -> dict[str, Any]:
         """Deposit USDC into the perps margin sub-account; amount is in base units."""
 
         # `amount` is base units (Uint128) — caller does the human-USD
@@ -205,9 +244,14 @@ class Exchange(API):
             },
         }
 
-        return self._send_action([message])
+        return self._send_action([message], gas_limit=gas_limit)
 
-    def withdraw_margin(self, amount: float | str | Decimal) -> dict[str, Any]:
+    def withdraw_margin(
+        self,
+        amount: float | str | Decimal,
+        *,
+        gas_limit: int | None = None,
+    ) -> dict[str, Any]:
         """Withdraw USDC from the perps margin sub-account; amount is in USD."""
 
         # Withdraw goes the OTHER direction from deposit: funds flow OUT
@@ -230,7 +274,7 @@ class Exchange(API):
             },
         }
 
-        return self._send_action([message])
+        return self._send_action([message], gas_limit=gas_limit)
 
     # --- Orders --------------------------------------------------------------
 
@@ -332,6 +376,7 @@ class Exchange(API):
         reduce_only: bool = False,
         tp: ChildOrder | None = None,
         sl: ChildOrder | None = None,
+        gas_limit: int | None = None,
     ) -> dict[str, Any]:
         """Place a single perps order; size is signed (+ buy / − sell)."""
 
@@ -344,11 +389,16 @@ class Exchange(API):
             sl=sl,
         )
 
-        return self._send_action([self._wrap_perps_execute("trade", {"submit_order": request})])
+        return self._send_action(
+            [self._wrap_perps_execute("trade", {"submit_order": request})],
+            gas_limit=gas_limit,
+        )
 
     def cancel_order(
         self,
         spec: OrderId | ClientOrderIdRef | Literal["all"],
+        *,
+        gas_limit: int | None = None,
     ) -> dict[str, Any]:
         """Cancel by chain OrderId, ClientOrderIdRef, or 'all' for every open order."""
 
@@ -364,11 +414,36 @@ class Exchange(API):
                     {"cancel_order": self._build_cancel_order_wire(spec)},
                 ),
             ],
+            gas_limit=gas_limit,
+        )
+
+    def prepare_cancel_order(
+        self,
+        spec: OrderId | ClientOrderIdRef | Literal["all"],
+        *,
+        gas_limit: int | None = None,
+    ) -> Tx:
+        """Sign an order cancellation WITHOUT broadcasting; return the signed Tx.
+
+        The `cancel_order` counterpart for callers that broadcast over an
+        alternative transport (e.g. `dango.ws.WsConnection`).
+        """
+
+        return self.sign_action(
+            [
+                self._wrap_perps_execute(
+                    "trade",
+                    {"cancel_order": self._build_cancel_order_wire(spec)},
+                ),
+            ],
+            gas_limit=gas_limit,
         )
 
     def batch_update_orders(
         self,
         actions: list[SubmitOrCancelAction],
+        *,
+        gas_limit: int | None = None,
     ) -> dict[str, Any]:
         """Submit and/or cancel multiple orders atomically in one transaction."""
 
@@ -414,6 +489,7 @@ class Exchange(API):
 
         return self._send_action(
             [self._wrap_perps_execute("trade", {"batch_update_orders": wire})],
+            gas_limit=gas_limit,
         )
 
     # --- Convenience helpers -------------------------------------------------
@@ -427,6 +503,7 @@ class Exchange(API):
         reduce_only: bool = False,
         tp: ChildOrder | None = None,
         sl: ChildOrder | None = None,
+        gas_limit: int | None = None,
     ) -> dict[str, Any]:
         """Place a market order with a slippage cap (default 1%)."""
 
@@ -444,6 +521,7 @@ class Exchange(API):
             reduce_only=reduce_only,
             tp=tp,
             sl=sl,
+            gas_limit=gas_limit,
         )
 
     def submit_limit_order(
@@ -457,8 +535,27 @@ class Exchange(API):
         reduce_only: bool = False,
         tp: ChildOrder | None = None,
         sl: ChildOrder | None = None,
+        gas_limit: int | None = None,
     ) -> dict[str, Any]:
         """Place a limit order; defaults to GTC and no client-side id."""
+
+        return self.submit_order(
+            pair_id,
+            size,
+            self._limit_order_kind(limit_price, time_in_force, client_order_id),
+            reduce_only=reduce_only,
+            tp=tp,
+            sl=sl,
+            gas_limit=gas_limit,
+        )
+
+    def _limit_order_kind(
+        self,
+        limit_price: float | str | Decimal,
+        time_in_force: TimeInForce,
+        client_order_id: int | None,
+    ) -> OrderKind:
+        """Build the `{limit: {...}}` OrderKind wire payload for a limit order."""
 
         # Store `time_in_force.value` rather than the enum itself so
         # downstream `json.dumps` and equality assertions both treat
@@ -472,15 +569,41 @@ class Exchange(API):
             "client_order_id": str(client_order_id) if client_order_id is not None else None,
         }
 
-        kind = cast("OrderKind", {"limit": limit_payload})
+        return cast("OrderKind", {"limit": limit_payload})
 
-        return self.submit_order(
+    def prepare_submit_limit_order(
+        self,
+        pair_id: PairId,
+        size: float | int | str | Decimal,
+        limit_price: float | str | Decimal,
+        *,
+        time_in_force: TimeInForce = TimeInForce.GTC,
+        client_order_id: int | None = None,
+        reduce_only: bool = False,
+        tp: ChildOrder | None = None,
+        sl: ChildOrder | None = None,
+        gas_limit: int | None = None,
+    ) -> Tx:
+        """Sign a limit order WITHOUT broadcasting; return the signed Tx.
+
+        The `submit_limit_order` counterpart for callers that broadcast over an
+        alternative transport — e.g. `dango.ws.WsConnection`, which sends the tx
+        on the same socket it streams events over. Pass ``gas_limit`` to skip
+        the pre-sign `simulate` round-trip.
+        """
+
+        request = self._build_submit_order_wire(
             pair_id,
             size,
-            kind,
+            self._limit_order_kind(limit_price, time_in_force, client_order_id),
             reduce_only=reduce_only,
             tp=tp,
             sl=sl,
+        )
+
+        return self.sign_action(
+            [self._wrap_perps_execute("trade", {"submit_order": request})],
+            gas_limit=gas_limit,
         )
 
     # --- Conditional orders (TP/SL) ------------------------------------------
@@ -527,6 +650,8 @@ class Exchange(API):
         trigger_price: float | int | str | Decimal,
         trigger_direction: TriggerDirection,
         max_slippage: float | int | str | Decimal,
+        *,
+        gas_limit: int | None = None,
     ) -> dict[str, Any]:
         """Place a conditional (TP/SL) order; reduce-only is implicit. size=None closes all."""
 
@@ -564,11 +689,16 @@ class Exchange(API):
             },
         }
 
-        return self._send_action([self._wrap_perps_execute("trade", inner)])
+        return self._send_action(
+            [self._wrap_perps_execute("trade", inner)],
+            gas_limit=gas_limit,
+        )
 
     def cancel_conditional_order(
         self,
         spec: CancelConditionalSpec,
+        *,
+        gas_limit: int | None = None,
     ) -> dict[str, Any]:
         """Cancel a conditional order by ref, all-for-pair, or 'all' for every CO."""
 
@@ -582,6 +712,7 @@ class Exchange(API):
                     {"cancel_conditional_order": self._build_cancel_conditional_wire(spec)},
                 ),
             ],
+            gas_limit=gas_limit,
         )
 
     # --- Vault ---------------------------------------------------------------
@@ -591,6 +722,7 @@ class Exchange(API):
         amount: float | int | str | Decimal,
         *,
         min_shares_to_mint: int | None = None,
+        gas_limit: int | None = None,
     ) -> dict[str, Any]:
         """Transfer USD margin into the counterparty vault, minting LP shares."""
 
@@ -642,9 +774,17 @@ class Exchange(API):
             },
         }
 
-        return self._send_action([self._wrap_perps_execute("vault", inner)])
+        return self._send_action(
+            [self._wrap_perps_execute("vault", inner)],
+            gas_limit=gas_limit,
+        )
 
-    def remove_liquidity(self, shares_to_burn: int) -> dict[str, Any]:
+    def remove_liquidity(
+        self,
+        shares_to_burn: int,
+        *,
+        gas_limit: int | None = None,
+    ) -> dict[str, Any]:
         """Burn LP shares to schedule a vault withdrawal (subject to cooldown)."""
 
         # Wire shape (Rust source: `dango/types/src/perps.rs::VaultMsg::RemoveLiquidity`):
@@ -668,11 +808,14 @@ class Exchange(API):
 
         inner = {"remove_liquidity": {"shares_to_burn": str(shares_to_burn)}}
 
-        return self._send_action([self._wrap_perps_execute("vault", inner)])
+        return self._send_action(
+            [self._wrap_perps_execute("vault", inner)],
+            gas_limit=gas_limit,
+        )
 
     # --- Referrals -----------------------------------------------------------
 
-    def set_referral(self, referrer: int | str) -> dict[str, Any]:
+    def set_referral(self, referrer: int | str, *, gas_limit: int | None = None) -> dict[str, Any]:
         """Bind the signer as a referee of `referrer` (user_index or username)."""
 
         # Wire shape (Rust source: `dango/types/src/perps.rs::ReferralMsg::SetReferral`):
@@ -738,11 +881,14 @@ class Exchange(API):
             },
         }
 
-        return self._send_action([self._wrap_perps_execute("referral", inner)])
+        return self._send_action(
+            [self._wrap_perps_execute("referral", inner)],
+            gas_limit=gas_limit,
+        )
 
     # --- Liquidation ---------------------------------------------------------
 
-    def liquidate(self, user: Addr) -> dict[str, Any]:
+    def liquidate(self, user: Addr, *, gas_limit: int | None = None) -> dict[str, Any]:
         """Force-close an underwater user's positions (permissionless)."""
 
         # Wire shape (Rust source: `dango/types/src/perps.rs::MaintainerMsg::Liquidate`):
@@ -759,4 +905,7 @@ class Exchange(API):
         # one, so we don't replicate it here.
         inner = {"liquidate": {"user": user}}
 
-        return self._send_action([self._wrap_perps_execute("maintain", inner)])
+        return self._send_action(
+            [self._wrap_perps_execute("maintain", inner)],
+            gas_limit=gas_limit,
+        )

@@ -17,7 +17,6 @@ import { useNavigate } from "@tanstack/react-router";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { useEffect, useMemo, useRef } from "react";
 
-import { isFeatureEnabled } from "../../../../featureFlags";
 import { EmptyPlaceholder } from "../../../foundation/EmptyPlaceholder";
 import { ExportCsvButton } from "./ExportCsvButton";
 import { TradeHistoryToolbar } from "./TradeHistoryToolbar";
@@ -27,12 +26,10 @@ import {
   getPerpsEventLabel,
   getSideLabel,
 } from "../../helpers/perpsEventLabels";
-import { type QueryRange, useTradeHistoryFilter } from "./useTradeHistoryFilter";
+import { useTradeHistoryFilter } from "./useTradeHistoryFilter";
 import { usePerpsTradeHistory } from "./usePerpsTradeHistory";
 
 import type { PerpsEvent } from "@left-curve/types";
-
-const EMPTY_QUERY_RANGE: QueryRange = { earlierThan: undefined, laterThan: undefined };
 
 const V016_CUTOFF = new Date("2026-04-22T12:00:00Z");
 const V017_CUTOFF = new Date("2026-04-30T12:00:00Z");
@@ -267,11 +264,9 @@ export function PerpsTradeHistory() {
   const navigate = useNavigate();
   const showModal = useApp((state) => state.showModal);
   const { isMd } = useMediaQuery();
-  const isAdvancedEnabled = isFeatureEnabled("trade_history_export");
   const { filter, setPreset, setCustomRange, queryRange } = useTradeHistoryFilter();
-  const { nodes, isLoading, isFetchingNextPage, hasNextPage, fetchNextPage } = usePerpsTradeHistory(
-    isAdvancedEnabled ? queryRange : EMPTY_QUERY_RANGE,
-  );
+  const { nodes, isLoading, isFetchingNextPage, hasNextPage, fetchNextPage } =
+    usePerpsTradeHistory(queryRange);
 
   const scrollRef = useRef<HTMLDivElement | null>(null);
 
@@ -324,31 +319,29 @@ export function PerpsTradeHistory() {
 
   return (
     <>
-      {isAdvancedEnabled ? (
-        isMd ? (
-          <div className="flex items-center justify-between gap-4 py-2 px-1">
-            <TradeHistoryToolbar
-              layout="desktop"
-              filter={filter}
-              onPresetChange={setPreset}
-              onCustomRangeChange={setCustomRange}
-            />
-            <ExportCsvButton events={nodes} />
+      {isMd ? (
+        <div className="flex items-center justify-between gap-4 py-2 px-1">
+          <TradeHistoryToolbar
+            layout="desktop"
+            filter={filter}
+            onPresetChange={setPreset}
+            onCustomRangeChange={setCustomRange}
+          />
+          <ExportCsvButton events={nodes} queryRange={queryRange} />
+        </div>
+      ) : (
+        <div className="flex flex-col gap-3 py-2 px-1">
+          <TradeHistoryToolbar
+            layout="mobile"
+            filter={filter}
+            onPresetChange={setPreset}
+            onCustomRangeChange={setCustomRange}
+          />
+          <div className="flex justify-end">
+            <ExportCsvButton events={nodes} queryRange={queryRange} />
           </div>
-        ) : (
-          <div className="flex flex-col gap-3 py-2 px-1">
-            <TradeHistoryToolbar
-              layout="mobile"
-              filter={filter}
-              onPresetChange={setPreset}
-              onCustomRangeChange={setCustomRange}
-            />
-            <div className="flex justify-end">
-              <ExportCsvButton events={nodes} />
-            </div>
-          </div>
-        )
-      ) : null}
+        </div>
+      )}
 
       <div ref={scrollRef} className="w-full max-h-[31vh] overflow-auto scrollbar-none">
         <div

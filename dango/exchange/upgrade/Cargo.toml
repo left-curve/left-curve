@@ -9,6 +9,10 @@ repository    = { workspace = true }
 rust-version  = { workspace = true }
 
 [dependencies]
+borsh            = { workspace = true }
 dango-app        = { workspace = true }
+dango-math       = { workspace = true }
 dango-primitives = { workspace = true }
+dango-storage    = { workspace = true }
+dango-types      = { workspace = true }
 tracing          = { workspace = true }

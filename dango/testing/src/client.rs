@@ -5,9 +5,9 @@ use {
     dango_app::{AppError, Db, Indexer, NaiveProposalPreparer, NullIndexer, ProposalPreparer, Vm},
     dango_db_memory::MemDb,
     dango_primitives::{
-        Binary, Block, BlockClient, BlockInfo, BlockOutcome, BorshDeExt, BroadcastClient,
-        BroadcastTxOutcome, Hash256, Query, QueryClient, QueryResponse, SearchTxClient,
-        SearchTxOutcome, Timestamp, Tx, TxOutcome, UnsignedTx,
+        Block, BlockClient, BlockInfo, BlockOutcome, BroadcastClient, BroadcastTxOutcome, Hash256,
+        Query, QueryClient, QueryResponse, SearchTxClient, SearchTxOutcome, Timestamp, Tx,
+        TxOutcome, UnsignedTx,
     },
     dango_vm_rust::RustVm,
     std::{collections::BTreeMap, ops::DerefMut, sync::Arc, thread, time::Duration},
@@ -136,40 +136,12 @@ where
     type Error = anyhow::Error;
     type Proof = dango_primitives::Proof;
 
-    async fn query_app(
-        &self,
-        query: Query,
-        height: Option<u64>,
-    ) -> Result<QueryResponse, Self::Error> {
-        Ok(self
-            .suite
-            .read()
-            .await
-            .app
-            .do_query_app(query, height, false)?)
-    }
-
-    async fn query_store(
-        &self,
-        key: Binary,
-        height: Option<u64>,
-        prove: bool,
-    ) -> Result<(Option<Binary>, Option<Self::Proof>), Self::Error> {
-        let (value, proof) = self
-            .suite
-            .read()
-            .await
-            .app
-            .do_query_store(&key, height, prove)?;
-
-        let value = value.map(Binary::from_inner);
-        let proof = proof.map(|p| p.deserialize_borsh()).transpose()?;
-
-        Ok((value, proof))
+    async fn query_app(&self, query: Query) -> Result<QueryResponse, Self::Error> {
+        Ok(self.suite.read().await.app.do_query_app(query)?)
     }
 
     async fn simulate(&self, tx: UnsignedTx) -> Result<TxOutcome, Self::Error> {
-        Ok(self.suite.read().await.app.do_simulate(tx, 0, false)?)
+        Ok(self.suite.read().await.app.do_simulate(tx)?)
     }
 }
 

@@ -1025,8 +1025,8 @@ jobs:
     env:
       PR_NUMBER: ${{ github.event.pull_request.number }}
       PR_BRANCH: ${{ github.event.pull_request.head.ref }}
-      ANSIBLE_VAULT_PASSWORD: ${{ secrets.ANSIBLE_VAULT_PASSWORD }}
-      ANSIBLE_DEBIAN_PASSWORD: ${{ secrets.ANSIBLE_DEBIAN_PASSWORD }}
+      SOPS_AGE_KEY: ${{ secrets.SOPS_AGE_KEY }}
+      ANSIBLE_SOPS_AGE_KEY: ${{ secrets.SOPS_AGE_KEY }}
       DEPLOY_BACKEND_IMAGE_TAG: ${{ needs.set-image-tags.outputs.backend_tag }}
       DEPLOY_BACKEND_DIGEST: ${{ needs.set-image-tags.outputs.backend_digest }}
       BACKEND_CHANGED: ${{ needs.changes.outputs.backend }}

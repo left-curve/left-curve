@@ -337,7 +337,17 @@ type = "flood"
 # Since a block affects the application state, some transactions in the
 # mempool may become invalid. If this does not apply to your application,
 # you can disable rechecking.
-recheck = true
+#
+# Disabled for Dango. After every committed block, CometBFT reruns CheckTx over
+# EVERY remaining mempool tx, synchronously on the block-apply critical path.
+# With a full mempool (size = 5000) this costs ~1.2s per block -- far above our
+# ~350ms block time -- and on a node catching up via block-sync it throttles
+# apply below the chain's block production rate, so the node can never catch up
+# (observed on mainnet 2026-06-28: a restarted validator stuck at ~47 blk/min vs
+# ~170 produced). The only cost of disabling it is that txs invalidated by a
+# block are no longer evicted from the mempool eagerly; they linger until reaped
+# into a later block (where they execute, fail, and are then removed) or expire.
+recheck = false
 
 # recheck_timeout is the time the application has during the rechecking process
 # to return CheckTx responses, once all requests have been sent. Responses that
@@ -494,7 +504,7 @@ peer_query_maj23_sleep_duration      = "2s"
 # considerable amount of disk space. Set to false to ensure ABCI responses are
 # persisted. ABCI responses are required for /block_results RPC queries, and to
 # reindex events in the command-line tool.
-discard_abci_responses = false
+discard_abci_responses = true
 
 # The representation of keys in the database.
 # The current representation of keys in Comet's stores is considered to be v1

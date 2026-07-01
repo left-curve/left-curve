@@ -33,8 +33,7 @@ Macro-generated per-query paginators (each: `pub async fn(&self, page_size: i64,
 
 Trait methods reachable on `HttpClient` (via `#[async_trait]` impls of grug traits — these are the canonical "Client actions"):
 - `impl QueryClient` (`type Error = anyhow::Error; type Proof = dango_primitives::Proof;`)
-  - `async fn query_app(&self, query: Query, height: Option<u64>) -> Result<QueryResponse, Self::Error>`
-  - `async fn query_store(&self, key: Binary, height: Option<u64>, prove: bool) -> Result<(Option<Binary>, Option<Self::Proof>), Self::Error>`
+  - `async fn query_app(&self, query: Query) -> Result<QueryResponse, Self::Error>`
   - `async fn simulate(&self, tx: UnsignedTx) -> Result<TxOutcome, Self::Error>`
 - `impl BlockClient` (`type Error = anyhow::Error;`)
   - `async fn query_block(&self, height: Option<u64>) -> Result<Block, Self::Error>` — REST `block/info[/{height}]`
@@ -70,7 +69,7 @@ Types:
 `SubscriptionVariables` (provided method):
 - `fn subscribe(self, client: &WsClient) -> impl Future<Output = Result<SubscriptionStream<<Self::Query as GraphQLQuery>::ResponseData>, anyhow::Error>> + Send` — sugar over `WsClient::subscribe::<Self::Query>(self)`
 
-Pre-implemented for these `dango_indexer_graphql_types` `Variables` types: `subscribe_block`, `subscribe_accounts`, `subscribe_transfers`, `subscribe_transactions`, `subscribe_messages`, `subscribe_events`, `subscribe_event_by_addresses`, `subscribe_candles`, `subscribe_perps_candles`, `subscribe_trades`, `subscribe_perps_trades`, `subscribe_query_app`, `subscribe_query_store`, `subscribe_query_status`. (13 impls — note that `SubscribeBlock`/`SubscribeAccounts`/etc. are the corresponding `GraphQLQuery` types.)
+Pre-implemented for these `dango_indexer_graphql_types` `Variables` types: `subscribe_block`, `subscribe_accounts`, `subscribe_transfers`, `subscribe_transactions`, `subscribe_messages`, `subscribe_events`, `subscribe_event_by_addresses`, `subscribe_candles`, `subscribe_perps_candles`, `subscribe_trades`, `subscribe_perps_trades`, `subscribe_query_app`, `subscribe_query_status`. (13 impls — note that `SubscribeBlock`/`SubscribeAccounts`/etc. are the corresponding `GraphQLQuery` types.)
 
 ### `SingleSigner` / signing surface
 Type-state builder for Dango's single-signature accounts; `S: Secret`, plus two phantom-state generics for `UserIndex` (defined/undefined) and `Nonce` (defined/undefined). Source: `dango/sdk/src/signer.rs`
@@ -142,8 +141,8 @@ Static methods (no `impl Secret` here — `Keystore` is just a file format):
 
 - `pub trait Variables { type Query: GraphQLQuery<Variables = Self>; }` — links a `*::Variables` struct to its parent `GraphQLQuery` type; implemented by macro for every query and subscription module
 - `pub struct PageInfo { pub start_cursor, pub end_cursor: Option<String>, pub has_next_page, pub has_previous_page: bool }` (`Debug + Clone + Default + Serialize + Deserialize`)
-- Generated query types (each a `pub struct $Name;` implementing `graphql_client::GraphQLQuery`, with an accompanying snake-case module containing `Variables`, `ResponseData`, and nested `*Nodes` records): `QueryApp`, `QueryStore`, `Simulate`, `BroadcastTxSync`, `SearchTx`, `Block`, `Blocks`, `Transactions`, `Messages`, `Events`, `Transfers`, `Accounts`, `User`, `Users`, `Candles`, `PerpsCandles`, `PerpsEvents`, `Trades`, `PairStats`, `PairStatsPartial`, `AllPairStats`, `PerpsPairStats`, `PerpsPairStatsPartial`, `AllPerpsPairStats`, `QueryStatus` — 25 query types
-- Generated subscription types: `SubscribeBlock`, `SubscribeAccounts`, `SubscribeTransfers`, `SubscribeTransactions`, `SubscribeMessages`, `SubscribeEvents`, `SubscribeEventByAddresses`, `SubscribeCandles`, `SubscribePerpsCandles`, `SubscribeTrades`, `SubscribePerpsTrades`, `SubscribeQueryApp`, `SubscribeQueryStore`, `SubscribeQueryStatus` — 14 subscription types
+- Generated query types (each a `pub struct $Name;` implementing `graphql_client::GraphQLQuery`, with an accompanying snake-case module containing `Variables`, `ResponseData`, and nested `*Nodes` records): `QueryApp`, `Simulate`, `BroadcastTxSync`, `SearchTx`, `Block`, `Blocks`, `Transactions`, `Messages`, `Events`, `Transfers`, `Accounts`, `User`, `Users`, `Candles`, `PerpsCandles`, `PerpsEvents`, `Trades`, `PairStats`, `PairStatsPartial`, `AllPairStats`, `PerpsPairStats`, `PerpsPairStatsPartial`, `AllPerpsPairStats`, `QueryStatus` — 25 query types
+- Generated subscription types: `SubscribeBlock`, `SubscribeAccounts`, `SubscribeTransfers`, `SubscribeTransactions`, `SubscribeMessages`, `SubscribeEvents`, `SubscribeEventByAddresses`, `SubscribeCandles`, `SubscribePerpsCandles`, `SubscribeTrades`, `SubscribePerpsTrades`, `SubscribeQueryApp`, `SubscribeQueryStatus` — 14 subscription types
 - `pub mod subscriptions` — convenience module re-exporting the snake-case subscription submodules (`subscribe_block`, `subscribe_accounts`, …)
 - `Default` impls for: `candles::CandleInterval` (→ `ONE_MINUTE`), `perps_candles::CandleInterval`, `subscribe_candles::CandleInterval`, `subscribe_perps_candles::CandleInterval`, `subscribe_events::CheckValue` (→ `EQUAL`)
 

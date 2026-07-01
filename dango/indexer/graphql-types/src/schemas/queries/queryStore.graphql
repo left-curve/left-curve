@@ -1,6 +1,0 @@
-query QueryStore($key: String!, $height: Int, $prove: Boolean!) {
-  queryStore(key: $key, height: $height, prove: $prove) {
-    value
-    proof
-  }
-}

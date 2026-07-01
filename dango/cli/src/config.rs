@@ -89,6 +89,11 @@ impl Default for IndexerDatabaseConfig {
 pub struct TendermintConfig {
     pub rpc_addr: String,
     pub abci_addr: String,
+
+    /// Number of most-recent blocks for CometBFT to retain; older blocks are
+    /// pruned. `0` retains all blocks.
+    #[serde(default)]
+    pub retain_recent_blocks: u64,
 }
 
 impl Default for TendermintConfig {
@@ -96,6 +101,7 @@ impl Default for TendermintConfig {
         Self {
             rpc_addr: "http://localhost:26657".to_string(),
             abci_addr: "http://localhost:26658".to_string(),
+            retain_recent_blocks: 0,
         }
     }
 }

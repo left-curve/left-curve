@@ -62,10 +62,6 @@ generate_types! {
         path: "src/schemas/queries/queryApp.graphql",
     },
     {
-        name: QueryStore,
-        path: "src/schemas/queries/queryStore.graphql",
-    },
-    {
         name: Simulate,
         path: "src/schemas/queries/simulate.graphql",
     },
@@ -202,16 +198,8 @@ generate_subscription_types! {
         path: "src/schemas/subscriptions/perpsTrades.graphql",
     },
     {
-        name: SubscribePerpsEvents2,
-        path: "src/schemas/subscriptions/perpsEvents2.graphql",
-    },
-    {
         name: SubscribeQueryApp,
         path: "src/schemas/subscriptions/queryApp.graphql",
-    },
-    {
-        name: SubscribeQueryStore,
-        path: "src/schemas/subscriptions/queryStore.graphql",
     },
     {
         name: SubscribeQueryStatus,
@@ -224,7 +212,7 @@ pub mod subscriptions {
     pub use super::{
         subscribe_accounts, subscribe_block, subscribe_event_by_addresses, subscribe_events,
         subscribe_messages, subscribe_perps_candles, subscribe_perps_trades, subscribe_query_app,
-        subscribe_query_status, subscribe_query_store, subscribe_transactions, subscribe_transfers,
+        subscribe_query_status, subscribe_transactions, subscribe_transfers,
     };
 }
 

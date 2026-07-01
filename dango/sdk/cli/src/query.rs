@@ -3,20 +3,15 @@ use {
     clap::{Parser, Subcommand},
     dango_config_parser::parse_config,
     dango_primitives::{
-        Addr, Binary, BlockClient, Bound, Denom, Hash, Hash256, JsonDeExt, Proof, Query,
-        QueryClient, QueryWasmSmartRequest, SearchTxClient,
+        Addr, Binary, BlockClient, Bound, Denom, Hash, Hash256, JsonDeExt, Query, QueryClient,
+        QueryWasmSmartRequest, SearchTxClient,
     },
     dango_sdk::HttpClient,
-    serde::Serialize,
     std::str::FromStr,
 };
 
 #[derive(Parser)]
 pub struct QueryCmd {
-    /// The block height at which to perform queries [default: last finalized height]
-    #[arg(long)]
-    height: Option<u64>,
-
     #[command(subcommand)]
     subcmd: SubCmd,
 }
@@ -118,14 +113,6 @@ enum SubCmd {
         /// JSON-encoded query message
         msg: String,
     },
-    /// Query a raw key in the store
-    Store {
-        /// Key in b64 encoding
-        key: String,
-        /// Whether to request Merkle proof for raw store queries [default: false]
-        #[arg(long, default_value_t = false)]
-        prove: bool,
-    },
     /// Look up a transaction by hash
     Tx {
         /// Transaction hash in hex encoding
@@ -214,9 +201,6 @@ impl QueryCmd {
                 let msg = msg.deserialize_json()?;
                 Query::WasmSmart(QueryWasmSmartRequest { contract, msg })
             },
-            SubCmd::Store { key, prove } => {
-                return query_store(&client, key, self.height, prove).await;
-            },
             SubCmd::Tx { hash } => {
                 // Cast the hex string to uppercase, so that users can use either upper or
                 // lowercase on the CLI.
@@ -230,32 +214,6 @@ impl QueryCmd {
             },
         };
 
-        client
-            .query_app(req, self.height)
-            .await
-            .and_then(print_json_pretty)
+        client.query_app(req).await.and_then(print_json_pretty)
     }
-}
-
-#[derive(Serialize)]
-struct PrintableQueryStoreResponse {
-    key: String,
-    value: Option<String>,
-    proof: Option<Proof>,
-}
-
-async fn query_store(
-    client: &HttpClient,
-    key_b64: String,
-    height: Option<u64>,
-    prove: bool,
-) -> anyhow::Result<()> {
-    let key = Binary::from_str(&key_b64)?;
-    let (value, proof) = client.query_store(key, height, prove).await?;
-
-    print_json_pretty(PrintableQueryStoreResponse {
-        key: key_b64,
-        value: value.map(hex::encode),
-        proof,
-    })
 }

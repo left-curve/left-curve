@@ -6,7 +6,6 @@ use {
     },
     prost::bytes::Bytes,
     std::{
-        any::type_name,
         future::Future,
         num::NonZeroU32,
         pin::Pin,
@@ -17,7 +16,6 @@ use {
         AppHash, Hash, Time,
         abci::{self, Code, request, response, types::ExecTxResult},
         block::Height,
-        merkle::proof::{ProofOp, ProofOps},
         v0_38::abci::{Request, Response},
     },
     tower::Service,
@@ -196,12 +194,11 @@ where
     #[cfg_attr(feature = "tracing", tracing::instrument("abci::commit", skip_all))]
     async fn tower_commit(&self) -> AppResult<response::Commit> {
         match self.do_commit().await {
-            Ok(()) => Ok(response::Commit {
+            Ok(version) => Ok(response::Commit {
                 // This field is ignored since CometBFT 0.38.
-                // TODO: Can we omit this?????
                 data: Default::default(),
-                // TODO: what this means??
-                retain_height: Height::default(),
+                // CometBFT prunes its block and state stores below this height.
+                retain_height: retain_height(version, self.retain_recent_blocks),
             }),
             Err(err) => panic!("failed to commit: {err}"),
         }
@@ -338,30 +335,6 @@ where
                     ..Default::default()
                 },
             },
-            "/store" => match self.do_query_store_raw(&req.data, req.height.value(), req.prove) {
-                Ok((value, proof)) => {
-                    let proof = proof.map(|proof| ProofOps {
-                        ops: vec![ProofOp {
-                            field_type: type_name::<DB::Proof>().into(),
-                            key: req.data.into(),
-                            data: proof,
-                        }],
-                    });
-                    response::Query {
-                        code: Code::Ok,
-                        value: value.unwrap_or_default().into(),
-                        height: req.height,
-                        proof,
-                        ..Default::default()
-                    }
-                },
-                Err(err) => response::Query {
-                    code: into_tm_code_error(1),
-                    codespace: "store".into(),
-                    log: err.to_string(),
-                    ..Default::default()
-                },
-            },
             unknown => response::Query {
                 code: into_tm_code_error(1),
                 codespace: "app".into(),
@@ -372,6 +345,26 @@ where
 
         Ok(res)
     }
+}
+
+/// Compute the `retain_height` to return in the ABCI `Commit` response, given
+/// the just-committed block height (`version`) and the configured number of
+/// recent blocks to keep.
+///
+/// CometBFT prunes blocks below the returned height. A height of `0` means
+/// "retain all" (no pruning); we use it both when pruning is disabled
+/// (`retain_recent_blocks == 0`) and while the chain is younger than the
+/// retention window (`version <= retain_recent_blocks`).
+fn retain_height(version: u64, retain_recent_blocks: u64) -> Height {
+    let height = if retain_recent_blocks == 0 {
+        0
+    } else {
+        version.saturating_sub(retain_recent_blocks)
+    };
+
+    // Fallible only if `height > i64::MAX`, which is unreachable for real block
+    // heights (CometBFT itself rejects heights above `i64::MAX`).
+    Height::try_from(height).expect("retain height exceeds i64::MAX")
 }
 
 fn from_tm_block(height: u64, time: Time, hash: Option<Hash>) -> BlockInfo {
@@ -440,4 +433,27 @@ fn into_tm_code_error(code: u32) -> Code {
     Code::Err(NonZeroU32::new(code).unwrap_or_else(|| {
         panic!("expected non-zero error code, got {code}");
     }))
+}
+
+// ----------------------------------- tests -----------------------------------
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn retain_height_works() {
+        // Once past the retention window, keep exactly the most recent N blocks.
+        assert_eq!(retain_height(1500, 1000).value(), 500);
+
+        // Right at the boundary: nothing to prune yet.
+        assert_eq!(retain_height(1000, 1000).value(), 0);
+
+        // Younger than the window: retain everything.
+        assert_eq!(retain_height(500, 1000).value(), 0);
+
+        // Pruning disabled (`retain_recent_blocks == 0`): retain everything,
+        // regardless of how tall the chain is.
+        assert_eq!(retain_height(1500, 0).value(), 0);
+    }
 }

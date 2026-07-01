@@ -16,9 +16,14 @@ pub enum CommitmentStatus<T> {
         event: T,
         error: BacktracedError<String>,
     },
-    /// The state changes have been discarded, despite its execution was
-    /// successful, but some other parts of the transaction execution flow
-    /// failed; specifically, the `finalize_fee` call on taxman.
+    /// The state changes have been discarded, despite its execution being
+    /// successful, because some other part of the transaction execution flow
+    /// failed.
+    ///
+    /// NOTE: This was previously produced when the taxman's `finalize_fee`
+    /// call failed. That mechanism has been removed in 0.26.0, so this variant
+    /// is no longer produced. It is retained only so that historical,
+    /// Borsh-serialized cached blocks still deserialize.
     Reverted {
         event: T,
         revert_by: BacktracedError<String>,

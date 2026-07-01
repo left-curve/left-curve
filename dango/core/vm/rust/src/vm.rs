@@ -8,7 +8,7 @@ use {
 ///
 /// This doesn't include `allocate` and `deallocate`, which are only relevant
 /// for the `WasmVm`.
-pub const KNOWN_FUNCTIONS: [&str; 12] = [
+pub const KNOWN_FUNCTIONS: [&str; 10] = [
     "instantate",
     "execute",
     "migrate",
@@ -18,8 +18,6 @@ pub const KNOWN_FUNCTIONS: [&str; 12] = [
     "authenticate",
     "bank_execute",
     "bank_query",
-    "withhold_fee",
-    "finalize_fee",
     "cron_execute",
 ];
 
@@ -180,17 +178,6 @@ impl Instance for RustInstance {
                 )?;
                 res.to_borsh_vec()
             },
-            "withhold_fee" => {
-                let tx = param.deserialize_borsh()?;
-                let res = contract.withhold_fee(
-                    ctx.clone(),
-                    &mut self.storage,
-                    &MockApi,
-                    &self.querier,
-                    tx,
-                )?;
-                res.to_borsh_vec()
-            },
             _ if KNOWN_FUNCTIONS.contains(&name) => {
                 return Err(VmError::incorrect_number_of_inputs(name, 1));
             },
@@ -223,19 +210,6 @@ impl Instance for RustInstance {
                     &self.querier,
                     param1.as_ref(),
                     result,
-                )?;
-                res.to_borsh_vec()
-            },
-            "finalize_fee" => {
-                let tx = param1.deserialize_borsh()?;
-                let outcome = param2.deserialize_borsh()?;
-                let res = contract.finalize_fee(
-                    ctx.clone(),
-                    &mut self.storage,
-                    &MockApi,
-                    &self.querier,
-                    tx,
-                    outcome,
                 )?;
                 res.to_borsh_vec()
             },

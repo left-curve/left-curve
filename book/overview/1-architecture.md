@@ -265,7 +265,7 @@ genesis messages. The first version is 0.
 
 Lightweight mempool validation. Only runs:
 
-1. `taxman.withhold_fee()` -- Can the sender afford the gas fee?
+1. Fee withholding -- Can the sender afford the gas fee?
 2. `sender.authenticate()` -- Is the credential (signature, nonce) valid?
 
 State changes from CheckTx are discarded. A failing CheckTx causes the transaction
@@ -279,10 +279,11 @@ Full transaction processing:
    binary version matches, run the upgrade handler. If the version mismatches,
    **halt the chain** intentionally.
 2. **Process transactions** (see [Transaction lifecycle](../notes/transaction-lifecycle.md)):
-   - `taxman.withhold_fee()` -- **must succeed** (withholds gas fee).
-   - `sender.authenticate()` -- If fails, skip to step 5.
+   - Withhold the gas fee (`gas_limit * gas_fee_rate` of `gas_token`, credited to
+     the owner) -- **must succeed**. Senders in `gas_exemptions` pay nothing.
+   - `sender.authenticate()` -- If fails, the withheld fee is still charged.
    - Execute messages one-by-one, atomically.
-   - `taxman.finalize_fee()` -- **must succeed** (settles the fee).
+   - Commit the withheld fee. There is no refund of unused gas.
 3. **Run cronjobs.** Each scheduled cronjob runs in an isolated buffer; failures are
    silently discarded.
 4. **Clean up orphaned codes.** Codes not referenced by any contract and older than
@@ -387,7 +388,7 @@ pub struct RustVm;
 ```
 
 Executes contracts compiled directly into the node binary. No sandboxing, no gas
-metering overhead. Used for all first-party system contracts (bank, taxman, accounts,
+metering overhead. Used for all first-party system contracts (bank, accounts,
 perps, oracle, etc.).
 
 **Security implication:** Code running in `RustVm` has the same trust level as the

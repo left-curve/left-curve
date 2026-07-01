@@ -20,6 +20,7 @@ async-trait      = { workspace = true }
 borsh            = { workspace = true }
 dango-backtrace  = { workspace = true }
 dango-dyn-event  = { workspace = true }
+dango-math       = { workspace = true }
 dango-primitives = { workspace = true }
 dango-storage    = { workspace = true }
 data-encoding    = { workspace = true, optional = true }

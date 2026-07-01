@@ -625,11 +625,10 @@ async fn graphql_returns_address_balance() -> anyhow::Result<()> {
 
     let balance = suite
         .app
-        .do_query_app(
-            Query::balance(accounts.user1.address(), dango::DENOM.clone()),
-            Some(20),
-            false,
-        )
+        .do_query_app(Query::balance(
+            accounts.user1.address(),
+            dango::DENOM.clone(),
+        ))
         .unwrap()
         .into_balance();
 

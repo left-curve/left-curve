@@ -25,7 +25,6 @@ members = [
   "dango/exchange/order-book",
   "dango/exchange/perps",
   "dango/exchange/proposal-preparer",
-  "dango/exchange/taxman",
   "dango/exchange/types",
   "dango/exchange/upgrade",
   "dango/exchange/vesting",
@@ -56,7 +55,7 @@ members = [
   "dango/utils/identity",
   "dango/utils/temp-rocksdb",
 ]
-resolver = "2"
+resolver = "3"
 
 [workspace.package]
 authors       = ["Left Curve Software Limited"]
@@ -80,6 +79,7 @@ actix-service               = "2"
 actix-test                  = "0.1"
 actix-web                   = "4"
 actix-web-metrics           = "0.4"
+actix-ws                    = "0.4"
 aes-gcm                     = "0.10"
 alloy                       = "2"
 anyhow                      = "1"
@@ -222,7 +222,6 @@ dango-pyth-client           = { path = "dango/pyth/client" }
 dango-pyth-types            = { path = "dango/pyth/types" }
 dango-sdk                   = { path = "dango/sdk" }
 dango-storage               = { path = "dango/core/storage" }
-dango-taxman                = { path = "dango/exchange/taxman" }
 dango-temp-rocksdb          = { path = "dango/utils/temp-rocksdb" }
 dango-tester                = { path = "dango/core/tester" }
 dango-testing               = { path = "dango/testing" }

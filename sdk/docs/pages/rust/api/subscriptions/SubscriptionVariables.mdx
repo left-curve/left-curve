@@ -64,7 +64,6 @@ async fn main() -> Result<()> {
 | `subscribe_trades`                   | `SubscribeTrades`           | DEX fills for a pair. |
 | `subscribe_perps_trades`             | `SubscribePerpsTrades`      | Perps fills for a pair. |
 | `subscribe_query_app`                | `SubscribeQueryApp`         | A streaming `query_app` snapshot. |
-| `subscribe_query_store`              | `SubscribeQueryStore`       | A streaming `query_store` snapshot. |
 | `subscribe_query_status`             | `SubscribeQueryStatus`      | Node status snapshots. |
 
 Each `Variables` struct derives `Default`, so partial construction is idiomatic — `subscribe_events::Variables::default()`. Most subscription schemas only expose pagination and `sort_by` arguments; filter on the streamed payload client-side.

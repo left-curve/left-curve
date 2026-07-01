@@ -1,3 +1,10 @@
+{%- set _ns = namespace(ub={}, rb={}) -%}
+{%- for b in (points_bot_user_boosts[network] | default([])) -%}
+{%-   set _ns.ub = _ns.ub | combine({ b.user: ((_ns.ub[b.user] | default({})) | combine({ b.epoch: b.multiplier })) }) -%}
+{%- endfor -%}
+{%- for b in (points_bot_referral_boosts[network] | default([])) -%}
+{%-   set _ns.rb = _ns.rb | combine({ b.user: ((_ns.rb[b.user] | default({})) | combine({ b.epoch: b.multiplier })) }) -%}
+{%- endfor -%}
 {
   "block_task": {
     "initial_loops": 2,
@@ -35,8 +42,8 @@
       "multiplier": "1",
       "window": "2weeks"
     },
-    "user": {{ (points_bot_user_boosts[network] | default({})) | to_nice_json(indent=2) | indent(4) }},
-    "referral": {{ (points_bot_referral_boosts[network] | default({})) | to_nice_json(indent=2) | indent(4) }},
+    "user": {{ _ns.ub | to_nice_json(indent=2) | indent(4) }},
+    "referral": {{ _ns.rb | to_nice_json(indent=2) | indent(4) }},
     "pair": {}
   }
 }

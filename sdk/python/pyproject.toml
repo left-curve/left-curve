@@ -28,18 +28,18 @@ exclude = [
 ]
 
 [tool.hatch.build.targets.sdist.force-include]
-"../../indexer/graphql-types/src/schemas/mutations/broadcastTxSync.graphql"  = "dango/_graphql/mutations/broadcastTxSync.graphql"
-"../../indexer/graphql-types/src/schemas/queries/allPerpsPairStats.graphql"  = "dango/_graphql/queries/allPerpsPairStats.graphql"
-"../../indexer/graphql-types/src/schemas/queries/perpsCandles.graphql"       = "dango/_graphql/queries/perpsCandles.graphql"
-"../../indexer/graphql-types/src/schemas/queries/perpsEvents.graphql"        = "dango/_graphql/queries/perpsEvents.graphql"
-"../../indexer/graphql-types/src/schemas/queries/perpsPairStats.graphql"     = "dango/_graphql/queries/perpsPairStats.graphql"
-"../../indexer/graphql-types/src/schemas/queries/queryApp.graphql"           = "dango/_graphql/queries/queryApp.graphql"
-"../../indexer/graphql-types/src/schemas/queries/queryStatus.graphql"        = "dango/_graphql/queries/queryStatus.graphql"
-"../../indexer/graphql-types/src/schemas/queries/simulate.graphql"           = "dango/_graphql/queries/simulate.graphql"
-"../../indexer/graphql-types/src/schemas/subscriptions/block.graphql"        = "dango/_graphql/subscriptions/block.graphql"
-"../../indexer/graphql-types/src/schemas/subscriptions/events.graphql"       = "dango/_graphql/subscriptions/events.graphql"
-"../../indexer/graphql-types/src/schemas/subscriptions/perpsCandles.graphql" = "dango/_graphql/subscriptions/perpsCandles.graphql"
-"../../indexer/graphql-types/src/schemas/subscriptions/queryApp.graphql"     = "dango/_graphql/subscriptions/queryApp.graphql"
+"../../dango/indexer/graphql-types/src/schemas/mutations/broadcastTxSync.graphql"  = "dango/_graphql/mutations/broadcastTxSync.graphql"
+"../../dango/indexer/graphql-types/src/schemas/queries/allPerpsPairStats.graphql"  = "dango/_graphql/queries/allPerpsPairStats.graphql"
+"../../dango/indexer/graphql-types/src/schemas/queries/perpsCandles.graphql"       = "dango/_graphql/queries/perpsCandles.graphql"
+"../../dango/indexer/graphql-types/src/schemas/queries/perpsEvents.graphql"        = "dango/_graphql/queries/perpsEvents.graphql"
+"../../dango/indexer/graphql-types/src/schemas/queries/perpsPairStats.graphql"     = "dango/_graphql/queries/perpsPairStats.graphql"
+"../../dango/indexer/graphql-types/src/schemas/queries/queryApp.graphql"           = "dango/_graphql/queries/queryApp.graphql"
+"../../dango/indexer/graphql-types/src/schemas/queries/queryStatus.graphql"        = "dango/_graphql/queries/queryStatus.graphql"
+"../../dango/indexer/graphql-types/src/schemas/queries/simulate.graphql"           = "dango/_graphql/queries/simulate.graphql"
+"../../dango/indexer/graphql-types/src/schemas/subscriptions/block.graphql"        = "dango/_graphql/subscriptions/block.graphql"
+"../../dango/indexer/graphql-types/src/schemas/subscriptions/events.graphql"       = "dango/_graphql/subscriptions/events.graphql"
+"../../dango/indexer/graphql-types/src/schemas/subscriptions/perpsCandles.graphql" = "dango/_graphql/subscriptions/perpsCandles.graphql"
+"../../dango/indexer/graphql-types/src/schemas/subscriptions/queryApp.graphql"     = "dango/_graphql/subscriptions/queryApp.graphql"
 
 [dependency-groups]
 dev = [

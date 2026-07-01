@@ -44,4 +44,7 @@ url                         = { workspace = true }
 [dev-dependencies]
 csv                   = { workspace = true }
 dango-account-factory = { workspace = true }
+dango-math            = { workspace = true }
+dango-order-book      = { workspace = true }
+hex                   = { workspace = true }
 tokio                 = { workspace = true }

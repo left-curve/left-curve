@@ -1,7 +1,8 @@
 - hosts: traefik
   remote_user: "debian"
-  vars_files:
-    - vaults/debian/root_vault.yml
+  gather_facts: false
+  pre_tasks:
+    - ansible.builtin.import_tasks: tasks/load-debian-root-secrets.yml
   tasks:
     - name: Install certbot + Cloudflare plugin
       become: true
@@ -32,9 +33,10 @@
 - hosts: traefik
   remote_user: debian
   become: true
-  vars_files:
-    - vaults/debian/root_vault.yml
+  gather_facts: false
   pre_tasks:
+    - ansible.builtin.import_tasks: tasks/load-debian-root-secrets.yml
+
     - name: Get deploy user info
       getent:
         database: passwd

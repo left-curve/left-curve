@@ -20,10 +20,10 @@ metrics = ["dep:metrics"]
 tracing = ["dep:tracing"]
 
 [dependencies]
-async-graphql    = { workspace = true }
 async-stream     = { workspace = true }
 async-trait      = { workspace = true }
 dango-app        = { workspace = true }
+dango-order-book = { workspace = true }
 dango-primitives = { workspace = true, features = ["chrono"] }
 dango-types      = { workspace = true }
 futures-util     = { workspace = true }

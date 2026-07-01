@@ -3,7 +3,7 @@
 //! builder that delivers a connect-time snapshot followed by the live tail,
 //! in strict block-height order, with no silent drops.
 //!
-//! This is the reusable core behind the `perps_events2` subscription. The
+//! This is the reusable core behind the `perps_events` subscription. The
 //! future "new blocks" subscription (see crate docs) is a second instantiation
 //! `RecentStream<BlockAndOutcome>` — it drops onto this same primitive.
 //!
@@ -24,6 +24,7 @@
 //!   lives on the indexer node), rather than a silent hole.
 
 use {
+    dango_primitives::FullBlock,
     futures_util::stream::Stream,
     std::{
         collections::VecDeque,
@@ -40,6 +41,12 @@ use {
 /// to. One value per block height.
 pub trait HasHeight: Send + Sync + 'static {
     fn height(&self) -> u64;
+}
+
+impl HasHeight for FullBlock {
+    fn height(&self) -> u64 {
+        self.block.info.height
+    }
 }
 
 /// Returned when a subscriber requests — or falls behind to — a block height

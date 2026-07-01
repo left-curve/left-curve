@@ -51,7 +51,7 @@ curl -X POST https://<host>/graphql \
 
 ### 1.2 WebSocket
 
-Subscriptions (real-time data) use WebSocket with the `graphql-ws` protocol.
+Subscriptions (real-time data) use WebSocket with the `graphql-ws` protocol. A separate native WebSocket API (not `graphql-ws`) serves the `fullBlock` and `perpsEvents` feeds — see [§12](#12-new-in-v0260-websocket-api).
 
 **Endpoint:** See [Constants](9-constants.md#endpoints).
 
@@ -2193,9 +2193,9 @@ Request a withdrawal from the vault (initiates cooldown):
 
 Shares are burned immediately. The corresponding USD value enters a cooldown queue. After `vault_cooldown_period` elapses, funds are automatically credited back to the user's trading margin.
 
-## 8. Real-time subscriptions
+## 8. Real-time subscriptions (graphql-ws)
 
-All subscriptions use the WebSocket transport described in [§1.2](#12-websocket).
+All subscriptions in this section use the `graphql-ws` WebSocket transport described in [§1.2](#12-websocket). The `fullBlock` and `perpsEvents` feeds use the native WebSocket API instead — see [§12](#12-new-in-v0260-websocket-api).
 
 ### 8.1 Perps candles
 
@@ -2268,58 +2268,7 @@ subscription {
 
 ### 8.3 Perps events
 
-Stream every event emitted by the perps contract — order lifecycle, fills, liquidations, and deleveraging — grouped per block. It is the richer superset of [§8.2](#82-perps-trades) (which streams fills only), and a perps-scoped, lower-latency alternative to the generic event stream ([§8.6](#86-event-stream)). It is served from an in-memory window of the most recent blocks, so deep history is not available here — use the `perpsEvents` query ([§5.5](#55-trade-history)) for that.
-
-```graphql
-subscription {
-  perpsEvents2(
-    eventTypes: ["order_filled", "liquidated"],
-    pairIds: ["perp/btcusd"],
-    users: ["0x1234...abcd"]
-  ) {
-    blockHeight
-    createdAt
-    events {
-      idx
-      eventType
-      user
-      pairId
-      data
-    }
-  }
-}
-```
-
-Each message carries one block's worth of matching events. Only blocks that contain at least one matching event are delivered.
-
-| Parameter          | Type        | Description                                                             |
-| ------------------ | ----------- | ---------------------------------------------------------------------- |
-| `sinceBlockHeight` | `Int`       | Replay retained blocks from this height on connect; omit for live-only |
-| `eventTypes`       | `[String!]` | Keep only these event types (see [§9](#9-events-reference))            |
-| `pairIds`          | `[String!]` | Keep only these trading pairs                                          |
-| `users`            | `[String!]` | Keep only events whose `user` is one of these addresses                |
-
-**Filter semantics.** The three filters AND together. Omitting a filter does not filter on that field (matches everything); passing an _empty_ list matches nothing. Addresses are matched verbatim against each event's canonical address string, so pass the same `0x`-prefixed form the API returns elsewhere.
-
-**PerpsEvent2Batch fields:**
-
-| Field         | Type            | Description                       |
-| ------------- | --------------- | --------------------------------- |
-| `blockHeight` | `Int`           | Block height                      |
-| `createdAt`   | `String`        | Block timestamp (ISO 8601)        |
-| `events`      | `[PerpsEvent2]` | The block's matching perps events |
-
-**PerpsEvent2 fields:**
-
-| Field       | Type      | Description                                                  |
-| ----------- | --------- | ----------------------------------------------------------- |
-| `idx`       | `Int`     | Ordinal of this event within the block                      |
-| `eventType` | `String`  | Event type name (see [§9](#9-events-reference))             |
-| `user`      | `String?` | The event's subject address, if it has a `user` field       |
-| `pairId`    | `String?` | The event's trading pair, if it has a `pair_id` field       |
-| `data`      | `JSON`    | Raw event payload (same shape as [§9](#9-events-reference)) |
-
-**Reconnect.** Pass `sinceBlockHeight` to replay events missed while disconnected. The in-memory window retains only recent blocks; if `sinceBlockHeight` is older than the window, the subscription fails to start with a "resync required" error — reconnect with a newer height and backfill the gap from the `perpsEvents` query ([§5.5](#55-trade-history)).
+Perps-contract events are streamed over the native WebSocket API, on the `perpsEvents` channel — see [§12.2](#122-channels). For deep history, use the `perpsEvents` query ([§5.5](#55-trade-history)).
 
 ### 8.4 Contract query polling
 
@@ -2413,7 +2362,7 @@ subscription {
 
 ## 9. Events reference
 
-The perps contract emits the following events. These can be queried via `perpsEvents` ([§5.5](#55-trade-history)) or streamed in real time via the `perpsEvents2` subscription ([§8.3](#83-perps-events)) or the generic `events` subscription ([§8.6](#86-event-stream)).
+The perps contract emits the following events. These can be queried via `perpsEvents` ([§5.5](#55-trade-history)) or streamed in real time via the WebSocket `perpsEvents` channel ([§12.2](#122-channels)) or the generic `events` subscription ([§8.6](#86-event-stream)).
 
 ### Margin events
 
@@ -2779,3 +2728,312 @@ One action inside a [`batch_update_orders`](#66-batch-update-orders) list. Condi
 | ------- | -------------- | ---------------------- |
 | `index` | `AccountIndex` | Account's unique index |
 | `owner` | `UserIndex`    | Owning user's index    |
+
+## 11. New in v0.26.0: REST API
+
+Plain REST endpoints for the most common operations, as an alternative to the GraphQL endpoint in [§1.1](#11-http). Each is a `POST` whose body is the raw object — no GraphQL `{query, variables}` wrapper — and whose response is the raw result JSON. They exist for bots and algo traders that expect a REST + WebSocket surface rather than GraphQL.
+
+**Endpoint:** See [Constants](9-constants.md#endpoints).
+
+**Headers:**
+
+| Header         | Value              |
+| -------------- | ------------------ |
+| `Content-Type` | `application/json` |
+
+### 11.1 Query
+
+Run a read-only query against the latest finalized state. The body is a single `Query` object — the same shape the GraphQL `queryApp` takes as its `request` — and the response is the matching `QueryResponse`. Historical queries are not supported; there is no `height` parameter.
+
+**Example — query a smart contract:**
+
+```bash
+curl -X POST https://<host>/query \
+  -H 'Content-Type: application/json' \
+  -d '{"wasm_smart": {"contract": "PERPS_CONTRACT", "msg": {"state": {}}}}'
+```
+
+**Response** — the `QueryResponse`, keyed by the request variant:
+
+```json
+{
+  "wasm_smart": { ... }
+}
+```
+
+The body accepts any `Query` variant — for example `{"app_config": {}}`, `{"balance": { ... }}`, or `{"multi": [ ... ]}` to batch several queries atomically (see [§1.4](#14-multi-query)).
+
+### 11.2 Simulate
+
+Dry-run an `UnsignedTx` to estimate gas. The body is the `UnsignedTx`; the response is the `TxOutcome`. Simulation skips signature verification — add **770,000 gas** (Secp256k1 verification cost) to `gas_used` when setting `gas_limit` on the final transaction (see [§2.8](#28-gas-estimation)).
+
+**Request body** — an `UnsignedTx`:
+
+```json
+{
+  "sender": "0x1234...abcd",
+  "msgs": [ ... ],
+  "data": {
+    "user_index": 0,
+    "chain_id": "dango-1",
+    "nonce": 42,
+    "expiry": null
+  }
+}
+```
+
+**Example:**
+
+```bash
+curl -X POST https://<host>/simulate \
+  -H 'Content-Type: application/json' \
+  -d '{"sender": "0x1234...abcd", "msgs": [ ... ], "data": { ... }}'
+```
+
+**Response** — the `TxOutcome`:
+
+```json
+{
+  "gas_limit": 100000000,
+  "gas_used": 750000,
+  "result": {
+    "Ok": null
+  },
+  "events": { ... }
+}
+```
+
+`result` is the standard-library `Result` serialization: `{"Ok": null}` on success (the `Ok` value is `()`), or `{"Err": {"error": "...", "backtrace": "..."}}` on failure. `events` is the per-stage event tree (`withhold`, `authenticate`, `msgs_and_backrun`, `finalize`). `gas_limit` is the simulation ceiling (the node's `query_gas_limit`), not the gas you should set on the final transaction — use `gas_used` for that.
+
+### 11.3 Broadcast
+
+Submit a signed `Tx` to the mempool. The body is the `Tx`; the response is the `BroadcastTxOutcome`. This is a mempool receipt, **not** block inclusion: an accepted transaction returns `200` with `check_tx.result` set to `{"Ok": null}`, and a mempool-rejected transaction also returns `200` but with `check_tx.result` an `{"Err": ...}` object (it never entered a block). Only a transport failure to the consensus node returns `500`.
+
+**Request body** — a signed `Tx`:
+
+```json
+{
+  "sender": "0x1234...abcd",
+  "gas_limit": 1500000,
+  "msgs": [ ... ],
+  "data": {
+    "user_index": 0,
+    "chain_id": "dango-1",
+    "nonce": 42,
+    "expiry": null
+  },
+  "credential": {
+    "standard": {
+      "key_hash": "...",
+      "signature": { ... }
+    }
+  }
+}
+```
+
+**Example:**
+
+```bash
+curl -X POST https://<host>/broadcast \
+  -H 'Content-Type: application/json' \
+  -d '{"sender": "0x1234...abcd", "gas_limit": 1500000, "msgs": [ ... ], "data": { ... }, "credential": { ... }}'
+```
+
+**Response** — the `BroadcastTxOutcome`:
+
+```json
+{
+  "tx_hash": "...",
+  "check_tx": {
+    "gas_limit": 1500000,
+    "gas_used": 12000,
+    "result": {
+      "Ok": null
+    },
+    "events": { ... }
+  }
+}
+```
+
+`check_tx` is a `CheckTxOutcome` produced by mempool admission (the `withhold` and `authenticate` stages only), so its `gas_used` is small and its `events` cover just those stages. `result` is `{"Ok": null}` if admitted, or `{"Err": {"error": "...", "backtrace": "..."}}` if rejected.
+
+## 12. New in v0.26.0: WebSocket API
+
+A native WebSocket endpoint for real-time feeds, distinct from the `graphql-ws` endpoint in [§1.2](#12-websocket). It follows the multiplexed, message-oriented convention used by major exchanges: one socket carries any number of subscriptions, the client opens and closes them with JSON messages, and every frame is a single JSON object.
+
+**Endpoint:** `GET /ws` (WebSocket upgrade). See [Constants](9-constants.md#endpoints).
+
+Two channels are served, both replacing `graphql-ws` subscriptions removed in this release:
+
+- `fullBlock` — every finalized block (`Block` + `BlockOutcome`).
+- `perpsEvents` — perps-contract events grouped per block, with filters.
+
+### 12.1 Protocol
+
+Client messages are tagged by `method`; server messages are tagged by `channel`. A `subscribe` carries a client-chosen integer `id` that is the subscription handle: it is echoed on the acknowledgement and on every data frame the subscription produces, and is used to `unsubscribe`. One socket can therefore carry several subscriptions — for example several `perpsEvents` feeds with different filters — that the client demultiplexes by `id`.
+
+**Client → server:**
+
+```json
+{"method": "subscribe", "id": 1, "subscription": {"type": "perpsEvents", "pairIds": ["perp/btcusd"]}}
+{"method": "subscribe", "id": 2, "subscription": {"type": "fullBlock"}}
+{"method": "unsubscribe", "id": 1}
+{"method": "ping", "id": 9}
+```
+
+| Field          | Type     | Description                                                |
+| -------------- | -------- | ---------------------------------------------------------- |
+| `method`       | `String` | `subscribe`, `unsubscribe`, or `ping`                      |
+| `id`           | `Int`    | Subscription handle; required on `subscribe`/`unsubscribe` |
+| `subscription` | `Object` | The feed selector; see [§12.2](#122-channels)              |
+
+**Server → client:**
+
+```json
+{"channel": "subscriptionResponse", "id": 1, "data": {"method": "subscribe", "type": "perpsEvents"}}
+{"channel": "perpsEvents", "id": 1, "data": { ... }}
+{"channel": "perpsEvents", "id": 1, "error": {"code": "resync", "message": "..."}}
+{"channel": "fullBlock", "id": 2, "data": { ... }}
+{"channel": "pong", "id": 9}
+{"channel": "error", "error": {"code": "badRequest", "message": "..."}}
+```
+
+| `channel`                 | Description                                                                                                                                             |
+| ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `subscriptionResponse`    | Acknowledges a `subscribe`/`unsubscribe`, echoing its `id`                                                                                              |
+| `perpsEvents`/`fullBlock` | A frame on a subscription's channel, tagged with its `id`: a `data` payload, or an `error` that ended the feed (see [§12.3](#123-reconnect-and-errors)) |
+| `pong`                    | Reply to a `ping`, echoing its `id`                                                                                                                     |
+| `error`                   | A connection-level problem with no subscription to attribute it to (e.g. an unparseable frame); see [§12.3](#123-reconnect-and-errors)                  |
+
+Each frame on a subscription's channel (`perpsEvents` / `fullBlock`) carries either a `data` payload or an `error`; a client demultiplexes by `id` and branches on which key is present. Errors are co-located this way so a feed's failure arrives on the same channel its data does — see [§12.3](#123-reconnect-and-errors).
+
+**Heartbeat.** The server sends a WebSocket ping every 20 seconds and closes a connection it has heard nothing from for 60 seconds. A client either lets its WebSocket stack answer those pings, or sends `{"method": "ping"}` itself; either keeps an idle subscription alive.
+
+### 12.2 Channels
+
+#### `perpsEvents`
+
+Stream every event emitted by the perps contract — order lifecycle, fills, liquidations, and deleveraging — grouped per block. Served from an in-memory window of recent blocks, so deep history is not available here; use the `perpsEvents` query ([§5.5](#55-trade-history)) for that.
+
+```json
+{"method": "subscribe", "id": 1, "subscription": {
+  "type": "perpsEvents",
+  "since": 100000,
+  "eventTypes": ["order_filled", "liquidated"],
+  "pairIds": ["perp/btcusd"],
+  "users": ["0x1234...abcd"],
+  "orderIds": ["100"],
+  "clientOrderIds": ["42"]
+}}
+```
+
+| Field            | Type       | Description                                                            |
+| ---------------- | ---------- | ---------------------------------------------------------------------- |
+| `since`          | `Int`      | Replay retained blocks from this height on connect; omit for live-only |
+| `eventTypes`     | `[String]` | Keep only these event types (see [§9](#9-events-reference))            |
+| `pairIds`        | `[String]` | Keep only these trading pairs                                          |
+| `users`          | `[String]` | Keep only events whose `user` is one of these addresses                |
+| `orderIds`       | `[String]` | Keep only events whose `order_id` is one of these                      |
+| `clientOrderIds` | `[String]` | Keep only events whose `client_order_id` is one of these               |
+
+**Filter semantics.** The five filters AND together. Omitting a filter does not filter on that field (matches everything); passing an _empty_ array matches nothing. Each value is matched verbatim against the event's canonical string form, so pass the same `0x`-prefixed address or decimal-id form the API returns elsewhere. A `client_order_id` is unique only per sender, so combine `clientOrderIds` with `users` to single out one trader's order.
+
+Each data frame carries one block's matching events; only blocks with at least one matching event are delivered:
+
+```json
+{"channel": "perpsEvents", "id": 1, "data": {
+  "blockHeight": 100001,
+  "createdAt": "2026-06-18T00:00:00Z",
+  "events": [
+    {
+      "idx": 0,
+      "eventType": "order_filled",
+      "user": "0x1234...abcd",
+      "pairId": "perp/btcusd",
+      "orderId": "100",
+      "clientOrderId": "42",
+      "data": { ... }
+    }
+  ]
+}}
+```
+
+**`data` (PerpsEventsBatch) fields:**
+
+| Field         | Type           | Description                       |
+| ------------- | -------------- | --------------------------------- |
+| `blockHeight` | `Int`          | Block height                      |
+| `createdAt`   | `String`       | Block timestamp (ISO 8601)        |
+| `events`      | `[PerpsEvent]` | The block's matching perps events |
+
+**PerpsEvent fields:**
+
+| Field           | Type      | Description                                                 |
+| --------------- | --------- | ----------------------------------------------------------- |
+| `idx`           | `Int`     | Ordinal of this event within the block                      |
+| `eventType`     | `String`  | Event type name (see [§9](#9-events-reference))             |
+| `user`          | `String?` | The event's subject address, if it has a `user` field       |
+| `pairId`        | `String?` | The event's trading pair, if it has a `pair_id` field       |
+| `orderId`       | `String?` | The event's order, if it has an `order_id` field            |
+| `clientOrderId` | `String?` | The caller-assigned client order id, if it has one          |
+| `data`          | `JSON`    | Raw event payload (same shape as [§9](#9-events-reference)) |
+
+#### `fullBlock`
+
+Stream every finalized block in full — the same `FullBlock` shape (`block` + `outcome`) the REST `/block/full/{height}` route returns, one data frame per block.
+
+```json
+{"method": "subscribe", "id": 2, "subscription": {"type": "fullBlock", "since": 100000}}
+```
+
+| Field   | Type  | Description                                                            |
+| ------- | ----- | ---------------------------------------------------------------------- |
+| `since` | `Int` | Replay retained blocks from this height on connect; omit for live-only |
+
+```json
+{"channel": "fullBlock", "id": 2, "data": {"block": { ... }, "outcome": { ... }}}
+```
+
+#### `broadcast`
+
+Submit a signed transaction to the mempool — a **write** request/response (one request, one reply), not a subscription stream. The REST `POST /broadcast` ([§11.3](#113-broadcast)) is the default; this lets a client already holding a `/ws` connection broadcast without opening a separate HTTP request. Like REST, it returns a mempool receipt (`BroadcastTxOutcome`), **not** block inclusion.
+
+```json
+{"method": "broadcast", "id": 1, "tx": { ... signed Tx ... }}
+```
+
+| Field | Type     | Description                                                     |
+| ----- | -------- | --------------------------------------------------------------- |
+| `id`  | `Int`    | Echoed on the reply frame                                       |
+| `tx`  | `Object` | The signed `Tx` (see [§2](#2-authentication-and-transactions))  |
+
+The reply rides the `broadcast` channel. Success — **including a mempool-rejected tx**, whose rejection is carried in `check_tx.result` — is a `data` frame holding the `BroadcastTxOutcome` (same shape as [§11.3](#113-broadcast)):
+
+```json
+{"channel": "broadcast", "id": 1, "data": {"tx_hash": "...", "check_tx": { ... }}}
+```
+
+Only a transport failure to the consensus node is an `error` frame:
+
+```json
+{"channel": "broadcast", "id": 1, "error": {"code": "broadcastFailed", "message": "..."}}
+```
+
+### 12.3 Reconnect and errors
+
+Both subscription channels (`perpsEvents` and `fullBlock`) are served from an in-memory window of recent blocks. Every data frame carries the block height (`blockHeight`, or `block.info.height` for `fullBlock`), so a client tracks the last height it saw and, on reconnect, resubscribes with `since` set to that height plus one. Subscriptions are not persisted across reconnects: a client that reconnects must resend its `subscribe` messages.
+
+Problems are delivered as `error`-keyed frames. An error that concerns a specific subscription rides that subscription's own channel and `id` — an `error` sibling of the `data` frames it would otherwise send — so a client handles a feed's failure on the same channel it reads from. An error with no subscription to attribute it to (an unparseable message, or an `unsubscribe` for an unknown `id`) arrives on the dedicated `error` channel instead, carrying the offending `id` when there is one.
+
+| `code`                | Meaning                                                                                                                                                                                                                                   |
+| --------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `resync`              | `since` predates the retained window, or the feed lagged past it. The subscription ends; reconnect with a newer `since` and backfill the gap from the `perpsEvents` query ([§5.5](#55-trade-history)) or the `/block/full/*` REST routes. |
+| `tooManyRequests`     | The server's subscription limit was reached.                                                                                                                                                                                              |
+| `badRequest`          | The message could not be parsed, or the `id` is already in use.                                                                                                                                                                           |
+| `unknownSubscription` | An `unsubscribe` referenced an `id` with no open subscription.                                                                                                                                                                            |
+
+A subscription-scoped error (here, a terminal `resync` on the `perpsEvents` feed opened with `id: 1`):
+
+```json
+{"channel": "perpsEvents", "id": 1, "error": {"code": "resync", "message": "resync required: requested from block 100 but the oldest retained block is 900"}}
+```
