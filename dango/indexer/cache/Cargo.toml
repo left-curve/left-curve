@@ -44,4 +44,12 @@ tracing              = { workspace = true, optional = true }
 xz2                  = { workspace = true, optional = true }
 
 [dev-dependencies]
+anyhow   = { workspace = true }
 assertor = { workspace = true }
+dotenvy  = { workspace = true }
+tokio    = { workspace = true, features = ["macros"] }
+
+# Interactive S3 batch download + streaming decompression walkthrough.
+[[example]]
+name              = "batch_reader"
+required-features = ["s3", "xz-codec"]

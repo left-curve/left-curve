@@ -4011,6 +4011,7 @@ dependencies = [
 name = "dango-indexer-cache"
 version = "0.0.0"
 dependencies = [
+ "anyhow",
  "assertor",
  "aws-config",
  "aws-credential-types",
@@ -4020,6 +4021,7 @@ dependencies = [
  "dango-backtrace",
  "dango-disk-saver",
  "dango-primitives",
+ "dotenvy",
  "lzma-rs",
  "metrics",
  "roaring",
