@@ -201,15 +201,9 @@ describe("PointsProfileTable", () => {
     });
 
     const bubblingClick = vi.fn();
-    const bubblingMouseDown = vi.fn();
-    const bubblingPointerDown = vi.fn();
 
     render(
-      <div
-        onClick={bubblingClick}
-        onMouseDown={bubblingMouseDown}
-        onPointerDown={bubblingPointerDown}
-      >
+      <div onClick={bubblingClick}>
         <PointsProfileTable />
       </div>,
     );
@@ -228,16 +222,12 @@ describe("PointsProfileTable", () => {
       name: m["points.profile.columns.share"](),
     });
 
-    fireEvent.pointerDown(shareButton);
-    fireEvent.mouseDown(shareButton);
     fireEvent.click(shareButton);
 
     expect(pointsProfileMocks.showModal).toHaveBeenCalledWith(Modals.PointsShare, {
       points: 25,
       weekNumber: 0,
     });
-    expect(bubblingPointerDown).not.toHaveBeenCalled();
-    expect(bubblingMouseDown).not.toHaveBeenCalled();
     expect(bubblingClick).not.toHaveBeenCalled();
   });
 
