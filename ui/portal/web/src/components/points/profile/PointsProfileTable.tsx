@@ -1,7 +1,6 @@
 import {
   Button,
   Cell,
-  IconButton,
   IconShare,
   Modals,
   Pagination,
@@ -126,6 +125,21 @@ export const PointsProfileTable: React.FC = () => {
     [sortKey],
   );
 
+  const handleSharePressStart = useCallback((event: React.SyntheticEvent<HTMLButtonElement>) => {
+    event.stopPropagation();
+  }, []);
+
+  const handleShareClick = useCallback(
+    (event: React.MouseEvent<HTMLButtonElement>, row: EpochHistoryRow) => {
+      event.stopPropagation();
+      showModal(Modals.PointsShare, {
+        points: row.points,
+        weekNumber: row.epoch,
+      });
+    },
+    [showModal],
+  );
+
   const columns: TableColumn<EpochHistoryRow> = [
     {
       id: "epoch",
@@ -162,34 +176,33 @@ export const PointsProfileTable: React.FC = () => {
       enableSorting: false,
       cell: ({ row }) => (
         <Cell.Text
-          className="text-ink-primary-900"
-          text={m["points.profile.xPoints"]({ points: formatNumber(row.original.points, formatNumberOptions) })}
+          className="w-full items-end text-right text-ink-primary-900"
+          text={m["points.profile.xPoints"]({
+            points: formatNumber(row.original.points, formatNumberOptions),
+          })}
         />
       ),
     },
     {
       id: "share",
       header: () => (
-        <span className="block w-full text-right">
-          {m["points.profile.columns.share"]()}
-        </span>
+        <span className="block w-full text-right">{m["points.profile.columns.share"]()}</span>
       ),
       enableSorting: false,
       cell: ({ row }) => (
         <div className="flex justify-end">
-          <IconButton
+          <Button
+            type="button"
+            aria-label={m["points.profile.columns.share"]()}
             variant="link"
-            size="sm"
-            className="text-ink-secondary-blue hover:text-primitives-blue-light-600"
-            onClick={() =>
-              showModal(Modals.PointsShare, {
-                points: row.original.points,
-                weekNumber: row.original.epoch,
-              })
-            }
+            size="xs"
+            className="m-0 h-8 w-8 p-0"
+            onPointerDown={handleSharePressStart}
+            onMouseDown={handleSharePressStart}
+            onClick={(event) => handleShareClick(event, row.original)}
           >
-            <IconShare className="w-4 h-4" />
-          </IconButton>
+            <IconShare aria-hidden="true" focusable="false" className="w-4 h-4" />
+          </Button>
         </div>
       ),
     },

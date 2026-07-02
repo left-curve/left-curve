@@ -34,6 +34,8 @@ deploy_user="deploy"
 100.76.197.30  # hetzner3
 100.109.200.70 # hetzner4
 100.66.152.68  # hetzner6
+100.126.43.113 # hetzner7
+100.99.36.21   # hetzner8
 
 [db]
 100.96.253.40  # ovh1
@@ -45,6 +47,8 @@ deploy_user="deploy"
 100.76.197.30  # hetzner3
 100.109.200.70 # hetzner4
 100.66.152.68  # hetzner6
+100.126.43.113 # hetzner7
+100.99.36.21   # hetzner8
 
 [bots]
 100.96.253.40  # ovh1
@@ -70,6 +74,8 @@ deploy_user="deploy"
 100.76.197.30  # hetzner3
 100.109.200.70 # hetzner4
 100.66.152.68  # hetzner6
+100.126.43.113 # hetzner7
+100.99.36.21   # hetzner8
 
 [uptimekuma]
 100.122.37.57  # ovh3
@@ -92,6 +98,8 @@ deploy_user="deploy"
 100.76.197.30  # hetzner3
 100.109.200.70 # hetzner4
 100.66.152.68  # hetzner6
+100.126.43.113 # hetzner7
+100.99.36.21   # hetzner8
 
 [vaultwarden]
 100.122.37.57  # ovh3
@@ -166,4 +174,14 @@ perp-liquidator-mainnet
 100.76.197.30  # hetzner3
 100.109.200.70 # hetzner4
 100.66.152.68  # hetzner6
+
+[indexer-testnet]
+100.99.36.21   # hetzner8
+
+[indexer-mainnet]
+100.126.43.113 # hetzner7
+
+[indexer:children]
+indexer-testnet
+indexer-mainnet
 
