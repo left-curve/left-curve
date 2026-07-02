@@ -181,7 +181,7 @@ export const PointsProfileTable: React.FC = () => {
             aria-label={m["points.profile.columns.share"]()}
             variant="link"
             size="xs"
-            className="m-0 h-8 w-8 p-0 overflow-visible text-ink-secondary-blue hover:text-primitives-blue-light-600"
+            className="m-0 h-8 w-8 p-0"
             onClick={(event) => {
               event.stopPropagation();
               showModal(Modals.PointsShare, {
