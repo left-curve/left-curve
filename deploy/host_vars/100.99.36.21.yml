@@ -6,3 +6,13 @@ reboot_time: "16:00"
 dango_networks:
   - testnet
 cloudflare_lb_enabled: true
+
+# Archive indexer instance — `just deploy-archive testnet` (roles/archive).
+# See host_vars/100.126.43.113.yml (hetzner7) for the live_host_override
+# rationale. 10.99.0.9 = hetzner2's wireguard IP.
+archive_instances:
+  - name: testnet
+    live_url: "http://api-testnet.dango.zone"
+    live_host_override: "10.99.0.9"
+    metrics_host_port: 9191
+    httpd_host_port: 9081

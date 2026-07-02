@@ -25,3 +25,32 @@ bind    = "0.0.0.0:8080"
 enabled = true
 ip      = "0.0.0.0"
 port    = 9191
+
+# Activity projection, write-time (NOT retroactive — changing these needs a
+# re-backfill via drop-db-archive). Explicit whitelist = the projection's
+# built-in default (blacklist of the address-less system noise) minus `cron`:
+# the cron marker row carries no address/payload anyway, and a cronjob's
+# actual effects (transfer / contract_event children) are indexed on their
+# own. Being a whitelist, a NEW upstream event type stays excluded until
+# added here — deliberate.
+#
+# event_data_filter / involvement_filter: empty blacklists = NO filter —
+# every indexed type gets its payload stored and its participant fan-out
+# (instead of the built-in whitelist [transfer, contract_event]). Deliberate
+# experiment to observe table sizes with everything on; tighten later if the
+# tables grow too much (shrinking existing rows needs drop-db-archive).
+# The involvement_blacklist (system contracts from the node's app_config)
+# keeps its built-in behavior.
+[activity]
+event_type_filter = { whitelist = [
+  "configure",
+  "upgrade",
+  "transfer",
+  "upload",
+  "instantiate",
+  "execute",
+  "migrate",
+  "contract_event",
+] }
+event_data_filter = { blacklist = [] }
+involvement_filter = { blacklist = [] }

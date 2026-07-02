@@ -494,3 +494,20 @@ scrape_configs:
           environment: 'production'
           network: 'mainnet'
           dango_network: 'mainnet'
+
+  # Archive indexer instances — derived from the [archive] group's host_vars
+  # (`archive_instances`), so new instances/hosts are picked up automatically.
+  # Reached over wireguard like every other target (extra_hosts *wg-hosts).
+  - job_name: 'archive'
+    static_configs:
+{% for host in groups['archive'] | default([]) %}
+{%   set hn = hostvars[host].hostname | default(host) %}
+{%   for inst in hostvars[host].archive_instances | default([]) %}
+      - targets: ['{{ hn }}:{{ inst.metrics_host_port }}']
+        labels:
+          service: 'archive'
+          environment: 'production'
+          network: '{{ inst.name }}'
+          dango_network: '{{ inst.name }}'
+{%   endfor %}
+{% endfor %}
