@@ -16,7 +16,7 @@ dependency graph explicit at the workspace level. Inside the
 (impl + `entity/` + `idens` + migrations) — same layout as the
 in-process indexer (`dango/indexer/sql`).
 
-```
+```plain
 dango/archive/
 ├── types/         → lib `dango-archive-types`
 │                     • shared wire types (BlockData, ...)
@@ -74,7 +74,7 @@ Dependency graph (acyclic):
 `projection → httpd` edge stays acyclic: the toolkit flows down, the routes flow
 up (as type-erased scopes/configurators).
 
-```
+```plain
               cli
                │
                ▼
@@ -117,7 +117,7 @@ carrier metadata (chunk_id, schema version, integrity hash) is ever needed,
 
 Two cooperating layers visible to the app:
 
-```
+```plain
                   ┌────────────────────────┐
                   │  BlockSource           │
                   │  • feeds new blocks    │
@@ -323,15 +323,15 @@ The two backends get two different guarantees, which compose:
 
 **The order is the invariant.** Crash analysis, with the cursor at `h-1`:
 
-| Crash point | On restart | Outcome |
-|---|---|---|
-| before the CH flush | full replay of `h` | clean |
+| Crash point                        | On restart                                                               | Outcome   |
+| ---------------------------------- | ------------------------------------------------------------------------ | --------- |
+| before the CH flush                | full replay of `h`                                                       | clean     |
 | mid CH flush (some tables written) | replayed inserts: written tables dedup by token, missing ones get filled | converges |
-| between CH ack and PG commit | CH dedups everything; the PG tx re-runs (it never committed) | converges |
-| during the PG commit | PG rolls back; same as above | converges |
+| between CH ack and PG commit       | CH dedups everything; the PG tx re-runs (it never committed)             | converges |
+| during the PG commit               | PG rolls back; same as above                                             | converges |
 
 Reversing the order (cursor first, CH after) breaks on the first crash
-in between: the cursor ends up *ahead* of CH, the block is never
+in between: the cursor ends up _ahead_ of CH, the block is never
 replayed, and the hole is permanent. Replays are recoverable; holes are
 not. Hence: CH strictly before PG, always.
 
@@ -352,7 +352,7 @@ Conditions for the table above to hold:
    CH doesn't dedup by default.
 4. **Replay distance ≤ dedup window.** The protocol replays at most the
    span between the cursor and the last CH ack — one block, or one flush
-   batch. A window of 100 is ample. Rewinds *beyond* the window (e.g.
+   batch. A window of 100 is ample. Rewinds _beyond_ the window (e.g.
    manually resetting a cursor) are out of contract: the recovery path
    there is the per-projection rebuild (bump `id`, drop tables).
 
@@ -374,7 +374,7 @@ What this asks of projection authors — the whole contract:
 
 ## Schema migrations
 
-Migrations are *declared* by their owners and *executed* in one place,
+Migrations are _declared_ by their owners and _executed_ in one place,
 mirroring the in-process indexer's layout (`indexer/sql` declares
 migration lists; `indexer/clickhouse` declares `Vec<String>` DDL).
 
@@ -630,14 +630,14 @@ Projections are **free to choose** their own backend per-domain. A
 projection is just a `process(block)` function that writes wherever it
 wants. Typical mapping:
 
-| Projection (example) | Backend | Why |
-|---|---|---|
-| `candles_*` (OHLC) | ClickHouse | time-series, aggregations, columnar |
-| `perps_trades_agg` | ClickHouse | bulk inserts, group by |
-| `tx_per_user` | Postgres | point/range query per address |
-| `events_per_user` | Postgres | range scan + filters |
-| `gateway_deposits` | Postgres | few rows, OLTP queries |
-| `leaderboard_volumes` | ClickHouse | massive aggregation |
+| Projection (example)  | Backend    | Why                                 |
+| --------------------- | ---------- | ----------------------------------- |
+| `candles_*` (OHLC)    | ClickHouse | time-series, aggregations, columnar |
+| `perps_trades_agg`    | ClickHouse | bulk inserts, group by              |
+| `tx_per_user`         | Postgres   | point/range query per address       |
+| `events_per_user`     | Postgres   | range scan + filters                |
+| `gateway_deposits`    | Postgres   | few rows, OLTP queries              |
+| `leaderboard_volumes` | ClickHouse | massive aggregation                 |
 
 OLTP-shaped queries hit PG, OLAP-shaped queries hit CH —
 unchanged from today's split, just reorganized as projections.
@@ -662,10 +662,10 @@ Two target setups, picked at startup by config. Both implement the same
 `BlockSource` trait — the projections and the app loop don't change
 between them.
 
-| Setup | Source impl | Notes |
-|---|---|---|
-| **V1** — Co-located | [`LocalBlockSource`](./design/local-block-source.md) | Reuses the dango node's GraphQL `full_block` subscription (live tail) + cache files on disk (catch-up). No new storage. |
-| **V2** — Detached | [`RemoteBlockSource`](./design/remote-block-source.md) | No co-located node. Owns a local embedded RocksDB store (which also tracks the frontier/gap topology); composes a bounded backfill fetcher (sentinel now, B2-layered later), the node's `full_block` subscription (live tail), and a thin broadcast coordinator. |
+| Setup               | Source impl                                            | Notes                                                                                                                                                                                                                                                            |
+| ------------------- | ------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **V1** — Co-located | [`LocalBlockSource`](./design/local-block-source.md)   | Reuses the dango node's GraphQL `full_block` subscription (live tail) + cache files on disk (catch-up). No new storage.                                                                                                                                          |
+| **V2** — Detached   | [`RemoteBlockSource`](./design/remote-block-source.md) | No co-located node. Owns a local embedded RocksDB store (which also tracks the frontier/gap topology); composes a bounded backfill fetcher (sentinel now, B2-layered later), the node's `full_block` subscription (live tail), and a thin broadcast coordinator. |
 
 Switching from V1 to V2 is a config change and (for V2) a fresh raw store. The
 projections themselves are unchanged.
@@ -674,20 +674,20 @@ projections themselves are unchanged.
 
 Surfaced through the CLI's config file (+ env overrides):
 
-| Field | Default | Description |
-|---|---|---|
-| `source` | `local` | Which `BlockSource` impl to instantiate. |
-| `pubsub_buffer_size` | 2_000 | Broadcast ring capacity — a RAM knob (the most-recent N `Arc<BlockData>` stay resident, not a time window). A lagged projection is caught by Phase-1 `get()` recovery, so it need not buffer for long. |
-| `postgres.*` | — | Connection of the indexer-owned PG (cursors + PG projections). Lands with the CLI config wiring. |
-| `remote.store_path` | — | Local directory for the `remote` source's RocksDB raw-block store. Source-specific; see the [`RemoteBlockSource`](./design/remote-block-source.md) sub-spec. |
-| `clickhouse.*` | — | CH connection for CH-backed projections. Optional; lands with the CLI config wiring. |
+| Field                | Default | Description                                                                                                                                                                                            |
+| -------------------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `source`             | `local` | Which `BlockSource` impl to instantiate.                                                                                                                                                               |
+| `pubsub_buffer_size` | 2_000   | Broadcast ring capacity — a RAM knob (the most-recent N `Arc<BlockData>` stay resident, not a time window). A lagged projection is caught by Phase-1 `get()` recovery, so it need not buffer for long. |
+| `postgres.*`         | —       | Connection of the indexer-owned PG (cursors + PG projections). Lands with the CLI config wiring.                                                                                                       |
+| `remote.store_path`  | —       | Local directory for the `remote` source's RocksDB raw-block store. Source-specific; see the [`RemoteBlockSource`](./design/remote-block-source.md) sub-spec.                                           |
+| `clickhouse.*`       | —       | CH connection for CH-backed projections. Optional; lands with the CLI config wiring.                                                                                                                   |
 
 Source-specific options (`local.*`, `remote.*`) live in nested sections
 and are documented in the corresponding sub-spec.
 
 ## Operational flow (V1, worked example)
 
-```
+```plain
 t=0   Chain at 1.0M. Indexer fresh.
       → committer.migrate(projections): PG migrations under the shared
         `seaql_migrations` history, then the projections' CH DDL.

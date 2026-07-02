@@ -15,7 +15,7 @@ off disk) does not apply.
 
 ## Scope: what we build now vs. the end goal
 
-The **end goal** (agreed with the team, *not* built now but kept in view): a
+The **end goal** (agreed with the team, _not_ built now but kept in view): a
 set of sentinel nodes upload finalized blocks to an object store (B2) as
 compressed chunks while keeping a hot window (24–48h) of recent blocks. The
 `RemoteBlockSource` then pulls cold history from B2 and recent blocks from a
@@ -23,7 +23,7 @@ sentinel. This is the tiered vision in `~/specs/left-curve/`
 (`indexer-storage-architecture.md`, `indexer-roles-and-responsibilities.md`).
 
 The **step we build now**: deploy the archive on a node-less
-server and have it pull *all* blocks from a sentinel node (which today still
+server and have it pull _all_ blocks from a sentinel node (which today still
 holds the entire history). No B2, no chunking. This is enough to validate the
 whole `RemoteBlockSource` shape — own storage, remote fetch, gap handling,
 live tail — without the cold-archive machinery. The B2 backend slots in later
@@ -51,7 +51,7 @@ From the app's perspective the source still exposes the same four-method
 
 Three internal pieces plus a thin coordinator, none exposed to the app:
 
-```
+```plain
 RemoteBlockSource (impl BlockSource)
  ├── BlockStore                                  [trait; RocksDB impl + memory for tests]
  │     put → Option<frontier> · get · contiguous_frontier · lowest_gap
@@ -75,10 +75,10 @@ The division of labour:
   production, an in-memory one for tests).
 - **The live tail** follows the chain tip through the node's `full_block`
   subscription, opened on the shared `HttpdClient` (`subscribe_full_blocks`) —
-  the *same* path `LocalBlockSource` uses, only pointed at a remote sentinel. It
-  is *always* a sentinel subscription regardless of backend, because B2 only ever
+  the _same_ path `LocalBlockSource` uses, only pointed at a remote sentinel. It
+  is _always_ a sentinel subscription regardless of backend, because B2 only ever
   serves cold history — the tip always comes from a node. The subscription
-  *yields* fully-assembled `BlockData`; `drain_live` forwards them and the
+  _yields_ fully-assembled `BlockData`; `drain_live` forwards them and the
   coordinator is the single writer to the store. There is no `LiveSubscriber`
   trait: there is one node-backed implementation, so the source holds the
   `HttpdClient` directly.
@@ -100,7 +100,7 @@ B2-layered) touches neither the store nor the projections.
 
 - **Backfill.** On a fresh or lagging start there are gaps below the live tip.
   Two writers run concurrently: the **subscriber** writes the live tail
-  `[L..∞)`, and a **healer** fills the gaps below it, spawning a *bounded*
+  `[L..∞)`, and a **healer** fills the gaps below it, spawning a _bounded_
   fetcher per gap. The store's topology holds disjoint islands until the gaps
   close.
 - **Steady state.** Once every gap is filled the healer goes idle and only the
@@ -113,14 +113,14 @@ B2-layered) touches neither the store nor the projections.
   and settles back.
 
 Each fetcher is **bounded** (one gap, then it dies) — that is what keeps
-backfill from chasing a moving tip. The *healer* is the continuous supervisor
+backfill from chasing a moving tip. The _healer_ is the continuous supervisor
 that spawns one bounded fetcher per gap whenever a gap exists. The subscriber
 captures the tip up front and writes the live tail during backfill, which is
 what fixes each fetcher's target below the tip.
 
 ## Startup sequence
 
-```
+```plain
 1. store.open()    // loads the topology checkpoint (O(#ranges), no scan), or
                    //   rebuilds it from the block keys if absent
 2. spawn coordinator  // serialized writer: store.put → broadcast the advance
@@ -164,7 +164,7 @@ async fn lowest_gap(&self) -> Option<(u64, u64)>;   // O(1), drives the healer
 The frontier/gap bookkeeping lives in one type, `StoredRanges` — a coalesced set
 of the present-height ranges (`rangemap::RangeInclusiveSet`). One range
 `[genesis, X]` ⟺ no gaps; a hole splits it. Its size is **O(#gaps + 1)**, never
-O(#blocks): a 100M-block contiguous archive is a *single* range. It is the
+O(#blocks): a 100M-block contiguous archive is a _single_ range. It is the
 **single owner of the topology math** — `contiguous_top` (the frontier),
 `first_gap` (the healer's next target), and `insert` (which reports the frontier
 advance) — so every `BlockStore` impl is a thin I/O adapter over it with no
@@ -179,7 +179,7 @@ frontier is `O(#ranges)` away.
 ### RocksDB layout
 
 - **`blocks` column family** — key = `height.to_be_bytes()` (big-endian, so
-  RocksDB's lexicographic order *is* height order), value = borsh-encoded
+  RocksDB's lexicographic order _is_ height order), value = borsh-encoded
   `BlockData { block, outcome }`. (`BlockData` derives borsh; this is the same
   on-disk format the dango node uses for its block cache files.)
 - **default CF** — one key, the topology checkpoint, as a borsh `Vec<(u64,u64)>`.
@@ -196,7 +196,7 @@ always consistent with the blocks.
 `put` computes the next topology on a clone, writes block + checkpoint
 atomically, **then** commits the advance to the in-RAM topology mirror:
 
-```
+```plain
 1. clone topology, insert height, compute the advance   (RAM untouched)
 2. WriteBatch { blocks[h] = block, default[topology] }  → db.write   (durable)
 3. commit the new topology to the RAM mirror            (advance now visible)
@@ -219,7 +219,7 @@ recovery path, and the blocks are re-fetchable anyway.
 
 The `blocks` CF is tuned for the workload — fixed 8-byte big-endian keys, large
 immutable compressible values, append-mostly writes, never overwritten or
-deleted. (The fixed key size is *not* where the wins are; the layout is already
+deleted. (The fixed key size is _not_ where the wins are; the layout is already
 ideal for ordered point reads. The tuning targets the values and the writes.)
 
 - **Key-value separation (BlobDB)** — the large block payloads go to blob files,
@@ -277,7 +277,7 @@ sits more than ~100 blocks below the tip — i.e. for the entire initial backfil
 and after any downtime longer than the ring — permanently wedging the live tail.
 Taking the tip instead makes the downtime hole just another gap below the new
 max-stored height: the store reports it and the healer fills it via the fetcher
-(`/block/full/range`, which *does* serve deep history). The chain produces blocks
+(`/block/full/range`, which _does_ serve deep history). The chain produces blocks
 in order and the subscription delivers them in order, so `[tip..∞)` is contiguous;
 everything below the tip is the healer's job.
 
@@ -289,7 +289,7 @@ inline, so both sources share one subscription that yields complete blocks (see
 [Payload delivery](#payload-delivery-one-call-via-full_block)).
 
 Crucially the live tail is **stored immediately**, from the first delivered block
-onward, *during* the backfill (the coordinator persists each yielded block). That
+onward, _during_ the backfill (the coordinator persists each yielded block). That
 first block raises the store's max height, so everything below it is a bounded
 gap the healer fills lowest-first — which keeps each fetcher's target finite and
 lets it die. Without storing the live tail during backfill, the fetcher would
@@ -314,10 +314,10 @@ sentinel's `httpd`, which loads its cache file once and returns `block` +
 
 This replaces the earlier two-call assembly (`query_block` +
 `query_block_outcome`, which at 100M blocks was ~200M calls for a full backfill
-and loaded the *same* node cache file twice per height — once per half). The
+and loaded the _same_ node cache file twice per height — once per half). The
 combined routes live in the node's `dango/indexer` httpd and shipped there first;
 the archive source depends on a sentinel exposing them. The wire shape is
-`{ block, outcome }`, decoded with **serde**: `BlockData` *is* the node's
+`{ block, outcome }`, decoded with **serde**: `BlockData` _is_ the node's
 `dango_primitives::FullBlock` (which derives `Serialize`/`Deserialize`), so there
 is no private wire type to keep in sync with the node — borsh stays the on-disk
 format only.
@@ -342,7 +342,7 @@ channel (so a slow store writer throttles the fetcher instead of letting it
 balloon RAM) plus abort-on-drop. `recv()` yields the next block; `queue_len()`
 is the fetched-but-not-yet-consumed backlog (the reindex-bottleneck signal).
 
-**The consumer validates, not trusts.** A fetcher *should* emit exactly the
+**The consumer validates, not trusts.** A fetcher _should_ emit exactly the
 ascending contiguous range, but `backfill_gap` checks each height against the
 one it expects and treats a mismatch — or a stream that ends before `to` — as a
 failure, never as "range complete". This keeps a misbehaving backend from
@@ -357,7 +357,7 @@ Design notes:
   fetcher: each gap routes to the backend that owns its height range (old → B2,
   recent → sentinel) without the fetcher knowing anything.
 - **Shared `FetchStream`.** The channel + backpressure + abort-on-drop are a
-  concrete shared type; only the fetch *loop* (sentinel poll vs. B2 chunk read)
+  concrete shared type; only the fetch _loop_ (sentinel poll vs. B2 chunk read)
   varies per impl.
 
 ### `SentinelBlockFetcher` (built now)
@@ -423,7 +423,7 @@ Two different events; conflating them is the easy mistake:
   cannot broadcast directly: it would emit `250` while the frontier is `50`,
   breaking the projection loop.
 
-So during backfill the pubsub is *not* idle — the coordinator broadcasts as the
+So during backfill the pubsub is _not_ idle — the coordinator broadcasts as the
 frontier climbs — and a projection can ride the broadcast as soon as it reaches
 the (still-climbing) frontier. When the last gap closes, the frontier crosses the
 live-tail island in one bulk step and settles into steady state.
@@ -433,7 +433,7 @@ live-tail island in one bulk step and settles into steady state.
 The store can hold disjoint islands (a restart, or a later reconnect hole), so
 gap-filling is a continuous, lowest-first process:
 
-```
+```plain
 store on restart : {1..50, 200..210}   live subscribe resumes at L = 250
 → live block 250 is stored as an island, raising the max stored height
 → store.lowest_gap() = (51, 199)        // the lowest hole in [genesis, max_stored]
@@ -442,7 +442,7 @@ store on restart : {1..50, 200..210}   live subscribe resumes at L = 250
 
 - **The store computes the gap** from its topology, O(1) — the lowest hole at or
   above genesis, bounded by the max stored height. The healer asks for the
-  *lowest* gap only (never the whole list), so a 30M-wide island above the hole
+  _lowest_ gap only (never the whole list), so a 30M-wide island above the hole
   is never walked.
 - **Fill lowest-first.** If `[211..249]` were filled before `[51..199]`, the
   frontier would stay pinned at `50` and no projection could advance. Ascending
@@ -455,25 +455,25 @@ store on restart : {1..50, 200..210}   live subscribe resumes at L = 250
 
 ## Upholding the `BlockSource` invariants
 
-| Invariant | How it holds |
-|---|---|
-| `contiguous_frontier()` monotonic | Only `put` advances the frontier, only upward. Bulk jumps over islands are fine — monotonic ≠ `+1`. |
-| `h ≤ frontier ⟹ get(h) = Some` | `put` persists the block (atomic batch) **before** committing the frontier advance to the RAM mirror that `contiguous_frontier` reads. |
+| Invariant                               | How it holds                                                                                                                                                                                    |
+| --------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `contiguous_frontier()` monotonic       | Only `put` advances the frontier, only upward. Bulk jumps over islands are fine — monotonic ≠ `+1`.                                                                                             |
+| `h ≤ frontier ⟹ get(h) = Some`          | `put` persists the block (atomic batch) **before** committing the frontier advance to the RAM mirror that `contiguous_frontier` reads.                                                          |
 | broadcast strictly ascending (may skip) | Only the coordinator broadcasts, and only the frontier top each `put` reports. Normally `+1`; on a bulk-advance it jumps and the projection loop pulls the skipped heights via Phase-1 `get()`. |
-| `get(h) = None` is "not yet" | A height inside an unfilled gap returns `None`; the source never GCs a height a projection might still reach (no GC in this version). |
+| `get(h) = None` is "not yet"            | A height inside an unfilled gap returns `None`; the source never GCs a height a projection might still reach (no GC in this version).                                                           |
 
 ## Failure modes
 
-| Failure | Behavior |
-|---|---|
-| Subscriber connection drops | `drain_live` reconnects with backoff and resumes at the new tip. Blocks missed during the outage become a gap below the new tip; the healer fills it. Frontier stalls at the contiguous prefix meanwhile. |
-| Subscriber drops a block mid-stream | A jump in the delivered heights wakes the healer, which fills the hole from the sentinel RPC (the block exists; only the live *notification* was lost). A periodic re-check is the backstop. |
-| Sentinel down | Both subscriber and fetcher retry. Frontier stalls; projections keep serving up to the old frontier. No data loss — the store is durable. |
-| Fetcher RPC error / 404 mid-gap | The fetch task backs off and retries from the failed height. A 404 inside a gap means "not yet on the sentinel" — retry, never "absent". A *permanently*-unservable block would retry forever — a future observability item (known-issues #5). |
-| Crash mid-backfill | Restart reads the topology checkpoint and resumes; the healer refills from `lowest_gap`. Idempotent `put` makes any re-fetched block harmless. |
-| Crash between block write and frontier advance | The block + checkpoint are one atomic batch, so they land together — the topology on restart already includes the block. No hole, no stale checkpoint. |
-| Store `put` / `get` fails (RocksDB error) | Coordinator halts, source exits — intentionally fatal. A supervised restart recovers from the durable store. In-place retry is deliberately avoided (the store is the durability anchor). |
-| Corrupt payload | `get` surfaces a borsh error via `anyhow`. Skip-vs-halt is an open question (leaning halt — no in-process indexer cross-checking here). |
+| Failure                                        | Behavior                                                                                                                                                                                                                                       |
+| ---------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Subscriber connection drops                    | `drain_live` reconnects with backoff and resumes at the new tip. Blocks missed during the outage become a gap below the new tip; the healer fills it. Frontier stalls at the contiguous prefix meanwhile.                                      |
+| Subscriber drops a block mid-stream            | A jump in the delivered heights wakes the healer, which fills the hole from the sentinel RPC (the block exists; only the live _notification_ was lost). A periodic re-check is the backstop.                                                   |
+| Sentinel down                                  | Both subscriber and fetcher retry. Frontier stalls; projections keep serving up to the old frontier. No data loss — the store is durable.                                                                                                      |
+| Fetcher RPC error / 404 mid-gap                | The fetch task backs off and retries from the failed height. A 404 inside a gap means "not yet on the sentinel" — retry, never "absent". A _permanently_-unservable block would retry forever — a future observability item (known-issues #5). |
+| Crash mid-backfill                             | Restart reads the topology checkpoint and resumes; the healer refills from `lowest_gap`. Idempotent `put` makes any re-fetched block harmless.                                                                                                 |
+| Crash between block write and frontier advance | The block + checkpoint are one atomic batch, so they land together — the topology on restart already includes the block. No hole, no stale checkpoint.                                                                                         |
+| Store `put` / `get` fails (RocksDB error)      | Coordinator halts, source exits — intentionally fatal. A supervised restart recovers from the durable store. In-place retry is deliberately avoided (the store is the durability anchor).                                                      |
+| Corrupt payload                                | `get` surfaces a borsh error via `anyhow`. Skip-vs-halt is an open question (leaning halt — no in-process indexer cross-checking here).                                                                                                        |
 
 ## Borrowed pattern: bots `BlockFetcher`
 
@@ -517,7 +517,7 @@ future knob.
 
 ## End goal: B2-layered fetcher
 
-*Not built now; recorded so this version's decisions don't close the door.*
+_Not built now; recorded so this version's decisions don't close the door._
 
 The end-state replaces `SentinelBlockFetcher` with an `ArchiveBlockFetcher` that
 pulls cold history from B2 and recent blocks from a sentinel — same
@@ -530,11 +530,11 @@ is specified in `~/specs/left-curve/indexer-storage-architecture.md`.
 
 **Storage cost** (raw, zstd; the store compresses on disk):
 
-| Period | Approx. |
-|---|---|
+| Period              | Approx. |
+| ------------------- | ------- |
 | Today (~22M blocks) | ~210 GB |
-| 1 year | ~600 GB |
-| 5 years | ~2 TB |
+| 1 year              | ~600 GB |
+| 5 years             | ~2 TB   |
 
 **Optional GC** (when storage becomes a concern): when all registered
 projections are past height `H`, drop blocks below `H` (a RocksDB range delete,
@@ -545,7 +545,7 @@ re-fetchable, never reported as permanently absent.
 
 ## Open questions
 
-- **Subscriber wire protocol / combined block endpoint** — *resolved.* The live
+- **Subscriber wire protocol / combined block endpoint** — _resolved._ The live
   tail is the node's `full_block` subscription and the backfill is
   `GET /block/full/range`; each delivers the whole `BlockData` in one call, so the
   two-call `query_block` + `query_block_outcome` assembly is gone (see

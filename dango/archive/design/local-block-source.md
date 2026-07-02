@@ -22,9 +22,11 @@ protocol.
    indexed block as a complete `BlockData` (block + outcome) in one event. This
    is the live tail; the source reads nothing from disk to serve it.
 2. **Cache files on disk** — written by the node's `dango-indexer-cache` crate at:
-   ```
+
+   ```plain
    <dir>/blocks/<last-3-digits-of-height-reversed>/<height>.borsh[.xz]
    ```
+
    Each file is a borsh-serialized
    `CacheFile { data: BlockAndBlockOutcomeWithHttpDetails { block, block_outcome, http_request_details }, .. }`,
    optionally lzma-compressed (`.xz`). Used only for **catch-up** (`get(h)`), not
@@ -39,7 +41,7 @@ both are down — single failure domain, no consistency issues to worry about.
 The live half of the source opens a WebSocket to `dango-httpd` and subscribes to
 `full_block`. Each event carries the whole `BlockData`, so the source decodes it,
 advances the frontier, and broadcasts — **no disk read on the live path**. This
-is the *same* `subscribe_full_blocks` call the `RemoteBlockSource` uses; only the
+is the _same_ `subscribe_full_blocks` call the `RemoteBlockSource` uses; only the
 base URL differs (in-process `dango-httpd` here, a remote sentinel there), so the
 two sources share one live-tail implementation (`HttpdClient`).
 
@@ -66,7 +68,7 @@ reaching for a height below the live tip.
 When a projection lags behind the frontier, it calls `source.get(h)`. In V1
 that's a single-file read off the node's cache:
 
-```
+```plain
 path = cache_path.block_path(h)        // <dir>/blocks/<…>/<h>.borsh[.xz]
 if !CacheFile::exists(path) → Ok(None)  // "not yet", not an error
 CacheFile::load_from_disk_async(path)
@@ -116,14 +118,14 @@ no recovery here, since V1 has no healer.
 
 An earlier design queried `dango-httpd` for the latest indexed height at boot.
 With the `full_block` feed carrying the payload, that round-trip buys nothing:
-the first event delivers the height *and* the block, so the source baselines and
+the first event delivers the height _and_ the block, so the source baselines and
 broadcasts in one step. Dropping the query also removes an implicit ordering
 dependency on a separate GraphQL query field being wired up, and a class of
 "frontier is 1–2 blocks ahead of / behind the feed" skew.
 
 ## Internal architecture (informal)
 
-```
+```plain
                   ┌──────────────────────────────────┐
                   │ LocalBlockSource                 │
                   │                                  │
@@ -147,13 +149,13 @@ broadcast sender.
 
 ## Failure modes
 
-| Failure | Behavior |
-|---|---|
-| WS connection drops | The source reconnects with backoff and resubscribes at the live tip; the heights produced during the outage are read from disk by the projection loop's `get` catch-up. The frontier stalls until the feed is back, then jumps to the new tip. |
-| `dango-httpd` down but node up | Same as a WS drop — the source retries. Files on disk keep growing; the projections keep draining them via `get` regardless of the frontier, and the frontier catches up once the feed returns. |
-| Gap in the live feed (a dropped event) | A delivered height beyond `frontier + 1` advances the frontier straight to it and broadcasts; the skipped heights are pulled from disk via `get`, never replayed over the (small-ring) subscription. |
-| Cache file missing for a `get(h)` | Maps to `Ok(None)` — "not yet"; a projection that outran the node's on-disk writes retries. |
-| Cache file present but corrupt | `CacheFile::load` returns a borsh error, bubbled up via `anyhow`. Operational decision (skip vs halt) deferred — TBD. |
+| Failure                                | Behavior                                                                                                                                                                                                                                       |
+| -------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| WS connection drops                    | The source reconnects with backoff and resubscribes at the live tip; the heights produced during the outage are read from disk by the projection loop's `get` catch-up. The frontier stalls until the feed is back, then jumps to the new tip. |
+| `dango-httpd` down but node up         | Same as a WS drop — the source retries. Files on disk keep growing; the projections keep draining them via `get` regardless of the frontier, and the frontier catches up once the feed returns.                                                |
+| Gap in the live feed (a dropped event) | A delivered height beyond `frontier + 1` advances the frontier straight to it and broadcasts; the skipped heights are pulled from disk via `get`, never replayed over the (small-ring) subscription.                                           |
+| Cache file missing for a `get(h)`      | Maps to `Ok(None)` — "not yet"; a projection that outran the node's on-disk writes retries.                                                                                                                                                    |
+| Cache file present but corrupt         | `CacheFile::load` returns a borsh error, bubbled up via `anyhow`. Operational decision (skip vs halt) deferred — TBD.                                                                                                                          |
 
 ## Coupling with `dango-indexer-cache`
 

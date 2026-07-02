@@ -100,12 +100,12 @@ regression test belongs with the deferred `mock_httpd` live-tail tests.
 
 ## Severity index
 
-| # | Issue | Severity | Type |
-|---|---|---|---|
-| 5 | Fetcher retries forever, silently, on a permanently-missing block | Medium | Robustness (observability) |
-| 13 | First-write-wins: a re-delivered different payload for a stored height is ignored | Low | Correctness (assumption) |
-| 14 | Topology checkpoint rewritten on every `put` (write amplification) | Low | Scaling (efficiency) |
-| 15 | `reorder_grace` applied only after a notify, not after the periodic poll | Low | Cosmetic |
+| #   | Issue                                                                             | Severity | Type                       |
+| --- | --------------------------------------------------------------------------------- | -------- | -------------------------- |
+| 5   | Fetcher retries forever, silently, on a permanently-missing block                 | Medium   | Robustness (observability) |
+| 13  | First-write-wins: a re-delivered different payload for a stored height is ignored | Low      | Correctness (assumption)   |
+| 14  | Topology checkpoint rewritten on every `put` (write amplification)                | Low      | Scaling (efficiency)       |
+| 15  | `reorder_grace` applied only after a notify, not after the periodic poll          | Low      | Cosmetic                   |
 
 ## Completeness — what is not built yet
 
@@ -142,12 +142,12 @@ On any RPC error/timeout the fetcher backs off and retries **forever** (the
 assumption "every block in a gap exists below the tip"). True today, but if a
 block is genuinely unservable (pruning, a mis-computed gap), the gap never
 closes → `backfill_gap` never returns → the **healer** is stuck on that gap →
-frozen frontier, again **silently** (the healer re-detects *new* holes each
+frozen frontier, again **silently** (the healer re-detects _new_ holes each
 pass, but cannot get past one it can never fill). No attempt limit, no
 escalation.
 
 **Mitigation (deferred — observability, not code).** There is no safe code
-workaround: every height in a gap is supposed to exist, so the fetcher *must*
+workaround: every height in a gap is supposed to exist, so the fetcher _must_
 keep retrying — treating a transient 404 as "absent" would punch a permanent
 hole. The plan is to **detect** the condition instead: a future metric such as a
 "backfill made no progress for N seconds" / "healer stuck on gap" gauge that
@@ -162,7 +162,7 @@ metric is not forgotten when observability lands.
 idempotent `contains(height) → return None` guard in `put`.
 
 `put` is keyed by height only: once a height is stored, a later `put` of the same
-height — even with a *different* payload — is a no-op. For finalized CometBFT
+height — even with a _different_ payload — is a no-op. For finalized CometBFT
 blocks (no reorgs past finality) this is correct and desirable. But it is an
 **unstated assumption**: if a reconnecting subscriber or a pre-finality reorg
 ever delivered a different block for a stored height, the store would silently
