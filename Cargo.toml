@@ -33,13 +33,13 @@ members = [
   "dango/hyperlane/mailbox",
   "dango/hyperlane/types",
   "dango/hyperlane/va",
-  "dango/indexer-historical/app",
-  "dango/indexer-historical/block-source",
-  "dango/indexer-historical/cli",
-  "dango/indexer-historical/httpd",
-  "dango/indexer-historical/projection",
-  "dango/indexer-historical/testing",
-  "dango/indexer-historical/types",
+  "dango/archive/app",
+  "dango/archive/block-source",
+  "dango/archive/cli",
+  "dango/archive/httpd",
+  "dango/archive/projection",
+  "dango/archive/testing",
+  "dango/archive/types",
   "dango/indexer/cache",
   "dango/indexer/clickhouse",
   "dango/indexer/graphql-types",
@@ -215,12 +215,12 @@ dango-identity              = { path = "dango/utils/identity" }
 dango-indexer-cache         = { path = "dango/indexer/cache" }
 dango-indexer-clickhouse    = { path = "dango/indexer/clickhouse" }
 dango-indexer-graphql-types = { path = "dango/indexer/graphql-types" }
-dango-indexer-historical-app          = { path = "dango/indexer-historical/app" }
-dango-indexer-historical-block-source = { path = "dango/indexer-historical/block-source" }
-dango-indexer-historical-httpd        = { path = "dango/indexer-historical/httpd" }
-dango-indexer-historical-projection   = { path = "dango/indexer-historical/projection" }
-dango-indexer-historical-testing      = { path = "dango/indexer-historical/testing" }
-dango-indexer-historical-types        = { path = "dango/indexer-historical/types" }
+dango-archive-app          = { path = "dango/archive/app" }
+dango-archive-block-source = { path = "dango/archive/block-source" }
+dango-archive-httpd        = { path = "dango/archive/httpd" }
+dango-archive-projection   = { path = "dango/archive/projection" }
+dango-archive-testing      = { path = "dango/archive/testing" }
+dango-archive-types        = { path = "dango/archive/types" }
 dango-indexer-hooked        = { path = "dango/indexer/hooked" }
 dango-indexer-httpd         = { path = "dango/indexer/httpd", features = ["tracing"] }
 dango-indexer-metrics       = { path = "dango/indexer/metrics" }

@@ -1,7 +1,0 @@
----
-- name: Deploy historical-indexer instances
-  include_tasks: deploy-instance.yml
-  loop: "{{ historical_indexer_instances }}"
-  loop_control:
-    loop_var: instance
-    label: "{{ instance.name }}"

@@ -3720,6 +3720,153 @@ dependencies = [
 ]
 
 [[package]]
+name = "dango-archive-app"
+version = "0.0.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "chrono",
+ "clickhouse",
+ "dango-archive-block-source",
+ "dango-archive-httpd",
+ "dango-archive-projection",
+ "dango-archive-types",
+ "futures",
+ "metrics",
+ "sea-orm",
+ "sea-orm-migration",
+ "tokio",
+ "tracing",
+]
+
+[[package]]
+name = "dango-archive-block-source"
+version = "0.0.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "borsh",
+ "dango-archive-types",
+ "dango-indexer-cache",
+ "dango-primitives",
+ "dango-temp-rocksdb",
+ "futures",
+ "metrics",
+ "rangemap",
+ "reqwest 0.13.4",
+ "rocksdb",
+ "serde",
+ "serde_json",
+ "tokio",
+ "tokio-tungstenite 0.29.0",
+ "tracing",
+ "url",
+]
+
+[[package]]
+name = "dango-archive-cli"
+version = "0.0.0"
+dependencies = [
+ "anyhow",
+ "clap",
+ "dango-archive-app",
+ "dango-archive-block-source",
+ "dango-archive-httpd",
+ "dango-archive-projection",
+ "dango-config-parser",
+ "dango-indexer-cache",
+ "dango-indexer-metrics",
+ "dango-primitives",
+ "dango-sdk",
+ "futures",
+ "home",
+ "metrics",
+ "metrics-exporter-prometheus",
+ "sea-orm",
+ "serde",
+ "tokio",
+ "tracing",
+ "tracing-subscriber",
+]
+
+[[package]]
+name = "dango-archive-httpd"
+version = "0.0.0"
+dependencies = [
+ "actix-cors",
+ "actix-web",
+ "anyhow",
+ "dango-archive-block-source",
+ "dango-archive-types",
+ "futures",
+ "hex",
+ "metrics",
+ "sea-orm",
+ "serde",
+ "serde_json",
+ "tokio",
+ "tracing",
+]
+
+[[package]]
+name = "dango-archive-projection"
+version = "0.0.0"
+dependencies = [
+ "actix-web",
+ "anyhow",
+ "async-trait",
+ "borsh",
+ "clickhouse",
+ "dango-archive-block-source",
+ "dango-archive-httpd",
+ "dango-archive-types",
+ "dango-primitives",
+ "futures",
+ "metrics",
+ "sea-orm",
+ "sea-orm-migration",
+ "serde",
+ "serde_json",
+ "tokio",
+ "tracing",
+ "uuid",
+ "zstd",
+]
+
+[[package]]
+name = "dango-archive-testing"
+version = "0.0.0"
+dependencies = [
+ "anyhow",
+ "dango-archive-app",
+ "dango-archive-block-source",
+ "dango-archive-httpd",
+ "dango-archive-projection",
+ "dango-genesis",
+ "dango-primitives",
+ "dango-sdk",
+ "dango-testing",
+ "dango-types",
+ "futures",
+ "postgresql_embedded",
+ "reqwest 0.13.4",
+ "sea-orm",
+ "serde_json",
+ "tempfile",
+ "tokio",
+ "uuid",
+]
+
+[[package]]
+name = "dango-archive-types"
+version = "0.0.0"
+dependencies = [
+ "anyhow",
+ "borsh",
+ "dango-primitives",
+]
+
+[[package]]
 name = "dango-auth"
 version = "0.0.0"
 dependencies = [
@@ -4066,153 +4213,6 @@ dependencies = [
  "paste",
  "serde",
  "serde_json",
-]
-
-[[package]]
-name = "dango-indexer-historical-app"
-version = "0.0.0"
-dependencies = [
- "anyhow",
- "async-trait",
- "chrono",
- "clickhouse",
- "dango-indexer-historical-block-source",
- "dango-indexer-historical-httpd",
- "dango-indexer-historical-projection",
- "dango-indexer-historical-types",
- "futures",
- "metrics",
- "sea-orm",
- "sea-orm-migration",
- "tokio",
- "tracing",
-]
-
-[[package]]
-name = "dango-indexer-historical-block-source"
-version = "0.0.0"
-dependencies = [
- "anyhow",
- "async-trait",
- "borsh",
- "dango-indexer-cache",
- "dango-indexer-historical-types",
- "dango-primitives",
- "dango-temp-rocksdb",
- "futures",
- "metrics",
- "rangemap",
- "reqwest 0.13.4",
- "rocksdb",
- "serde",
- "serde_json",
- "tokio",
- "tokio-tungstenite 0.29.0",
- "tracing",
- "url",
-]
-
-[[package]]
-name = "dango-indexer-historical-cli"
-version = "0.0.0"
-dependencies = [
- "anyhow",
- "clap",
- "dango-config-parser",
- "dango-indexer-cache",
- "dango-indexer-historical-app",
- "dango-indexer-historical-block-source",
- "dango-indexer-historical-httpd",
- "dango-indexer-historical-projection",
- "dango-indexer-metrics",
- "dango-primitives",
- "dango-sdk",
- "futures",
- "home",
- "metrics",
- "metrics-exporter-prometheus",
- "sea-orm",
- "serde",
- "tokio",
- "tracing",
- "tracing-subscriber",
-]
-
-[[package]]
-name = "dango-indexer-historical-httpd"
-version = "0.0.0"
-dependencies = [
- "actix-cors",
- "actix-web",
- "anyhow",
- "dango-indexer-historical-block-source",
- "dango-indexer-historical-types",
- "futures",
- "hex",
- "metrics",
- "sea-orm",
- "serde",
- "serde_json",
- "tokio",
- "tracing",
-]
-
-[[package]]
-name = "dango-indexer-historical-projection"
-version = "0.0.0"
-dependencies = [
- "actix-web",
- "anyhow",
- "async-trait",
- "borsh",
- "clickhouse",
- "dango-indexer-historical-block-source",
- "dango-indexer-historical-httpd",
- "dango-indexer-historical-types",
- "dango-primitives",
- "futures",
- "metrics",
- "sea-orm",
- "sea-orm-migration",
- "serde",
- "serde_json",
- "tokio",
- "tracing",
- "uuid",
- "zstd",
-]
-
-[[package]]
-name = "dango-indexer-historical-testing"
-version = "0.0.0"
-dependencies = [
- "anyhow",
- "dango-genesis",
- "dango-indexer-historical-app",
- "dango-indexer-historical-block-source",
- "dango-indexer-historical-httpd",
- "dango-indexer-historical-projection",
- "dango-primitives",
- "dango-sdk",
- "dango-testing",
- "dango-types",
- "futures",
- "postgresql_embedded",
- "reqwest 0.13.4",
- "sea-orm",
- "serde_json",
- "tempfile",
- "tokio",
- "uuid",
-]
-
-[[package]]
-name = "dango-indexer-historical-types"
-version = "0.0.0"
-dependencies = [
- "anyhow",
- "borsh",
- "dango-primitives",
 ]
 
 [[package]]

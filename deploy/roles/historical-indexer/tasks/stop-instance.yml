@@ -1,6 +1,0 @@
----
-- name: "{{ instance.name }} - Stop stack"
-  community.docker.docker_compose_v2:
-    project_src: "{{ historical_indexer_dir }}/{{ instance.name }}"
-    state: stopped
-    pull: never

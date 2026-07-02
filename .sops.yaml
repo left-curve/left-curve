@@ -42,7 +42,7 @@ creation_rules:
       age1yubikey1q2y2eshvcqgyuuxd8kch54mdhf96znghyf99rd3yxqcrw4g5l9vpcs03x5h,
       age10xqeelr09uk292rrp48jw5fem7uepuf82ax6mpq6rjuv6m3aw9mqgjnfyh
 
-  - path_regex: ^(deploy/)?group_vars/historical-indexer/vault\.sops\.json$
+  - path_regex: ^(deploy/)?group_vars/archive/vault\.sops\.json$
     age: >-
       age1yubikey1q2jpj60frm2eh0lndcqf8he649yrmtp9z5n5l4l8e5rhmpncck03vsjwh62,
       age1yubikey1qdvpvuaxnxxrhdghjzmcm2m69w6f480h9wwt8g2900mu8pm2npn32hwdz5x,
