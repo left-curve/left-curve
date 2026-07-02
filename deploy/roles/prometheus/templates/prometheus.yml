@@ -468,6 +468,21 @@ scrape_configs:
           network: 'mainnet'
           dango_network: 'mainnet'
 
+  - job_name: 'batch-block-backup'
+    static_configs:
+      - targets: ['hetzner2:9320']
+        labels:
+          service: 'batch-block-backup'
+          environment: 'production'
+          network: 'testnet'
+          dango_network: 'testnet'
+      - targets: ['hetzner1:9320']
+        labels:
+          service: 'batch-block-backup'
+          environment: 'production'
+          network: 'mainnet'
+          dango_network: 'mainnet'
+
   - job_name: 'points-bot'
     static_configs:
       - targets: ['ovh2:9300']
