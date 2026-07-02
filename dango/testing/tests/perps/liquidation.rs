@@ -858,6 +858,12 @@ async fn liquidation_with_adl() {
         "v0.17.0+ Liquidated events always carry Some(adl_realized_funding); \
          with no funding accrued it must be Some(ZERO)"
     );
+    assert_eq!(
+        liq.remaining_position_size,
+        Some(Quantity::ZERO),
+        "liquidation fully closed Trader A's 5-long in this pair, so the \
+         resulting position size must be Some(ZERO)"
+    );
 
     // The Deleveraged event for the counter-party (Trader B) should
     // mirror the split: closing-only `realized_pnl = +$1,090` (Trader B
@@ -886,6 +892,12 @@ async fn liquidation_with_adl() {
         Some(UsdValue::ZERO),
         "v0.17.0+ Deleveraged events always carry Some(realized_funding); \
          with no funding accrued it must be Some(ZERO)"
+    );
+    assert_eq!(
+        dlv.remaining_position_size,
+        Some(Quantity::ZERO),
+        "ADL closed Trader B's entire 5-short in this pair, so the resulting \
+         position size must be Some(ZERO)"
     );
 
     // Trader A should have no positions and $0 margin.

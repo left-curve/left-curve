@@ -710,6 +710,13 @@ fn execute_close_schedule(
                 adl_price: Some(adl_price),
                 adl_realized_pnl,
                 adl_realized_funding: Some(adl_funding),
+                remaining_position_size: Some(
+                    user_state
+                        .positions
+                        .get(pair_id)
+                        .map(|p| p.size)
+                        .unwrap_or_default(),
+                ),
             })?;
 
             #[cfg(feature = "metrics")]
@@ -728,6 +735,13 @@ fn execute_close_schedule(
                 adl_price: None,
                 adl_realized_pnl: UsdValue::ZERO,
                 adl_realized_funding: Some(UsdValue::ZERO),
+                remaining_position_size: Some(
+                    user_state
+                        .positions
+                        .get(pair_id)
+                        .map(|p| p.size)
+                        .unwrap_or_default(),
+                ),
             })?;
         }
     }
@@ -931,6 +945,13 @@ fn execute_adl(
             fill_price: bankruptcy_price,
             realized_pnl: counter_settlement.pnl.closing,
             realized_funding: Some(counter_settlement.pnl.funding),
+            remaining_position_size: Some(
+                counter_state
+                    .positions
+                    .get(pair_id)
+                    .map(|p| p.size)
+                    .unwrap_or_default(),
+            ),
         })?;
 
         remaining = remaining.checked_sub(user_close)?;

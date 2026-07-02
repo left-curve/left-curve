@@ -1333,6 +1333,27 @@ pub struct OrderFilled {
     /// `None` for trades executed before v0.16.0 — the maker/taker flag was not
     /// recorded prior to that release.
     pub is_maker: Option<bool>,
+
+    /// The filled order's remaining unfilled size after this fill, carrying
+    /// the same sign as the order's side. Non-zero when the order is only
+    /// partially filled, zero when it is fully filled. For the taker side
+    /// this is the incoming order's remainder (which may then rest on the
+    /// book or be discarded); for the maker side, the resting order's
+    /// remainder.
+    ///
+    /// `None` for trades executed before v0.26.0 — the remaining order size
+    /// was not recorded prior to that release.
+    pub remaining_order_size: Option<Quantity>,
+
+    /// The user's resulting position size in this pair after this fill is
+    /// applied — positive for long, negative for short, zero if the fill
+    /// closed the position entirely. Lets consumers track live position
+    /// size without accumulating the `closing_size` / `opening_size` deltas
+    /// themselves.
+    ///
+    /// `None` for trades executed before v0.26.0 — the resulting position
+    /// size was not recorded prior to that release.
+    pub remaining_position_size: Option<Quantity>,
 }
 
 /// Event indicating a user has been liquidated in a specific pair.
@@ -1372,6 +1393,15 @@ pub struct Liquidated {
     /// `None` for liquidations executed before v0.17.0 — funding was
     /// reported as part of `adl_realized_pnl` prior to that release.
     pub adl_realized_funding: Option<UsdValue>,
+
+    /// The liquidated user's resulting position size in this pair after this
+    /// pair's liquidation — zero if the position was fully closed, non-zero
+    /// if it was only partially closed. One `Liquidated` event is emitted
+    /// per pair closed, so each event reports its own pair's resulting size.
+    ///
+    /// `None` for liquidations executed before v0.26.0 — the resulting
+    /// position size was not recorded prior to that release.
+    pub remaining_position_size: Option<Quantity>,
 }
 
 /// Event indicating a counter-party's position was reduced during ADL.
@@ -1406,6 +1436,14 @@ pub struct Deleveraged {
     /// `None` for ADL fills executed before v0.17.0 — funding was
     /// reported as part of `realized_pnl` prior to that release.
     pub realized_funding: Option<UsdValue>,
+
+    /// The counter-party's resulting position size in this pair after this
+    /// ADL fill — zero if the position was fully closed, non-zero if it was
+    /// only partially reduced.
+    ///
+    /// `None` for ADL fills executed before v0.26.0 — the resulting position
+    /// size was not recorded prior to that release.
+    pub remaining_position_size: Option<Quantity>,
 }
 
 /// Event indicating the insurance fund absorbed bad debt from a liquidation.
@@ -1452,7 +1490,11 @@ pub struct ReferralSet {
 
 #[cfg(test)]
 mod tests {
-    use {super::*, std::collections::BTreeMap};
+    use {
+        super::*,
+        dango_primitives::Denom,
+        std::{collections::BTreeMap, str::FromStr},
+    };
 
     #[test]
     fn resolve_empty_tiers() {
@@ -1533,5 +1575,87 @@ mod tests {
         assert_eq!(schedule.resolve(UsdValue::new_int(50_000)), base);
         assert_eq!(schedule.resolve(UsdValue::new_int(500_000)), tier1_rate);
         assert_eq!(schedule.resolve(UsdValue::new_int(5_000_000)), tier2_rate);
+    }
+
+    // The post-v0.26.0 position/order-size fields are `Option`s so that events
+    // emitted (and stored/indexed) before those fields existed still
+    // deserialize — the missing keys must decode as `None`, not error. These
+    // tests strip the new keys from a current event's JSON to mimic a legacy
+    // payload.
+
+    #[test]
+    fn order_filled_deserializes_without_new_fields_as_none() {
+        let event = OrderFilled {
+            order_id: OrderId::new(1),
+            pair_id: Denom::from_str("perp/btcusd").unwrap(),
+            user: Addr::mock(1),
+            fill_price: UsdPrice::new_int(2_000),
+            fill_size: Quantity::new_int(3),
+            closing_size: Quantity::ZERO,
+            opening_size: Quantity::new_int(3),
+            realized_pnl: UsdValue::ZERO,
+            realized_funding: Some(UsdValue::ZERO),
+            fee: UsdValue::ZERO,
+            client_order_id: None,
+            fill_id: Some(FillId::new(7)),
+            is_maker: Some(false),
+            remaining_position_size: Some(Quantity::new_int(3)),
+            remaining_order_size: Some(Quantity::ZERO),
+        };
+
+        let mut json = serde_json::to_value(&event).unwrap();
+        let obj = json.as_object_mut().unwrap();
+        obj.remove("remaining_position_size");
+        obj.remove("remaining_order_size");
+
+        let parsed: OrderFilled = serde_json::from_value(json).unwrap();
+        assert_eq!(parsed.remaining_position_size, None);
+        assert_eq!(parsed.remaining_order_size, None);
+        // A pre-existing field still decodes correctly.
+        assert_eq!(parsed.fill_size, Quantity::new_int(3));
+    }
+
+    #[test]
+    fn liquidated_deserializes_without_new_field_as_none() {
+        let event = Liquidated {
+            user: Addr::mock(1),
+            pair_id: Denom::from_str("perp/btcusd").unwrap(),
+            adl_size: Quantity::new_int(-5),
+            adl_price: Some(UsdPrice::new_int(1_782)),
+            adl_realized_pnl: UsdValue::ZERO,
+            adl_realized_funding: Some(UsdValue::ZERO),
+            remaining_position_size: Some(Quantity::ZERO),
+        };
+
+        let mut json = serde_json::to_value(&event).unwrap();
+        json.as_object_mut()
+            .unwrap()
+            .remove("remaining_position_size");
+
+        let parsed: Liquidated = serde_json::from_value(json).unwrap();
+        assert_eq!(parsed.remaining_position_size, None);
+        assert_eq!(parsed.adl_size, Quantity::new_int(-5));
+    }
+
+    #[test]
+    fn deleveraged_deserializes_without_new_field_as_none() {
+        let event = Deleveraged {
+            user: Addr::mock(1),
+            pair_id: Denom::from_str("perp/btcusd").unwrap(),
+            closing_size: Quantity::new_int(5),
+            fill_price: UsdPrice::new_int(1_782),
+            realized_pnl: UsdValue::ZERO,
+            realized_funding: Some(UsdValue::ZERO),
+            remaining_position_size: Some(Quantity::ZERO),
+        };
+
+        let mut json = serde_json::to_value(&event).unwrap();
+        json.as_object_mut()
+            .unwrap()
+            .remove("remaining_position_size");
+
+        let parsed: Deleveraged = serde_json::from_value(json).unwrap();
+        assert_eq!(parsed.remaining_position_size, None);
+        assert_eq!(parsed.closing_size, Quantity::new_int(5));
     }
 }
