@@ -33,6 +33,8 @@ deploy_user="deploy"
 100.76.197.30  # hetzner3
 100.109.200.70 # hetzner4
 100.66.152.68  # hetzner6
+100.126.43.113 # hetzner7
+100.99.36.21   # hetzner8
 
 [clickhouse]
 100.96.253.40  # ovh1
