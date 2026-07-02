@@ -125,6 +125,21 @@ export const PointsProfileTable: React.FC = () => {
     [sortKey],
   );
 
+  const handleSharePointerDown = useCallback((event: React.PointerEvent<HTMLButtonElement>) => {
+    event.stopPropagation();
+  }, []);
+
+  const handleShareClick = useCallback(
+    (event: React.MouseEvent<HTMLButtonElement>, row: EpochHistoryRow) => {
+      event.stopPropagation();
+      showModal(Modals.PointsShare, {
+        points: row.points,
+        weekNumber: row.epoch,
+      });
+    },
+    [showModal],
+  );
+
   const columns: TableColumn<EpochHistoryRow> = [
     {
       id: "epoch",
@@ -182,13 +197,8 @@ export const PointsProfileTable: React.FC = () => {
             variant="link"
             size="xs"
             className="m-0 h-8 w-8 p-0"
-            onClick={(event) => {
-              event.stopPropagation();
-              showModal(Modals.PointsShare, {
-                points: row.original.points,
-                weekNumber: row.original.epoch,
-              });
-            }}
+            onPointerDown={handleSharePointerDown}
+            onClick={(event) => handleShareClick(event, row.original)}
           >
             <IconShare aria-hidden="true" focusable="false" className="w-4 h-4" />
           </Button>
