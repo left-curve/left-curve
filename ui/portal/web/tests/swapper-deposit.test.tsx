@@ -1,10 +1,10 @@
 import { cleanup, render, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { resetAppletsKitMocks } from "./mocks/applets-kit";
 import { SwapperDeposit } from "../src/components/bridge/SwapperDeposit";
 
 import type { Connector } from "@left-curve/store/types";
-import type React from "react";
 
 type MockConnector = {
   getProvider?: () => Promise<unknown>;
@@ -46,19 +46,6 @@ const swapperDepositMocks = vi.hoisted(() => ({
 
 vi.mock("../src/components/bridge/DepositOptions", () => ({
   DepositFeeBadge: () => <span data-testid="deposit-fee" />,
-}));
-
-vi.mock("@left-curve/applets-kit", () => ({
-  Button: ({ children, onClick }: React.PropsWithChildren<{ onClick?: () => void }>) => (
-    <button type="button" onClick={onClick}>
-      {children}
-    </button>
-  ),
-  IconChevronRight: () => <span aria-hidden="true" />,
-  WarningContainer: ({ description }: { description: string }) => (
-    <div role="alert">{description}</div>
-  ),
-  useTheme: () => ({ theme: "light" }),
 }));
 
 vi.mock("@left-curve/store", () => ({
@@ -139,6 +126,7 @@ function renderSwapperDeposit(signerConnector?: MockConnector) {
 
 describe("swapper deposit signer", () => {
   beforeEach(() => {
+    resetAppletsKitMocks();
     swapperDepositMocks.dangoConnector = undefined;
     swapperDepositMocks.isConnected = true;
     swapperDepositMocks.signerClients = new Map();
