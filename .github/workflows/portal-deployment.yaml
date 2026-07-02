@@ -189,6 +189,7 @@ jobs:
           PUBLIC_PRIVY_APP_ID: ${{ steps.pages.outputs.config_environment == 'prod' && vars.PRIVY_APP_ID_PROD || vars.PRIVY_APP_ID_DEV }}
           PUBLIC_PRIVY_CLIENT_ID: ${{ steps.pages.outputs.config_environment == 'prod' && vars.PRIVY_CLIENT_ID_PROD || vars.PRIVY_CLIENT_ID_DEV }}
           ENABLED_FEATURES: ${{ steps.pages.outputs.enabled_features }}
+          SWAPPER_INTEGRATOR_ID: ${{ vars.SWAPPER_INTEGRATOR_ID }}
           R2_ASSETS_PREFIX: ${{ steps.pages.outputs.r2_prefix }}
 
       - name: Patch PR runtime config

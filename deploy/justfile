@@ -73,6 +73,9 @@ sops-edit-perps-bot-secrets:
 sops-edit-dango-assistant-secrets:
   sops edit group_vars/dango-assistant/vault.sops.json
 
+sops-edit-archive-secrets:
+  sops edit group_vars/archive/vault.sops.json
+
 sops-edit-ovh1-host-secrets:
   sops edit host_vars/100.96.253.40/vault.sops.json
 
@@ -233,6 +236,35 @@ drop-db-referral-dashboard network server:
       -e '{"referral_dashboard_networks": ["{{network}}"]}' \
       --limit {{server}} \
       2>&1 | tee {{justfile_directory()}}/logs/$(date -u +%Y%m%d%H%M%S)-drop-db-referral-dashboard.log
+
+
+# ---------------------------- Archive -----------------------------
+
+# Deploy the archive instance(s) defined in the server's host_vars
+# (`archive_instances`). `server` is the tailscale IP (or any host
+# pattern within the archive group).
+# Usage: just deploy-archive 100.x.y.z
+#        just deploy-archive 100.x.y.z v1.2.3
+deploy-archive server tag="latest":
+  mkdir -p {{justfile_directory()}}/logs \
+    && uv run ansible-playbook archive.yml \
+      -e archive_tag={{tag}} \
+      --limit {{server}} \
+      2>&1 | tee {{justfile_directory()}}/logs/$(date -u +%Y%m%d%H%M%S)-deploy-archive.log
+
+stop-archive server:
+  mkdir -p {{justfile_directory()}}/logs \
+    && uv run ansible-playbook stop-archive.yml \
+      --limit {{server}} \
+      2>&1 | tee {{justfile_directory()}}/logs/$(date -u +%Y%m%d%H%M%S)-stop-archive.log
+
+# Drop and recreate the projection database(s) — full reindex on next deploy;
+# the RocksDB block store is preserved.
+drop-db-archive server:
+  mkdir -p {{justfile_directory()}}/logs \
+    && uv run ansible-playbook drop-db-archive.yml \
+      --limit {{server}} \
+      2>&1 | tee {{justfile_directory()}}/logs/$(date -u +%Y%m%d%H%M%S)-drop-db-archive.log
 
 
 # -------------------------------- Perps Bot ----------------------------------

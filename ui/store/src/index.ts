@@ -100,6 +100,20 @@ export {
 } from "./hooks/useConnectorClient.js";
 
 export {
+  type UseConnectorWalletClientParameters,
+  type UseConnectorWalletClientReturnType,
+  useConnectorWalletClient,
+} from "./hooks/useConnectorWalletClient.js";
+
+export {
+  type ConnectorWalletClient,
+  getConnectorWalletClient,
+  isEvmProviderConnector,
+  type EvmProviderConnector,
+  type GetConnectorWalletClientParameters,
+} from "./actions/getConnectorWalletClient.js";
+
+export {
   type UseAccountInfoParameters,
   type UseAccountInfoReturnType,
   useAccountInfo,

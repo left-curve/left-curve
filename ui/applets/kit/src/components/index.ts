@@ -149,6 +149,7 @@ export { IconWalletWithCross } from "./icons/IconWalletWithCross";
 export { IconNotiStatus } from "./icons/IconNotiStatus";
 export { IconStatus } from "./icons/IconStatus";
 export { IconGift } from "./icons/IconGift";
+export { IconConfetti } from "./icons/IconConfetti";
 export { IconSwapMoney } from "./icons/IconSwapMoney";
 export { IconSprout } from "./icons/IconSprout";
 export { IconFriendshipGroup } from "./icons/IconFriendshipGroup";
