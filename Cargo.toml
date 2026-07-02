@@ -1,5 +1,12 @@
 [workspace]
 members = [
+  "dango/archive/app",
+  "dango/archive/block-source",
+  "dango/archive/cli",
+  "dango/archive/httpd",
+  "dango/archive/projection",
+  "dango/archive/testing",
+  "dango/archive/types",
   "dango/cli",
   "dango/core/app",
   "dango/core/crypto",
@@ -144,6 +151,7 @@ pyth-lazer-client           = "25.0.0"
 pyth-lazer-protocol         = "0.40.0"
 quote                       = "1"
 rand                        = "0.8" # FIXME: can't bump to 0.10 because RustCrypto requires 0.8
+rangemap                    = "1"
 reqwest                     = { version = "0.13", features = ["stream"] }
 ripemd                      = "0.1"
 roaring                     = "0.11"
@@ -180,10 +188,17 @@ url                         = "2.5.4"
 uuid                        = { version = "1", features = ["serde", "v4"] }
 wasmer                      = "7"
 wasmer-middlewares          = "7"
+zstd                        = "0.13"
 # ----------------------------- Local dependencies -----------------------------
 dango-account               = { path = "dango/exchange/account" }
 dango-account-factory       = { path = "dango/exchange/account-factory" }
 dango-app                   = { path = "dango/core/app" }
+dango-archive-app           = { path = "dango/archive/app" }
+dango-archive-block-source  = { path = "dango/archive/block-source" }
+dango-archive-httpd         = { path = "dango/archive/httpd" }
+dango-archive-projection    = { path = "dango/archive/projection" }
+dango-archive-testing       = { path = "dango/archive/testing" }
+dango-archive-types         = { path = "dango/archive/types" }
 dango-auth                  = { path = "dango/exchange/auth" }
 dango-backtrace             = { path = "dango/utils/backtrace" }
 dango-bank                  = { path = "dango/exchange/bank" }
