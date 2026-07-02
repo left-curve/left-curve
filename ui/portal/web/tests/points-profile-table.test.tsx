@@ -201,10 +201,15 @@ describe("PointsProfileTable", () => {
     });
 
     const bubblingClick = vi.fn();
+    const bubblingMouseDown = vi.fn();
     const bubblingPointerDown = vi.fn();
 
     render(
-      <div onClick={bubblingClick} onPointerDown={bubblingPointerDown}>
+      <div
+        onClick={bubblingClick}
+        onMouseDown={bubblingMouseDown}
+        onPointerDown={bubblingPointerDown}
+      >
         <PointsProfileTable />
       </div>,
     );
@@ -224,6 +229,7 @@ describe("PointsProfileTable", () => {
     });
 
     fireEvent.pointerDown(shareButton);
+    fireEvent.mouseDown(shareButton);
     fireEvent.click(shareButton);
 
     expect(pointsProfileMocks.showModal).toHaveBeenCalledWith(Modals.PointsShare, {
@@ -231,6 +237,7 @@ describe("PointsProfileTable", () => {
       weekNumber: 0,
     });
     expect(bubblingClick).not.toHaveBeenCalled();
+    expect(bubblingMouseDown).not.toHaveBeenCalled();
     expect(bubblingPointerDown).not.toHaveBeenCalled();
   });
 

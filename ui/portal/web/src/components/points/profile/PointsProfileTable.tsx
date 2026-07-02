@@ -125,7 +125,7 @@ export const PointsProfileTable: React.FC = () => {
     [sortKey],
   );
 
-  const handleSharePointerDown = useCallback((event: React.PointerEvent<HTMLButtonElement>) => {
+  const handleSharePressStart = useCallback((event: React.SyntheticEvent<HTMLButtonElement>) => {
     event.stopPropagation();
   }, []);
 
@@ -197,7 +197,8 @@ export const PointsProfileTable: React.FC = () => {
             variant="link"
             size="xs"
             className="m-0 h-8 w-8 p-0"
-            onPointerDown={handleSharePointerDown}
+            onPointerDown={handleSharePressStart}
+            onMouseDown={handleSharePressStart}
             onClick={(event) => handleShareClick(event, row.original)}
           >
             <IconShare aria-hidden="true" focusable="false" className="w-4 h-4" />
