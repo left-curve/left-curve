@@ -20,7 +20,6 @@ dango-primitives                      = { workspace = true }
 dango-sdk                             = { workspace = true }
 dango-testing                         = { workspace = true }
 dango-types                           = { workspace = true }
-postgresql_embedded                   = { workspace = true }
 reqwest                               = { workspace = true }
 sea-orm                               = { workspace = true }
 serde_json                            = { workspace = true }

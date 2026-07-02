@@ -1,9 +1,10 @@
 //! End-to-end test harness for the archive.
 //!
 //! Helpers that stand up a full environment — a Postgres engine (a throwaway
-//! schema on `DATABASE_URL`, or an embedded server when that is absent), a temp
-//! RocksDB block store, and a mock Dango node feeding the `App` — so the
-//! integration tests in `tests/` can drive the real pipeline end to end.
+//! schema on the `DATABASE_URL` server, default
+//! `postgres://postgres@localhost/grug_test`), a temp RocksDB block store, and
+//! a mock Dango node feeding the `App` — so the integration tests in `tests/`
+//! can drive the real pipeline end to end.
 //!
 //! Two entry points: [`Env::setup`] stands up everything at once (node + db +
 //! indexer); [`PendingEnv`] stops after the node + db so a test can drive the
@@ -30,7 +31,6 @@ use {
         mock_httpd_run_with_callback, mock_httpd_wait_for_server_ready,
     },
     dango_types::constants::usdc,
-    postgresql_embedded::PostgreSQL,
     sea_orm::{
         ConnectOptions, ConnectionTrait, Database, DatabaseConnection, DbBackend, Statement,
     },
@@ -42,30 +42,23 @@ use {
 
 /// A Postgres test database scoped to a throwaway schema.
 ///
-/// The engine is chosen at runtime: if `DATABASE_URL` is set it is used (CI's
-/// service Postgres, or a local one), otherwise an **embedded** Postgres is
-/// started — real upstream binaries, downloaded on first use, full engine
-/// fidelity, no Docker. Either way each [`TestDb`] gets a fresh
+/// Uses the Postgres server at `DATABASE_URL` (default
+/// `postgres://postgres@localhost/grug_test`); each [`TestDb`] gets a fresh
 /// `CREATE SCHEMA`d namespace so parallel tests never collide.
 ///
-/// Cleanup is automatic on drop: the embedded server (if any) is torn down
-/// whole by [`PostgreSQL`]'s own `Drop`; against an external server the schema
-/// is `DROP`ped so nothing leaks.
+/// Cleanup is automatic on drop: the schema is `DROP`ped so nothing leaks.
 pub struct TestDb {
     /// Connection pinned to this test's schema via `search_path`. Share its
     /// clone with the committer and the read API.
     pub conn: DatabaseConnection,
     schema: String,
     base_url: String,
-    /// Kept alive so an embedded server outlives the test; `None` for an
-    /// external `DATABASE_URL`.
-    _embedded: Option<PostgreSQL>,
 }
 
 impl TestDb {
     /// Stand up a fresh, schema-isolated test database.
     pub async fn setup() -> anyhow::Result<Self> {
-        let (base_url, embedded) = base_engine().await?;
+        let base_url = base_engine().await?;
         let schema = format!("hist_e2e_{}", uuid::Uuid::new_v4().simple());
 
         // Create the schema on a plain admin connection (no `search_path`), so it
@@ -92,7 +85,6 @@ impl TestDb {
             conn,
             schema,
             base_url,
-            _embedded: embedded,
         })
     }
 
@@ -107,14 +99,8 @@ impl TestDb {
 
 impl Drop for TestDb {
     fn drop(&mut self) {
-        // The embedded server is dropped (stopped + wiped) by its own `Drop`
-        // right after this, so there is nothing to clean there. Against an
-        // external server, drop the schema so it does not leak — on a fresh
-        // thread + runtime, since `Drop` is sync and may run inside the test's
-        // own runtime.
-        if self._embedded.is_some() {
-            return;
-        }
+        // Drop the schema so it does not leak — on a fresh thread + runtime,
+        // since `Drop` is sync and may run inside the test's own runtime.
         let base_url = self.base_url.clone();
         let schema = self.schema.clone();
         let _ = std::thread::spawn(move || {
@@ -133,27 +119,18 @@ impl Drop for TestDb {
     }
 }
 
-/// Resolve the Postgres engine: an external `DATABASE_URL` if set, else a
-/// freshly-started embedded server (binaries downloaded on first use). The
-/// returned `PostgreSQL` (when present) must be kept alive for the server to
-/// stay up.
-async fn base_engine() -> anyhow::Result<(String, Option<PostgreSQL>)> {
-    if let Ok(url) = std::env::var("DATABASE_URL") {
-        // CI points `DATABASE_URL` at a `dango_test` database the bare Postgres
-        // container never creates; make sure it exists before we carve schemas
-        // inside it.
-        ensure_database_exists(&url).await?;
-        return Ok((url, None));
-    }
-
-    let mut pg = PostgreSQL::default();
-    pg.setup()
-        .await
-        .context("setting up embedded Postgres (downloads binaries on first use)")?;
-    pg.start().await.context("starting embedded Postgres")?;
-    // The default `postgres` database; tests carve their own schema inside it.
-    let url = pg.settings().url("postgres");
-    Ok((url, Some(pg)))
+/// Resolve the external Postgres: `DATABASE_URL` if set, else a local default
+/// (`postgres://postgres@localhost/grug_test`, the same default as
+/// `dango-testing`). The database is created if missing; each test carves its
+/// own schema inside it.
+async fn base_engine() -> anyhow::Result<String> {
+    let url = std::env::var("DATABASE_URL")
+        .unwrap_or_else(|_| "postgres://postgres@localhost/grug_test".to_string());
+    // CI points `DATABASE_URL` at a `dango_test` database the bare Postgres
+    // container never creates, and the local default `grug_test` likewise may
+    // not exist yet; make sure it exists before we carve schemas inside it.
+    ensure_database_exists(&url).await?;
+    Ok(url)
 }
 
 /// Ensure the database named in an external `DATABASE_URL` exists, creating it

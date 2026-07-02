@@ -145,7 +145,6 @@ p256                        = "0.13"
 parking_lot                 = { version = "0.12", features = ["arc_lock", "send_guard"] }
 paste                       = "1"
 pbkdf2                      = "0.12"
-postgresql_embedded         = { version = "0.20.0", default-features = false, features = ["tokio", "rustls", "theseus"] }
 proptest                    = "1"
 prost                       = "0.14"
 pyth-lazer-client           = "25.0.0"
