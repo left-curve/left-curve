@@ -120,6 +120,12 @@ describe("share modals", () => {
     expect(shareModalMocks.hideModal).toHaveBeenCalledOnce();
   });
 
+  it("keeps fractional points visible on sub-one point share cards", () => {
+    const { container } = render(<PointsShare points={0.0082233} weekNumber={12} />);
+
+    expect(container).toHaveTextContent("0.008223");
+  });
+
   it("normalizes open-position pnl into a leveraged long share card and saves it", () => {
     const { container } = render(
       <PnlShare

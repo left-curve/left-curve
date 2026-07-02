@@ -19,6 +19,8 @@ export function PreviewCard({ ref, points, weekNumber, selectedCharacter }: Poin
   const referralLink = getReferralLink(userIndex);
   const dangoLogoSrc = "/images/dango.svg";
   const characterImg = `/images/pnl-modal/${CHARACTERS[selectedCharacter]}.png`;
+  const pointsFormatOptions =
+    points > 0 && points < 1 ? { maxFractionDigits: 6 } : { fractionDigits: 0 };
 
   return (
     <div
@@ -39,7 +41,7 @@ export function PreviewCard({ ref, points, weekNumber, selectedCharacter }: Poin
         <FormattedNumber
           as="p"
           number={points}
-          formatOptions={{ fractionDigits: 0 }}
+          formatOptions={pointsFormatOptions}
           className="display-heading-2xl text-[#453D39] leading-none"
         />
       </div>
