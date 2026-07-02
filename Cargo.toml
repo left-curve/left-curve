@@ -1,5 +1,12 @@
 [workspace]
 members = [
+  "dango/archive/app",
+  "dango/archive/block-source",
+  "dango/archive/cli",
+  "dango/archive/httpd",
+  "dango/archive/projection",
+  "dango/archive/testing",
+  "dango/archive/types",
   "dango/cli",
   "dango/core/app",
   "dango/core/crypto",
@@ -33,13 +40,6 @@ members = [
   "dango/hyperlane/mailbox",
   "dango/hyperlane/types",
   "dango/hyperlane/va",
-  "dango/archive/app",
-  "dango/archive/block-source",
-  "dango/archive/cli",
-  "dango/archive/httpd",
-  "dango/archive/projection",
-  "dango/archive/testing",
-  "dango/archive/types",
   "dango/indexer/cache",
   "dango/indexer/clickhouse",
   "dango/indexer/graphql-types",
@@ -193,6 +193,12 @@ zstd                        = "0.13"
 dango-account               = { path = "dango/exchange/account" }
 dango-account-factory       = { path = "dango/exchange/account-factory" }
 dango-app                   = { path = "dango/core/app" }
+dango-archive-app           = { path = "dango/archive/app" }
+dango-archive-block-source  = { path = "dango/archive/block-source" }
+dango-archive-httpd         = { path = "dango/archive/httpd" }
+dango-archive-projection    = { path = "dango/archive/projection" }
+dango-archive-testing       = { path = "dango/archive/testing" }
+dango-archive-types         = { path = "dango/archive/types" }
 dango-auth                  = { path = "dango/exchange/auth" }
 dango-backtrace             = { path = "dango/utils/backtrace" }
 dango-bank                  = { path = "dango/exchange/bank" }
@@ -214,12 +220,6 @@ dango-identity              = { path = "dango/utils/identity" }
 dango-indexer-cache         = { path = "dango/indexer/cache" }
 dango-indexer-clickhouse    = { path = "dango/indexer/clickhouse" }
 dango-indexer-graphql-types = { path = "dango/indexer/graphql-types" }
-dango-archive-app          = { path = "dango/archive/app" }
-dango-archive-block-source = { path = "dango/archive/block-source" }
-dango-archive-httpd        = { path = "dango/archive/httpd" }
-dango-archive-projection   = { path = "dango/archive/projection" }
-dango-archive-testing      = { path = "dango/archive/testing" }
-dango-archive-types        = { path = "dango/archive/types" }
 dango-indexer-hooked        = { path = "dango/indexer/hooked" }
 dango-indexer-httpd         = { path = "dango/indexer/httpd", features = ["tracing"] }
 dango-indexer-metrics       = { path = "dango/indexer/metrics" }

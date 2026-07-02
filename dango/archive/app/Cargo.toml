@@ -18,17 +18,17 @@ metrics = ["dep:metrics"]
 tracing = ["dep:tracing"]
 
 [dependencies]
-anyhow                          = { workspace = true }
-async-trait                     = { workspace = true }
-chrono                          = { workspace = true }
-clickhouse                      = { workspace = true }
-futures                         = { workspace = true }
+anyhow                     = { workspace = true }
+async-trait                = { workspace = true }
+chrono                     = { workspace = true }
+clickhouse                 = { workspace = true }
 dango-archive-block-source = { workspace = true }
 dango-archive-httpd        = { workspace = true }
 dango-archive-projection   = { workspace = true }
 dango-archive-types        = { workspace = true }
-metrics                         = { workspace = true, optional = true }
-sea-orm                         = { workspace = true }
-sea-orm-migration               = { workspace = true }
-tokio                           = { workspace = true }
-tracing                         = { workspace = true, optional = true }
+futures                    = { workspace = true }
+metrics                    = { workspace = true, optional = true }
+sea-orm                    = { workspace = true }
+sea-orm-migration          = { workspace = true }
+tokio                      = { workspace = true }
+tracing                    = { workspace = true, optional = true }

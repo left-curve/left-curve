@@ -18,16 +18,16 @@ metrics = ["dep:metrics"]
 tracing = ["dep:tracing"]
 
 [dependencies]
-actix-cors              = { workspace = true }
-actix-web               = { workspace = true }
-anyhow                  = { workspace = true }
+actix-cors                 = { workspace = true }
+actix-web                  = { workspace = true }
+anyhow                     = { workspace = true }
 dango-archive-block-source = { workspace = true }
 dango-archive-types        = { workspace = true }
-futures                 = { workspace = true }
-hex                     = { workspace = true }
-metrics                 = { workspace = true, optional = true }
-sea-orm                 = { workspace = true }
-serde                   = { workspace = true, features = ["derive"] }
-serde_json              = { workspace = true }
-tokio                   = { workspace = true }
-tracing                 = { workspace = true, optional = true }
+futures                    = { workspace = true }
+hex                        = { workspace = true }
+metrics                    = { workspace = true, optional = true }
+sea-orm                    = { workspace = true }
+serde                      = { workspace = true, features = ["derive"] }
+serde_json                 = { workspace = true }
+tokio                      = { workspace = true }
+tracing                    = { workspace = true, optional = true }
