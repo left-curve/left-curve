@@ -7,7 +7,6 @@ export type ForgotUsernameParameters = {
   keyHash: KeyHash;
   limit?: number;
   startAfter?: number;
-  height?: number;
 };
 
 export type ForgotUsernameReturnType = Promise<User[]>;
@@ -17,14 +16,13 @@ export type ForgotUsernameReturnType = Promise<User[]>;
  * @param parameters.keyHash The key hash to get the user for.
  * @param parameters.limit The maximum number of users to return.
  * @param parameters.startAfter The user index to start after.
- * @param parameters.height The height at which query is made.
  * @returns The user(s)
  */
 export async function forgotUsername(
   client: Client,
   parameters: ForgotUsernameParameters,
 ): ForgotUsernameReturnType {
-  const { keyHash, limit, startAfter, height = 0 } = parameters;
+  const { keyHash, limit, startAfter } = parameters;
   const msg = { forgotUsername: { keyHash, limit, startAfter } };
 
   const { addresses } = await getAppConfig(client);
@@ -32,6 +30,5 @@ export async function forgotUsername(
   return await queryWasmSmart(client, {
     contract: addresses.accountFactory,
     msg,
-    height,
   });
 }

@@ -89,7 +89,7 @@ groups:
         sum by(instance, dango_network) (increase(cloudflared_tunnel_request_errors[5m]))
         /
         clamp_min(sum by(instance, dango_network) (increase(cloudflared_tunnel_total_requests[5m])), 1)
-        > 0.001
+        > 0.02
       )
     for: 2m
     labels:

@@ -12,7 +12,6 @@ The Dango DEX is currently disabled. Calls described on this page will not execu
 ```ts
 function dexStatus(
   client: Client,
-  parameters?: { height?: number },
 ): Promise<boolean>
 ```
 
@@ -24,10 +23,6 @@ import { createPublicClient, createTransport, testnet } from "@left-curve/sdk"
 const client = createPublicClient({ chain: testnet, transport: createTransport() })
 const paused = await client.dexStatus()
 ```
-
-## Parameters
-
-**`height`** — `number`, optional. Block height. Default `0` (latest).
 
 ## Returns
 

@@ -13,7 +13,6 @@ protocol book: `perps/5-vault` §4.
 ```ts
 function getPerpsVaultState(
   client: Client,
-  parameters?: { height?: number },
 ): Promise<PerpsVaultState>
 ```
 
@@ -25,10 +24,6 @@ import { createPublicClient, createTransport, testnet } from "@left-curve/sdk"
 const client = createPublicClient({ chain: testnet, transport: createTransport() })
 const state = await client.getPerpsVaultState()
 ```
-
-## Parameters
-
-**`height`** — `number`, optional. Block height. Default `0` (latest).
 
 ## Returns
 

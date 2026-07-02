@@ -10,7 +10,6 @@ function queryWasmRaw(
   parameters: {
     contract: Address
     key: Base64
-    height?: number
   },
 ): Promise<WasmRawResponse>
 ```
@@ -34,8 +33,6 @@ const value = await client.queryWasmRaw({ contract, key })
 **`contract`** — `Address`. The contract to read from.
 
 **`key`** — `Base64`. The storage key, base64-encoded.
-
-**`height`** — `number`, optional. Block height to query at. Default `0` (latest).
 
 ## Returns
 

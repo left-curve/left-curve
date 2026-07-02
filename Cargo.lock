@@ -4697,12 +4697,8 @@ dependencies = [
 name = "dango-upgrade"
 version = "0.0.0"
 dependencies = [
- "borsh",
  "dango-app",
- "dango-math",
  "dango-primitives",
- "dango-storage",
- "dango-types",
  "tracing",
 ]
 

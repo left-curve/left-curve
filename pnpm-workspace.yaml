@@ -44,3 +44,4 @@ minimumReleaseAge: 20160
 minimumReleaseAgeExclude:
   - '@privy-io/js-sdk-core'
   - '@privy-io/public-api'
+  - '@swapper-finance/deposit-sdk'

@@ -11,7 +11,6 @@ function getBalances(
     address: Address
     startAfter?: Denom
     limit?: number
-    height?: number
   },
 ): Promise<Coins>
 ```
@@ -36,8 +35,6 @@ const balances = await client.getBalances({ address, limit: 50 })
 **`startAfter`** — `Denom`, optional. Denom to start after (exclusive). Use the last denom from the previous page.
 
 **`limit`** — `number`, optional. Maximum entries to return.
-
-**`height`** — `number`, optional. Block height to query at. Default `0` (latest).
 
 ## Returns
 

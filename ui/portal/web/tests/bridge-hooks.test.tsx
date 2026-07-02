@@ -120,6 +120,18 @@ const arbitrumSepoliaRouterAddress = "0x9d0ea335355da17ee89e50df43ab823416cf73d4
 const arbitrumSepoliaTokenAddress = "0x75faf114eafb1bdbe2f0316df893fd58ce46aa4d";
 const evmAccount = "0x0000000000000000000000000000000000000abc";
 const evmRecipient = "0x4444444444444444444444444444444444444444";
+const createEvmConnector = (
+  providerOrGetProvider: unknown | (() => Promise<unknown>),
+  uid = "metamask-uid",
+) => ({
+  getProvider:
+    typeof providerOrGetProvider === "function"
+      ? providerOrGetProvider
+      : vi.fn().mockResolvedValue(providerOrGetProvider),
+  id: "metamask",
+  type: "eip1193",
+  uid,
+});
 
 const bridger = {
   chainId: 11155111,
@@ -354,7 +366,7 @@ describe("bridge hooks", () => {
     vi.clearAllMocks();
   });
 
-  it("exposes only supported bridge coins from the configured coin store", () => {
+  it("exposes only supported bridge coins from the configured coin store", async () => {
     const atomCoin = {
       decimals: 6,
       denom: "bridge/atom",
@@ -392,11 +404,11 @@ describe("bridge hooks", () => {
     );
 
     expect(result.current.coins).toEqual([usdcCoin]);
+    await waitFor(() => expect(result.current.coin).toEqual(usdcCoin));
 
     act(() => result.current.changeCoin(atomCoin.denom));
 
-    expect(result.current.coin).toEqual(atomCoin);
-    expect(result.current.config).toBeUndefined();
+    expect(result.current.coin).toEqual(usdcCoin);
   });
 
   it("loads native and ERC20 EVM balances for a connected external wallet address", async () => {
@@ -669,7 +681,7 @@ describe("bridge hooks", () => {
     });
   });
 
-  it("does not derive deprecated ETH router config even when backend config still has the route", async () => {
+  it("ignores deprecated ETH selection in deposit mode even when backend config still has the route", async () => {
     const controllers = {
       inputs: {},
       reset: vi.fn(),
@@ -691,9 +703,19 @@ describe("bridge hooks", () => {
 
     await waitFor(() => expect(result.current.config?.bridger).toBe(bridger));
 
-    expect(result.current.coin).toEqual(ethCoin);
+    expect(result.current.coin).toEqual(usdcCoin);
     expect(result.current.config?.chain).toEqual(expect.objectContaining({ id: 11155111 }));
-    expect(result.current.config?.router).toBeUndefined();
+    expect(result.current.config?.router).toEqual({
+      address: routerAddress,
+      coin: tokenAddress,
+      domain: bridger.domain,
+      remote: {
+        warp: {
+          contract: toAddr32(routerAddress),
+          domain: bridger.domain,
+        },
+      },
+    });
   });
 
   it("derives Arbitrum Sepolia USDC bridge routes when connected to a Dango testnet environment", async () => {
@@ -926,7 +948,7 @@ describe("bridge hooks", () => {
     });
   });
 
-  it("auto-selects the highest-priority network after choosing a coin in deposit mode", () => {
+  it("defaults deposit mode to USDC on Arbitrum", async () => {
     const controllers = {
       inputs: {},
       reset: vi.fn(),
@@ -948,11 +970,10 @@ describe("bridge hooks", () => {
       { wrapper: createQueryClientWrapper() },
     );
 
-    expect(result.current.network).toBeUndefined();
-
-    act(() => result.current.changeCoin(usdcCoin.denom));
-
-    expect(result.current.network).toBe("42161");
+    await waitFor(() => {
+      expect(result.current.coin).toEqual(usdcCoin);
+      expect(result.current.network).toBe("42161");
+    });
   });
 
   it("does not auto-select a network when choosing a coin in withdraw mode", () => {
@@ -982,7 +1003,7 @@ describe("bridge hooks", () => {
     expect(result.current.network).toBeUndefined();
   });
 
-  it("keeps production Ethereum native ETH unavailable for deposits", async () => {
+  it("keeps production Ethereum native ETH unavailable for deposits by retaining USDC", async () => {
     hookMocks.useConfig.mockReturnValue({
       chain: {
         id: "dango-1",
@@ -1022,9 +1043,19 @@ describe("bridge hooks", () => {
 
     await waitFor(() => expect(result.current.config?.bridger).toBe(mainnetBridger));
 
-    expect(result.current.coin).toEqual(ethCoin);
+    expect(result.current.coin).toEqual(usdcCoin);
     expect(result.current.config?.chain).toEqual(expect.objectContaining({ id: 1 }));
-    expect(result.current.config?.router).toBeUndefined();
+    expect(result.current.config?.router).toEqual({
+      address: mainnetRouterAddress,
+      coin: mainnetTokenAddress,
+      domain: mainnetBridger.domain,
+      remote: {
+        warp: {
+          contract: toAddr32(mainnetRouterAddress),
+          domain: mainnetBridger.domain,
+        },
+      },
+    });
   });
 
   it("keeps selected EVM networks explicit when backend bridge config is missing", async () => {
@@ -1481,10 +1512,7 @@ describe("bridge hooks", () => {
     const provider = {
       request: vi.fn().mockResolvedValue([evmRecipient]),
     };
-    const connector = {
-      getProvider: vi.fn().mockResolvedValue(provider),
-      id: "metamask",
-    };
+    const connector = createEvmConnector(provider);
 
     const { result } = renderHook(
       () =>
@@ -1540,10 +1568,7 @@ describe("bridge hooks", () => {
     const provider = {
       request: vi.fn().mockResolvedValue([evmRecipient]),
     };
-    const connector = {
-      getProvider: vi.fn().mockResolvedValue(provider),
-      id: "metamask",
-    };
+    const connector = createEvmConnector(provider);
     hookMocks.publicClientReadContract.mockResolvedValueOnce(100n).mockResolvedValueOnce(1500000n);
 
     const { result } = renderHook(
@@ -1594,10 +1619,7 @@ describe("bridge hooks", () => {
     const provider = {
       request: vi.fn().mockResolvedValue([evmRecipient]),
     };
-    const connector = {
-      getProvider: vi.fn().mockResolvedValue(provider),
-      id: "metamask",
-    };
+    const connector = createEvmConnector(provider);
 
     const { rerender, result } = renderHook(
       ({ amount }: { amount: string }) =>
@@ -1705,10 +1727,7 @@ describe("bridge hooks", () => {
 
   it("surfaces EVM wallet acquisition failures before approval or deposit transactions", async () => {
     const walletError = new Error("wallet provider unavailable");
-    const connector = {
-      getProvider: vi.fn().mockRejectedValue(walletError),
-      id: "metamask",
-    };
+    const connector = createEvmConnector(vi.fn().mockRejectedValue(walletError));
 
     const { result } = renderHook(
       () =>
@@ -1742,10 +1761,7 @@ describe("bridge hooks", () => {
     const provider = {
       request: vi.fn().mockResolvedValue([evmRecipient]),
     };
-    const connector = {
-      getProvider: vi.fn().mockResolvedValue(provider),
-      id: "metamask",
-    };
+    const connector = createEvmConnector(provider);
     hookMocks.useSigningClient.mockReturnValue({
       data: undefined,
     });
@@ -1775,10 +1791,7 @@ describe("bridge hooks", () => {
     const provider = {
       request: vi.fn().mockResolvedValue([evmRecipient]),
     };
-    const connector = {
-      getProvider: vi.fn().mockResolvedValue(provider),
-      id: "metamask",
-    };
+    const connector = createEvmConnector(provider);
     hookMocks.useAccount.mockReturnValue({
       account: undefined,
       isConnected: false,
@@ -1810,10 +1823,7 @@ describe("bridge hooks", () => {
     const provider = {
       request: vi.fn().mockResolvedValue([evmRecipient]),
     };
-    const connector = {
-      getProvider: vi.fn().mockResolvedValue(provider),
-      id: "metamask",
-    };
+    const connector = createEvmConnector(provider);
     hookMocks.signingClientQueryWasmSmart.mockRejectedValueOnce(mailboxError);
 
     const { result } = renderHook(
@@ -1847,10 +1857,7 @@ describe("bridge hooks", () => {
     const provider = {
       request: vi.fn().mockResolvedValue([evmRecipient]),
     };
-    const connector = {
-      getProvider: vi.fn().mockResolvedValue(provider),
-      id: "metamask",
-    };
+    const connector = createEvmConnector(provider);
     hookMocks.walletWriteContract.mockRejectedValueOnce(approvalError);
 
     const { result } = renderHook(
@@ -1895,10 +1902,7 @@ describe("bridge hooks", () => {
     const provider = {
       request: vi.fn().mockResolvedValue([evmRecipient]),
     };
-    const connector = {
-      getProvider: vi.fn().mockResolvedValue(provider),
-      id: "metamask",
-    };
+    const connector = createEvmConnector(provider);
     hookMocks.walletWriteContract.mockRejectedValueOnce(depositError);
 
     const { result } = renderHook(
@@ -1936,10 +1940,7 @@ describe("bridge hooks", () => {
     const provider = {
       request: vi.fn().mockResolvedValue([evmRecipient]),
     };
-    const connector = {
-      getProvider: vi.fn().mockResolvedValue(provider),
-      id: "metamask",
-    };
+    const connector = createEvmConnector(provider);
 
     const { result } = renderHook(
       () =>
@@ -1980,10 +1981,7 @@ describe("bridge hooks", () => {
     const provider = {
       request: vi.fn().mockResolvedValue([evmRecipient]),
     };
-    const connector = {
-      getProvider: vi.fn().mockResolvedValue(provider),
-      id: "metamask",
-    };
+    const connector = createEvmConnector(provider);
     const zeroFeeBridgeConfig = {
       ...evmBridgeConfig,
       bridger: {
@@ -2026,10 +2024,7 @@ describe("bridge hooks", () => {
     const provider = {
       request: vi.fn().mockResolvedValue([evmRecipient]),
     };
-    const connector = {
-      getProvider: vi.fn().mockResolvedValue(provider),
-      id: "metamask",
-    };
+    const connector = createEvmConnector(provider);
 
     const { result } = renderHook(
       () =>

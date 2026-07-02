@@ -7,7 +7,6 @@ Read the current code hash for newly-created accounts.
 ```ts
 function getCodeHash(
   client: Client,
-  parameters?: { height?: number },
 ): Promise<Hex>
 ```
 
@@ -19,10 +18,6 @@ import { createPublicClient, createTransport, testnet } from "@left-curve/sdk"
 const client = createPublicClient({ chain: testnet, transport: createTransport() })
 const codeHash = await client.getCodeHash()
 ```
-
-## Parameters
-
-**`height`** — `number`, optional. Block height. Default `0` (latest).
 
 ## Returns
 

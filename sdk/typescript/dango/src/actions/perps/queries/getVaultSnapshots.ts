@@ -6,7 +6,6 @@ import { getAppConfig } from "#actions/app/queries/getAppConfig.js";
 export type GetVaultSnapshotsParameters = Prettify<{
   min?: number;
   max?: number;
-  height?: number;
 }>;
 
 export type GetVaultSnapshotsReturnType = Promise<Record<string, VaultSnapshot>>;
@@ -15,7 +14,7 @@ export async function getVaultSnapshots(
   client: Client,
   parameters?: GetVaultSnapshotsParameters,
 ): GetVaultSnapshotsReturnType {
-  const { min, max, height = 0 } = parameters ?? {};
+  const { min, max } = parameters ?? {};
 
   const { addresses } = await getAppConfig(client);
 
@@ -29,6 +28,5 @@ export async function getVaultSnapshots(
   return queryWasmSmart(client, {
     contract: addresses.perps,
     msg,
-    height,
   });
 }

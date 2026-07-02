@@ -5,7 +5,7 @@ import { getAppConfig } from "#actions/app/queries/getAppConfig.js";
 
 type ActionMsg = GetPerpsQueryMsg<"pairParam">;
 
-export type GetPerpsPairParamParameters = Prettify<ActionMsg["pairParam"] & { height?: number }>;
+export type GetPerpsPairParamParameters = Prettify<ActionMsg["pairParam"]>;
 
 export type GetPerpsPairParamReturnType = Promise<PerpsPairParam | null>;
 
@@ -13,15 +13,13 @@ export async function getPerpsPairParam(
   client: Client,
   parameters: GetPerpsPairParamParameters,
 ): GetPerpsPairParamReturnType {
-  const { height = 0, ...queryMsg } = parameters;
-
   const msg: ActionMsg = {
     pairParam: {
-      ...queryMsg,
+      ...parameters,
     },
   };
 
   const { addresses } = await getAppConfig(client);
 
-  return await queryWasmSmart(client, { contract: addresses.perps, msg, height });
+  return await queryWasmSmart(client, { contract: addresses.perps, msg });
 }

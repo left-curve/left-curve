@@ -9,7 +9,6 @@ function getSupply(
   client: Client,
   parameters: {
     denom: Denom
-    height?: number
   },
 ): Promise<Coin>
 ```
@@ -27,8 +26,6 @@ console.log(supply.amount)
 ## Parameters
 
 **`denom`** — `Denom`. The token denomination.
-
-**`height`** — `number`, optional. Block height to query at. Default `0` (latest).
 
 ## Returns
 

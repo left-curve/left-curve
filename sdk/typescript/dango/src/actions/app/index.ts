@@ -2,11 +2,7 @@
 /*                                   Queries                                  */
 /* -------------------------------------------------------------------------- */
 
-export {
-  type GetAppConfigParameters,
-  type GetAppConfigReturnType,
-  getAppConfig,
-} from "./queries/getAppConfig.js";
+export { type GetAppConfigReturnType, getAppConfig } from "./queries/getAppConfig.js";
 
 /* -------------------------------------------------------------------------- */
 /*                                  Mutations                                 */

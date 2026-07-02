@@ -9,7 +9,6 @@ function getAccountSeenNonces(
   client: Client,
   parameters: {
     address: Address
-    height?: number
   },
 ): Promise<[number, number[]]>
 ```
@@ -29,8 +28,6 @@ const [nextNonce, seenNonces] = await client.getAccountSeenNonces({ address })
 ## Parameters
 
 **`address`** — `Address`. The account.
-
-**`height`** — `number`, optional. Block height. Default `0` (latest).
 
 ## Returns
 

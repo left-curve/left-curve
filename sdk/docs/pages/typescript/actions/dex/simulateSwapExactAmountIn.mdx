@@ -15,7 +15,6 @@ function simulateSwapExactAmountIn(
   parameters: {
     input: Coin
     route: SwapRoute
-    height?: number
   },
 ): Promise<Coin>
 ```
@@ -38,8 +37,6 @@ console.log(quote.amount)
 **`input`** — `Coin`. Exact input `{ denom, amount }` in base units.
 
 **`route`** — `SwapRoute`. Array of `PairId` hops.
-
-**`height`** — `number`, optional. Block height. Default `0` (latest).
 
 ## Returns
 
