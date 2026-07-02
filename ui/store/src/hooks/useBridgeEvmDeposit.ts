@@ -1,9 +1,10 @@
-import { createPublicClient, createWalletClient, custom, http } from "viem";
+import { createPublicClient, http } from "viem";
 import { useQuery } from "@tanstack/react-query";
 import { useAppConfig } from "./useAppConfig.js";
 import { useSigningClient } from "./useSigningClient.js";
 import { useAccount } from "./useAccount.js";
 import { useSubmitTx } from "./useSubmitTx.js";
+import { useConnectorWalletClient } from "./useConnectorWalletClient.js";
 
 import { parseUnits } from "@left-curve/utils";
 
@@ -12,7 +13,6 @@ import { ERC20_ABI, HYPERLANE_ROUTER_ABI, toAddr32 } from "@left-curve/sdk/hyper
 import type { Connector } from "../types/connector.js";
 import type { Chain as ViemChain } from "viem";
 import type { AnyCoin } from "../types/coin.js";
-import type { EIP1193Provider } from "../types/eip1193.js";
 import type { MailBoxConfig, NonNullablePropertiesBy } from "@left-curve/types";
 import type { useBridgeState } from "./useBridgeState.js";
 
@@ -48,23 +48,9 @@ export function useBridgeEvmDeposit(parameters: UseBridgeEvmDepositParameters) {
     transport: http(bridger.rpcUrl),
   });
 
-  const wallet = useQuery({
-    enabled: !!connector,
-    queryKey: ["bridge_evm", "provider", chain, connector?.id],
-    queryFn: async () => {
-      if (!connector) return undefined;
-      const provider = await (
-        connector as unknown as { getProvider: () => Promise<EIP1193Provider> }
-      ).getProvider();
-
-      const [evmAddress] = await provider.request({ method: "eth_requestAccounts" });
-
-      return createWalletClient({
-        chain: chain as ViemChain,
-        transport: custom(provider),
-        account: evmAddress as `0x${string}`,
-      });
-    },
+  const wallet = useConnectorWalletClient({
+    connector,
+    chain: chain as ViemChain,
   });
 
   const allowanceQuery = useQuery({

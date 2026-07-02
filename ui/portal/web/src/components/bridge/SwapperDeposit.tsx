@@ -1,4 +1,10 @@
-import { useAccount, useBalances } from "@left-curve/store";
+import {
+  type ConnectorWalletClient,
+  isEvmProviderConnector,
+  useAccount,
+  useBalances,
+  useConnectorWalletClient,
+} from "@left-curve/store";
 
 import { Button, IconChevronRight, WarningContainer, useTheme } from "@left-curve/applets-kit";
 
@@ -10,13 +16,17 @@ import {
   type SwapperStyles,
 } from "@swapper-finance/deposit-sdk";
 
-import { useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { DepositFeeBadge } from "./DepositOptions";
+
+import type { Connector } from "@left-curve/store/types";
 
 const SWAPPER_DST_CHAIN_ID = "dango";
 const SWAPPER_DST_TOKEN_ADDR = "usdc";
 const SWAPPER_IFRAME_HEIGHT = "560px";
 const SWAPPER_DEPOSIT_OPTIONS = ["transferCrypto", "depositWithCash", "walletDeposit"] as const;
+const SWAPPER_CONTAINER_CLASS =
+  "h-fit w-full overflow-hidden rounded-xl bg-surface-secondary-rice shadow-account-card";
 const SWAPPER_BASE_COMPONENT_STYLES = {
   width: "100%",
   primaryColor: "#F57589",
@@ -45,31 +55,75 @@ const getSwapperStyles = (theme: "light" | "dark"): SwapperStyles => ({
 
 type SwapperDepositProps = {
   onBack: () => void;
+  signerConnector?: Connector;
 };
 
-export const SwapperDeposit = ({ onBack }: SwapperDepositProps) => {
-  const { account, isConnected, refreshUserStatus } = useAccount();
-  const { refetch: refreshBalances } = useBalances({ address: account?.address });
-  const { theme } = useTheme();
+type UseSwapperSignerClientParameters = {
+  dangoConnector?: Connector;
+  enabled: boolean;
+  signerConnector?: Connector;
+};
+
+function getSwapperSignerConnector(
+  signerConnector: Connector | undefined,
+  dangoConnector: Connector | undefined,
+) {
+  return isEvmProviderConnector(signerConnector)
+    ? signerConnector
+    : isEvmProviderConnector(dangoConnector)
+      ? dangoConnector
+      : undefined;
+}
+
+function useSwapperSignerClient({
+  dangoConnector,
+  enabled,
+  signerConnector,
+}: UseSwapperSignerClientParameters) {
+  const swapperSignerConnector = getSwapperSignerConnector(signerConnector, dangoConnector);
+  const signerWallet = useConnectorWalletClient({
+    connector: swapperSignerConnector,
+    enabled,
+  });
+
+  return {
+    signerClient: signerWallet.data,
+    isPending: enabled && !!swapperSignerConnector && !signerWallet.data && !signerWallet.error,
+  };
+}
+
+type SwapperIframeMountProps = {
+  depositWalletAddress: string;
+  integratorId: string;
+  onTransactionSuccess: () => void;
+  signerClient?: ConnectorWalletClient<undefined>;
+  theme: "light" | "dark";
+};
+
+function SwapperIframeMount({
+  depositWalletAddress,
+  integratorId,
+  onTransactionSuccess,
+  signerClient,
+  theme,
+}: SwapperIframeMountProps) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const swapperIntegratorId = import.meta.env.PUBLIC_SWAPPER_INTEGRATOR_ID?.trim();
 
   useEffect(() => {
     const container = containerRef.current;
-    const depositWalletAddress = account?.address;
-
-    if (!container || !isConnected || !depositWalletAddress || !swapperIntegratorId) return;
+    if (!container) return;
 
     container.replaceChildren();
 
     const swapper = new SwapperIframe({
       container,
-      integratorId: swapperIntegratorId,
+      integratorId,
       dstChainId: SWAPPER_DST_CHAIN_ID,
       dstTokenAddr: SWAPPER_DST_TOKEN_ADDR,
       depositWalletAddress,
+      ...(signerClient ? { wallet: { signer: signerClient } } : {}),
       supportedDepositOptions: [...SWAPPER_DEPOSIT_OPTIONS],
-      styles: getSwapperStyles(theme === "dark" ? "dark" : "light"),
+      styles: getSwapperStyles(theme),
       iframeAttributes: {
         width: "100%",
         minWidth: "0",
@@ -79,8 +133,7 @@ export const SwapperDeposit = ({ onBack }: SwapperDepositProps) => {
       },
       onEvent: (event) => {
         if (event.type !== WidgetEventName.TRANSACTION_SUCCESS) return;
-        refreshBalances();
-        refreshUserStatus?.();
+        onTransactionSuccess();
       },
     });
 
@@ -94,14 +147,32 @@ export const SwapperDeposit = ({ onBack }: SwapperDepositProps) => {
       swapper.destroy();
       container.replaceChildren();
     };
-  }, [
-    account?.address,
-    isConnected,
-    refreshBalances,
-    refreshUserStatus,
-    swapperIntegratorId,
-    theme,
-  ]);
+  }, [depositWalletAddress, integratorId, onTransactionSuccess, signerClient, theme]);
+
+  return <div ref={containerRef} className={SWAPPER_CONTAINER_CLASS} />;
+}
+
+export const SwapperDeposit = ({ onBack, signerConnector }: SwapperDepositProps) => {
+  const { account, connector: dangoConnector, isConnected, refreshUserStatus } = useAccount();
+  const { refetch: refreshBalances } = useBalances({ address: account?.address });
+  const { theme } = useTheme();
+  const swapperIntegratorId = import.meta.env.PUBLIC_SWAPPER_INTEGRATOR_ID?.trim();
+  const swapperParameters =
+    account?.address && isConnected && swapperIntegratorId
+      ? {
+          depositWalletAddress: account.address,
+          integratorId: swapperIntegratorId,
+        }
+      : undefined;
+  const { isPending: isSignerPending, signerClient } = useSwapperSignerClient({
+    dangoConnector,
+    enabled: !!swapperParameters,
+    signerConnector,
+  });
+  const handleTransactionSuccess = useCallback(() => {
+    refreshBalances();
+    refreshUserStatus?.();
+  }, [refreshBalances, refreshUserStatus]);
 
   return (
     <div className="flex flex-col gap-4">
@@ -113,12 +184,16 @@ export const SwapperDeposit = ({ onBack }: SwapperDepositProps) => {
         <DepositFeeBadge />
       </div>
 
-      {!account?.address || !isConnected || !swapperIntegratorId ? (
+      {!swapperParameters ? (
         <WarningContainer color="error" description={m["common.failedToLoad"]()} />
+      ) : isSignerPending ? (
+        <div className={SWAPPER_CONTAINER_CLASS} />
       ) : (
-        <div
-          ref={containerRef}
-          className="h-fit w-full overflow-hidden rounded-xl bg-surface-secondary-rice shadow-account-card"
+        <SwapperIframeMount
+          {...swapperParameters}
+          onTransactionSuccess={handleTransactionSuccess}
+          signerClient={signerClient}
+          theme={theme === "dark" ? "dark" : "light"}
         />
       )}
     </div>
