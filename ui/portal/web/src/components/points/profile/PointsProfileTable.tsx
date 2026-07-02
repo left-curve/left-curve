@@ -176,7 +176,7 @@ export const PointsProfileTable: React.FC = () => {
       enableSorting: false,
       cell: ({ row }) => (
         <Cell.Text
-          className="text-ink-primary-900"
+          className="w-full items-end text-right text-ink-primary-900"
           text={m["points.profile.xPoints"]({
             points: formatNumber(row.original.points, formatNumberOptions),
           })}
