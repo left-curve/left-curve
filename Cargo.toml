@@ -189,6 +189,7 @@ url                         = "2.5.4"
 uuid                        = { version = "1", features = ["serde", "v4"] }
 wasmer                      = "7"
 wasmer-middlewares          = "7"
+xz2                         = "0.1"
 zstd                        = "0.13"
 # ----------------------------- Local dependencies -----------------------------
 dango-account               = { path = "dango/exchange/account" }
