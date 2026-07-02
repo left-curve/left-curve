@@ -127,6 +127,16 @@ referral-dashboard-mainnet
 [perps-bot]
 100.126.8.2    # hetzner1
 
+[batch-block-backup-testnet]
+100.90.163.19  # hetzner2
+
+[batch-block-backup-mainnet]
+100.126.8.2    # hetzner1
+
+[batch-block-backup:children]
+batch-block-backup-testnet
+batch-block-backup-mainnet
+
 [dango-assistant]
 100.96.253.40  # ovh1
 

@@ -34,6 +34,7 @@
 	"s3_secret_key": "ENC[AES256_GCM,data:ZEmNLNyAy/E+SSsZhel8t26UwCre/0XqBft+hsJwOw==,iv:HyViDt2ud5as++78hWaemFIZxOSyHw+vRPUslaMrVUg=,tag:yPYVXnez29qhdEzTiX5m6A==,type:str]",
 	"s3_master_access_key": "ENC[AES256_GCM,data:WxxtF9HPH0Bs1jyc,iv:xFbyQH2RwYNfWOhD2cUkf0RVBU4r9wMXZUrysb1M92M=,tag:hoyLqGLe/S3atg03+HFX0A==,type:str]",
 	"s3_master_secret_key": "ENC[AES256_GCM,data:A2ly2LmHEgZu0VJOHte4HJ/A9L2CvHLf0FBNtxcgV6GFe9+ycXNh0EIW,iv:9Ix7UutEi8vnMUlNbQ1DHHhZElEQ4ICvC920QTajqj4=,tag:WKL1Kdd/r0GhWPllsPLd1Q==,type:str]",
+	"backblaze_larry_endpoint": "ENC[AES256_GCM,data:3DicAFlUZ0M4KH3CpbkDZ8XAauZ540jNW1nQzFJwHKum9OE3IWjzODM=,iv:jRYDrVT7MrWGCNEgMg6vCtiIxqDJleGY+nkI/UhFVWs=,tag:MabFX16qvIUo17h1yHjdyg==,type:str]",
 	"backblaze_larry_read_only_access_key": "ENC[AES256_GCM,data:TlLyQklK7aiNN1jQEbaFlcmKz2bjwXlRfA==,iv:BX70k33t/jZQ0THjGvERnkwDTaUlV6+cU/XAoS5p750=,tag:L9Eat+0N5v8WKjD44Q5dxQ==,type:str]",
 	"backblaze_larry_read_only_secret_key": "ENC[AES256_GCM,data:YT25+dBFX4RbdBxT/2wXmqra4pSfxk7SOmP9LiOVIw==,iv:qBN+WqiQq60fBEZXJ6atS6O407zZK1vbvDNxbeXWaWQ=,tag:RBIGJ3oCfl/W/qgNHJKP0w==,type:str]",
 	"backblaze_larry_read_write_access_key": "ENC[AES256_GCM,data:auJvs30tK8gPGRf+ZflaHwlPyaP+WTIBzg==,iv:+/mdttmTy9nX5jmeUXh8xSXdd7rr7djToh3OxRlIoWU=,tag:+a1P7TGdW1dhI5DpV0/Nvg==,type:str]",
@@ -130,8 +131,8 @@
 				"recipient": "age10xqeelr09uk292rrp48jw5fem7uepuf82ax6mpq6rjuv6m3aw9mqgjnfyh"
 			}
 		],
-		"lastmodified": "2026-07-01T16:50:51Z",
-		"mac": "ENC[AES256_GCM,data:xr6LyiQW+q4XYrPk7Hm2u/WSSrr3peSKU+qvMgkq7D2xl5W+ncL1zGiVpkddSk1+8gkYQX3nqPzgVLFweiJ0EmZEFMAiO6lHqtRyVqUdiW5OA02Iot31g69L1n0vosPsrp0Pu9YhJ0sFV+76xif3SL9hdlyIgvL5G+NyslCH0Es=,iv:udGNyuvZGGXnpwURXxMSAZ2LzNG9rWuLqIm+sLy0srE=,tag:56WnyjdjFj/4xrUpsq3pvw==,type:str]",
+		"lastmodified": "2026-07-02T14:08:58Z",
+		"mac": "ENC[AES256_GCM,data:NRgZ8P9hCn9UiP6/RxZMiWo1gKsLsYb5qJeBQNprH4BS9hMwXZnF/r8NI5s1vQYkSZJqOJDZA+QqbRyof7bUdQ0tSNhUw70YK+LgqE11pwaFGxUogi/bjI5lmAwEEuuv2gUPz84OFvrag1N0krATPrw12zK/gl8UY0uGovGUuSg=,iv:lpfn8PclkUSf2aGO+hbc/SMfagwZm22IoCpDG9r4ss4=,tag:vjJFlIPlQhokCSbwTN8HZA==,type:str]",
 		"unencrypted_suffix": "_unencrypted",
 		"version": "3.13.2"
 	}
