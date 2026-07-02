@@ -20,6 +20,15 @@ const HTTP_TIMEOUT: Duration = Duration::from_secs(30);
 /// alive by sending a `ping` well within that window.
 const WS_KEEPALIVE: Duration = Duration::from_secs(20);
 
+/// Cap on establishing the `/ws` subscription — the TCP/WS handshake, the
+/// subscribe frame, and the acknowledgement wait combined. Without it a
+/// half-open connection (a LB or NAT silently dropping packets) hangs
+/// [`HttpdClient::subscribe_full_blocks`] forever — the keepalive loop does not
+/// exist yet at that stage — and with it the caller's live tail: the source
+/// would freeze without an error for its reconnect loop to react to. With the
+/// cap, the hang surfaces as an error and the caller re-subscribes.
+const SUBSCRIBE_TIMEOUT: Duration = Duration::from_secs(30);
+
 /// Thin client against a dango node's `httpd` — the multiplexed WebSocket `/ws`
 /// endpoint for the `fullBlock` subscription, HTTP for the `/block/full/range`
 /// backfill endpoint.
@@ -93,6 +102,26 @@ impl HttpdClient {
     /// `live_subscriber` integration test), without a block source in front of
     /// it that could mask a broken subscription behind its REST healer.
     pub async fn subscribe_full_blocks(
+        &self,
+    ) -> AnyResult<BoxStream<'static, AnyResult<BlockData>>> {
+        // The whole establishment is capped by `SUBSCRIBE_TIMEOUT` so a
+        // half-open connection surfaces as a retryable error instead of
+        // hanging the caller's live tail forever.
+        tokio::time::timeout(SUBSCRIBE_TIMEOUT, self.open_full_block_subscription())
+            .await
+            .map_err(|_| {
+                anyhow!(
+                    "fullBlock subscribe to {} timed out after {}s",
+                    self.ws_url,
+                    SUBSCRIBE_TIMEOUT.as_secs()
+                )
+            })?
+    }
+
+    /// The un-timed establishment behind [`subscribe_full_blocks`](Self::subscribe_full_blocks):
+    /// connect, subscribe, await the acknowledgement, then hand the socket to a
+    /// background task that yields decoded blocks.
+    async fn open_full_block_subscription(
         &self,
     ) -> AnyResult<BoxStream<'static, AnyResult<BlockData>>> {
         let (ws, _response) = connect_async(self.ws_url.as_str())

@@ -14,6 +14,25 @@ produces three Postgres tables that together answer, for any account address,
 It is a **single projection**: one `process(block)` flattens the block's
 events once and writes all three tables in one commit (one `Ctx`, one cursor).
 
+Only events whose commitment status is **`Committed`** are indexed. A reverted
+or failed event (a transfer inside a tx that later failed, say) never took
+effect on-chain, so surfacing it in the feeds would show activity that did not
+happen — the same rule the in-process indexer applies when it reads transfers
+(`Committed` only). The failed unit itself stays visible: its `transactions`
+row is written regardless, with `success = false` (that is deliberate — see
+§ Identity on failed txs); only its side-effect events are dropped. This rule
+is fixed, not a config knob, and like every write-time filter it is **not
+retroactive** (§ Configuration).
+
+The commitment check alone is sufficient — a failed-but-**handled** submessage
+(reply on error) is covered by construction: its state changes are reverted
+even though the tx continues, and the flattener downgrades its whole subtree
+to `Failed` regardless of the enclosing group's status
+(`SubEventStatus::Handled` in `dango/core/types/src/events/flatten.rs`), while
+the reply that handled it keeps `Committed` — its effects are real. So within
+`Committed` the event status is `Ok` by construction, and no separate
+`event_status` filter is needed.
+
 ## Queries it must serve
 
 Eight feeds, all **newest-first** (`block_height DESC`, then in-block position),
@@ -411,6 +430,9 @@ For each `tx_outcome[i]` aligned with `block.txs[i] = (tx, hash)`:
    `timestamp`) — this row is also the **sender side** of query 1, read back
    from `transactions.sender`;
 2. for each flattened event of the tx:
+   - **skip it entirely** unless its `commitment_status` is `Committed` —
+     reverted / failed events are not activity (the unit row above already
+     records the failure);
    - **skip it entirely** if `event_type_filter` rejects its type;
    - write its `event_data` row if `event_data_filter` allows its type;
    - extract participants if `involvement_filter` allows its type (the chain's

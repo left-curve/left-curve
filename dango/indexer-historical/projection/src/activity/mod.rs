@@ -11,7 +11,10 @@
 //!
 //! A single [`process`](ActivityProjection::process) flattens the block's
 //! events once and stages all three tables into one [`Ctx`], so they commit
-//! atomically with the projection's cursor. Every key is the deterministic
+//! atomically with the projection's cursor. Only **committed** events are
+//! indexed — a reverted or failed event never took effect on-chain, so it is
+//! not activity (the failed unit itself stays visible through its
+//! `transactions` row, `success = false`). Every key is the deterministic
 //! position (+ address) and every insert is `ON CONFLICT DO NOTHING`, so a
 //! post-crash replay of a block is a no-op. See `DESIGN.md` in this folder.
 
@@ -30,7 +33,7 @@ use {
     async_trait::async_trait,
     dango_indexer_historical_types::{AnyResult, BlockData},
     dango_primitives::{
-        Addr, EventId, Extractable, FlatCategory, FlatEvent, FlatEventInfo,
+        Addr, EventId, Extractable, FlatCategory, FlatCommitmentStatus, FlatEvent, FlatEventInfo,
         flatten_commitment_status, flatten_tx_events,
     },
     entity::{event_data, events, transactions},
@@ -47,6 +50,15 @@ const PROJECTION_ID: &str = "activity";
 /// zstd level for the `event_data.data` column. 3 is zstd's own default — a
 /// good ratio/speed trade-off for the borsh-encoded event payloads.
 const ZSTD_LEVEL: i32 = 3;
+
+/// Rows per `INSERT` statement in [`Rows::write`]. One statement binds
+/// `rows × columns` parameters, and the engines cap that (65_535 on Postgres,
+/// 32_766 on SQLite) — a pathological block (an airdrop fanning out thousands
+/// of transfers) would blow the cap in one unchunked insert, and since the
+/// replay re-fails identically, crash-loop the projection on that block
+/// forever. 4_000 rows × 8 columns (the widest table here) stays under both
+/// caps.
+const INSERT_CHUNK: usize = 4_000;
 
 // ---- configuration ----
 
@@ -215,9 +227,20 @@ impl ActivityProjection {
 
     /// Stage one flattened event into the merged `events` table: one row per
     /// participant (or a single empty-address row if it has none), plus the
-    /// payload into `event_data` for priority types. Blacklisted types are
-    /// dropped wholesale.
+    /// payload into `event_data` for priority types. Non-committed events and
+    /// blacklisted types are dropped wholesale.
     fn push_event(&self, rows: &mut Rows, info: &FlatEventInfo, height: i64) -> AnyResult<()> {
+        // Only **committed** events are indexed: a reverted or failed event (a
+        // transfer inside a tx that later failed, say) never took effect
+        // on-chain, so surfacing it in the feeds would show activity that did
+        // not happen — the same rule the in-process indexer applies when it
+        // reads transfers (`Committed` only). The failed unit itself stays
+        // visible through its `transactions` row (`success = false`); only its
+        // side-effect events are dropped.
+        if info.commitment_status != FlatCommitmentStatus::Committed {
+            return Ok(());
+        }
+
         let event = &info.event;
         let event_type = EventType::from(event);
 
@@ -291,8 +314,8 @@ impl Rows {
     async fn write(self, ctx: &mut Ctx) -> AnyResult<()> {
         let txn = ctx.pg();
 
-        if !self.transactions.is_empty() {
-            transactions::Entity::insert_many(self.transactions)
+        for chunk in chunked(self.transactions) {
+            transactions::Entity::insert_many(chunk)
                 .on_conflict(
                     OnConflict::columns([
                         transactions::Column::BlockHeight,
@@ -306,8 +329,8 @@ impl Rows {
                 .await?;
         }
 
-        if !self.events.is_empty() {
-            events::Entity::insert_many(self.events)
+        for chunk in chunked(self.events) {
+            events::Entity::insert_many(chunk)
                 .on_conflict(
                     OnConflict::columns([
                         events::Column::Address,
@@ -323,8 +346,8 @@ impl Rows {
                 .await?;
         }
 
-        if !self.event_data.is_empty() {
-            event_data::Entity::insert_many(self.event_data)
+        for chunk in chunked(self.event_data) {
+            event_data::Entity::insert_many(chunk)
                 .on_conflict(
                     OnConflict::columns([
                         event_data::Column::BlockHeight,
@@ -341,6 +364,17 @@ impl Rows {
 
         Ok(())
     }
+}
+
+/// Split staged rows into [`INSERT_CHUNK`]-sized batches, preserving order.
+/// Empty input yields no batches (sea-orm rejects an empty `insert_many`), so
+/// callers need no emptiness guard.
+fn chunked<M>(rows: Vec<M>) -> impl Iterator<Item = Vec<M>> {
+    let mut rows = rows.into_iter().peekable();
+    std::iter::from_fn(move || {
+        rows.peek()?;
+        Some(rows.by_ref().take(INSERT_CHUNK).collect())
+    })
 }
 
 /// `zstd(borsh(event))` — the stored form of a priority event's payload.
@@ -422,6 +456,96 @@ mod tests {
         assert!(!cfg.event_type_filter.allows(&EventType::Withhold));
         assert!(cfg.event_type_filter.allows(&EventType::Execute));
         assert!(cfg.involvement_blacklist.is_empty());
+    }
+
+    #[test]
+    fn non_committed_events_are_dropped() {
+        use dango_primitives::{FlatEventStatus, FlatEvtTransfer};
+
+        let projection = ActivityProjection::default();
+        let info = |status| FlatEventInfo {
+            id: EventId::new(1, FlatCategory::Tx, 0, 0),
+            parent_id: EventId::new(1, FlatCategory::Tx, 0, 0),
+            commitment_status: status,
+            event_status: FlatEventStatus::Ok,
+            event: FlatEvent::Transfer(FlatEvtTransfer {
+                sender: Addr::mock(1),
+                transfers: Default::default(),
+            }),
+        };
+
+        // A committed transfer is indexed: an `events` row and (a priority
+        // type) its `event_data` payload.
+        let mut rows = Rows::default();
+        projection
+            .push_event(&mut rows, &info(FlatCommitmentStatus::Committed), 1)
+            .unwrap();
+        assert_eq!(rows.events.len(), 1);
+        assert_eq!(rows.event_data.len(), 1);
+
+        // A reverted or failed one is dropped wholesale — no `events` row (not
+        // even the empty-address marker), no payload.
+        for status in [FlatCommitmentStatus::Reverted, FlatCommitmentStatus::Failed] {
+            let mut rows = Rows::default();
+            projection.push_event(&mut rows, &info(status), 1).unwrap();
+            assert!(rows.events.is_empty(), "{status:?} must not be indexed");
+            assert!(
+                rows.event_data.is_empty(),
+                "{status:?} must carry no payload"
+            );
+        }
+    }
+
+    #[test]
+    fn chunked_batches_rows_in_order_and_skips_empty() {
+        assert_eq!(chunked(Vec::<u8>::new()).count(), 0);
+
+        let batches: Vec<Vec<usize>> = chunked((0..INSERT_CHUNK * 2 + 1).collect()).collect();
+        assert_eq!(batches.iter().map(Vec::len).collect::<Vec<_>>(), vec![
+            INSERT_CHUNK,
+            INSERT_CHUNK,
+            1
+        ],);
+        // Order is preserved across the chunk boundary.
+        assert_eq!(batches[1][0], INSERT_CHUNK);
+        assert_eq!(batches[2][0], INSERT_CHUNK * 2);
+    }
+
+    /// A pathological block can stage more rows than one `INSERT` may carry
+    /// (bind-parameter caps: 65_535 on Postgres, 32_766 on SQLite).
+    /// `Rows::write` must chunk — unchunked, the 5_000 × 8-column insert below
+    /// already blows SQLite's cap, so this pins the chunking on a real engine
+    /// end-to-end.
+    #[tokio::test]
+    async fn write_chunks_oversized_blocks() {
+        use sea_orm::{Database, PaginatorTrait, TransactionTrait};
+
+        let db = Database::connect("sqlite::memory:").await.unwrap();
+        let manager = sea_orm_migration::SchemaManager::new(&db);
+        for migration in migrations::migrations() {
+            migration.up(&manager).await.unwrap();
+        }
+
+        let mut rows = Rows::default();
+        for i in 0..5_000i32 {
+            rows.events.push(events::ActiveModel {
+                address: Set(vec![1u8; 20]),
+                block_height: Set(1),
+                category: Set(FlatCategory::Tx as i16),
+                category_index: Set(0),
+                event_index: Set(i),
+                event_type: Set(EventType::Transfer.code()),
+                contract: Set(None),
+                contract_event_name: Set(None),
+            });
+        }
+
+        let mut ctx = Ctx::new(db.begin().await.unwrap());
+        rows.write(&mut ctx).await.unwrap();
+        let (txn, _ch) = ctx.into_parts();
+        txn.commit().await.unwrap();
+
+        assert_eq!(events::Entity::find().count(&db).await.unwrap(), 5_000);
     }
 
     #[test]

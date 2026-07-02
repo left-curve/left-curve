@@ -95,7 +95,7 @@ tip is filled by the healer (remote, via `/block/full/range`, which serves deep
 history) or read from the node's disk by the projection loop's `get` (local). The
 `LocalBlockSource` gap path no longer breaks-and-replays — a forward jump advances
 the frontier straight to the delivered height and the skipped heights come from
-disk. ⚠️ Still no automated coverage of the live path (see Completeness): a
+disk. ⚠️ Still no automated coverage of the reconnect path (see Completeness): a
 regression test belongs with the deferred `mock_httpd` live-tail tests.
 
 ## Severity index
@@ -118,13 +118,18 @@ Not bugs, but the source cannot run in production until these land:
   `SentinelFetcherConfig` are still built from their crate `Default`s, not mapped
   from TOML, so the buffer sizes / intervals / timeouts can't be tuned per
   deployment yet.
-- **Live-tail tests.** The live path (`HttpdClient::subscribe_full_blocks` and
-  `drain_live`'s reconnect/gap handling) has no automated coverage yet: the
-  earlier mock-subscriber tests were removed with the `LiveSubscriber` trait and
-  will be redone against `mock_httpd` (a real test chain) from dango testing.
-  The coordinator + healer + bulk-advance paths and the RocksDB store (put/get,
+- **Live-tail tests.** The `live_ws` integration test covers the
+  `HttpdClient::subscribe_full_blocks` happy path against a mock node;
+  `drain_live`'s reconnect / resync / gap handling still has no automated
+  coverage (the earlier mock-subscriber tests were removed with the
+  `LiveSubscriber` trait) and will be redone against `mock_httpd` (a real test
+  chain) from dango testing.
+  The coordinator + bulk-advance paths and the RocksDB store (put/get,
   topology, idempotency, reopen-from-checkpoint) stay covered by unit tests over
-  `MemoryBlockStore` / a temp RocksDB and a mock fetcher.
+  `MemoryBlockStore` / a temp RocksDB and a mock fetcher. The healer loop itself
+  (`run_healer` / `backfill_gap`, including the non-fatal gap-retry of #8) has
+  no direct unit coverage — it is exercised only end-to-end by the `backfill`
+  integration test.
 
 ---
 

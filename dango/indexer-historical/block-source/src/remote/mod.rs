@@ -323,8 +323,8 @@ impl RemoteBlockSource {
     #[cfg_attr(feature = "tracing", instrument(skip_all, name = "bsource.live"))]
     async fn drain_live(self: Arc<Self>, coordinator_tx: mpsc::Sender<BlockData>) -> AnyResult<()> {
         // Highest height ever delivered on the live feed — the observed chain
-        // tip. Held across reconnects (which resume at `frontier + 1`, below the
-        // tip), so the gauge tracks the real tip rather than the replay position.
+        // tip. Held across reconnects (each reopens at the live tip) and kept
+        // monotonic via `max`, so the gauge never regresses on a re-delivery.
         #[cfg(feature = "metrics")]
         let mut live_tip = 0u64;
 

@@ -302,12 +302,29 @@ mod tests {
         );
         assert!(cfg.activity.event_type_filter.is_none());
 
-        // Environment override: `POSTGRES__URL` wins over the TOML value.
+        // Environment overrides — the two the deploy role injects (env.j2):
+        // `POSTGRES__URL` wins over the TOML value, and `BLOCK_SOURCE__LIVE_URL`
+        // reaches *inside* the internally-tagged `block_source` table (the
+        // fragile path: the env value must merge into the table without
+        // clobbering its `type` tag).
         // SAFETY: single-threaded within this test; set then immediately
-        // cleared, and no other test reads this key.
-        unsafe { std::env::set_var("POSTGRES__URL", "postgres://override@host/db") };
+        // cleared, and no other test reads these keys.
+        unsafe {
+            std::env::set_var("POSTGRES__URL", "postgres://override@host/db");
+            std::env::set_var("BLOCK_SOURCE__LIVE_URL", "http://sentinel:9999");
+        }
         let overridden: Config = parse_config(&path).unwrap();
-        unsafe { std::env::remove_var("POSTGRES__URL") };
+        unsafe {
+            std::env::remove_var("POSTGRES__URL");
+            std::env::remove_var("BLOCK_SOURCE__LIVE_URL");
+        }
         assert_eq!(overridden.postgres.url, "postgres://override@host/db");
+        match &overridden.block_source {
+            BlockSourceConfig::Remote(remote) => {
+                assert_eq!(remote.live_url, "http://sentinel:9999");
+                assert!(matches!(remote.fetcher, FetcherConfig::Sentinel));
+            },
+            other => panic!("expected a remote source, got {other:?}"),
+        }
     }
 }
