@@ -200,7 +200,19 @@ describe("PointsProfileTable", () => {
       ],
     });
 
-    render(<PointsProfileTable />);
+    const bubblingClick = vi.fn();
+    const bubblingMouseDown = vi.fn();
+    const bubblingPointerDown = vi.fn();
+
+    render(
+      <div
+        onClick={bubblingClick}
+        onMouseDown={bubblingMouseDown}
+        onPointerDown={bubblingPointerDown}
+      >
+        <PointsProfileTable />
+      </div>,
+    );
 
     const rows = bodyRows();
     expect(rows).toHaveLength(3);
@@ -212,12 +224,21 @@ describe("PointsProfileTable", () => {
     expect(rowText(rows[2])).toContain(m["points.profile.compensation"]());
     expect(rowText(rows[2])).toContain(m["points.profile.xPoints"]({ points: "25" }));
 
-    fireEvent.click(within(rows[2]).getByRole("button"));
+    const shareButton = within(rows[2]).getByRole("button", {
+      name: m["points.profile.columns.share"](),
+    });
+
+    fireEvent.pointerDown(shareButton);
+    fireEvent.mouseDown(shareButton);
+    fireEvent.click(shareButton);
 
     expect(pointsProfileMocks.showModal).toHaveBeenCalledWith(Modals.PointsShare, {
       points: 25,
       weekNumber: 0,
     });
+    expect(bubblingPointerDown).not.toHaveBeenCalled();
+    expect(bubblingMouseDown).not.toHaveBeenCalled();
+    expect(bubblingClick).not.toHaveBeenCalled();
   });
 
   it("renders epoch date ranges from backend second timestamps", () => {

@@ -1,7 +1,6 @@
 import {
   Button,
   Cell,
-  IconButton,
   IconShare,
   Modals,
   Pagination,
@@ -163,33 +162,38 @@ export const PointsProfileTable: React.FC = () => {
       cell: ({ row }) => (
         <Cell.Text
           className="text-ink-primary-900"
-          text={m["points.profile.xPoints"]({ points: formatNumber(row.original.points, formatNumberOptions) })}
+          text={m["points.profile.xPoints"]({
+            points: formatNumber(row.original.points, formatNumberOptions),
+          })}
         />
       ),
     },
     {
       id: "share",
       header: () => (
-        <span className="block w-full text-right">
-          {m["points.profile.columns.share"]()}
-        </span>
+        <span className="block w-full text-right">{m["points.profile.columns.share"]()}</span>
       ),
       enableSorting: false,
       cell: ({ row }) => (
         <div className="flex justify-end">
-          <IconButton
+          <Button
+            type="button"
+            aria-label={m["points.profile.columns.share"]()}
             variant="link"
-            size="sm"
-            className="text-ink-secondary-blue hover:text-primitives-blue-light-600"
-            onClick={() =>
+            size="xs"
+            className="m-0 h-8 w-8 p-0 overflow-visible text-ink-secondary-blue hover:text-primitives-blue-light-600"
+            onPointerDown={(event) => event.stopPropagation()}
+            onMouseDown={(event) => event.stopPropagation()}
+            onClick={(event) => {
+              event.stopPropagation();
               showModal(Modals.PointsShare, {
                 points: row.original.points,
                 weekNumber: row.original.epoch,
-              })
-            }
+              });
+            }}
           >
-            <IconShare className="w-4 h-4" />
-          </IconButton>
+            <IconShare aria-hidden="true" focusable="false" className="w-4 h-4" />
+          </Button>
         </div>
       ),
     },
