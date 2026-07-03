@@ -256,6 +256,13 @@ impl DiskPersistence {
 
     /// Load and decompress the data from disk and deserialize it.
     pub fn load<T: BorshDeserialize>(&mut self) -> Result<T, Error> {
+        Ok(borsh::from_slice(&self.load_bytes()?)?)
+    }
+
+    /// Load and decompress the data from disk, returning the raw Borsh payload
+    /// without deserializing it — for callers that need to attempt more than
+    /// one schema on the same bytes (e.g. legacy block formats).
+    pub fn load_bytes(&mut self) -> Result<Vec<u8>, Error> {
         let disk_data = match fs::read(&self.file_path) {
             Ok(data) => data,
             Err(_e) => {
@@ -271,16 +278,14 @@ impl DiskPersistence {
             },
         };
 
-        let data = if self.compressed {
+        if self.compressed {
             let mut decompressed = Vec::new();
             lzma_decompress(&mut disk_data.as_slice(), &mut decompressed)?;
 
-            borsh::from_slice(&decompressed)?
+            Ok(decompressed)
         } else {
-            borsh::from_slice(&disk_data)?
-        };
-
-        Ok(data)
+            Ok(disk_data)
+        }
     }
 
     pub fn exists(&self) -> bool {

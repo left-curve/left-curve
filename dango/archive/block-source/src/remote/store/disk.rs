@@ -18,7 +18,10 @@ use {
 const CF_DEFAULT: &str = "default";
 
 /// Column family for the raw blocks: key = `height` big-endian (so RocksDB's
-/// lexicographic order *is* height order), value = borsh-encoded [`BlockData`].
+/// lexicographic order *is* height order), value = borsh-encoded [`BlockData`]
+/// — the compat enum with its one-byte version tag for values written since
+/// the tag existed, a bare (untagged) payload for older ones (see
+/// [`decode_stored_block`]).
 const CF_BLOCKS: &str = "blocks";
 
 /// Key in the default CF holding the topology checkpoint — the [`StoredRanges`]
@@ -150,6 +153,10 @@ impl BlockStore for RocksdbBlockStore {
         let put_start = std::time::Instant::now();
 
         let db = self.db.clone();
+        // `BlockData` is the compat enum, so this writes its one-byte version
+        // tag ahead of the payload — every new value is explicitly versioned.
+        // Values persisted before the tag existed are bare payloads; `get`
+        // falls back to the bare decoder for those.
         let block_bytes = borsh::to_vec(data)?;
         let topology_bytes = borsh::to_vec(&next.to_ranges())?;
         tokio::task::spawn_blocking(move || -> AnyResult<()> {
@@ -186,7 +193,7 @@ impl BlockStore for RocksdbBlockStore {
         let db = self.db.clone();
         let block = tokio::task::spawn_blocking(move || -> AnyResult<Option<BlockData>> {
             match db.get_cf(blocks_cf(&db), height.to_be_bytes())? {
-                Some(bytes) => Ok(Some(borsh::from_slice(&bytes)?)),
+                Some(bytes) => Ok(Some(decode_stored_block(&bytes)?)),
                 None => Ok(None),
             }
         })
@@ -315,6 +322,18 @@ const ROCKSDB_GAUGES: &[(&str, &[(&str, &str)])] = &[
 ];
 
 /// Handle to the blocks CF — a cheap lookup; the CF always exists once opened.
+/// Decode a stored block value. New writes carry the compat enum's one-byte
+/// version tag; values persisted before the tag existed are bare (untagged)
+/// current-schema payloads — fall back to the bare decoder for those. Borsh's
+/// `from_slice` must consume every byte, which makes an accidental
+/// cross-format parse practically impossible.
+fn decode_stored_block(bytes: &[u8]) -> AnyResult<BlockData> {
+    match borsh::from_slice::<BlockData>(bytes) {
+        Ok(block) => Ok(block),
+        Err(_tagged) => Ok(BlockData::decode_borsh(bytes)?),
+    }
+}
+
 fn blocks_cf(db: &DB) -> &ColumnFamily {
     db.cf_handle(CF_BLOCKS)
         .expect("blocks column family must exist")
@@ -390,8 +409,8 @@ mod tests {
     use {super::*, dango_archive_types::BlockDataExt, dango_temp_rocksdb::TempDataDir};
 
     fn block(height: u64) -> BlockData {
-        use dango_primitives::{Block, BlockInfo, BlockOutcome, Hash256, Timestamp};
-        BlockData {
+        use dango_primitives::{Block, BlockInfo, BlockOutcome, FullBlock, Hash256, Timestamp};
+        BlockData::Current(FullBlock {
             block: Block {
                 info: BlockInfo {
                     height,
@@ -406,7 +425,7 @@ mod tests {
                 cron_outcomes: vec![],
                 tx_outcomes: vec![],
             },
-        }
+        })
     }
 
     #[tokio::test]
@@ -417,6 +436,29 @@ mod tests {
         store.put(5, &block(5)).await.unwrap();
         assert_eq!(store.get(5).await.unwrap().unwrap().height(), 5);
         assert_eq!(store.get(6).await.unwrap(), None);
+    }
+
+    /// Values persisted before the compat enum's version tag existed are bare
+    /// (untagged) current-schema payloads: `get` reads them through the
+    /// bare-decoder fallback.
+    #[tokio::test]
+    async fn reads_pre_tag_bare_values() {
+        let dir = TempDataDir::new("_blockstore_bare_compat");
+        let store = RocksdbBlockStore::open(&dir).unwrap();
+
+        // Simulate an old row: bare bytes of the inner block, no version tag,
+        // written straight into the blocks CF.
+        let data = block(7);
+        let BlockData::Current(inner) = &data else {
+            unreachable!()
+        };
+        let bare = borsh::to_vec(inner).unwrap();
+        store
+            .db
+            .put_cf(blocks_cf(&store.db), 7u64.to_be_bytes(), bare)
+            .unwrap();
+
+        assert_eq!(store.get(7).await.unwrap().unwrap(), data);
     }
 
     #[tokio::test]

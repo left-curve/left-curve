@@ -2,7 +2,9 @@ use {
     super::error,
     borsh::{BorshDeserialize, BorshSerialize},
     dango_disk_saver::persistence::DiskPersistence,
-    dango_primitives::{Block, BlockAndBlockOutcomeWithHttpDetails, BlockOutcome},
+    dango_primitives::{
+        Block, BlockAndBlockOutcomeWithHttpDetails, BlockOutcome, CachedBlockCompat,
+    },
     serde::{Deserialize, Serialize},
     std::{
         collections::HashMap,
@@ -76,6 +78,20 @@ impl CacheFile {
         let mut block_to_index: Self = DiskPersistence::new(file_path.clone(), false).load()?;
         block_to_index.filename = file_path;
         Ok(block_to_index)
+    }
+
+    /// Load a block file in whichever wire schema it was written: the current
+    /// one first, then the pre-0.26.0 legacy layout — blocks containing a
+    /// `Message::Configure` from before the taxman removal only deserialize
+    /// with the latter (see [`dango_primitives::legacy`]).
+    ///
+    /// `CacheFile`'s only extra field (`filename`) is `borsh(skip)`, so the
+    /// file bytes are exactly a [`BlockAndBlockOutcomeWithHttpDetails`]
+    /// payload, which is what the compat decoder parses.
+    #[cfg_attr(feature = "tracing", tracing::instrument(skip_all))]
+    pub fn load_from_disk_compat(file_path: PathBuf) -> error::Result<CachedBlockCompat> {
+        let bytes = DiskPersistence::new(file_path, false).load_bytes()?;
+        Ok(CachedBlockCompat::decode(&bytes)?)
     }
 
     #[cfg_attr(feature = "tracing", tracing::instrument(skip_all))]

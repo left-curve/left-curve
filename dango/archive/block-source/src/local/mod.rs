@@ -180,12 +180,12 @@ impl BlockSource for LocalBlockSource {
             return Ok(None);
         }
 
-        let cache_file = CacheFile::load_from_disk_async(path).await?;
+        // Compat load: the co-located node's cache files have the same seven
+        // legacy pre-0.26.0 blocks as everyone else's.
+        let compat =
+            tokio::task::spawn_blocking(move || CacheFile::load_from_disk_compat(path)).await??;
 
-        Ok(Some(BlockData {
-            block: cache_file.data.block,
-            outcome: cache_file.data.block_outcome,
-        }))
+        Ok(Some(compat.into_full_block()))
     }
 
     fn subscribe(&self) -> broadcast::Receiver<Arc<BlockData>> {

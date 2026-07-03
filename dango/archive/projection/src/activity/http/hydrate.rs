@@ -46,22 +46,24 @@ pub(crate) async fn hydrate_transactions(
 
         let outcome = match item.kind {
             UnitKind::Transaction => {
+                // `TxRefCompat` serializes untagged: a pre-0.26.0 transaction
+                // hydrates as the exact JSON of its era.
                 let (tx, _hash) = block
-                    .block
-                    .txs
-                    .get(idx)
+                    .tx(idx)
                     .ok_or_else(|| missing("transaction", item.idx, item.block_height))?;
                 item.tx = Some(serde_json::to_value(tx)?);
 
-                let out =
-                    block.outcome.tx_outcomes.get(idx).cloned().ok_or_else(|| {
-                        missing("transaction outcome", item.idx, item.block_height)
-                    })?;
+                let out = block
+                    .outcome()
+                    .tx_outcomes
+                    .get(idx)
+                    .cloned()
+                    .ok_or_else(|| missing("transaction outcome", item.idx, item.block_height))?;
                 UnitOutcome::Transaction(Box::new(out))
             },
             UnitKind::Cron => {
                 let out = block
-                    .outcome
+                    .outcome()
                     .cron_outcomes
                     .get(idx)
                     .cloned()

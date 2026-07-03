@@ -135,11 +135,11 @@ impl Projection for ActivityProjection {
         http::scopes()
     }
 
-    #[cfg_attr(feature = "tracing", instrument(skip_all, fields(height = block.block.info.height)))]
+    #[cfg_attr(feature = "tracing", instrument(skip_all, fields(height = block.info().height)))]
     async fn process(&self, ctx: &mut Ctx, block: &BlockData) -> AnyResult<()> {
-        let block_height = block.block.info.height;
+        let block_height = block.info().height;
         let height = block_height as i64;
-        let timestamp = block.block.info.timestamp.into_nanos() as i64;
+        let timestamp = block.info().timestamp.into_nanos() as i64;
 
         let mut rows = Rows::default();
 
@@ -149,7 +149,7 @@ impl Projection for ActivityProjection {
         // `category_index` separates the units.
 
         // ---- cron units ----
-        for (cron_idx, cron_outcome) in block.outcome.cron_outcomes.iter().enumerate() {
+        for (cron_idx, cron_outcome) in block.outcome().cron_outcomes.iter().enumerate() {
             rows.transactions.push(transactions::ActiveModel {
                 block_height: Set(height),
                 idx: Set(cron_idx as i32),
@@ -170,10 +170,8 @@ impl Projection for ActivityProjection {
 
         // ---- tx units ----
         for (tx_idx, ((tx, tx_hash), tx_outcome)) in block
-            .block
-            .txs
-            .iter()
-            .zip(block.outcome.tx_outcomes.iter())
+            .txs()
+            .zip(block.outcome().tx_outcomes.iter())
             .enumerate()
         {
             rows.transactions.push(transactions::ActiveModel {
@@ -181,7 +179,7 @@ impl Projection for ActivityProjection {
                 idx: Set(tx_idx as i32),
                 kind: Set(FlatCategory::Tx as i16),
                 hash: Set(Some(tx_hash.as_ref().to_vec())),
-                sender: Set(Some(tx.sender.as_ref().to_vec())),
+                sender: Set(Some(tx.sender().as_ref().to_vec())),
                 success: Set(tx_outcome.result.is_ok()),
                 timestamp: Set(timestamp),
             });
@@ -404,15 +402,15 @@ pub(crate) fn flatten_unit(
     category: i16,
     category_index: usize,
 ) -> Vec<FlatEventInfo> {
-    let block_height = block.block.info.height;
+    let block_height = block.info().height;
     if category == FlatCategory::Cron as i16 {
-        let Some(cron) = block.outcome.cron_outcomes.get(category_index) else {
+        let Some(cron) = block.outcome().cron_outcomes.get(category_index) else {
             return Vec::new();
         };
         let mut event_id = EventId::new(block_height, FlatCategory::Cron, category_index as u32, 0);
         flatten_commitment_status(&mut event_id, cron.cron_event.clone())
     } else if category == FlatCategory::Tx as i16 {
-        let Some(tx) = block.outcome.tx_outcomes.get(category_index) else {
+        let Some(tx) = block.outcome().tx_outcomes.get(category_index) else {
             return Vec::new();
         };
         flatten_tx_events(tx.events.clone(), block_height, category_index as u32)

@@ -68,16 +68,16 @@ async fn live_subscriber_receives_blocks_over_ws() {
         .expect("the frame decodes into a FullBlock");
 
     assert!(
-        block.block.info.height >= 1,
+        block.info().height >= 1,
         "the live block sits at a real height",
     );
     assert_eq!(
-        block.block.txs.len(),
+        block.tx_count(),
         1,
         "the live block carries exactly the one broadcast tx",
     );
     assert_eq!(
-        block.block.txs[0].1.to_string(),
+        block.tx(0).expect("one tx").1.to_string(),
         tx_hash,
         "the tx in the live block is the one we broadcast",
     );

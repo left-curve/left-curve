@@ -512,14 +512,14 @@ impl BlockSource for RemoteBlockSource {
 mod tests {
     use {
         super::*,
-        dango_primitives::{Block, BlockInfo, BlockOutcome, Hash256, Timestamp},
+        dango_primitives::{Block, BlockInfo, BlockOutcome, FullBlock, Hash256, Timestamp},
         tokio::time::timeout,
     };
 
     /// A minimal `BlockData` carrying only the height the coordinator/healer
     /// logic reads — empty txs/outcomes, zero hashes.
     fn block(height: u64) -> BlockData {
-        BlockData {
+        BlockData::Current(FullBlock {
             block: Block {
                 info: BlockInfo {
                     height,
@@ -534,7 +534,7 @@ mod tests {
                 cron_outcomes: vec![],
                 tx_outcomes: vec![],
             },
-        }
+        })
     }
 
     /// A fetcher for which every requested height "exists": `spawn(from, to)`

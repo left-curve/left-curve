@@ -30,6 +30,7 @@ mod indexer;
 mod inner;
 mod jellyfish_merkle;
 mod json;
+mod legacy;
 mod length_bounded;
 mod lengthy;
 mod macros;
@@ -55,10 +56,10 @@ pub use {
     address::*, app::*, bank::*, binary::*, bound::*, buffer::*, builder::*, bytes::*, cache::*,
     code::*, coin::*, coin_pair::*, coins::*, context::*, db::*, dec_coin::*, denom::*, empty::*,
     encoded_bytes::*, encoders::*, error::*, events::*, ffi::*, git_info::*, hash::*, hashers::*,
-    httpd::*, imports::*, indexer::*, inner::*, jellyfish_merkle::*, json::*, length_bounded::*,
-    lengthy::*, metrics::*, non_zero::*, outcome::*, predicate::*, query::*, response::*,
-    result::*, serializers::*, shared::*, signer::*, status::*, time::*, transfer::*, tx::*,
-    unique_vec::*, upgrade::*, utils::*,
+    httpd::*, imports::*, indexer::*, inner::*, jellyfish_merkle::*, json::*, legacy::*,
+    length_bounded::*, lengthy::*, metrics::*, non_zero::*, outcome::*, predicate::*, query::*,
+    response::*, result::*, serializers::*, shared::*, signer::*, status::*, time::*, transfer::*,
+    tx::*, unique_vec::*, upgrade::*, utils::*,
 };
 
 // ---------------------------------- testing ----------------------------------

@@ -6,7 +6,7 @@ use {
         get, web,
     },
     dango_indexer_cache::cache_file::CacheFile,
-    dango_primitives::FullBlock,
+    dango_primitives::{CachedBlockCompat, FullBlockCompat},
     serde::Deserialize,
     std::path::PathBuf,
 };
@@ -57,8 +57,12 @@ fn _block_by_height(block_height: u64, app_ctx: &FullContext) -> Result<HttpResp
 
     check_block_exists(block_filename.clone(), block_height)?;
 
-    match CacheFile::load_from_disk(block_filename) {
-        Ok(cache_file) => Ok(HttpResponse::Ok().json(cache_file.data.block)),
+    // Compat load: blocks containing a pre-0.26.0 `Message::Configure` only
+    // deserialize with the legacy schema; either way the JSON out is the exact
+    // shape the block was written with.
+    match CacheFile::load_from_disk_compat(block_filename) {
+        Ok(CachedBlockCompat::Current(data)) => Ok(HttpResponse::Ok().json(data.block)),
+        Ok(CachedBlockCompat::V1(data)) => Ok(HttpResponse::Ok().json(data.block)),
         Err(err) => {
             Ok(HttpResponse::InternalServerError()
                 .body(format!("failed to load block file: {err}")))
@@ -99,8 +103,11 @@ fn _block_results_by_height(
 
     check_block_exists(block_filename.clone(), block_height)?;
 
-    match CacheFile::load_from_disk(block_filename) {
-        Ok(cache_file) => Ok(HttpResponse::Ok().json(cache_file.data.block_outcome)),
+    // The outcome types were kept wire-compatible by 0.26.0, so both schema
+    // variants carry the same `BlockOutcome`.
+    match CacheFile::load_from_disk_compat(block_filename) {
+        Ok(CachedBlockCompat::Current(data)) => Ok(HttpResponse::Ok().json(data.block_outcome)),
+        Ok(CachedBlockCompat::V1(data)) => Ok(HttpResponse::Ok().json(data.block_outcome)),
         Err(err) => {
             Ok(HttpResponse::InternalServerError()
                 .body(format!("failed to load block file: {err}")))
@@ -186,15 +193,13 @@ fn _full_block_by_height(block_height: u64, app_ctx: &FullContext) -> Result<Htt
 /// Load a block file from disk and project it to `block` + `block_outcome`,
 /// dropping the `http_request_details` (client IPs) the file also holds — the
 /// same projection the `/info` and `/result` routes use. Returns the same
-/// `FullBlock` shape as the `/ws` `fullBlock` channel.
-fn load_full_block(block_filename: PathBuf) -> Result<FullBlock, Error> {
-    let cache_file = CacheFile::load_from_disk(block_filename)
+/// `FullBlock` shape as the `/ws` `fullBlock` channel; a pre-0.26.0 block
+/// serializes untagged as the exact JSON of its era.
+fn load_full_block(block_filename: PathBuf) -> Result<FullBlockCompat, Error> {
+    let compat = CacheFile::load_from_disk_compat(block_filename)
         .map_err(|err| ErrorInternalServerError(format!("failed to load block file: {err}")))?;
 
-    Ok(FullBlock {
-        block: cache_file.data.block,
-        outcome: cache_file.data.block_outcome,
-    })
+    Ok(compat.into_full_block())
 }
 
 #[derive(Deserialize)]

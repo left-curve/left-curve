@@ -41,6 +41,10 @@ pub enum IndexerError {
 
     #[error(transparent)]
     #[backtrace(new)]
+    LegacyDecode(dango_primitives::LegacyDecodeError),
+
+    #[error(transparent)]
+    #[backtrace(new)]
     SerdeJson(serde_json::Error),
 
     #[error("parse error: {0}")]
@@ -97,6 +101,7 @@ impl From<IndexerError> for dango_app::IndexerError {
             IndexerError::Io(e) => parse_error!(Io, e),
             IndexerError::Persist(e) => parse_error!(Io, e),
             IndexerError::Persistence(e) => parse_error!(Storage, e),
+            IndexerError::LegacyDecode(e) => parse_error!(Serialization, e),
             IndexerError::SerdeJson(e) => parse_error!(Serialization, e),
             IndexerError::Parse(e) => parse_error!(Generic, e),
             IndexerError::S3 { error, backtrace } => parse_error!(Generic, error, backtrace),

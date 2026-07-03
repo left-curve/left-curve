@@ -194,11 +194,11 @@ async fn fetch_range<C>(
 mod tests {
     use {
         super::*,
-        dango_primitives::{Block, BlockInfo, BlockOutcome, Hash256, Timestamp},
+        dango_primitives::{Block, BlockInfo, BlockOutcome, FullBlock, Hash256, Timestamp},
     };
 
     fn block(height: u64) -> BlockData {
-        BlockData {
+        BlockData::Current(FullBlock {
             block: Block {
                 info: BlockInfo {
                     height,
@@ -213,7 +213,7 @@ mod tests {
                 cron_outcomes: vec![],
                 tx_outcomes: vec![],
             },
-        }
+        })
     }
 
     /// A range client that serves `[from, to]` but caps each response at

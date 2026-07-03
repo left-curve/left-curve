@@ -84,8 +84,8 @@ impl HttpdClient {
     /// Open a WebSocket subscription to the node's `fullBlock` channel and return
     /// a stream of fully-assembled [`BlockData`], **always starting at the live
     /// tip** (only blocks newer than the current tip). Each data frame's `data`
-    /// is the node's `{block, outcome}` — a `FullBlock`, which `BlockData` (an
-    /// alias of it) deserializes directly.
+    /// is the node's `{block, outcome}` — which `BlockData` (the untagged
+    /// compat enum) deserializes directly, legacy pre-0.26.0 blocks included.
     ///
     /// There is deliberately **no `since`**. The node serves this feed from a
     /// small in-memory ring, so a `since` below that window fails the
