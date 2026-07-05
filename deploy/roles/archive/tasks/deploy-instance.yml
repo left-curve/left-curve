@@ -5,6 +5,7 @@
       - instance.name is defined
       - instance.live_url is defined
       - instance.metrics_host_port is defined
+      - instance.httpd_host_port is defined
       - archive_db_password is defined
       - archive_db_password | length > 0
       - postgres_user is defined
@@ -12,8 +13,8 @@
       - ghcr_user is defined
       - ghcr_token is defined
     fail_msg: >-
-      archive instance needs name/live_url/metrics_host_port, plus
-      archive_db_password, postgres_user, postgres_password,
+      archive instance needs name/live_url/metrics_host_port/httpd_host_port,
+      plus archive_db_password, postgres_user, postgres_password,
       ghcr_user, ghcr_token
 
 - name: "{{ instance.name }} - Derive instance facts"
@@ -107,8 +108,11 @@
     registry: ghcr.io
     state: absent
 
-- name: "{{ instance.name }} - Configure Traefik route"
-  template:
-    src: traefik-archive.yml.j2
-    dest: "{{ traefik_dir }}/config/archive-{{ instance.name }}.yml"
-    mode: "0644"
+# Public exposure via Traefik is parked until the DNS/cloudflared work lands
+# (traefik is not deployed on the archive hosts). Re-enable together with the
+# `traefik` network in templates/docker-compose.yml.j2.
+# - name: "{{ instance.name }} - Configure Traefik route"
+#   template:
+#     src: traefik-archive.yml.j2
+#     dest: "{{ traefik_dir }}/config/archive-{{ instance.name }}.yml"
+#     mode: "0644"

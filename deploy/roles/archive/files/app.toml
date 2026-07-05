@@ -25,3 +25,43 @@ bind    = "0.0.0.0:8080"
 enabled = true
 ip      = "0.0.0.0"
 port    = 9191
+
+# Activity projection, write-time (NOT retroactive — changing these needs a
+# re-backfill via drop-db-archive). Explicit whitelist = the projection's
+# built-in default (blacklist of the address-less system noise) minus `cron`:
+# the cron marker row carries no address/payload anyway, and a cronjob's
+# actual effects (transfer / contract_event children) are indexed on their
+# own. Being a whitelist, a NEW upstream event type stays excluded until
+# added here — deliberate.
+#
+# event_data_filter / involvement_filter: empty blacklists = NO filter —
+# every indexed type gets its payload stored and its participant fan-out
+# (instead of the built-in whitelist [transfer, contract_event]). Deliberate
+# experiment to observe table sizes with everything on; tighten later if the
+# tables grow too much (shrinking existing rows needs drop-db-archive).
+# The involvement_blacklist (system contracts from the node's app_config)
+# keeps its built-in behavior.
+[activity]
+# System contracts MISSING from AppConfig.addresses (the cli auto-blacklists
+# only what app_config carries: account_factory/gateway/hyperlane/oracle/
+# perps/warp). Without these, every bank sent/received and dex order_* event
+# indexes the emitting contract itself as a participant — measured at ~63% of
+# all activity_events rows on testnet. Same addresses on both networks
+# (deterministic deploys). Remove if they ever land in AppConfig.addresses.
+involvement_blacklist = [
+  "0xe0b49f70991ecab05d5d7dc1f71e4ede63c8f2b7", # bank (sent/received/minted)
+  "0xda32476efe31e535207f0ad690d337a4ebf54a22", # dex (order_*, swapped)
+  "0xda70a9c1417aee00f960fe896add9d571f9c365b", # taxman (receive_fee)
+]
+event_type_filter = { whitelist = [
+  "configure",
+  "upgrade",
+  "transfer",
+  "upload",
+  "instantiate",
+  "execute",
+  "migrate",
+  "contract_event",
+] }
+event_data_filter = { blacklist = [] }
+involvement_filter = { blacklist = [] }

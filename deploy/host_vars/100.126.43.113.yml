@@ -6,3 +6,16 @@ reboot_time: "15:30"
 dango_networks:
   - mainnet
 cloudflare_lb_enabled: true
+
+# Archive indexer instance — `just deploy-archive mainnet` (roles/archive).
+# live_host_override resolves the live_url hostname to the source node's
+# wireguard IP inside the container (compose extra_hosts): traffic reaches the
+# node's traefik :80 directly over the VPN, bypassing Cloudflare and its rate
+# limits. 10.99.0.8 = hetzner1; on node migration point it at another mainnet
+# full-app host (its tailscale IP works too).
+archive_instances:
+  - name: mainnet
+    live_url: "http://api-mainnet.dango.zone"
+    live_host_override: "10.99.0.8"
+    metrics_host_port: 9192
+    httpd_host_port: 9082

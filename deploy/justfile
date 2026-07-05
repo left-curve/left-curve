@@ -240,30 +240,36 @@ drop-db-referral-dashboard network server:
 
 # ---------------------------- Archive -----------------------------
 
-# Deploy the archive instance(s) defined in the server's host_vars
-# (`archive_instances`). `server` is the tailscale IP (or any host
-# pattern within the archive group).
-# Usage: just deploy-archive 100.x.y.z
-#        just deploy-archive 100.x.y.z v1.2.3
-deploy-archive server tag="latest":
+deploy-archive-mainnet tag="latest":
+  just deploy-archive mainnet {{tag}}
+
+deploy-archive-testnet tag="latest":
+  just deploy-archive testnet {{tag}}
+
+# Deploy a network's archive instance(s), as configured in the host_vars
+# (`archive_instances`) of the hosts in the [archive-<network>] inventory
+# group.
+# Usage: just deploy-archive mainnet
+#        just deploy-archive testnet v1.2.3
+deploy-archive network tag="latest":
   mkdir -p {{justfile_directory()}}/logs \
     && uv run ansible-playbook archive.yml \
       -e archive_tag={{tag}} \
-      --limit {{server}} \
+      --limit archive-{{network}} \
       2>&1 | tee {{justfile_directory()}}/logs/$(date -u +%Y%m%d%H%M%S)-deploy-archive.log
 
-stop-archive server:
+stop-archive network:
   mkdir -p {{justfile_directory()}}/logs \
     && uv run ansible-playbook stop-archive.yml \
-      --limit {{server}} \
+      --limit archive-{{network}} \
       2>&1 | tee {{justfile_directory()}}/logs/$(date -u +%Y%m%d%H%M%S)-stop-archive.log
 
 # Drop and recreate the projection database(s) — full reindex on next deploy;
 # the RocksDB block store is preserved.
-drop-db-archive server:
+drop-db-archive network:
   mkdir -p {{justfile_directory()}}/logs \
     && uv run ansible-playbook drop-db-archive.yml \
-      --limit {{server}} \
+      --limit archive-{{network}} \
       2>&1 | tee {{justfile_directory()}}/logs/$(date -u +%Y%m%d%H%M%S)-drop-db-archive.log
 
 

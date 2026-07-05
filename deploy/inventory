@@ -4,6 +4,15 @@ ansible_python_interpreter=/usr/bin/python3
 deploy_user="deploy"
 # ansible_user="debian"
 
+# Per-host alias groups: `--limit hetzner7` works with any playbook, and other
+# groups can include the host by name via `:children`. The inventory hostname
+# stays the tailscale IP so host_vars/<ip>.yml keeps applying.
+[hetzner7]
+100.126.43.113
+
+[hetzner8]
+100.99.36.21
+
 [github_runners]
 100.114.160.24
 100.75.192.25
@@ -24,6 +33,8 @@ deploy_user="deploy"
 100.76.197.30  # hetzner3
 100.109.200.70 # hetzner4
 100.66.152.68  # hetzner6
+100.126.43.113 # hetzner7
+100.99.36.21   # hetzner8
 
 [clickhouse]
 100.96.253.40  # ovh1
@@ -174,4 +185,16 @@ perp-liquidator-mainnet
 [indexer:children]
 indexer-testnet
 indexer-mainnet
+
+# One group per network; each network's instance config lives in
+# group_vars/archive-<network>/main.yml, shared secrets in group_vars/archive/.
+[archive-mainnet:children]
+hetzner7
+
+[archive-testnet:children]
+hetzner8
+
+[archive:children]
+archive-mainnet
+archive-testnet
 
