@@ -806,6 +806,13 @@ pub fn match_order(
         }
     };
 
+    // Running remainder of the taker's order, decremented on each fill below
+    // so every taker-side `OrderFilled` can report the order's post-fill size.
+    // Mirrors `walk_book`'s own `remaining_size` decrement using the same
+    // per-fill sizes, so the two stay exactly in sync. Captured here before
+    // the `remaining_size` binding is shadowed by the walk's leftover.
+    let mut taker_remaining_size = remaining_size;
+
     let WalkBookOutcome {
         steps,
         remaining_size,
@@ -896,6 +903,14 @@ pub fn match_order(
             }) => {
                 let maker_fill_size = taker_fill_size.checked_neg()?;
 
+                // Post-fill order remainders reported on the two `OrderFilled`
+                // events below. Decrement the taker's running remainder (the
+                // same trajectory `walk_book` computed); the maker's signed
+                // remainder is its pre-fill size less what it just filled, and
+                // is zero on a full fill.
+                taker_remaining_size.checked_sub_assign(taker_fill_size)?;
+                let maker_remaining_size = maker_order.size.checked_sub(maker_fill_size)?;
+
                 // ---------------- Allocate a shared fill id ------------------
                 //
                 // Both `OrderFilled` events below carry this `fill_id`, so
@@ -922,6 +937,7 @@ pub fn match_order(
                         taker_client_order_id,
                         fill_id,
                         false,
+                        taker_remaining_size,
                     )),
                 )?;
 
@@ -982,7 +998,14 @@ pub fn match_order(
                     maker_fill_size,
                     fill_price,
                     maker_fee_rate,
-                    Some((events, maker_order_id, maker_client_order_id, fill_id, true)),
+                    Some((
+                        events,
+                        maker_order_id,
+                        maker_client_order_id,
+                        fill_id,
+                        true,
+                        maker_remaining_size,
+                    )),
                 )?;
 
                 volumes
@@ -1196,6 +1219,9 @@ pub fn settle_fill(
         Option<ClientOrderId>,
         FillId,
         bool,
+        // The order's remaining unfilled size after this fill, forwarded to
+        // `OrderFilled.remaining_order_size`.
+        Quantity,
     )>,
 ) -> StdResult<FillSettlement> {
     let (closing, opening) = {
@@ -1220,7 +1246,18 @@ pub fn settle_fill(
 
     let volume = compute_notional(fill_size, fill_price)?;
 
-    if let Some((events, order_id, client_order_id, fill_id, is_maker)) = events {
+    if let Some((events, order_id, client_order_id, fill_id, is_maker, remaining_order_size)) =
+        events
+    {
+        // `execute_fill` just mutated the position; read its resulting size.
+        // An absent entry means the fill closed the position entirely, which
+        // `unwrap_or_default` reports as zero.
+        let remaining_position_size = user_state
+            .positions
+            .get(pair_id)
+            .map(|p| p.size)
+            .unwrap_or_default();
+
         events.push(OrderFilled {
             order_id,
             pair_id: pair_id.clone(),
@@ -1235,6 +1272,8 @@ pub fn settle_fill(
             client_order_id,
             fill_id: Some(fill_id),
             is_maker: Some(is_maker),
+            remaining_order_size: Some(remaining_order_size),
+            remaining_position_size: Some(remaining_position_size),
         })?;
     }
 

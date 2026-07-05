@@ -250,7 +250,7 @@ async fn liquidation_on_order_book() {
     let vault_margin_before = vault_state_before.unwrap().margin;
 
     // Anyone can call Liquidate.
-    suite
+    let liq_events = suite
         .execute(
             &mut accounts.owner,
             contracts.perps,
@@ -260,7 +260,37 @@ async fn liquidation_on_order_book() {
             Coins::new(),
         )
         .await
-        .should_succeed();
+        .should_succeed()
+        .events;
+
+    // The book absorbed the whole close, so the single Liquidated event takes
+    // the no-ADL shape — and must report the position size left after the
+    // partial close: 5 - 1.689656 = 3.310344 ETH, the same value the state
+    // query asserts below.
+    let liquidated_events = liq_events
+        .search_event::<CheckedContractEvent>()
+        .with_predicate(|e| e.ty == "liquidated")
+        .take()
+        .all()
+        .into_iter()
+        .map(|e| e.event.data.deserialize_json::<Liquidated>().unwrap())
+        .collect::<Vec<_>>();
+
+    assert_eq!(
+        liquidated_events.len(),
+        1,
+        "one Liquidated event for the single scheduled pair"
+    );
+    let liq = &liquidated_events[0];
+    assert_eq!(liq.user, accounts.user1.address());
+    assert_eq!(liq.adl_size, Quantity::ZERO, "book absorbed the close");
+    assert_eq!(liq.adl_price, None, "no ADL, no ADL price");
+    assert_eq!(liq.adl_realized_pnl, UsdValue::ZERO);
+    assert_eq!(
+        liq.remaining_position_size,
+        Some(Quantity::new_raw(3_310_344)),
+        "Liquidated must report the post-close position size on a partial close"
+    );
 
     // Trader position should be reduced from 5 to ~3.310345 ETH (partial close).
     let state = suite
@@ -858,6 +888,12 @@ async fn liquidation_with_adl() {
         "v0.17.0+ Liquidated events always carry Some(adl_realized_funding); \
          with no funding accrued it must be Some(ZERO)"
     );
+    assert_eq!(
+        liq.remaining_position_size,
+        Some(Quantity::ZERO),
+        "liquidation fully closed Trader A's 5-long in this pair, so the \
+         resulting position size must be Some(ZERO)"
+    );
 
     // The Deleveraged event for the counter-party (Trader B) should
     // mirror the split: closing-only `realized_pnl = +$1,090` (Trader B
@@ -886,6 +922,12 @@ async fn liquidation_with_adl() {
         Some(UsdValue::ZERO),
         "v0.17.0+ Deleveraged events always carry Some(realized_funding); \
          with no funding accrued it must be Some(ZERO)"
+    );
+    assert_eq!(
+        dlv.remaining_position_size,
+        Some(Quantity::ZERO),
+        "ADL closed Trader B's entire 5-short in this pair, so the resulting \
+         position size must be Some(ZERO)"
     );
 
     // Trader A should have no positions and $0 margin.
@@ -1755,6 +1797,7 @@ async fn liquidation_book_fills_have_fill_id_adl_does_not() {
     // deserialize fine (extra fields ignored) but this assertion
     // documents the intended shape.
     let deleveraged_events = events
+        .clone()
         .search_event::<CheckedContractEvent>()
         .with_predicate(|e| e.ty == "deleveraged")
         .take()
@@ -1766,5 +1809,33 @@ async fn liquidation_book_fills_have_fill_id_adl_does_not() {
     assert!(
         !deleveraged_events.is_empty(),
         "liquidation should have ADL'd the remainder against a counter-party"
+    );
+
+    // The 3-ETH ADL leg only partially consumes Trader B's 5-ETH short: the
+    // Deleveraged event must report the -2 ETH that survives.
+    assert_eq!(deleveraged_events.len(), 1, "single ADL counter-party");
+    assert_eq!(deleveraged_events[0].user, accounts.user3.address());
+    assert_eq!(
+        deleveraged_events[0].remaining_position_size,
+        Some(Quantity::new_int(-2)),
+        "Deleveraged must report the counter-party's post-ADL position size"
+    );
+
+    // Trader A's full 5-ETH long is closed across the book leg (2) and the
+    // ADL leg (3), so the pair's Liquidated event reports a zero remainder.
+    let liquidated_events = events
+        .search_event::<CheckedContractEvent>()
+        .with_predicate(|e| e.ty == "liquidated")
+        .take()
+        .all()
+        .into_iter()
+        .map(|e| e.event.data.deserialize_json::<Liquidated>().unwrap())
+        .collect::<Vec<_>>();
+
+    assert_eq!(liquidated_events.len(), 1);
+    assert_eq!(
+        liquidated_events[0].remaining_position_size,
+        Some(Quantity::ZERO),
+        "the mixed book+ADL close wipes the whole position"
     );
 }

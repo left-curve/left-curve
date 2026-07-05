@@ -2,8 +2,8 @@ use {
     crate::{default_pair_param, default_param, register_oracle_prices},
     dango_math::Uint128,
     dango_order_book::{
-        ChildOrder, Dimensionless, LiquidityDepthResponse, OrderId, OrderKind, Quantity,
-        QueryOrdersByUserResponseItem, TimeInForce, UsdPrice, UsdValue,
+        ChildOrder, Dimensionless, LiquidityDepthResponse, OrderId, OrderKind, OrderPersisted,
+        Quantity, QueryOrdersByUserResponseItem, TimeInForce, UsdPrice, UsdValue,
     },
     dango_primitives::{
         Addressable, CheckedContractEvent, Coins, Inner, JsonDeExt, QuerierExt, ResultExt,
@@ -1445,6 +1445,484 @@ async fn fill_id_is_shared_across_match_sides_and_increments_per_match() {
              with no prior position it must be Some(ZERO)"
         );
     }
+
+    // The two post-fill fields. Event order per match is (taker, maker), so
+    // fills are [taker@1, maker1, taker@2, maker2]. Values derived from the
+    // trade intent (taker buys 4 across two 2-lot makers), not the code:
+    //
+    // - resulting position: the taker ends long 2 after match 1 and long 4
+    //   after match 2; each maker starts flat and ends short 2.
+    // - order remainder: the taker's buy-4 has 2 left after match 1 and 0
+    //   after match 2; each maker's 2-lot ask is fully consumed (0 left).
+    assert_eq!(
+        fills
+            .iter()
+            .map(|f| f.remaining_position_size)
+            .collect::<Vec<_>>(),
+        vec![
+            Some(Quantity::new_int(2)),
+            Some(Quantity::new_int(-2)),
+            Some(Quantity::new_int(4)),
+            Some(Quantity::new_int(-2)),
+        ],
+        "each OrderFilled must report the position size resulting from that fill"
+    );
+    assert_eq!(
+        fills
+            .iter()
+            .map(|f| f.remaining_order_size)
+            .collect::<Vec<_>>(),
+        vec![
+            Some(Quantity::new_int(2)),
+            Some(Quantity::ZERO),
+            Some(Quantity::ZERO),
+            Some(Quantity::ZERO),
+        ],
+        "each OrderFilled must report the order's remaining size after that fill"
+    );
+}
+
+/// A fill that closes and then flips a position reports the resulting *signed*
+/// position size and the order's post-fill remainder. Complements
+/// `fill_id_is_shared_across_match_sides_and_increments_per_match`, which only
+/// exercises position-opening fills.
+///
+/// Trader (user3) opens long 10, then sells 15 in a single match: this closes
+/// the 10 long and opens a 5 short — the `decompose_fill` flip example
+/// documented on `OrderFilled`. The taker fill must report
+/// `remaining_position_size = Some(-5)` and, since the sell fully fills against
+/// a 15-lot bid, `remaining_order_size = Some(0)`.
+#[tokio::test]
+async fn order_filled_reports_resulting_position_size_on_flip() {
+    let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(TestOption::default());
+
+    register_oracle_prices(&mut suite, &mut accounts, 2_000).await;
+
+    let pair = pair_id();
+
+    for user in [
+        &mut accounts.user1,
+        &mut accounts.user2,
+        &mut accounts.user3,
+    ] {
+        suite
+            .execute(
+                user,
+                contracts.perps,
+                &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit { to: None }),
+                Coins::one(usdc::DENOM.clone(), Uint128::new(100_000_000_000)).unwrap(),
+            )
+            .await
+            .should_succeed();
+    }
+
+    // Open: user1 rests a 10-lot ask; user3 market-buys 10 → long 10.
+    suite
+        .execute(
+            &mut accounts.user1,
+            contracts.perps,
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
+                pair_id: pair.clone(),
+                size: Quantity::new_int(-10),
+                kind: OrderKind::Limit {
+                    limit_price: UsdPrice::new_int(2_000),
+                    time_in_force: TimeInForce::PostOnly,
+                    client_order_id: None,
+                },
+                reduce_only: false,
+                tp: None,
+                sl: None,
+            })),
+            Coins::new(),
+        )
+        .await
+        .should_succeed();
+    suite
+        .execute(
+            &mut accounts.user3,
+            contracts.perps,
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
+                pair_id: pair.clone(),
+                size: Quantity::new_int(10),
+                kind: OrderKind::Market {
+                    max_slippage: Dimensionless::new_percent(50),
+                },
+                reduce_only: false,
+                tp: None,
+                sl: None,
+            })),
+            Coins::new(),
+        )
+        .await
+        .should_succeed();
+
+    // Flip: user2 rests a 15-lot bid; user3 market-sells 15 → closes the 10
+    // long and opens a 5 short.
+    suite
+        .execute(
+            &mut accounts.user2,
+            contracts.perps,
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
+                pair_id: pair.clone(),
+                size: Quantity::new_int(15),
+                kind: OrderKind::Limit {
+                    limit_price: UsdPrice::new_int(2_000),
+                    time_in_force: TimeInForce::PostOnly,
+                    client_order_id: None,
+                },
+                reduce_only: false,
+                tp: None,
+                sl: None,
+            })),
+            Coins::new(),
+        )
+        .await
+        .should_succeed();
+    let flip_events = suite
+        .execute(
+            &mut accounts.user3,
+            contracts.perps,
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
+                pair_id: pair.clone(),
+                size: Quantity::new_int(-15),
+                kind: OrderKind::Market {
+                    max_slippage: Dimensionless::new_percent(50),
+                },
+                reduce_only: false,
+                tp: None,
+                sl: None,
+            })),
+            Coins::new(),
+        )
+        .await
+        .should_succeed()
+        .events;
+
+    let taker_fill = flip_events
+        .search_event::<CheckedContractEvent>()
+        .with_predicate(|e| e.ty == "order_filled")
+        .take()
+        .all()
+        .into_iter()
+        .map(|e| e.event.data.deserialize_json::<OrderFilled>().unwrap())
+        .find(|f| f.user == accounts.user3.address())
+        .expect("a taker order_filled event for user3");
+
+    // The documented `decompose_fill` flip: long 10 selling 15 closes 10 and
+    // opens 5 on the short side.
+    assert_eq!(taker_fill.fill_size, Quantity::new_int(-15));
+    assert_eq!(taker_fill.closing_size, Quantity::new_int(-10));
+    assert_eq!(taker_fill.opening_size, Quantity::new_int(-5));
+    // Resulting position: flipped from long 10 to short 5.
+    assert_eq!(
+        taker_fill.remaining_position_size,
+        Some(Quantity::new_int(-5)),
+        "selling 15 while long 10 must leave the position short 5"
+    );
+    // The 15-lot sell fully fills against the 15-lot bid → nothing left.
+    assert_eq!(
+        taker_fill.remaining_order_size,
+        Some(Quantity::ZERO),
+        "a fully-filled order must report zero remaining size"
+    );
+}
+
+/// A partially-filled maker's `OrderFilled` must report the resting order's
+/// post-fill remainder, and that remainder must equal the order left on the
+/// book. Every prior fill test consumes its makers in full, so the non-zero
+/// maker-side `remaining_order_size` was never exercised.
+///
+/// user1 rests a 10-lot ask; user3 market-buys 4. By intent: the taker is
+/// fully filled (remainder 0, position long 4), the maker keeps a 6-lot ask
+/// on the book (remainder -6, position short 4).
+#[tokio::test]
+async fn order_filled_reports_maker_remainder_on_partial_fill() {
+    let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(TestOption::default());
+
+    register_oracle_prices(&mut suite, &mut accounts, 2_000).await;
+
+    let pair = pair_id();
+
+    for user in [&mut accounts.user1, &mut accounts.user3] {
+        suite
+            .execute(
+                user,
+                contracts.perps,
+                &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit { to: None }),
+                Coins::one(usdc::DENOM.clone(), Uint128::new(10_000_000_000)).unwrap(),
+            )
+            .await
+            .should_succeed();
+    }
+
+    // user1 rests a 10-lot ask at $2,000.
+    suite
+        .execute(
+            &mut accounts.user1,
+            contracts.perps,
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
+                pair_id: pair.clone(),
+                size: Quantity::new_int(-10),
+                kind: OrderKind::Limit {
+                    limit_price: UsdPrice::new_int(2_000),
+                    time_in_force: TimeInForce::PostOnly,
+                    client_order_id: None,
+                },
+                reduce_only: false,
+                tp: None,
+                sl: None,
+            })),
+            Coins::new(),
+        )
+        .await
+        .should_succeed();
+
+    // user3 market-buys 4, partially consuming the resting ask.
+    let events = suite
+        .execute(
+            &mut accounts.user3,
+            contracts.perps,
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
+                pair_id: pair.clone(),
+                size: Quantity::new_int(4),
+                kind: OrderKind::Market {
+                    max_slippage: Dimensionless::new_percent(50),
+                },
+                reduce_only: false,
+                tp: None,
+                sl: None,
+            })),
+            Coins::new(),
+        )
+        .await
+        .should_succeed()
+        .events;
+
+    let fills = events
+        .search_event::<CheckedContractEvent>()
+        .with_predicate(|e| e.ty == "order_filled")
+        .take()
+        .all()
+        .into_iter()
+        .map(|e| e.event.data.deserialize_json::<OrderFilled>().unwrap())
+        .collect::<Vec<_>>();
+
+    assert_eq!(fills.len(), 2, "one match → taker and maker OrderFilled");
+
+    let taker_fill = fills
+        .iter()
+        .find(|f| f.user == accounts.user3.address())
+        .expect("a taker fill for user3");
+    assert_eq!(taker_fill.is_maker, Some(false));
+    assert_eq!(
+        taker_fill.remaining_order_size,
+        Some(Quantity::ZERO),
+        "the 4-lot buy is fully filled"
+    );
+    assert_eq!(
+        taker_fill.remaining_position_size,
+        Some(Quantity::new_int(4))
+    );
+
+    let maker_fill = fills
+        .iter()
+        .find(|f| f.user == accounts.user1.address())
+        .expect("a maker fill for user1");
+    assert_eq!(maker_fill.is_maker, Some(true));
+    assert_eq!(
+        maker_fill.remaining_order_size,
+        Some(Quantity::new_int(-6)),
+        "the 10-lot ask keeps 6 lots after filling 4"
+    );
+    assert_eq!(
+        maker_fill.remaining_position_size,
+        Some(Quantity::new_int(-4))
+    );
+
+    // The event's remainder must equal the order actually left on the book.
+    let maker_orders = suite
+        .query_wasm_smart(contracts.perps, perps::QueryOrdersByUserRequest {
+            user: accounts.user1.address(),
+        })
+        .should_succeed();
+    assert_eq!(
+        maker_orders.len(),
+        1,
+        "the partially-filled ask still rests"
+    );
+    let resting = maker_orders.values().next().unwrap();
+    assert_eq!(
+        Some(resting.size),
+        maker_fill.remaining_order_size,
+        "event remainder must match the resized resting order"
+    );
+
+    // And the events' position sizes must equal the durable user states.
+    for (user, expected) in [
+        (accounts.user1.address(), Quantity::new_int(-4)),
+        (accounts.user3.address(), Quantity::new_int(4)),
+    ] {
+        let state = suite
+            .query_wasm_smart(contracts.perps, perps::QueryUserStateRequest { user })
+            .should_succeed()
+            .unwrap();
+        assert_eq!(state.positions[&pair].size, expected);
+    }
+}
+
+/// A GTC taker whose remainder rests on the book must report that remainder
+/// on its last fill, and the value must equal both the `OrderPersisted`
+/// event's size and the durable resting order. No prior test asserts
+/// `OrderPersisted` at all.
+///
+/// user1 rests a 5-lot ask; user3 submits a GTC limit buy for 10 at the same
+/// price. By intent: 5 fill (position long 5), 5 rest as a bid.
+#[tokio::test]
+async fn order_filled_taker_remainder_matches_persisted_order() {
+    let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(TestOption::default());
+
+    register_oracle_prices(&mut suite, &mut accounts, 2_000).await;
+
+    let pair = pair_id();
+
+    for user in [&mut accounts.user1, &mut accounts.user3] {
+        suite
+            .execute(
+                user,
+                contracts.perps,
+                &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit { to: None }),
+                Coins::one(usdc::DENOM.clone(), Uint128::new(10_000_000_000)).unwrap(),
+            )
+            .await
+            .should_succeed();
+    }
+
+    // user1 rests a 5-lot ask at $2,000.
+    suite
+        .execute(
+            &mut accounts.user1,
+            contracts.perps,
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
+                pair_id: pair.clone(),
+                size: Quantity::new_int(-5),
+                kind: OrderKind::Limit {
+                    limit_price: UsdPrice::new_int(2_000),
+                    time_in_force: TimeInForce::PostOnly,
+                    client_order_id: None,
+                },
+                reduce_only: false,
+                tp: None,
+                sl: None,
+            })),
+            Coins::new(),
+        )
+        .await
+        .should_succeed();
+
+    // user3 GTC-buys 10 at $2,000: 5 fill, 5 rest.
+    let events = suite
+        .execute(
+            &mut accounts.user3,
+            contracts.perps,
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
+                pair_id: pair.clone(),
+                size: Quantity::new_int(10),
+                kind: OrderKind::Limit {
+                    limit_price: UsdPrice::new_int(2_000),
+                    time_in_force: TimeInForce::GoodTilCanceled,
+                    client_order_id: None,
+                },
+                reduce_only: false,
+                tp: None,
+                sl: None,
+            })),
+            Coins::new(),
+        )
+        .await
+        .should_succeed()
+        .events;
+
+    let fills = events
+        .clone()
+        .search_event::<CheckedContractEvent>()
+        .with_predicate(|e| e.ty == "order_filled")
+        .take()
+        .all()
+        .into_iter()
+        .map(|e| e.event.data.deserialize_json::<OrderFilled>().unwrap())
+        .collect::<Vec<_>>();
+
+    assert_eq!(fills.len(), 2, "one match → taker and maker OrderFilled");
+
+    let taker_fill = fills
+        .iter()
+        .find(|f| f.user == accounts.user3.address())
+        .expect("a taker fill for user3");
+    assert_eq!(
+        taker_fill.remaining_order_size,
+        Some(Quantity::new_int(5)),
+        "the 10-lot buy has 5 left after consuming the 5-lot ask"
+    );
+    assert_eq!(
+        taker_fill.remaining_position_size,
+        Some(Quantity::new_int(5))
+    );
+
+    let maker_fill = fills
+        .iter()
+        .find(|f| f.user == accounts.user1.address())
+        .expect("a maker fill for user1");
+    assert_eq!(
+        maker_fill.remaining_order_size,
+        Some(Quantity::ZERO),
+        "the 5-lot ask is fully consumed"
+    );
+
+    // The remainder rests: OrderPersisted must carry the same size the
+    // taker's fill reported as remaining.
+    let persisted = events
+        .search_event::<CheckedContractEvent>()
+        .with_predicate(|e| e.ty == "order_persisted")
+        .take()
+        .all()
+        .into_iter()
+        .map(|e| e.event.data.deserialize_json::<OrderPersisted>().unwrap())
+        .collect::<Vec<_>>();
+
+    assert_eq!(
+        persisted.len(),
+        1,
+        "the unfilled remainder rests on the book"
+    );
+    assert_eq!(persisted[0].user, accounts.user3.address());
+    assert_eq!(persisted[0].limit_price, UsdPrice::new_int(2_000));
+    assert_eq!(
+        Some(persisted[0].size),
+        taker_fill.remaining_order_size,
+        "OrderPersisted size must equal the taker fill's remaining_order_size"
+    );
+
+    // Durable cross-check: the resting bid on the book carries the same size,
+    // and the maker's book is empty.
+    let taker_orders = suite
+        .query_wasm_smart(contracts.perps, perps::QueryOrdersByUserRequest {
+            user: accounts.user3.address(),
+        })
+        .should_succeed();
+    assert_eq!(taker_orders.len(), 1);
+    let resting = taker_orders.values().next().unwrap();
+    assert_eq!(resting.size, Quantity::new_int(5));
+    assert_eq!(resting.limit_price, UsdPrice::new_int(2_000));
+
+    let maker_orders = suite
+        .query_wasm_smart(contracts.perps, perps::QueryOrdersByUserRequest {
+            user: accounts.user1.address(),
+        })
+        .should_succeed();
+    assert!(
+        maker_orders.is_empty(),
+        "the maker's ask was fully consumed"
+    );
 }
 
 /// Bug reproduction: sell-side market order with partial fill is incorrectly

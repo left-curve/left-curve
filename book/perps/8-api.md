@@ -1622,7 +1622,9 @@ The `data` field contains the event-specific payload as JSON. For example, an `o
   "fee": "6.500000",
   "client_order_id": "42",
   "fill_id": "17",
-  "is_maker": false
+  "is_maker": false,
+  "remaining_order_size": "0.000000",
+  "remaining_position_size": "0.100000"
 }
 ```
 
@@ -2381,12 +2383,12 @@ The perps contract emits the following events. These can be queried via `perpsEv
 
 ### Order events
 
-| Event             | Fields                                                                                                                                                                            | Description                     |
-| ----------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------- |
-| `order_filled`    | `order_id`, `pair_id`, `user`, `fill_price`, `fill_size`, `closing_size`, `opening_size`, `realized_pnl`, `realized_funding?`, `fee`, `client_order_id?`, `fill_id?`, `is_maker?` | Order partially or fully filled |
-| `order_persisted` | `order_id`, `pair_id`, `user`, `limit_price`, `size`, `client_order_id?`                                                                                                          | Limit order placed on book      |
-| `order_resized`   | `order_id`, `pair_id`, `user`, `old_size`, `new_size`, `client_order_id?`                                                                                                         | Reduce-only order shrunk        |
-| `order_removed`   | `order_id`, `pair_id`, `user`, `reason`, `client_order_id?`                                                                                                                       | Order removed from book         |
+| Event             | Fields                                                                                                                                                                                                                                 | Description                     |
+| ----------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------- |
+| `order_filled`    | `order_id`, `pair_id`, `user`, `fill_price`, `fill_size`, `closing_size`, `opening_size`, `realized_pnl`, `realized_funding?`, `fee`, `client_order_id?`, `fill_id?`, `is_maker?`, `remaining_order_size?`, `remaining_position_size?` | Order partially or fully filled |
+| `order_persisted` | `order_id`, `pair_id`, `user`, `limit_price`, `size`, `client_order_id?`                                                                                                                                                               | Limit order placed on book      |
+| `order_resized`   | `order_id`, `pair_id`, `user`, `old_size`, `new_size`, `client_order_id?`                                                                                                                                                              | Reduce-only order shrunk        |
+| `order_removed`   | `order_id`, `pair_id`, `user`, `reason`, `client_order_id?`                                                                                                                                                                            | Order removed from book         |
 
 `client_order_id` is `null` if the order was submitted without one. Off-chain consumers can use it to correlate fills, persistence, resizes, and removal with the originally-submitted client id.
 
@@ -2402,6 +2404,10 @@ The perps contract emits the following events. These can be queried via `perpsEv
 
 Trading fees are reported separately in the `fee` field on `order_filled`; ADL and deleverage fills incur no trading fees.
 
+`remaining_position_size` reports the size of the affected position **after** the event is applied — positive for a long, negative for a short, and zero when the position was closed entirely. It lets consumers track a position's live size directly instead of accumulating the per-event `closing_size` / `opening_size` (or `adl_size`) deltas. It refers to the fill's user (taker or maker) on `order_filled`, the counter-party on `deleveraged`, and the liquidated user on `liquidated`. A liquidation closes each pair with its own `liquidated` event, so each event reports the resulting size for its own pair. The field is `null` for events emitted before v0.26.0 — the resulting size was not recorded prior to that release.
+
+`remaining_order_size` (on `order_filled` only) reports the order's remaining unfilled size **after** this fill, carrying the same sign as the order's side. It is non-zero when the order is only partially filled and zero once it is fully filled; for the taker side it is the incoming order's remainder (which may then rest on the book or be discarded), and for the maker side the resting order's remainder. The field is `null` for trades executed before v0.26.0 — the remaining order size was not recorded prior to that release.
+
 ### Conditional order events
 
 | Event                         | Fields                                                                          | Description                   |
@@ -2412,11 +2418,11 @@ Trading fees are reported separately in the `fee` field on `order_filled`; ADL a
 
 ### Liquidation events
 
-| Event              | Fields                                                                                  | Description                      |
-| ------------------ | --------------------------------------------------------------------------------------- | -------------------------------- |
-| `liquidated`       | `user`, `pair_id`, `adl_size`, `adl_price`, `adl_realized_pnl`, `adl_realized_funding?` | Position liquidated in a pair    |
-| `deleveraged`      | `user`, `pair_id`, `closing_size`, `fill_price`, `realized_pnl`, `realized_funding?`    | Counter-party hit by ADL         |
-| `bad_debt_covered` | `liquidated_user`, `amount`, `insurance_fund_remaining`                                 | Insurance fund absorbed bad debt |
+| Event              | Fields                                                                                                              | Description                      |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------- | -------------------------------- |
+| `liquidated`       | `user`, `pair_id`, `adl_size`, `adl_price`, `adl_realized_pnl`, `adl_realized_funding?`, `remaining_position_size?` | Position liquidated in a pair    |
+| `deleveraged`      | `user`, `pair_id`, `closing_size`, `fill_price`, `realized_pnl`, `realized_funding?`, `remaining_position_size?`    | Counter-party hit by ADL         |
+| `bad_debt_covered` | `liquidated_user`, `amount`, `insurance_fund_remaining`                                                             | Insurance fund absorbed bad debt |
 
 ### ReasonForOrderRemoval
 
@@ -3005,10 +3011,10 @@ Submit a signed transaction to the mempool — a **write** request/response (one
 {"method": "broadcast", "id": 1, "tx": { ... signed Tx ... }}
 ```
 
-| Field | Type     | Description                                                     |
-| ----- | -------- | --------------------------------------------------------------- |
-| `id`  | `Int`    | Echoed on the reply frame                                       |
-| `tx`  | `Object` | The signed `Tx` (see [§2](#2-authentication-and-transactions))  |
+| Field | Type     | Description                                                    |
+| ----- | -------- | -------------------------------------------------------------- |
+| `id`  | `Int`    | Echoed on the reply frame                                      |
+| `tx`  | `Object` | The signed `Tx` (see [§2](#2-authentication-and-transactions)) |
 
 The reply rides the `broadcast` channel. Success — **including a mempool-rejected tx**, whose rejection is carried in `check_tx.result` — is a `data` frame holding the `BroadcastTxOutcome` (same shape as [§11.3](#113-broadcast)):
 
