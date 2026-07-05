@@ -286,6 +286,27 @@ stop-perps-bot:
     && uv run ansible-playbook stop-perps-bot.yml \
       2>&1 | tee "{{justfile_directory()}}/logs/$(date -u +%Y%m%d%H%M%S)-stop-perps-bot.log"
 
+# ---------------------------- Batch Block Backup -----------------------------
+
+# Deploy the batch-block-backup bot for a network. testnet runs on hetzner2,
+# mainnet on hetzner1 (the full-app node hosts, so the blocks/ dir is on local
+# disk).
+# Usage: just deploy-batch-block-backup testnet
+#        just deploy-batch-block-backup mainnet v1.2.3
+deploy-batch-block-backup network tag="latest":
+  mkdir -p "{{justfile_directory()}}/logs" \
+    && uv run ansible-playbook batch-block-backup.yml \
+      -e '{"batch_block_backup_networks": ["{{network}}"], "batch_block_backup_tag": "{{tag}}"}' \
+      --limit batch-block-backup-{{network}} \
+      2>&1 | tee "{{justfile_directory()}}/logs/$(date -u +%Y%m%d%H%M%S)-deploy-batch-block-backup.log"
+
+stop-batch-block-backup network:
+  mkdir -p "{{justfile_directory()}}/logs" \
+    && uv run ansible-playbook stop-batch-block-backup.yml \
+      -e '{"batch_block_backup_networks": ["{{network}}"]}' \
+      --limit batch-block-backup-{{network}} \
+      2>&1 | tee "{{justfile_directory()}}/logs/$(date -u +%Y%m%d%H%M%S)-stop-batch-block-backup.log"
+
 # ----------------------------- Dango Assistant --------------------------------
 
 deploy-dango-assistant tag="latest":
