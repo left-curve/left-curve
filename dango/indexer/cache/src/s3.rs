@@ -146,15 +146,6 @@ impl Client {
         })
     }
 
-    #[cfg_attr(feature = "tracing", tracing::instrument(skip_all, fields(key = %key)))]
-    pub async fn upload_file(&self, key: String, file_path: &Path) -> Result<()> {
-        let body = ByteStream::from_path(file_path)
-            .await
-            .map_err(|e| IndexerError::byte_stream(e.to_string()))?;
-
-        self.put(key, body).await
-    }
-
     /// Upload an in-memory buffer directly, without staging it to a file. Useful
     /// for objects built in memory (e.g. a freshly compressed batch archive).
     #[cfg_attr(feature = "tracing", tracing::instrument(skip_all, fields(key = %key)))]
@@ -162,8 +153,7 @@ impl Client {
         self.put(key, ByteStream::from(data)).await
     }
 
-    /// Shared `put_object` call backing [`Self::upload_file`] and
-    /// [`Self::upload_bytes`].
+    /// Shared `put_object` call backing [`Self::upload_bytes`].
     #[cfg_attr(feature = "tracing", tracing::instrument(skip_all, fields(key = %key)))]
     async fn put(&self, key: String, body: ByteStream) -> Result<()> {
         self.inner
@@ -171,19 +161,6 @@ impl Client {
             .bucket(&self.cfg.bucket)
             .key(key)
             .body(body)
-            .send()
-            .await
-            .map_err(|e| IndexerError::s3(e.to_string()))?;
-
-        Ok(())
-    }
-
-    #[cfg_attr(feature = "tracing", tracing::instrument(skip_all, fields(key = %key)))]
-    pub async fn delete_file(&self, key: String) -> Result<()> {
-        self.inner
-            .delete_object()
-            .bucket(&self.cfg.bucket)
-            .key(key)
             .send()
             .await
             .map_err(|e| IndexerError::s3(e.to_string()))?;

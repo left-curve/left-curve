@@ -94,9 +94,6 @@ deploy_user="deploy"
 [monitoring]
 100.122.37.57  # ovh3
 
-[minio]
-100.122.37.57  # ovh3
-
 [homer]
 100.96.253.40  # ovh1
 

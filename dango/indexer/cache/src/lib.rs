@@ -27,6 +27,6 @@ pub use {
 pub use compress::Xz;
 #[cfg(feature = "s3")]
 pub use {
-    retrieval::{BatchClient, BlockClient, StorageConfig},
+    retrieval::{BatchClient, StorageConfig},
     s3::{Client, S3Config},
 };
