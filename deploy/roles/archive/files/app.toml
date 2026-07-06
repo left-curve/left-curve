@@ -14,8 +14,19 @@ type       = "remote"
 store_path = "data/blocks"          # under --home (/root/.archive)
 # live_url is injected from BLOCK_SOURCE__LIVE_URL (see header)
 
+# Concurrent /block/full/range calls per backfill batch; responses are
+# committed in height order, so the stream the projections see stays
+# ascending. 8 lands the dense-era fetch (~500 blocks/s theoretical) just
+# under the store writer's ~780 blocks/s ceiling — the stage that actually
+# backpressures the fetcher (projections don't: they pull-catch-up behind
+# the frontier at their own pace). Higher values buy nothing downstream and
+# only load the sentinel node, which pays a disk read + JSON serialization
+# per in-flight call on the NIC it shares with consensus p2p — watch its
+# dango CPU / network on deploy. Overridable per instance as
+# BLOCK_SOURCE__FETCHER__PARALLELISM (1 = serial rollback, no rebuild).
 [block_source.fetcher]
-type = "sentinel"
+type        = "sentinel"
+parallelism = 8
 
 [httpd]
 enabled = true

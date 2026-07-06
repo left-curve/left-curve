@@ -19,7 +19,8 @@ live_url   = "http://node:8080"     # node httpd: live full_block tail + sentine
 # Which backfill fetcher to use (only `sentinel` for now; `s3` planned).
 # Defaults to sentinel if this section is omitted.
 [block_source.fetcher]
-type = "sentinel"                   # reuses live_url — no URL of its own
+type        = "sentinel"            # reuses live_url — no URL of its own
+parallelism = 4                     # concurrent range calls per backfill batch
 
 [httpd]
 enabled = true

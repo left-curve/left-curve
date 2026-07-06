@@ -363,15 +363,27 @@ Design notes:
 ### `SentinelBlockFetcher` (built now)
 
 A background task that pulls blocks from a sentinel's `GET /block/full/range`
-endpoint in **contiguous runs** of up to `range_size` heights per call (the
-endpoint caps a response at `MAX_BLOCK_RANGE` = 20). Each request starts one past
-the **last block actually received**, so a short run — the sentinel not yet
-holding the next height — simply re-requests from there rather than assuming a
-fixed stride. It sends the assembled `BlockData` through the bounded channel
-ascending and stops after `to`. No adaptive ramp: every height in a gap is below
-the live tip and therefore exists, so a plain sequential pull suffices. The
-endpoint returns the **full `Block`** (not just `block.info`), since projections
-need txs and events.
+endpoint (which caps a response at `MAX_BLOCK_RANGE` = 20 heights). Each round
+issues one **batch**: up to `parallelism` concurrent calls on fixed contiguous
+strides of `range_size` heights. `join_all` preserves submission order, so the
+responses come back height-ordered and are committed block by block while they
+stay contiguous with the next expected height — the stream stays strictly
+ascending with no reorder buffer. The first anomaly (a request error or
+timeout, an empty response, or a run that breaks contiguity — which is also how
+a **short** run surfaces, since the next fixed stride then no longer aligns)
+discards the rest of the batch, and the next round re-issues from the first
+height not yet delivered, after a backoff. Refetching a discarded tail trades a
+little bandwidth for never buffering out-of-order blocks; anomalies are
+transient and rare, so the cost is nil in steady state.
+
+Why parallel at all: in block-dense height regions a call is **payload-bound**
+(hundreds of KB per block — the sentinel's disk read + JSON serialization
+dominate), so a serial pull caps at one response-time per `range_size` blocks
+however fast the store writes. A handful of overlapping calls is enough to keep
+the pipeline fed; `parallelism = 1` restores the serial pull. No adaptive ramp:
+every height in a gap is below the live tip and therefore exists, so there is
+no tip to probe for. The endpoint returns the **full `Block`** (not just
+`block.info`), since projections need txs and events.
 
 ## The coordinator: forward the advance to the broadcast
 
@@ -478,13 +490,17 @@ store on restart : {1..50, 200..210}   live subscribe resumes at L = 250
 ## Borrowed pattern: bots `BlockFetcher`
 
 `bots/types/src/block_fetcher.rs` already solves the hard part and we lift it:
-the background task + `AbortOnDrop` + bounded channel + `recv()` interface, and
-the ordered-output discipline (send `block, block+1, …` in sequence, resume from
-the last height actually received). We drop the adaptive ramp (it exists to
-follow the tip, which a bounded gap never reaches) and the per-height concurrent
-fetch (the `/block/full/range` endpoint returns a whole run in one call, so the
-loop is a sequential walk of ranges), emit the full `Block` (not `block.info`),
-and add the `from/to` bound so the task terminates.
+the background task + `AbortOnDrop` + bounded channel + `recv()` interface, the
+ordered-output discipline (send `block, block+1, …` in sequence, resume from
+the last height actually received), and the **concurrent-batch shape** — issue
+N fetches at once, commit the results in submission order via `join_all`,
+discard from the first anomaly and re-issue from the last committed height.
+Adapted: the unit of a fetch is a `/block/full/range` stride (up to 20 blocks)
+rather than a single height, we emit the full `Block` (not `block.info`), and
+we add the `from/to` bound so the task terminates. We drop the adaptive ramp
+(`loops = min(i+1, max_loops)`): it exists to follow the tip, where most probed
+heights don't exist yet — a bounded gap sits entirely below the live tip, so a
+fixed `parallelism` suffices.
 
 ## Configuration
 
@@ -500,9 +516,12 @@ signal, to absorb an out-of-order delivery before fetching), `reconnect_backoff`
 (between live re-subscribes).
 
 `SentinelFetcherConfig` — `range_size` (heights requested per `/block/full/range`
-call, clamped to the gap and capped at `MAX_BLOCK_RANGE` = 20), `timeout`
-(per-request RPC timeout), `channel_capacity` (fetch-ahead backlog — the dominant
-backfill-RAM knob), `retry_backoff`.
+call, clamped to the gap and capped at `MAX_BLOCK_RANGE` = 20), `parallelism`
+(concurrent range calls per batch — the only tuning knob also wired through the
+TOML, as `[block_source.fetcher] parallelism`, env-overridable as
+`BLOCK_SOURCE__FETCHER__PARALLELISM`), `timeout` (per-request RPC timeout),
+`channel_capacity` (fetch-ahead backlog — the dominant backfill-RAM knob),
+`retry_backoff`.
 
 Already wired through `remote.*`: `live_url` (the sentinel's base `httpd` URL,
 from which `HttpdClient::new` derives both the `full_block` subscription and the

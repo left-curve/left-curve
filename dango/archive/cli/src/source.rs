@@ -54,10 +54,16 @@ fn build_remote(
         .with_context(|| format!("invalid live_url `{}`", cfg.live_url))?;
 
     let fetcher: Arc<dyn BlockFetcher> = match &cfg.fetcher {
-        FetcherConfig::Sentinel => Arc::new(SentinelBlockFetcher::new(
-            live.clone(),
-            SentinelFetcherConfig::default(),
-        )),
+        FetcherConfig::Sentinel { parallelism } => {
+            // The block-source crate owns the tuning defaults; the config only
+            // overrides what the deployment sets explicitly.
+            let mut fetcher_config = SentinelFetcherConfig::default();
+            if let Some(parallelism) = parallelism {
+                fetcher_config.parallelism = *parallelism;
+            }
+
+            Arc::new(SentinelBlockFetcher::new(live.clone(), fetcher_config))
+        },
     };
 
     Ok(Arc::new(RemoteBlockSource::new(
