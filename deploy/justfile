@@ -618,42 +618,6 @@ deploy-clickhouse:
     && uv run ansible-playbook clickhouse.yml \
       2>&1 | tee "{{justfile_directory()}}/logs/$(date -u +%Y%m%d%H%M%S)-deploy-clickhouse.log"
 
-# -------------------------------- B2 Buckets ----------------------------------
-
-# List all B2 buckets
-b2-list-buckets:
-  mkdir -p "{{justfile_directory()}}/logs" \
-    && uv run ansible-playbook cleanup-b2-buckets.yml \
-      --limit {{ovh1}} \
-      --tags list \
-      2>&1 | tee "{{justfile_directory()}}/logs/$(date -u +%Y%m%d%H%M%S)-b2-list-buckets.log"
-
-# Delete empty B2 buckets (PR and devnet only, requires lifecycle rules)
-b2-cleanup-buckets:
-  mkdir -p "{{justfile_directory()}}/logs" \
-    && uv run ansible-playbook cleanup-b2-buckets.yml \
-      --limit {{ovh1}} \
-      --tags cleanup \
-      2>&1 | tee "{{justfile_directory()}}/logs/$(date -u +%Y%m%d%H%M%S)-b2-cleanup-buckets.log"
-
-# Delete a specific B2 bucket by name (must be empty)
-b2-delete-bucket name:
-  mkdir -p "{{justfile_directory()}}/logs" \
-    && uv run ansible-playbook cleanup-b2-buckets.yml \
-      --limit {{ovh1}} \
-      --tags delete-bucket \
-      -e b2_bucket={{name}} \
-      2>&1 | tee "{{justfile_directory()}}/logs/$(date -u +%Y%m%d%H%M%S)-b2-delete-bucket.log"
-
-# Mark a B2 bucket for deletion (sets lifecycle rules to drain files in ~2 days)
-b2-mark-bucket-deletable name:
-  mkdir -p "{{justfile_directory()}}/logs" \
-    && uv run ansible-playbook cleanup-b2-buckets.yml \
-      --limit {{ovh1}} \
-      --tags mark-bucket-deletable \
-      -e b2_bucket={{name}} \
-      2>&1 | tee "{{justfile_directory()}}/logs/$(date -u +%Y%m%d%H%M%S)-b2-mark-bucket-deletable.log"
-
 # ------------------------------ Database Download ------------------------------
 
 # Download Grug RocksDB — interactive host selection (no tee, prompt needs direct stdout)
