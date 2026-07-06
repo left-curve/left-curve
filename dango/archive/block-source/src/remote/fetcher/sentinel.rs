@@ -4,6 +4,7 @@ use {
     super::{BlockFetcher, FetchStream},
     async_trait::async_trait,
     dango_archive_types::{AnyResult, BlockData, BlockDataExt},
+    futures::future::join_all,
     std::{cmp::min, time::Duration},
     tokio::{sync::mpsc, time::sleep},
 };
@@ -35,17 +36,27 @@ pub struct SentinelFetcherConfig {
     /// Blocks requested per `/block/full/range` call, clamped to the blocks left
     /// in the gap and capped at [`MAX_BLOCK_RANGE`] (the endpoint's own limit).
     pub range_size: u64,
+    /// Concurrent `/block/full/range` calls per batch. The fetcher issues this
+    /// many contiguous strides at once and commits the responses in height
+    /// order, so the stream stays strictly ascending; `1` restores the serial
+    /// one-call-at-a-time pull. In block-dense height regions a call is
+    /// payload-bound (hundreds of KB per block, most of it the sentinel's disk
+    /// read + JSON serialization), so this is as much an upstream-load knob as
+    /// a throughput one: a handful of concurrent calls is enough to keep the
+    /// pipeline fed, and more mostly costs the sentinel CPU.
+    pub parallelism: usize,
     /// Per-request timeout before retrying.
     pub timeout: Duration,
     /// Upper bound on blocks fetched-ahead but not yet consumed. The fetcher can
-    /// be far faster than the store writer during a backfill; a bounded channel
-    /// makes a full buffer block the fetcher (backpressure) instead of letting it
-    /// race ahead and balloon RAM. No throughput cost — the consumer is the
-    /// bottleneck and the fetcher only needs a small lead. This is a **RAM** knob:
-    /// at the measured payloads (median ~20 KB, p90 ~150 KB borsh) 2_000 is
-    /// ~40 MB typical / ~300 MB peak.
+    /// outpace the store writer during a backfill; a bounded channel makes a
+    /// full buffer block the fetcher (backpressure) instead of letting it race
+    /// ahead and balloon RAM. No throughput cost — the consumer only needs a
+    /// small lead. This is a **RAM** knob sized for the *dense* eras a backfill
+    /// crosses (hundreds of KB per block, not the ~20 KB median): 256 is ~5 MB
+    /// typical / ~75 MB at the heavy tail.
     pub channel_capacity: usize,
-    /// Backoff after a failed, timed-out, or empty response before retrying.
+    /// Backoff after a failed, timed-out, empty, or contiguity-breaking batch
+    /// before re-issuing.
     pub retry_backoff: Duration,
 }
 
@@ -53,8 +64,9 @@ impl Default for SentinelFetcherConfig {
     fn default() -> Self {
         Self {
             range_size: MAX_BLOCK_RANGE,
+            parallelism: 4,
             timeout: Duration::from_secs(30),
-            channel_capacity: 2_000,
+            channel_capacity: 256,
             retry_backoff: Duration::from_millis(500),
         }
     }
@@ -62,12 +74,15 @@ impl Default for SentinelFetcherConfig {
 
 /// [`BlockFetcher`] backed by a sentinel's `/block/full/range` endpoint.
 ///
-/// Fills a bounded gap `[from, to]` by pulling contiguous runs of up to
-/// `range_size` full blocks per request and streaming the assembled
-/// [`BlockData`] in ascending order. Each request starts one past the **last
-/// block actually received**, so a short run (the sentinel not yet holding the
-/// next height) simply re-requests from there instead of assuming a fixed
-/// stride.
+/// Fills a bounded gap `[from, to]` by issuing up to `parallelism` range calls
+/// (contiguous strides of up to `range_size` blocks each) concurrently, and
+/// committing the responses **in height order** into the stream — so the
+/// output stays strictly ascending and contiguous while the requests overlap.
+/// The batch shape is borrowed from the bots `BlockFetcher` (see
+/// `design/remote-block-source.md`): `join_all` preserves submission order, so
+/// no reorder buffer is needed, and the bounded output channel is the only
+/// backpressure — a full channel stalls the commit walk, which stalls the next
+/// batch.
 ///
 /// Generic over the client so the crate depends only on the [`BlockRangeClient`]
 /// trait, not a concrete HTTP client — and so it can be driven by a mock in
@@ -100,12 +115,22 @@ where
     }
 }
 
-/// Fetch `[from, to]` inclusive in contiguous runs, sending each [`BlockData`] in
-/// ascending order through `tx`. Returns when the range is done or the consumer
-/// drops the receiver. Transient failures (request error, timeout, or a
-/// not-yet-available height) back off and retry — every block in the range
-/// exists below the live tip, so a failure is always transient and never
-/// surfaced to the consumer.
+/// Fetch `[from, to]` inclusive, sending each [`BlockData`] in ascending order
+/// through `tx`. Returns when the range is done or the consumer drops the
+/// receiver.
+///
+/// Each round issues one **batch**: up to `parallelism` concurrent range calls
+/// on fixed contiguous strides of `range_size` blocks. `join_all` preserves
+/// submission order, so the responses come back height-ordered and are
+/// forwarded block by block while they stay contiguous with `next_from` — the
+/// first height not yet delivered. The first anomaly — a request error or
+/// timeout, an empty response, or a run that breaks contiguity (which is also
+/// how a **short** run surfaces: the next fixed stride no longer aligns) —
+/// stops the walk, discards the rest of the batch, and the next round
+/// re-issues from `next_from` after a backoff. Refetching a discarded tail
+/// trades a little bandwidth for never buffering out-of-order blocks; every
+/// height in a gap exists below the live tip, so anomalies are transient and
+/// rare, and are never surfaced to the consumer.
 #[cfg_attr(
     feature = "tracing",
     instrument(skip_all, name = "bsource.fetcher", fields(from, to))
@@ -120,71 +145,109 @@ async fn fetch_range<C>(
     C: BlockRangeClient + Clone + 'static,
 {
     let range_size = config.range_size.clamp(1, MAX_BLOCK_RANGE);
+    let parallelism = config.parallelism.max(1) as u64;
     let mut next_from = from;
 
     while next_from <= to {
-        // Up to `range_size` blocks, clamped to the blocks left in the gap.
-        let batch_to = min(next_from + range_size - 1, to);
+        // One batch: up to `parallelism` contiguous strides, requested
+        // concurrently. Each call is timed and its outcome labeled (ok / error
+        // / timeout / empty) — the four mutually-exclusive ends of one request
+        // — exactly as when the calls were serial.
+        let batch = (0..parallelism)
+            .map(|i| next_from + i * range_size)
+            .take_while(|&chunk_from| chunk_from <= to)
+            .map(|chunk_from| {
+                let chunk_to = min(chunk_from + range_size - 1, to);
+                let client = client.clone();
+                let timeout = config.timeout;
 
-        // Time each range call and label its outcome (ok / error / timeout /
-        // empty) — the four mutually-exclusive ends of one request.
-        #[cfg(feature = "metrics")]
-        let request_start = std::time::Instant::now();
+                async move {
+                    #[cfg(feature = "metrics")]
+                    let request_start = std::time::Instant::now();
 
-        let response = tokio::time::timeout(
-            config.timeout,
-            client.fetch_block_range(next_from, batch_to),
-        )
-        .await;
+                    let response = tokio::time::timeout(
+                        timeout,
+                        client.fetch_block_range(chunk_from, chunk_to),
+                    )
+                    .await;
 
-        #[cfg(feature = "metrics")]
-        metrics::histogram!(crate::metrics::FETCHER_REQUEST_DURATION)
-            .record(request_start.elapsed().as_secs_f64());
+                    #[cfg(feature = "metrics")]
+                    {
+                        metrics::histogram!(crate::metrics::FETCHER_REQUEST_DURATION)
+                            .record(request_start.elapsed().as_secs_f64());
 
-        let blocks = match response {
-            Ok(Ok(blocks)) => blocks,
-            Ok(Err(_error)) => {
-                #[cfg(feature = "metrics")]
-                metrics::counter!(crate::metrics::FETCHER_REQUESTS, "outcome" => "error")
-                    .increment(1);
-                #[cfg(feature = "tracing")]
-                tracing::warn!(error = %_error, next_from, "sentinel range fetch failed, retrying");
-                sleep(config.retry_backoff).await;
-                continue;
-            },
-            Err(_timeout) => {
-                #[cfg(feature = "metrics")]
-                metrics::counter!(crate::metrics::FETCHER_REQUESTS, "outcome" => "timeout")
-                    .increment(1);
-                #[cfg(feature = "tracing")]
-                tracing::warn!(next_from, "sentinel range fetch timed out, retrying");
-                sleep(config.retry_backoff).await;
-                continue;
-            },
-        };
+                        let outcome = match &response {
+                            Ok(Ok(blocks)) if blocks.is_empty() => "empty",
+                            Ok(Ok(_)) => "ok",
+                            Ok(Err(_)) => "error",
+                            Err(_) => "timeout",
+                        };
+                        metrics::counter!(crate::metrics::FETCHER_REQUESTS, "outcome" => outcome)
+                            .increment(1);
+                    }
 
-        // An empty response means `next_from` is not yet on the sentinel — retry
-        // from the same height after a backoff.
-        let Some(last) = blocks.last().map(|block| block.height()) else {
-            #[cfg(feature = "metrics")]
-            metrics::counter!(crate::metrics::FETCHER_REQUESTS, "outcome" => "empty").increment(1);
-            sleep(config.retry_backoff).await;
-            continue;
-        };
+                    response
+                }
+            })
+            .collect::<Vec<_>>();
 
-        #[cfg(feature = "metrics")]
-        metrics::counter!(crate::metrics::FETCHER_REQUESTS, "outcome" => "ok").increment(1);
+        // Commit in submission (= height) order; stop at the first anomaly.
+        let mut clean = true;
 
-        for block in blocks {
-            if tx.send(block).await.is_err() {
-                // The consumer dropped the `FetchStream`; stop.
-                return;
+        'walk: for response in join_all(batch).await {
+            let blocks = match response {
+                Ok(Ok(blocks)) => blocks,
+                Ok(Err(_error)) => {
+                    #[cfg(feature = "tracing")]
+                    tracing::warn!(error = %_error, next_from, "sentinel range fetch failed, retrying");
+                    clean = false;
+                    break 'walk;
+                },
+                Err(_timeout) => {
+                    #[cfg(feature = "tracing")]
+                    tracing::warn!(next_from, "sentinel range fetch timed out, retrying");
+                    clean = false;
+                    break 'walk;
+                },
+            };
+
+            // An empty response means the stride's first height is not on the
+            // sentinel — retry from `next_from` after a backoff.
+            if blocks.is_empty() {
+                clean = false;
+                break 'walk;
+            }
+
+            for block in blocks {
+                let height = block.height();
+
+                // The endpoint serves runs contiguous from the requested
+                // `from`, so a mismatch means an *earlier* stride came back
+                // short (this stride's fixed start no longer aligns) — or a
+                // misbehaving backend. Either way: discard and refetch.
+                if height != next_from {
+                    #[cfg(feature = "tracing")]
+                    tracing::warn!(
+                        height,
+                        expected = next_from,
+                        "sentinel run broke contiguity, refetching"
+                    );
+                    clean = false;
+                    break 'walk;
+                }
+
+                if tx.send(block).await.is_err() {
+                    // The consumer dropped the `FetchStream`; stop.
+                    return;
+                }
+
+                next_from += 1;
             }
         }
 
-        // Resume one past the last block actually received — a short run just
-        // re-requests from the next height.
-        next_from = last + 1;
+        if !clean {
+            sleep(config.retry_backoff).await;
+        }
     }
 }
 
@@ -195,6 +258,10 @@ mod tests {
     use {
         super::*,
         dango_primitives::{Block, BlockInfo, BlockOutcome, Hash256, Timestamp},
+        std::sync::{
+            Arc,
+            atomic::{AtomicBool, AtomicUsize, Ordering},
+        },
     };
 
     fn block(height: u64) -> BlockData {
@@ -262,7 +329,9 @@ mod tests {
     #[tokio::test]
     async fn resumes_from_last_received_on_short_runs() {
         // The client returns at most 3 blocks per call, well under `range_size`,
-        // so the loop must keep advancing via `last + 1`.
+        // so the loop must keep advancing via the committed frontier. With a
+        // 10-block gap and `range_size` 20 every batch is a single stride, so a
+        // short run resumes immediately (no misaligned follow-up stride).
         let fetcher =
             SentinelBlockFetcher::new(MockRangeClient { max_per_call: 3 }, SentinelFetcherConfig {
                 range_size: 20,
@@ -271,6 +340,145 @@ mod tests {
 
         let mut stream = fetcher.spawn(1, 10);
         assert_eq!(collect(&mut stream, 10).await, (1..=10).collect::<Vec<_>>());
+        assert!(stream.recv().await.is_none());
+    }
+
+    #[tokio::test]
+    async fn serial_mode_is_the_degenerate_batch() {
+        // `parallelism: 1` = one stride per batch: the pre-parallelism loop.
+        let fetcher =
+            SentinelBlockFetcher::new(MockRangeClient { max_per_call: 3 }, SentinelFetcherConfig {
+                range_size: 20,
+                parallelism: 1,
+                ..SentinelFetcherConfig::default()
+            });
+
+        let mut stream = fetcher.spawn(1, 10);
+        assert_eq!(collect(&mut stream, 10).await, (1..=10).collect::<Vec<_>>());
+        assert!(stream.recv().await.is_none());
+    }
+
+    #[tokio::test]
+    async fn short_run_mid_batch_discards_the_tail_and_refetches() {
+        // Strides of 5, three per batch, but the client caps every response at
+        // 3 blocks: the first stride comes back short, so the second stride's
+        // fixed start no longer aligns with the committed frontier and the
+        // walk must discard the batch tail and re-issue — never skipping or
+        // reordering a height. Zero backoff keeps the test instant.
+        let fetcher =
+            SentinelBlockFetcher::new(MockRangeClient { max_per_call: 3 }, SentinelFetcherConfig {
+                range_size: 5,
+                parallelism: 3,
+                retry_backoff: Duration::ZERO,
+                ..SentinelFetcherConfig::default()
+            });
+
+        let mut stream = fetcher.spawn(1, 30);
+        assert_eq!(collect(&mut stream, 30).await, (1..=30).collect::<Vec<_>>());
+        assert!(stream.recv().await.is_none());
+    }
+
+    /// Serves correct runs, except the *first* call for `from == 6`, which
+    /// returns a run starting two heights high — a misbehaving backend.
+    #[derive(Clone)]
+    struct SkewedOnceClient {
+        skewed: Arc<AtomicBool>,
+    }
+
+    #[async_trait]
+    impl BlockRangeClient for SkewedOnceClient {
+        async fn fetch_block_range(&self, from: u64, to: u64) -> AnyResult<Vec<BlockData>> {
+            if from == 6 && !self.skewed.swap(true, Ordering::SeqCst) {
+                return Ok((from + 2..=to + 2).map(block).collect());
+            }
+            Ok((from..=to).map(block).collect())
+        }
+    }
+
+    #[tokio::test]
+    async fn non_contiguous_response_is_discarded_and_refetched() {
+        // Batch of two strides [1, 5] and [6, 10]; the second comes back
+        // skewed (8..=12). The consumer must never see the skewed run — the
+        // walk discards it and refetches from 6.
+        let fetcher = SentinelBlockFetcher::new(
+            SkewedOnceClient {
+                skewed: Arc::new(AtomicBool::new(false)),
+            },
+            SentinelFetcherConfig {
+                range_size: 5,
+                parallelism: 2,
+                retry_backoff: Duration::ZERO,
+                ..SentinelFetcherConfig::default()
+            },
+        );
+
+        let mut stream = fetcher.spawn(1, 10);
+        assert_eq!(collect(&mut stream, 10).await, (1..=10).collect::<Vec<_>>());
+        assert!(stream.recv().await.is_none());
+    }
+
+    /// Counts in-flight calls and records the high-water mark, holding each
+    /// call open briefly so a batch's calls demonstrably overlap.
+    #[derive(Clone)]
+    struct GaugedClient {
+        inflight: Arc<AtomicUsize>,
+        peak: Arc<AtomicUsize>,
+    }
+
+    #[async_trait]
+    impl BlockRangeClient for GaugedClient {
+        async fn fetch_block_range(&self, from: u64, to: u64) -> AnyResult<Vec<BlockData>> {
+            let now = self.inflight.fetch_add(1, Ordering::SeqCst) + 1;
+            self.peak.fetch_max(now, Ordering::SeqCst);
+            sleep(Duration::from_millis(10)).await;
+            self.inflight.fetch_sub(1, Ordering::SeqCst);
+            Ok((from..=to).map(block).collect())
+        }
+    }
+
+    #[tokio::test]
+    async fn batch_calls_run_concurrently_and_stay_bounded() {
+        let peak = Arc::new(AtomicUsize::new(0));
+        let fetcher = SentinelBlockFetcher::new(
+            GaugedClient {
+                inflight: Arc::new(AtomicUsize::new(0)),
+                peak: peak.clone(),
+            },
+            SentinelFetcherConfig {
+                range_size: 5,
+                parallelism: 4,
+                ..SentinelFetcherConfig::default()
+            },
+        );
+
+        // 40 blocks = 8 strides = 2 batches of 4.
+        let mut stream = fetcher.spawn(1, 40);
+        assert_eq!(collect(&mut stream, 40).await, (1..=40).collect::<Vec<_>>());
+        assert!(stream.recv().await.is_none());
+
+        // Every call of a batch parks on the mock's sleep before any
+        // completes, so the high-water mark is exactly the batch size — proof
+        // the calls overlap and never exceed `parallelism`.
+        assert_eq!(peak.load(Ordering::SeqCst), 4);
+    }
+
+    #[tokio::test]
+    async fn saturated_channel_stalls_the_fetcher_then_resumes() {
+        // A 1-slot channel forces the commit walk to block on nearly every
+        // send while a whole batch of responses is in hand; draining the
+        // stream must still yield every height exactly once, in order.
+        let fetcher = SentinelBlockFetcher::new(
+            MockRangeClient { max_per_call: 20 },
+            SentinelFetcherConfig {
+                range_size: 5,
+                parallelism: 4,
+                channel_capacity: 1,
+                ..SentinelFetcherConfig::default()
+            },
+        );
+
+        let mut stream = fetcher.spawn(1, 40);
+        assert_eq!(collect(&mut stream, 40).await, (1..=40).collect::<Vec<_>>());
         assert!(stream.recv().await.is_none());
     }
 }

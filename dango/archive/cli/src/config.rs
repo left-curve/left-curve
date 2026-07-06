@@ -13,7 +13,7 @@
 
 use {
     dango_archive_projection::{EventType, WhiteOrBlackList},
-    serde::Deserialize,
+    serde::{Deserialize, Deserializer, de},
     std::path::PathBuf,
 };
 
@@ -141,23 +141,57 @@ pub struct RemoteSourceConfig {
 
 /// Backfill fetcher for a remote source, selected by `type`. Only `sentinel`
 /// exists today; an S3 archive fetcher is planned, hence the tagged enum.
-#[derive(Debug, Clone, Default, Deserialize)]
+#[derive(Debug, Clone, Deserialize)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum FetcherConfig {
     /// Bounded backfill from a sentinel node's `/block/full/range`. Reuses the
     /// source's `live_url` (same node as the live tail), so it has no URL field.
-    #[default]
-    Sentinel,
+    Sentinel {
+        /// Concurrent range calls per backfill batch; omitted → the
+        /// block-source crate's default. Overridable per instance as
+        /// `BLOCK_SOURCE__FETCHER__PARALLELISM`.
+        #[serde(default, deserialize_with = "de_opt_usize")]
+        parallelism: Option<usize>,
+    },
     // Future: `S3(S3FetcherConfig)` — backfill from an archive bucket with its
     // own bucket / region / prefix; the live tail still uses `live_url`.
+}
+
+impl Default for FetcherConfig {
+    fn default() -> Self {
+        Self::Sentinel { parallelism: None }
+    }
 }
 
 impl FetcherConfig {
     /// A short label for logs.
     pub fn kind(&self) -> &'static str {
         match self {
-            Self::Sentinel => "sentinel",
+            Self::Sentinel { .. } => "sentinel",
         }
+    }
+}
+
+/// Deserialize an optional integer that may arrive as a **string** — the shape
+/// an environment override takes: the `config` crate merges env values as
+/// strings, and inside the internally-tagged `block_source` table serde's
+/// content buffering performs no string→int coercion (which is why the plain
+/// TOML integer also has to be accepted here).
+fn de_opt_usize<'de, D>(deserializer: D) -> Result<Option<usize>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    #[derive(Deserialize)]
+    #[serde(untagged)]
+    enum IntOrString {
+        Int(usize),
+        String(String),
+    }
+
+    match Option::<IntOrString>::deserialize(deserializer)? {
+        None => Ok(None),
+        Some(IntOrString::Int(value)) => Ok(Some(value)),
+        Some(IntOrString::String(raw)) => raw.parse().map(Some).map_err(de::Error::custom),
     }
 }
 
@@ -275,7 +309,10 @@ mod tests {
             BlockSourceConfig::Remote(remote) => {
                 assert_eq!(remote.store_path, PathBuf::from("data/blocks"));
                 assert_eq!(remote.live_url, "http://node:8080");
-                assert!(matches!(remote.fetcher, FetcherConfig::Sentinel));
+                // The TOML-integer path through `de_opt_usize`.
+                assert!(matches!(remote.fetcher, FetcherConfig::Sentinel {
+                    parallelism: Some(4)
+                }));
             },
             other => panic!("expected a remote source, got {other:?}"),
         }
@@ -299,27 +336,32 @@ mod tests {
         );
         assert!(cfg.activity.event_type_filter.is_none());
 
-        // Environment overrides — the two the deploy role injects (env.j2):
-        // `POSTGRES__URL` wins over the TOML value, and `BLOCK_SOURCE__LIVE_URL`
-        // reaches *inside* the internally-tagged `block_source` table (the
-        // fragile path: the env value must merge into the table without
-        // clobbering its `type` tag).
+        // Environment overrides — the ones the deploy role can inject (env.j2):
+        // `POSTGRES__URL` wins over the TOML value, while `BLOCK_SOURCE__LIVE_URL`
+        // and `BLOCK_SOURCE__FETCHER__PARALLELISM` reach *inside* the
+        // internally-tagged `block_source` table (the fragile paths: the env
+        // value must merge into the table without clobbering its `type` tag,
+        // and a numeric field arrives as a string — the `de_opt_usize` path).
         // SAFETY: single-threaded within this test; set then immediately
         // cleared, and no other test reads these keys.
         unsafe {
             std::env::set_var("POSTGRES__URL", "postgres://override@host/db");
             std::env::set_var("BLOCK_SOURCE__LIVE_URL", "http://sentinel:9999");
+            std::env::set_var("BLOCK_SOURCE__FETCHER__PARALLELISM", "6");
         }
         let overridden: Config = parse_config(&path).unwrap();
         unsafe {
             std::env::remove_var("POSTGRES__URL");
             std::env::remove_var("BLOCK_SOURCE__LIVE_URL");
+            std::env::remove_var("BLOCK_SOURCE__FETCHER__PARALLELISM");
         }
         assert_eq!(overridden.postgres.url, "postgres://override@host/db");
         match &overridden.block_source {
             BlockSourceConfig::Remote(remote) => {
                 assert_eq!(remote.live_url, "http://sentinel:9999");
-                assert!(matches!(remote.fetcher, FetcherConfig::Sentinel));
+                assert!(matches!(remote.fetcher, FetcherConfig::Sentinel {
+                    parallelism: Some(6)
+                }));
             },
             other => panic!("expected a remote source, got {other:?}"),
         }

@@ -14,8 +14,15 @@ type       = "remote"
 store_path = "data/blocks"          # under --home (/root/.archive)
 # live_url is injected from BLOCK_SOURCE__LIVE_URL (see header)
 
+# Concurrent /block/full/range calls per backfill batch; responses are
+# committed in height order, so the stream the projections see stays
+# ascending. Sized against the sentinel node's spare CPU (each in-flight call
+# costs it a range read + JSON serialization) and the activity projection's
+# own throughput ceiling — higher values buy nothing until the projection
+# keeps up. Overridable per instance as BLOCK_SOURCE__FETCHER__PARALLELISM.
 [block_source.fetcher]
-type = "sentinel"
+type        = "sentinel"
+parallelism = 4
 
 [httpd]
 enabled = true
