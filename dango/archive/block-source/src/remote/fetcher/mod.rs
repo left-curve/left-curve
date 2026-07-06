@@ -13,10 +13,12 @@ pub use sentinel::{
 ///
 /// [`FetchStream`] holds one of these so the background fetch task's lifetime
 /// is tied to the stream: drop the stream and the task stops, rather than
-/// leaking and racing ahead of a consumer that is no longer reading.
-pub(crate) struct AbortOnDrop(pub(crate) JoinHandle<()>);
+/// leaking and racing ahead of a consumer that is no longer reading. The
+/// sentinel fetcher wraps its per-stride range-call tasks in the same guard,
+/// so aborting the fetch task in turn aborts the strides it has in flight.
+pub(crate) struct AbortOnDrop<T = ()>(pub(crate) JoinHandle<T>);
 
-impl Drop for AbortOnDrop {
+impl<T> Drop for AbortOnDrop<T> {
     fn drop(&mut self) {
         self.0.abort();
     }

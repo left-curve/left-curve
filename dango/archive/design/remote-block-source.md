@@ -364,11 +364,17 @@ Design notes:
 
 A background task that pulls blocks from a sentinel's `GET /block/full/range`
 endpoint (which caps a response at `MAX_BLOCK_RANGE` = 20 heights). Each round
-issues one **batch**: up to `parallelism` concurrent calls on fixed contiguous
-strides of `range_size` heights. `join_all` preserves submission order, so the
-responses come back height-ordered and are committed block by block while they
-stay contiguous with the next expected height — the stream stays strictly
-ascending with no reorder buffer. The first anomaly (a request error or
+issues one **batch**: up to `parallelism` calls on fixed contiguous strides of
+`range_size` heights, each spawned as its own runtime task (guarded by
+`AbortOnDrop`, so dropping the fetch task tears down its in-flight strides).
+Spawning is what parallelizes the CPU half of a call — body assembly and the
+serde_json parse, the dominant per-call cost in dense eras — across the
+runtime's workers; polled as plain futures inside the fetch task they would
+serialize on one thread, capping the backfill near one core of JSON throughput
+(~40 MB/s) regardless of `parallelism`. `join_all` over the handles preserves
+submission order, so the responses come back height-ordered and are committed
+block by block while they stay contiguous with the next expected height — the
+stream stays strictly ascending with no reorder buffer. The first anomaly (a request error or
 timeout, an empty response, or a run that breaks contiguity — which is also how
 a **short** run surfaces, since the next fixed stride then no longer aligns)
 discards the rest of the batch, and the next round re-issues from the first
@@ -377,10 +383,11 @@ little bandwidth for never buffering out-of-order blocks; anomalies are
 transient and rare, so the cost is nil in steady state.
 
 Why parallel at all: in block-dense height regions a call is **payload-bound**
-(hundreds of KB per block — the sentinel's disk read + JSON serialization
-dominate), so a serial pull caps at one response-time per `range_size` blocks
-however fast the store writes. A handful of overlapping calls is enough to keep
-the pipeline fed; `parallelism = 1` restores the serial pull. No adaptive ramp:
+(hundreds of KB per block — the sentinel's disk read + JSON serialization on
+one end, our body assembly + JSON parse on the other), so a serial pull caps
+at one response-time per `range_size` blocks however fast the store writes.
+`parallelism` overlaps the HTTP waits *and* spreads the parses over that many
+workers; `parallelism = 1` restores the serial pull. No adaptive ramp:
 every height in a gap is below the live tip and therefore exists, so there is
 no tip to probe for. The endpoint returns the **full `Block`** (not just
 `block.info`), since projections need txs and events.

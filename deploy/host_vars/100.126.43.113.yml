@@ -11,11 +11,14 @@ cloudflare_lb_enabled: true
 # live_host_override resolves the live_url hostname to the source node's
 # wireguard IP inside the container (compose extra_hosts): traffic reaches the
 # node's traefik :80 directly over the VPN, bypassing Cloudflare and its rate
-# limits. 10.99.0.8 = hetzner1; on node migration point it at another mainnet
-# full-app host (its tailscale IP works too).
+# limits. 10.99.0.10 = hetzner3 (FSN1, same campus as this host — picked over
+# hetzner1/HEL1 for latency, and it clocked the fastest /block/full/range
+# among the mainnet nodes; hetzner6 is unusable as a source: no blocks below
+# ~23.2M). On node migration point it at another mainnet full-app host with
+# full history (its tailscale IP works too).
 archive_instances:
   - name: mainnet
     live_url: "http://api-mainnet.dango.zone"
-    live_host_override: "10.99.0.8"
+    live_host_override: "10.99.0.10"
     metrics_host_port: 9192
     httpd_host_port: 9082
