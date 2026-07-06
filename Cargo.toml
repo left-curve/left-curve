@@ -152,7 +152,7 @@ pyth-lazer-protocol         = "0.40.0"
 quote                       = "1"
 rand                        = "0.8" # FIXME: can't bump to 0.10 because RustCrypto requires 0.8
 rangemap                    = "1"
-reqwest                     = { version = "0.13", features = ["stream"] }
+reqwest                     = { version = "0.13", features = ["gzip", "stream"] }
 ripemd                      = "0.1"
 roaring                     = "0.11"
 rocksdb                     = "0.24"

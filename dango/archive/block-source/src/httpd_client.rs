@@ -279,6 +279,16 @@ impl BlockRangeClient for HttpdClient {
         // `url` crate (this reqwest build has no RequestBuilder::query) and the
         // body decoded with serde_json (no `json` feature). `BlockData` decodes
         // the `{ block, outcome }` items directly.
+        //
+        // With reqwest's `gzip` feature the call advertises
+        // `Accept-Encoding: gzip`, the node's actix `Compress` middleware
+        // obliges (~4x smaller for block JSON), and reqwest inflates
+        // transparently — `bytes()` below always sees the raw JSON. Asking
+        // ourselves also keeps an intermediary from doing it for us: a Go
+        // proxy in front of the node (traefik) otherwise injects its own
+        // `Accept-Encoding: gzip` and re-inflates the response before
+        // forwarding, shipping the payload uncompressed on our leg of the
+        // wire.
         let mut url = self.range_url.clone();
         url.query_pairs_mut()
             .append_pair("from", &from.to_string())

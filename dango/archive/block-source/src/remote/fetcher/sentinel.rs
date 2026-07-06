@@ -1,7 +1,7 @@
 #[cfg(feature = "tracing")]
 use tracing::instrument;
 use {
-    super::{BlockFetcher, FetchStream},
+    super::{AbortOnDrop, BlockFetcher, FetchStream},
     async_trait::async_trait,
     dango_archive_types::{AnyResult, BlockData, BlockDataExt},
     futures::future::join_all,
@@ -37,13 +37,14 @@ pub struct SentinelFetcherConfig {
     /// in the gap and capped at [`MAX_BLOCK_RANGE`] (the endpoint's own limit).
     pub range_size: u64,
     /// Concurrent `/block/full/range` calls per batch. The fetcher issues this
-    /// many contiguous strides at once and commits the responses in height
-    /// order, so the stream stays strictly ascending; `1` restores the serial
-    /// one-call-at-a-time pull. In block-dense height regions a call is
-    /// payload-bound (hundreds of KB per block, most of it the sentinel's disk
-    /// read + JSON serialization), so this is as much an upstream-load knob as
-    /// a throughput one: a handful of concurrent calls is enough to keep the
-    /// pipeline fed, and more mostly costs the sentinel CPU.
+    /// many contiguous strides at once — each as its own runtime task — and
+    /// commits the responses in height order, so the stream stays strictly
+    /// ascending; `1` restores the serial one-call-at-a-time pull. In
+    /// block-dense height regions a call is payload-bound (hundreds of KB per
+    /// block: the sentinel's disk read + JSON serialization on one end, this
+    /// side's body assembly + JSON parse on the other), so this knob scales
+    /// both the overlap of the HTTP waits and the CPU the parses can use —
+    /// and, symmetrically, the load on the sentinel.
     pub parallelism: usize,
     /// Per-request timeout before retrying.
     pub timeout: Duration,
@@ -75,14 +76,19 @@ impl Default for SentinelFetcherConfig {
 /// [`BlockFetcher`] backed by a sentinel's `/block/full/range` endpoint.
 ///
 /// Fills a bounded gap `[from, to]` by issuing up to `parallelism` range calls
-/// (contiguous strides of up to `range_size` blocks each) concurrently, and
-/// committing the responses **in height order** into the stream — so the
-/// output stays strictly ascending and contiguous while the requests overlap.
-/// The batch shape is borrowed from the bots `BlockFetcher` (see
-/// `design/remote-block-source.md`): `join_all` preserves submission order, so
-/// no reorder buffer is needed, and the bounded output channel is the only
-/// backpressure — a full channel stalls the commit walk, which stalls the next
-/// batch.
+/// (contiguous strides of up to `range_size` blocks each) concurrently — each
+/// spawned as its own runtime task — and committing the responses **in height
+/// order** into the stream, so the output stays strictly ascending and
+/// contiguous while the requests overlap. Spawning (rather than polling the
+/// call futures inside this task) is what lets the CPU half of a call — body
+/// assembly and the serde_json parse, the dominant cost in dense eras — run on
+/// the runtime's worker threads in parallel; polled in-task, the parses
+/// serialize on one thread and cap the whole backfill near one core of JSON
+/// throughput regardless of `parallelism`. The batch shape is borrowed from
+/// the bots `BlockFetcher` (see `design/remote-block-source.md`): `join_all`
+/// preserves submission order, so no reorder buffer is needed, and the bounded
+/// output channel is the only backpressure — a full channel stalls the commit
+/// walk, which stalls the next batch.
 ///
 /// Generic over the client so the crate depends only on the [`BlockRangeClient`]
 /// trait, not a concrete HTTP client — and so it can be driven by a mock in
@@ -119,18 +125,23 @@ where
 /// through `tx`. Returns when the range is done or the consumer drops the
 /// receiver.
 ///
-/// Each round issues one **batch**: up to `parallelism` concurrent range calls
-/// on fixed contiguous strides of `range_size` blocks. `join_all` preserves
-/// submission order, so the responses come back height-ordered and are
-/// forwarded block by block while they stay contiguous with `next_from` — the
-/// first height not yet delivered. The first anomaly — a request error or
-/// timeout, an empty response, or a run that breaks contiguity (which is also
-/// how a **short** run surfaces: the next fixed stride no longer aligns) —
-/// stops the walk, discards the rest of the batch, and the next round
-/// re-issues from `next_from` after a backoff. Refetching a discarded tail
-/// trades a little bandwidth for never buffering out-of-order blocks; every
-/// height in a gap exists below the live tip, so anomalies are transient and
-/// rare, and are never surfaced to the consumer.
+/// Each round issues one **batch**: up to `parallelism` range calls on fixed
+/// contiguous strides of `range_size` blocks, each spawned as its own runtime
+/// task so the response parses run on the worker threads, not serialized on
+/// this task (see [`SentinelBlockFetcher`]). The tasks are guarded by
+/// [`AbortOnDrop`], so when this task is itself aborted (the consumer dropped
+/// the [`FetchStream`]) the in-flight strides die with it. `join_all` over the
+/// handles preserves submission order, so the responses come back
+/// height-ordered and are forwarded block by block while they stay contiguous
+/// with `next_from` — the first height not yet delivered. The first anomaly —
+/// a request error or timeout, a panicked stride task, an empty response, or
+/// a run that breaks contiguity (which is also how a **short** run surfaces:
+/// the next fixed stride no longer aligns) — stops the walk, discards the
+/// rest of the batch, and the next round re-issues from `next_from` after a
+/// backoff. Refetching a discarded tail trades a little bandwidth for never
+/// buffering out-of-order blocks; every height in a gap exists below the live
+/// tip, so anomalies are transient and rare, and are never surfaced to the
+/// consumer.
 #[cfg_attr(
     feature = "tracing",
     instrument(skip_all, name = "bsource.fetcher", fields(from, to))
@@ -149,11 +160,13 @@ async fn fetch_range<C>(
     let mut next_from = from;
 
     while next_from <= to {
-        // One batch: up to `parallelism` contiguous strides, requested
-        // concurrently. Each call is timed and its outcome labeled (ok / error
-        // / timeout / empty) — the four mutually-exclusive ends of one request
-        // — exactly as when the calls were serial.
-        let batch = (0..parallelism)
+        // One batch: up to `parallelism` contiguous strides, each spawned as
+        // its own task so the CPU half of a call (body assembly + JSON parse)
+        // lands on the runtime's workers instead of serializing here. Each
+        // call is timed and its outcome labeled (ok / error / timeout / empty)
+        // — the four mutually-exclusive ends of one request — exactly as when
+        // the calls were serial.
+        let mut strides = (0..parallelism)
             .map(|i| next_from + i * range_size)
             .take_while(|&chunk_from| chunk_from <= to)
             .map(|chunk_from| {
@@ -161,7 +174,7 @@ async fn fetch_range<C>(
                 let client = client.clone();
                 let timeout = config.timeout;
 
-                async move {
+                AbortOnDrop(tokio::spawn(async move {
                     #[cfg(feature = "metrics")]
                     let request_start = std::time::Instant::now();
 
@@ -187,25 +200,33 @@ async fn fetch_range<C>(
                     }
 
                     response
-                }
+                }))
             })
             .collect::<Vec<_>>();
 
         // Commit in submission (= height) order; stop at the first anomaly.
+        // Awaiting `&mut handle` leaves the guards owning the tasks, so an
+        // abort of this task mid-await still tears the strides down.
         let mut clean = true;
 
-        'walk: for response in join_all(batch).await {
-            let blocks = match response {
-                Ok(Ok(blocks)) => blocks,
-                Ok(Err(_error)) => {
+        'walk: for joined in join_all(strides.iter_mut().map(|stride| &mut stride.0)).await {
+            let blocks = match joined {
+                Ok(Ok(Ok(blocks))) => blocks,
+                Ok(Ok(Err(_error))) => {
                     #[cfg(feature = "tracing")]
                     tracing::warn!(error = %_error, next_from, "sentinel range fetch failed, retrying");
                     clean = false;
                     break 'walk;
                 },
-                Err(_timeout) => {
+                Ok(Err(_timeout)) => {
                     #[cfg(feature = "tracing")]
                     tracing::warn!(next_from, "sentinel range fetch timed out, retrying");
+                    clean = false;
+                    break 'walk;
+                },
+                Err(_join_error) => {
+                    #[cfg(feature = "tracing")]
+                    tracing::warn!(error = %_join_error, next_from, "sentinel stride task failed, retrying");
                     clean = false;
                     break 'walk;
                 },
