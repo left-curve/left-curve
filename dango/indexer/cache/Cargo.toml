@@ -33,13 +33,12 @@ dango-disk-saver     = { workspace = true, features = ["tracing"] }
 dango-primitives     = { workspace = true, features = ["chrono", "sea-orm"] }
 lzma-rs              = { workspace = true }
 metrics              = { workspace = true, optional = true }
-roaring              = { workspace = true }
 serde                = { workspace = true }
 serde_json           = { workspace = true }
 tar                  = { workspace = true }
 tempfile             = { workspace = true }
 thiserror            = { workspace = true }
-tokio                = { workspace = true, features = ["rt", "rt-multi-thread", "sync"] }
+tokio                = { workspace = true, features = ["rt", "rt-multi-thread"] }
 tracing              = { workspace = true, optional = true }
 xz2                  = { workspace = true, optional = true }
 

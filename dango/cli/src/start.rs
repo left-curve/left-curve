@@ -288,8 +288,7 @@ impl StartCmd {
 
         let clickhouse_indexer = dango_indexer_clickhouse::Indexer::new(clickhouse_context.clone());
 
-        let mut indexer_cache = dango_indexer_cache::Cache::new_with_dir(app_dir.indexer_dir());
-        indexer_cache.context.s3 = cfg.indexer.s3.clone();
+        let indexer_cache = dango_indexer_cache::Cache::new_with_dir(app_dir.indexer_dir());
         let indexer_cache_context = indexer_cache.context.clone();
 
         let mut hooked_indexer = HookedIndexer::new(indexer_cache, sql_indexer, clickhouse_indexer);
