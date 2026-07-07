@@ -72,6 +72,39 @@ pub fn services() -> Resource {
     )
 }
 
+/// Doc-only stub carrying the OpenAPI path item for `GET /ws` — never mounted;
+/// the real route is the upgrade-guarded resource in [`services`], which
+/// `#[utoipa::path]` cannot annotate. OpenAPI cannot model WebSocket traffic,
+/// so the entry is purely informational.
+#[utoipa::path(
+    get,
+    path = "/ws",
+    tag = "websocket",
+    summary = "Multiplexed WebSocket subscriptions",
+    description = "WebSocket upgrade endpoint. One socket carries any number \
+                   of subscriptions, each identified by a client-chosen `id`. \
+                   Client messages are `method`-tagged JSON: `subscribe` — \
+                   opening a `perpsEvents` feed (per-block perps events, \
+                   narrowed by `eventTypes` / `pairIds` / `users` / `orderIds` \
+                   / `clientOrderIds` filters) or a `fullBlock` feed (every \
+                   finalized `{ block, outcome }`, the same shape as \
+                   `/block/full/{block_height}`) — plus `unsubscribe`, `ping`, \
+                   and `broadcast` (submit a signed `Tx` over the socket). \
+                   Server frames are `channel`-tagged: `subscriptionResponse`, \
+                   `fullBlock`, `perpsEvents`, `broadcast`, `pong`, and \
+                   `error`. The server pings every 20 seconds and closes a \
+                   socket idle for 60 seconds. **Swagger UI cannot open \
+                   WebSocket connections** — this entry is documentation only.",
+    responses(
+        (status = 101, description = "Switching Protocols — WebSocket handshake accepted; \
+                                      all further traffic is JSON frames"),
+        (status = 404, description = "Without an `Upgrade: websocket` header the route does \
+                                      not match and the request falls through to the 404 \
+                                      handler"),
+    ),
+)]
+pub fn ws_doc() {}
+
 // ---- client and server message types ----
 
 /// A message sent by the client. Discriminated by `method`.

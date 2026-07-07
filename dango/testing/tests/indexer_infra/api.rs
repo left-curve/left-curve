@@ -101,6 +101,54 @@ async fn api_returns_block() -> anyhow::Result<()> {
         .await?
 }
 
+/// The real `config_app` (the same assembly `run_server` uses) serves the
+/// OpenAPI spec: proof the docs are mounted in production, complementing the
+/// httpd crate's in-crate test, which mounts only the docs subset.
+#[tokio::test(flavor = "multi_thread")]
+async fn openapi_spec_is_served() -> anyhow::Result<()> {
+    let (_, _, _, _, _, httpd_context, _, _, _db_guard) =
+        setup_test_naive_with_indexer(TestOption::default().with_mocked_clickhouse()).await;
+
+    let local_set = tokio::task::LocalSet::new();
+
+    local_set
+        .run_until(async {
+            tokio::task::spawn_local(async {
+                let app = build_app_service(httpd_context);
+
+                let spec = call_api::<serde_json::Value>(app, "/openapi.json").await?;
+
+                assert_eq!(spec["info"]["title"], "Dango Node API");
+
+                for path in [
+                    "/up",
+                    "/requester-ip",
+                    "/block/info",
+                    "/block/info/{block_height}",
+                    "/block/result",
+                    "/block/result/{block_height}",
+                    "/block/full",
+                    "/block/full/range",
+                    "/block/full/{block_height}",
+                    "/query",
+                    "/simulate",
+                    "/broadcast",
+                    "/ws",
+                    "/graphql",
+                ] {
+                    assert!(
+                        spec["paths"].get(path).is_some(),
+                        "the spec should document {path}",
+                    );
+                }
+
+                Ok::<(), anyhow::Error>(())
+            })
+            .await
+        })
+        .await?
+}
+
 #[tokio::test(flavor = "multi_thread")]
 async fn requester_ip_returns_forwarded_client_ip() -> anyhow::Result<()> {
     let (_, _, _, _, _, httpd_context, _, _, _db_guard) =

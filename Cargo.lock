@@ -4274,6 +4274,8 @@ dependencies = [
  "tokio",
  "tokio-stream",
  "tracing",
+ "utoipa",
+ "utoipa-swagger-ui",
 ]
 
 [[package]]
