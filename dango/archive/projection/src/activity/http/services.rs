@@ -3,23 +3,22 @@
 //! grouped in a `web::scope`).
 //!
 //! - [`transaction`] — the `/transactions` scope;
-//! - [`events`] — the `/events`, `/contract-events`, and `/perps-events`
-//!   scopes.
+//! - [`events`] — the `/events` scope.
 //!
 //! [`scopes`] gathers them into the list the app mounts on the shared httpd. The
 //! handlers reach the shared Postgres pool and block source through actix app
 //! data, so a scope carries no per-request state and is cheap to rebuild per
 //! worker; the one projection-specific input — the perps address anchoring the
-//! `/perps-events` shortcut — rides as scope-local app data.
+//! `/events/perps` shortcut — rides as scope-local app data.
 
 mod events;
 mod transaction;
 
 use {actix_web::Scope, dango_primitives::Addr};
 
-/// Every read scope the activity projection exposes — `/transactions`,
-/// `/events`, `/contract-events`, and (when a perps address was injected)
-/// `/perps-events`.
+/// Every read scope the activity projection exposes — `/transactions` and
+/// `/events` (the latter carrying the `/events/perps` shortcut exactly when a
+/// perps address was injected).
 pub(crate) fn scopes(perps_contract: Option<Addr>) -> Vec<Scope> {
     let mut scopes = vec![transaction::services()];
     scopes.extend(events::services(perps_contract));
@@ -27,7 +26,7 @@ pub(crate) fn scopes(perps_contract: Option<Addr>) -> Vec<Scope> {
 }
 
 /// The projection's OpenAPI fragment — the same resources [`scopes`] mounts
-/// (including the conditional `/perps-events`), merged from each module's own
+/// (including the conditional `/events/perps`), merged from each module's own
 /// doc so the two derivations can't drift apart.
 pub(crate) fn api_doc(perps_mounted: bool) -> utoipa::openapi::OpenApi {
     let mut doc = transaction::api_doc();
@@ -115,9 +114,9 @@ mod tests {
             "/events?type=not_a_type",                // unknown event type
             "/events?type=transfer&after=zz",         // malformed cursor (not hex)
             "/events?involved=not_an_address",        // malformed address (query)
-            "/contract-events/not_an_address",        // malformed address (path)
-            "/perps-events?user=not_an_address",      // malformed address (query)
-            "/perps-events?after=zz",                 // malformed cursor (not hex)
+            "/events/by-contract/not_an_address",     // malformed address (path)
+            "/events/perps?user=not_an_address",      // malformed address (query)
+            "/events/perps?after=zz",                 // malformed cursor (not hex)
             "/transactions/by-hash/not_a_hash",       // malformed hash (path)
             "/transactions/involving/not_an_address", // malformed address (path)
         ] {
@@ -132,8 +131,8 @@ mod tests {
         }
     }
 
-    /// `/perps-events` exists only when an anchor address was injected: without
-    /// one the scope is not mounted at all (404), never a half-configured
+    /// `/events/perps` exists only when an anchor address was injected: without
+    /// one the route is not mounted at all (404), never a half-configured
     /// handler. The mounted case is pinned by the same path answering 400 (a
     /// parse rejection — proof the handler ran) in the test above.
     #[actix_web::test]
@@ -141,7 +140,7 @@ mod tests {
         let app = test::init_service(App::new().configure(test_config(None).await)).await;
 
         let req = test::TestRequest::get()
-            .uri("/perps-events?after=zz")
+            .uri("/events/perps?after=zz")
             .to_request();
         let resp = test::call_service(&app, req).await;
         assert_eq!(
@@ -152,7 +151,7 @@ mod tests {
     }
 
     /// The OpenAPI fragment mirrors the mounted routes: the four always-on
-    /// paths are documented unconditionally, `/perps-events` exactly when the
+    /// paths are documented unconditionally, `/events/perps` exactly when the
     /// shortcut is mounted. (`actix_web::test`, not the bare `#[test]`: the
     /// module's `use actix_web::{test, ...}` shadows the built-in attribute.)
     #[actix_web::test]
@@ -163,7 +162,7 @@ mod tests {
                 "/transactions/by-hash/{hash}",
                 "/transactions/involving/{address}",
                 "/events",
-                "/contract-events/{contract}",
+                "/events/by-contract/{contract}",
             ] {
                 assert!(
                     doc.paths.paths.contains_key(path),
@@ -171,9 +170,9 @@ mod tests {
                 );
             }
             assert_eq!(
-                doc.paths.paths.contains_key("/perps-events"),
+                doc.paths.paths.contains_key("/events/perps"),
                 expects_perps,
-                "/perps-events must be documented iff mounted (perps_mounted = {perps_mounted})",
+                "/events/perps must be documented iff mounted (perps_mounted = {perps_mounted})",
             );
 
             // The response schemas referenced by the paths are auto-collected

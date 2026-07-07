@@ -6,7 +6,7 @@ type, the code location, and a fix direction.
 
 > See [remote-block-source.md](./remote-block-source.md) for the design and
 > [DESIGN.md](../DESIGN.md) for the shared `BlockSource` contract. Scope of this
-> review: the remote path of the `block-source` crate (`remote/mod.rs`,
+> review: the remote path of the `block-source` crate (`remote.rs`,
 > `remote/fetcher/`, `httpd_client.rs`, `remote/store/`) **combined with the
 > `RocksdbBlockStore` disk store**. `LocalBlockSource` and the
 > projection/committer side were reviewed and are clean; the one cross-cutting
@@ -194,7 +194,7 @@ pre-emptively.
 
 ## 15. `reorder_grace` applied only after a notify, not after the poll — Low
 
-**Location:** `remote/mod.rs` — `run_healer` (the `tokio::select!` idle arm).
+**Location:** `remote.rs` — `run_healer` (the `tokio::select!` idle arm).
 
 The grace delay that lets an out-of-order live delivery land runs only on the
 `heal_notify` branch; a wake from the periodic `heal_poll_interval` re-checks

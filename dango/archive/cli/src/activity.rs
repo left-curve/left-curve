@@ -6,7 +6,7 @@
 //! `app_config` and harvested with `Extractable`, so the per-network addresses
 //! never have to be listed by hand. The same `app_config` also names the
 //! deployment's **perps contract** (`addresses.perps`), injected as the anchor
-//! of the read API's `/perps-events` shortcut.
+//! of the read API's `/events/perps` shortcut.
 
 use {
     crate::config::ActivitySettings,
@@ -64,7 +64,7 @@ pub async fn config(settings: &ActivitySettings, node_url: &str) -> anyhow::Resu
     );
     config.involvement_blacklist = blacklist;
 
-    // The perps contract anchors the read API's `/perps-events` shortcut. The
+    // The perps contract anchors the read API's `/events/perps` shortcut. The
     // typed parse is best-effort: a deployment whose `app_config` no longer
     // matches [`AppConfig`] only loses the shortcut route (warn), never ingest
     // — the blacklist harvest above is shape-agnostic.
@@ -79,7 +79,7 @@ pub async fn config(settings: &ActivitySettings, node_url: &str) -> anyhow::Resu
         Err(err) => tracing::warn!(
             error = %err,
             "app_config does not deserialize as AppConfig; \
-             the /perps-events shortcut will not be mounted"
+             the /events/perps shortcut will not be mounted"
         ),
     }
 

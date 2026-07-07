@@ -328,11 +328,11 @@ async fn backfill_then_live_then_query_coverage() {
 
     // ---- contractEvents (bank) ----
     let sent_events = env
-        .collect_heights(&format!("/contract-events/{bank}?names=sent"))
+        .collect_heights(&format!("/events/by-contract/{bank}?names=sent"))
         .await
         .unwrap();
     let received_events = env
-        .collect_heights(&format!("/contract-events/{bank}?names=received"))
+        .collect_heights(&format!("/events/by-contract/{bank}?names=received"))
         .await
         .unwrap();
     eprintln!(
@@ -353,14 +353,14 @@ async fn backfill_then_live_then_query_coverage() {
     // an unknown contract has no events.
     let unknown_contract = Addr::try_from(vec![0xCDu8; 20]).unwrap().to_string();
     let no_events = env
-        .collect_heights(&format!("/contract-events/{unknown_contract}"))
+        .collect_heights(&format!("/events/by-contract/{unknown_contract}"))
         .await
         .unwrap();
     assert!(no_events.is_empty(), "an unknown contract has no events");
 
     // ---- contractEventsInvolving ----
     let ci4 = env
-        .collect_heights(&format!("/contract-events/{bank}?user={user4}"))
+        .collect_heights(&format!("/events/by-contract/{bank}?user={user4}"))
         .await
         .unwrap();
     assert_eq!(
@@ -370,23 +370,25 @@ async fn backfill_then_live_then_query_coverage() {
     );
     let ci4_received = env
         .collect_heights(&format!(
-            "/contract-events/{bank}?user={user4}&names=received"
+            "/events/by-contract/{bank}?user={user4}&names=received"
         ))
         .await
         .unwrap();
     assert_eq!(ci4_received, vec![marker_height]);
     let ci4_sent = env
-        .collect_heights(&format!("/contract-events/{bank}?user={user4}&names=sent"))
+        .collect_heights(&format!(
+            "/events/by-contract/{bank}?user={user4}&names=sent"
+        ))
         .await
         .unwrap();
     assert_eq!(ci4_sent, vec![marker_height]);
 
     // ---- perpsEvents (the injected-anchor shortcut) ----
     // The harness anchors the shortcut on the bank (see
-    // `PendingEnv::start_indexer`), so every `/contract-events/{bank}` read
-    // above must be reproducible on `/perps-events` verbatim — same feeds,
+    // `PendingEnv::start_indexer`), so every `/events/by-contract/{bank}` read
+    // above must be reproducible on `/events/perps` verbatim — same feeds,
     // the contract argument pre-bound instead of path-supplied.
-    let pe_all = env.collect_heights("/perps-events").await.unwrap();
+    let pe_all = env.collect_heights("/events/perps").await.unwrap();
     assert_eq!(
         pe_all.len(),
         2 * total,
@@ -394,7 +396,7 @@ async fn backfill_then_live_then_query_coverage() {
     );
     assert!(non_increasing(&pe_all));
     let pe_sent = env
-        .collect_heights("/perps-events?names=sent")
+        .collect_heights("/events/perps?names=sent")
         .await
         .unwrap();
     assert_eq!(
@@ -402,7 +404,7 @@ async fn backfill_then_live_then_query_coverage() {
         "the shortcut's `names` filter matches the explicit route's",
     );
     let pe4 = env
-        .collect_heights(&format!("/perps-events?user={user4}"))
+        .collect_heights(&format!("/events/perps?user={user4}"))
         .await
         .unwrap();
     assert_eq!(
@@ -410,7 +412,7 @@ async fn backfill_then_live_then_query_coverage() {
         "the shortcut's `user` filter matches the explicit route's",
     );
     let pe4_received = env
-        .collect_heights(&format!("/perps-events?user={user4}&names=received"))
+        .collect_heights(&format!("/events/perps?user={user4}&names=received"))
         .await
         .unwrap();
     assert_eq!(
@@ -420,13 +422,16 @@ async fn backfill_then_live_then_query_coverage() {
 
     // ===== eager payload hydration — the read paths back to the store =====
 
-    // GET /block/{height}: the full `{ block, outcome }` read straight from the
-    // RocksDB store the fetcher populated, for the marker's own height.
-    let block = env.get(&format!("/block/{marker_height}")).await.unwrap();
+    // GET /block/by-height/{height}: the full `{ block, outcome }` read straight
+    // from the RocksDB store the fetcher populated, for the marker's own height.
+    let block = env
+        .get(&format!("/block/by-height/{marker_height}"))
+        .await
+        .unwrap();
     assert_eq!(
         block["block"]["info"]["height"].as_u64(),
         Some(marker_height),
-        "GET /block/{{height}} returns the stored block at that height",
+        "GET /block/by-height/{{height}} returns the stored block at that height",
     );
     assert!(
         block["outcome"].is_object(),
@@ -434,7 +439,7 @@ async fn backfill_then_live_then_query_coverage() {
     );
     // a height the source does not hold → 404.
     let absent = env
-        .get_opt(&format!("/block/{}", (total + 1000) as u64))
+        .get_opt(&format!("/block/by-height/{}", (total + 1000) as u64))
         .await
         .unwrap();
     assert!(absent.is_none(), "an un-ingested height is a 404");
@@ -455,24 +460,24 @@ async fn backfill_then_live_then_query_coverage() {
     );
     assert!(
         latest["outcome"].is_object(),
-        "...with the same {{ block, outcome }} shape as /block/{{height}}"
+        "...with the same {{ block, outcome }} shape as /block/by-height/{{height}}"
     );
 
     // ===== the API docs =====
 
     // The merged OpenAPI spec documents the core block routes and every
-    // activity feed — including /perps-events, since this harness injects an
+    // activity feed — including /events/perps, since this harness injects an
     // anchor (see `PendingEnv::start_indexer`).
     let spec = env.get("/openapi.json").await.unwrap();
     for path in [
-        "/block/{height}",
+        "/block/by-height/{height}",
         "/block/latest",
         "/up",
         "/transactions/by-hash/{hash}",
         "/transactions/involving/{address}",
         "/events",
-        "/contract-events/{contract}",
-        "/perps-events",
+        "/events/by-contract/{contract}",
+        "/events/perps",
     ] {
         assert!(
             spec["paths"].get(path).is_some(),
