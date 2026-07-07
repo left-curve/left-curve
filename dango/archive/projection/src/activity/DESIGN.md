@@ -539,10 +539,10 @@ The eight access paths are served by `#[get]`-routed handlers in
 
 | route | access paths | arguments |
 |-------|--------------|-----------|
-| `GET /transactions/by-hash/{hash}` | — | un-paginated; the hash is non-unique, so a **list**, newest-first |
+| `GET /transactions/{hash}` | — | un-paginated; the hash is non-unique, so a **list**, newest-first |
 | `GET /transactions/involving/{address}` | 1 | + optional `role`, `kind` |
 | `GET /events` | 2, 5, 6 | `type` (a list) and/or `involved` — **at least one required** |
-| `GET /events/by-contract/{contract}` | 3 / 4 / 7 / 8 | + optional `user`, `names` (a list) |
+| `GET /events/contract` | 3 / 4 / 7 / 8 | mandatory `contract`, + optional `user`, `names` (a list) |
 | `GET /events/perps` | 3 / 4 / 7 / 8, `contract` pre-bound to the perps address | + optional `user`, `names` (a list) |
 
 `/events` folds the by-type feed (Q2) and the involving feeds (Q5/Q6):
@@ -550,7 +550,7 @@ The eight access paths are served by `#[get]`-routed handlers in
 `type` alone anchors on `event_type` (a single type is the clean `idx_type`
 scan, several a bounded `UNION ALL` per type — never a full-type sort). Neither
 argument present has no index anchor — it would be a full-table scan + sort — so
-it is a **400**. `/events/by-contract` makes `contract` mandatory, which keeps every
+it is a **400**. `/events/contract` makes `contract` mandatory, which keeps every
 reachable combination index-anchored and makes the unsupported shapes (a name
 filter without a contract, a type filter with a contract) structurally
 impossible.

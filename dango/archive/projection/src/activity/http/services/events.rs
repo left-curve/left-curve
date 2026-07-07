@@ -4,16 +4,17 @@
 //! - `GET /events` — events filtered by `type` (a comma-separated list) and/or
 //!   `involved` (an address); **at least one** is required, since an unfiltered
 //!   feed has no index anchor (it would be a full-table scan + sort → 400).
-//! - `GET /events/by-contract/{contract}` — a contract's events, optionally
-//!   narrowed by `user` (a participant address) and `names` (a comma-separated
-//!   list). The mandatory `contract` keeps every reachable combination
-//!   index-anchored.
-//! - `GET /events/perps` — the perps shortcut: exactly
-//!   `/events/by-contract/{contract}` with the contract pre-bound to the
-//!   deployment's perps address (injected at construction, resolved by the cli
-//!   from the node's `app_config`), so the dominant consumer never has to carry
-//!   the address around. Same optional `user` / `names`, same feeds. Mounted
-//!   only when an address was injected.
+//! - `GET /events/contract` — the contract events (the event sub-type
+//!   contracts emit) of one emitting contract, named by the mandatory
+//!   `contract` query argument and optionally narrowed by `user` (a
+//!   participant address) and `names` (a comma-separated list). The mandatory
+//!   `contract` keeps every reachable combination index-anchored.
+//! - `GET /events/perps` — the perps shortcut: exactly `/events/contract`
+//!   with the contract pre-bound to the deployment's perps address (injected
+//!   at construction, resolved by the cli from the node's `app_config`), so
+//!   the dominant consumer never has to carry the address around. Same
+//!   optional `user` / `names`, same feeds. Mounted only when an address was
+//!   injected.
 //!
 //! Each handler parses its arguments (a malformed address / type / cursor is a
 //! 400), runs the matching feed in [`feeds`](super::super::feeds), hydrates the
@@ -40,15 +41,15 @@ use {
 #[derive(Clone, Copy)]
 struct PerpsContract(Addr);
 
-/// The `/events` scope: the by-type / involved feed, the by-contract feed,
-/// and (when a perps address was injected) the `/events/perps` shortcut.
+/// The `/events` scope: the by-type / involved feed, the contract-events
+/// feed, and (when a perps address was injected) the `/events/perps` shortcut.
 pub(crate) fn services(perps_contract: Option<Addr>) -> Vec<Scope> {
     let mut scope = web::scope("/events")
         .service(events)
         .service(contract_events);
     // Without an injected address the shortcut has no anchor, so the route is
-    // simply not mounted (404) — the explicit `/events/by-contract/{contract}`
-    // form still serves everything.
+    // simply not mounted (404) — the explicit `/events/contract` form still
+    // serves everything.
     if let Some(contract) = perps_contract {
         scope = scope
             .app_data(web::Data::new(PerpsContract(contract)))
@@ -94,21 +95,47 @@ struct EventsQuery {
     after: Option<String>,
 }
 
-/// `/events/by-contract/{contract}` and `/events/perps` arguments — optional
-/// `user` and `names` (comma-separated list). The two routes differ only in
-/// where the contract address comes from (path vs injected), so they share the
-/// argument surface.
+/// `/events/contract` arguments — the mandatory emitting `contract`, plus the
+/// same optional narrowing `/events/perps` takes.
 #[derive(Deserialize, IntoParams)]
 #[into_params(parameter_in = Query)]
 struct ContractEventsQuery {
+    /// Emitting contract address (`0x` hex). Required — the feed's index
+    /// anchor.
+    #[param(value_type = String)]
+    contract: Addr,
+
     /// Participant address (`0x` hex): only the contract's events this address
     /// is a party to.
     #[param(value_type = Option<String>)]
     user: Option<Addr>,
+
     /// Comma-separated list of contract-event names (`order_filled`, …).
     names: Option<String>,
+
     /// Page size (max 50; default 50).
     first: Option<i32>,
+
+    /// Opaque cursor of the previous page (`pageInfo.endCursor`).
+    after: Option<String>,
+}
+
+/// `/events/perps` arguments — the same narrowing as `/events/contract`,
+/// minus `contract` itself (pre-bound to the injected perps address).
+#[derive(Deserialize, IntoParams)]
+#[into_params(parameter_in = Query)]
+struct PerpsEventsQuery {
+    /// Participant address (`0x` hex): only the perps contract's events this
+    /// address is a party to.
+    #[param(value_type = Option<String>)]
+    user: Option<Addr>,
+
+    /// Comma-separated list of contract-event names (`order_filled`, …).
+    names: Option<String>,
+
+    /// Page size (max 50; default 50).
+    first: Option<i32>,
+
     /// Opaque cursor of the previous page (`pageInfo.endCursor`).
     after: Option<String>,
 }
@@ -157,33 +184,34 @@ async fn events(
 
 #[utoipa::path(
     get,
-    path = "/events/by-contract/{contract}",
+    path = "/events/contract",
     tag = "events",
-    summary = "Events emitted by a contract",
-    description = "The contract-events of one emitting contract, optionally \
-                   narrowed to a participant (`user`) and/or a set of event \
-                   names (`names`). Newest-first, keyset-paginated.",
-    params(
-        ("contract" = String, Path, description = "Emitting contract address (`0x` hex)"),
-        ContractEventsQuery,
-    ),
+    summary = "Contract events of an emitting contract",
+    description = "The contract events — the event sub-type contracts emit — \
+                   of one emitting contract (the mandatory `contract`), \
+                   optionally narrowed to a participant (`user`) and/or a set \
+                   of event names (`names`). Newest-first, keyset-paginated.",
+    params(ContractEventsQuery),
     responses(
         (status = 200, description = "One page of events, newest-first", body = Page<Event>),
-        (status = 400, description = "Malformed address, argument, or cursor"),
+        (status = 400, description = "Missing or malformed `contract`, or a malformed argument / cursor"),
     ),
 )]
-#[get("/by-contract/{contract}")]
+#[get("/contract")]
 async fn contract_events(
     db: web::Data<DatabaseConnection>,
     source: web::Data<Arc<dyn BlockSource>>,
-    contract: web::Path<Addr>,
     query: web::Query<ContractEventsQuery>,
 ) -> Result<HttpResponse, ApiError> {
+    let q = query.into_inner();
     serve_contract_events(
         &db,
         source.get_ref(),
-        contract.into_inner(),
-        query.into_inner(),
+        q.contract,
+        q.user,
+        q.names,
+        q.first,
+        q.after,
     )
     .await
 }
@@ -192,13 +220,13 @@ async fn contract_events(
     get,
     path = "/events/perps",
     tag = "events",
-    summary = "Events emitted by the perps contract",
-    description = "Shortcut: exactly `/events/by-contract/{contract}` with the \
-                   contract pre-bound to the deployment's perps address \
-                   (resolved from the node's `app_config` at startup). Same \
-                   optional `user` / `names` filters, same feeds. Mounted only \
-                   when the deployment resolved a perps address.",
-    params(ContractEventsQuery),
+    summary = "Contract events of the perps contract",
+    description = "Shortcut: exactly `/events/contract` with the contract \
+                   pre-bound to the deployment's perps address (resolved from \
+                   the node's `app_config` at startup). Same optional `user` / \
+                   `names` filters, same feeds. Mounted only when the \
+                   deployment resolved a perps address.",
+    params(PerpsEventsQuery),
     responses(
         (status = 200, description = "One page of the perps contract's events, newest-first",
          body = Page<Event>),
@@ -210,28 +238,40 @@ async fn perps_events(
     db: web::Data<DatabaseConnection>,
     source: web::Data<Arc<dyn BlockSource>>,
     perps: web::Data<PerpsContract>,
-    query: web::Query<ContractEventsQuery>,
+    query: web::Query<PerpsEventsQuery>,
 ) -> Result<HttpResponse, ApiError> {
-    serve_contract_events(&db, source.get_ref(), perps.0, query.into_inner()).await
+    let q = query.into_inner();
+    serve_contract_events(
+        &db,
+        source.get_ref(),
+        perps.0,
+        q.user,
+        q.names,
+        q.first,
+        q.after,
+    )
+    .await
 }
 
 /// Run the contract-events feeds for `contract` and answer with the hydrated
-/// page — the shared body of `/events/by-contract/{contract}` and the
-/// `/events/perps` shortcut, which only differ in where the contract address
-/// comes from.
+/// page — the shared body of `/events/contract` and the `/events/perps`
+/// shortcut, which only differ in where the contract address comes from.
 async fn serve_contract_events(
     db: &DatabaseConnection,
     source: &Arc<dyn BlockSource>,
     contract: Addr,
-    q: ContractEventsQuery,
+    user: Option<Addr>,
+    names: Option<String>,
+    first: Option<i32>,
+    after: Option<String>,
 ) -> Result<HttpResponse, ApiError> {
-    let names = parse_names(q.names);
+    let names = parse_names(names);
 
-    let mut page = match q.user {
+    let mut page = match user {
         Some(address) => {
-            feeds::contract_events_involving(db, address, contract, names, q.first, q.after).await?
+            feeds::contract_events_involving(db, address, contract, names, first, after).await?
         },
-        None => feeds::contract_events(db, contract, names, q.first, q.after).await?,
+        None => feeds::contract_events(db, contract, names, first, after).await?,
     };
     hydrate::hydrate_events(source, &mut page.items).await?;
     Ok(HttpResponse::Ok().json(page))

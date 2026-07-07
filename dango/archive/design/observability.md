@@ -171,8 +171,8 @@ derived in Grafana. Catch-up speed = `rate(projection_blocks_total)`.
 `query` values: `events_by_type`, `contract_events`, `events_involving`,
 `contract_events_involving`, `transactions_involving`, `transactions_by_hash`.
 A feed slow relative to the others points straight at an index miss. (The core
-`GET /block/by-height/{height}` route is not a feed; its latency rides the
-end-to-end HTTP histogram below.)
+`GET /blocks/{height}` route is not a feed; its latency rides the end-to-end
+HTTP histogram below.)
 
 ### Misc
 

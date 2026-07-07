@@ -23,7 +23,8 @@ use {
     utoipa::{IntoParams, OpenApi},
 };
 
-/// The `/transactions` scope: the by-hash lookup and the "involving" feed.
+/// The `/transactions` scope: the content-hash lookup and the "involving"
+/// feed.
 pub(crate) fn services() -> Scope {
     web::scope("/transactions")
         .service(by_hash)
@@ -55,7 +56,7 @@ struct InvolvingQuery {
 
 #[utoipa::path(
     get,
-    path = "/transactions/by-hash/{hash}",
+    path = "/transactions/{hash}",
     tag = "transactions",
     summary = "Transactions by content hash",
     description = "Every unit whose transaction bytes hash to `hash`, \
@@ -71,7 +72,7 @@ struct InvolvingQuery {
         (status = 400, description = "Malformed hash"),
     ),
 )]
-#[get("/by-hash/{hash}")]
+#[get("/{hash}")]
 async fn by_hash(
     db: web::Data<DatabaseConnection>,
     source: web::Data<Arc<dyn BlockSource>>,

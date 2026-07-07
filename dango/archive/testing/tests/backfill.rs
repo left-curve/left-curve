@@ -244,14 +244,14 @@ async fn backfill_then_live_then_query_coverage() {
 
     // ---- transactionsByHash ----
     let by_hash = env
-        .get(&format!("/transactions/by-hash/{marker_hash}"))
+        .get(&format!("/transactions/{marker_hash}"))
         .await
         .unwrap();
     assert_eq!(by_hash.as_array().unwrap().len(), 1);
     // an unknown hash maps to nothing.
     let unknown_hash = "0".repeat(64);
     let none = env
-        .get(&format!("/transactions/by-hash/{unknown_hash}"))
+        .get(&format!("/transactions/{unknown_hash}"))
         .await
         .unwrap();
     assert!(none.as_array().unwrap().is_empty());
@@ -328,11 +328,11 @@ async fn backfill_then_live_then_query_coverage() {
 
     // ---- contractEvents (bank) ----
     let sent_events = env
-        .collect_heights(&format!("/events/by-contract/{bank}?names=sent"))
+        .collect_heights(&format!("/events/contract?contract={bank}&names=sent"))
         .await
         .unwrap();
     let received_events = env
-        .collect_heights(&format!("/events/by-contract/{bank}?names=received"))
+        .collect_heights(&format!("/events/contract?contract={bank}&names=received"))
         .await
         .unwrap();
     eprintln!(
@@ -353,14 +353,14 @@ async fn backfill_then_live_then_query_coverage() {
     // an unknown contract has no events.
     let unknown_contract = Addr::try_from(vec![0xCDu8; 20]).unwrap().to_string();
     let no_events = env
-        .collect_heights(&format!("/events/by-contract/{unknown_contract}"))
+        .collect_heights(&format!("/events/contract?contract={unknown_contract}"))
         .await
         .unwrap();
     assert!(no_events.is_empty(), "an unknown contract has no events");
 
     // ---- contractEventsInvolving ----
     let ci4 = env
-        .collect_heights(&format!("/events/by-contract/{bank}?user={user4}"))
+        .collect_heights(&format!("/events/contract?contract={bank}&user={user4}"))
         .await
         .unwrap();
     assert_eq!(
@@ -370,14 +370,14 @@ async fn backfill_then_live_then_query_coverage() {
     );
     let ci4_received = env
         .collect_heights(&format!(
-            "/events/by-contract/{bank}?user={user4}&names=received"
+            "/events/contract?contract={bank}&user={user4}&names=received"
         ))
         .await
         .unwrap();
     assert_eq!(ci4_received, vec![marker_height]);
     let ci4_sent = env
         .collect_heights(&format!(
-            "/events/by-contract/{bank}?user={user4}&names=sent"
+            "/events/contract?contract={bank}&user={user4}&names=sent"
         ))
         .await
         .unwrap();
@@ -385,9 +385,9 @@ async fn backfill_then_live_then_query_coverage() {
 
     // ---- perpsEvents (the injected-anchor shortcut) ----
     // The harness anchors the shortcut on the bank (see
-    // `PendingEnv::start_indexer`), so every `/events/by-contract/{bank}` read
-    // above must be reproducible on `/events/perps` verbatim — same feeds,
-    // the contract argument pre-bound instead of path-supplied.
+    // `PendingEnv::start_indexer`), so every `/events/contract?contract={bank}`
+    // read above must be reproducible on `/events/perps` verbatim — same feeds,
+    // the contract argument pre-bound instead of caller-supplied.
     let pe_all = env.collect_heights("/events/perps").await.unwrap();
     assert_eq!(
         pe_all.len(),
@@ -422,16 +422,13 @@ async fn backfill_then_live_then_query_coverage() {
 
     // ===== eager payload hydration — the read paths back to the store =====
 
-    // GET /block/by-height/{height}: the full `{ block, outcome }` read straight
+    // GET /blocks/{height}: the full `{ block, outcome }` read straight
     // from the RocksDB store the fetcher populated, for the marker's own height.
-    let block = env
-        .get(&format!("/block/by-height/{marker_height}"))
-        .await
-        .unwrap();
+    let block = env.get(&format!("/blocks/{marker_height}")).await.unwrap();
     assert_eq!(
         block["block"]["info"]["height"].as_u64(),
         Some(marker_height),
-        "GET /block/by-height/{{height}} returns the stored block at that height",
+        "GET /blocks/{{height}} returns the stored block at that height",
     );
     assert!(
         block["outcome"].is_object(),
@@ -439,28 +436,28 @@ async fn backfill_then_live_then_query_coverage() {
     );
     // a height the source does not hold → 404.
     let absent = env
-        .get_opt(&format!("/block/by-height/{}", (total + 1000) as u64))
+        .get_opt(&format!("/blocks/{}", (total + 1000) as u64))
         .await
         .unwrap();
     assert!(absent.is_none(), "an un-ingested height is a 404");
 
-    // GET /block/latest: the block at the contiguous frontier. The projection
+    // GET /blocks/latest: the block at the contiguous frontier. The projection
     // has caught up to the last live block and the mock chain only produces on
     // broadcast, so the frontier — which always leads the projection — must sit
     // exactly at the tip: the marker (the lowest block) plus the `total`
     // contiguous blocks asserted above.
-    let latest = env.get("/block/latest").await.unwrap();
+    let latest = env.get("/blocks/latest").await.unwrap();
     let latest_height = latest["block"]["info"]["height"]
         .as_u64()
         .expect("latest height");
     assert_eq!(
         latest_height,
         marker_height + total as u64 - 1,
-        "GET /block/latest is the contiguous frontier (== the tip once caught up)",
+        "GET /blocks/latest is the contiguous frontier (== the tip once caught up)",
     );
     assert!(
         latest["outcome"].is_object(),
-        "...with the same {{ block, outcome }} shape as /block/by-height/{{height}}"
+        "...with the same {{ block, outcome }} shape as /blocks/{{height}}"
     );
 
     // ===== the API docs =====
@@ -470,13 +467,13 @@ async fn backfill_then_live_then_query_coverage() {
     // anchor (see `PendingEnv::start_indexer`).
     let spec = env.get("/openapi.json").await.unwrap();
     for path in [
-        "/block/by-height/{height}",
-        "/block/latest",
+        "/blocks/{height}",
+        "/blocks/latest",
         "/up",
-        "/transactions/by-hash/{hash}",
+        "/transactions/{hash}",
         "/transactions/involving/{address}",
         "/events",
-        "/events/by-contract/{contract}",
+        "/events/contract",
         "/events/perps",
     ] {
         assert!(
@@ -496,7 +493,7 @@ async fn backfill_then_live_then_query_coverage() {
     // Transaction.tx / Transaction.outcome: hydrated eagerly from the unit's
     // block (→ source.get → RocksDB).
     let hydrated = env
-        .get(&format!("/transactions/by-hash/{marker_hash}"))
+        .get(&format!("/transactions/{marker_hash}"))
         .await
         .unwrap();
     let unit = &hydrated[0];

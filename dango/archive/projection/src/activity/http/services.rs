@@ -110,15 +110,16 @@ mod tests {
             test::init_service(App::new().configure(test_config(Some(Addr::mock(1))).await)).await;
 
         for path in [
-            "/events",                                // no anchor: neither type nor involved
-            "/events?type=not_a_type",                // unknown event type
-            "/events?type=transfer&after=zz",         // malformed cursor (not hex)
-            "/events?involved=not_an_address",        // malformed address (query)
-            "/events/by-contract/not_an_address",     // malformed address (path)
-            "/events/perps?user=not_an_address",      // malformed address (query)
-            "/events/perps?after=zz",                 // malformed cursor (not hex)
-            "/transactions/by-hash/not_a_hash",       // malformed hash (path)
-            "/transactions/involving/not_an_address", // malformed address (path)
+            "/events",                                  // no anchor: neither type nor involved
+            "/events?type=not_a_type",                  // unknown event type
+            "/events?type=transfer&after=zz",           // malformed cursor (not hex)
+            "/events?involved=not_an_address",          // malformed address (query)
+            "/events/contract",                         // missing required contract
+            "/events/contract?contract=not_an_address", // malformed address (query)
+            "/events/perps?user=not_an_address",        // malformed address (query)
+            "/events/perps?after=zz",                   // malformed cursor (not hex)
+            "/transactions/not_a_hash",                 // malformed hash (path)
+            "/transactions/involving/not_an_address",   // malformed address (path)
         ] {
             let req = test::TestRequest::get().uri(path).to_request();
             let resp = test::call_service(&app, req).await;
@@ -159,10 +160,10 @@ mod tests {
         for (perps_mounted, expects_perps) in [(false, false), (true, true)] {
             let doc = super::api_doc(perps_mounted);
             for path in [
-                "/transactions/by-hash/{hash}",
+                "/transactions/{hash}",
                 "/transactions/involving/{address}",
                 "/events",
-                "/events/by-contract/{contract}",
+                "/events/contract",
             ] {
                 assert!(
                     doc.paths.paths.contains_key(path),
