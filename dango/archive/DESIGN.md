@@ -609,7 +609,7 @@ in-process indexer's `routes::blocks::services()`. The app gathers them in
 `run` into one configurator, and the httpd injects the shared read handles
 (the Postgres pool, the block source) as actix app data and applies it. The
 httpd never names a projection; its only built-in routes are the generic
-`GET /block/{height}`, read straight from the `BlockSource`, and
+`GET /block/by-height/{height}`, read straight from the `BlockSource`, and
 `GET /block/latest` — the block at the source's **contiguous frontier** (the
 highest `H` with every height in `[1, H]` stored, i.e. the newest block
 servable together with all the history below it; the frontier is the O(1)

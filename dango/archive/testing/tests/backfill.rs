@@ -422,13 +422,16 @@ async fn backfill_then_live_then_query_coverage() {
 
     // ===== eager payload hydration — the read paths back to the store =====
 
-    // GET /block/{height}: the full `{ block, outcome }` read straight from the
-    // RocksDB store the fetcher populated, for the marker's own height.
-    let block = env.get(&format!("/block/{marker_height}")).await.unwrap();
+    // GET /block/by-height/{height}: the full `{ block, outcome }` read straight
+    // from the RocksDB store the fetcher populated, for the marker's own height.
+    let block = env
+        .get(&format!("/block/by-height/{marker_height}"))
+        .await
+        .unwrap();
     assert_eq!(
         block["block"]["info"]["height"].as_u64(),
         Some(marker_height),
-        "GET /block/{{height}} returns the stored block at that height",
+        "GET /block/by-height/{{height}} returns the stored block at that height",
     );
     assert!(
         block["outcome"].is_object(),
@@ -436,7 +439,7 @@ async fn backfill_then_live_then_query_coverage() {
     );
     // a height the source does not hold → 404.
     let absent = env
-        .get_opt(&format!("/block/{}", (total + 1000) as u64))
+        .get_opt(&format!("/block/by-height/{}", (total + 1000) as u64))
         .await
         .unwrap();
     assert!(absent.is_none(), "an un-ingested height is a 404");
@@ -457,7 +460,7 @@ async fn backfill_then_live_then_query_coverage() {
     );
     assert!(
         latest["outcome"].is_object(),
-        "...with the same {{ block, outcome }} shape as /block/{{height}}"
+        "...with the same {{ block, outcome }} shape as /block/by-height/{{height}}"
     );
 
     // ===== the API docs =====
@@ -467,7 +470,7 @@ async fn backfill_then_live_then_query_coverage() {
     // anchor (see `PendingEnv::start_indexer`).
     let spec = env.get("/openapi.json").await.unwrap();
     for path in [
-        "/block/{height}",
+        "/block/by-height/{height}",
         "/block/latest",
         "/up",
         "/transactions/by-hash/{hash}",
