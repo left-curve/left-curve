@@ -1,15 +1,15 @@
-//! The `/events`, `/contract-events`, and `/perps-events` read scopes, routed
-//! by `#[get]` attribute macros.
+//! The `/events` read scope — the three event feeds, routed by `#[get]`
+//! attribute macros.
 //!
 //! - `GET /events` — events filtered by `type` (a comma-separated list) and/or
 //!   `involved` (an address); **at least one** is required, since an unfiltered
 //!   feed has no index anchor (it would be a full-table scan + sort → 400).
-//! - `GET /contract-events/{contract}` — a contract's events, optionally
+//! - `GET /events/by-contract/{contract}` — a contract's events, optionally
 //!   narrowed by `user` (a participant address) and `names` (a comma-separated
 //!   list). The mandatory `contract` keeps every reachable combination
 //!   index-anchored.
-//! - `GET /perps-events` — the perps shortcut: exactly
-//!   `/contract-events/{contract}` with the contract pre-bound to the
+//! - `GET /events/perps` — the perps shortcut: exactly
+//!   `/events/by-contract/{contract}` with the contract pre-bound to the
 //!   deployment's perps address (injected at construction, resolved by the cli
 //!   from the node's `app_config`), so the dominant consumer never has to carry
 //!   the address around. Same optional `user` / `names`, same feeds. Mounted
@@ -20,7 +20,7 @@
 //! page's `data` from the shared block source ([`hydrate`](super::super::hydrate)),
 //! and answers with the JSON page. The shared read handles come from actix app
 //! data (`web::Data`), injected by the httpd; the perps anchor rides as
-//! scope-local app data instead, since only its own scope needs it.
+//! scope-local app data, attached exactly when the shortcut is mounted.
 
 use {
     super::super::{feeds, hydrate, types::Event},
@@ -36,32 +36,29 @@ use {
 };
 
 /// The injected perps contract's address — the pre-bound anchor of the
-/// `/perps-events` shortcut, carried as scope-local app data.
+/// `/events/perps` shortcut, carried as scope-local app data.
 #[derive(Clone, Copy)]
 struct PerpsContract(Addr);
 
-/// The `/events`, `/contract-events`, and (when a perps address was injected)
-/// `/perps-events` scopes.
+/// The `/events` scope: the by-type / involved feed, the by-contract feed,
+/// and (when a perps address was injected) the `/events/perps` shortcut.
 pub(crate) fn services(perps_contract: Option<Addr>) -> Vec<Scope> {
-    let mut scopes = vec![
-        web::scope("/events").service(events),
-        web::scope("/contract-events").service(contract_events),
-    ];
+    let mut scope = web::scope("/events")
+        .service(events)
+        .service(contract_events);
     // Without an injected address the shortcut has no anchor, so the route is
-    // simply not mounted (404) — the explicit `/contract-events/{contract}`
+    // simply not mounted (404) — the explicit `/events/by-contract/{contract}`
     // form still serves everything.
     if let Some(contract) = perps_contract {
-        scopes.push(
-            web::scope("/perps-events")
-                .app_data(web::Data::new(PerpsContract(contract)))
-                .service(perps_events),
-        );
+        scope = scope
+            .app_data(web::Data::new(PerpsContract(contract)))
+            .service(perps_events);
     }
-    scopes
+    vec![scope]
 }
 
-/// The scopes' OpenAPI fragment — the docs counterpart of [`services`], with
-/// the same conditional: `/perps-events` is documented exactly when it is
+/// The scope's OpenAPI fragment — the docs counterpart of [`services`], with
+/// the same conditional: `/events/perps` is documented exactly when it is
 /// mounted.
 pub(crate) fn api_doc(perps_mounted: bool) -> utoipa::openapi::OpenApi {
     #[derive(OpenApi)]
@@ -97,7 +94,7 @@ struct EventsQuery {
     after: Option<String>,
 }
 
-/// `/contract-events/{contract}` and `/perps-events` arguments — optional
+/// `/events/by-contract/{contract}` and `/events/perps` arguments — optional
 /// `user` and `names` (comma-separated list). The two routes differ only in
 /// where the contract address comes from (path vs injected), so they share the
 /// argument surface.
@@ -160,7 +157,7 @@ async fn events(
 
 #[utoipa::path(
     get,
-    path = "/contract-events/{contract}",
+    path = "/events/by-contract/{contract}",
     tag = "events",
     summary = "Events emitted by a contract",
     description = "The contract-events of one emitting contract, optionally \
@@ -175,7 +172,7 @@ async fn events(
         (status = 400, description = "Malformed address, argument, or cursor"),
     ),
 )]
-#[get("/{contract}")]
+#[get("/by-contract/{contract}")]
 async fn contract_events(
     db: web::Data<DatabaseConnection>,
     source: web::Data<Arc<dyn BlockSource>>,
@@ -193,10 +190,10 @@ async fn contract_events(
 
 #[utoipa::path(
     get,
-    path = "/perps-events",
+    path = "/events/perps",
     tag = "events",
     summary = "Events emitted by the perps contract",
-    description = "Shortcut: exactly `/contract-events/{contract}` with the \
+    description = "Shortcut: exactly `/events/by-contract/{contract}` with the \
                    contract pre-bound to the deployment's perps address \
                    (resolved from the node's `app_config` at startup). Same \
                    optional `user` / `names` filters, same feeds. Mounted only \
@@ -208,7 +205,7 @@ async fn contract_events(
         (status = 400, description = "Malformed argument or cursor"),
     ),
 )]
-#[get("")]
+#[get("/perps")]
 async fn perps_events(
     db: web::Data<DatabaseConnection>,
     source: web::Data<Arc<dyn BlockSource>>,
@@ -219,8 +216,8 @@ async fn perps_events(
 }
 
 /// Run the contract-events feeds for `contract` and answer with the hydrated
-/// page — the shared body of `/contract-events/{contract}` and the
-/// `/perps-events` shortcut, which only differ in where the contract address
+/// page — the shared body of `/events/by-contract/{contract}` and the
+/// `/events/perps` shortcut, which only differ in where the contract address
 /// comes from.
 async fn serve_contract_events(
     db: &DatabaseConnection,

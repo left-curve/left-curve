@@ -258,11 +258,11 @@ impl PendingEnv {
 
         // The committer + projections — ClickHouse deferred (`None`).
         let committer: Arc<dyn Committer> = Arc::new(PgChCommitter::new(db.conn.clone(), None));
-        // The `/perps-events` shortcut anchors on whatever address is injected.
+        // The `/events/perps` shortcut anchors on whatever address is injected.
         // The tests' window produces no perps activity (it stays below the
         // first perps cron), so anchor the shortcut on the **bank** instead:
-        // every `/contract-events/{bank}` assertion can then be replayed on
-        // `/perps-events` verbatim — same code path, real fixtures.
+        // every `/events/by-contract/{bank}` assertion can then be replayed on
+        // `/events/perps` verbatim — same code path, real fixtures.
         let projections: Vec<Arc<dyn Projection>> =
             vec![Arc::new(ActivityProjection::new(ActivityConfig {
                 perps_contract: Some(contracts.bank),

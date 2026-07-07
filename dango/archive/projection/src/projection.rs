@@ -100,7 +100,7 @@ pub trait Projection: Send + Sync {
     /// same way and merged by the httpd into the base document it serves at
     /// `/openapi.json` (Swagger UI on `/docs/`). Built from the projection
     /// instance, so conditionally-mounted routes (e.g. the activity projection's
-    /// `/perps-events` shortcut) appear in the docs exactly when they exist. The
+    /// `/events/perps` shortcut) appear in the docs exactly when they exist. The
     /// default is none — a projection with no routes documents nothing.
     fn api_doc(&self) -> Option<utoipa::openapi::OpenApi> {
         None

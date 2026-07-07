@@ -83,7 +83,7 @@ pub struct ActivityConfig {
     /// Addresses excluded from participation at write time — the deployment's
     /// system contracts, merged in by the cli from the node's `app_config`.
     pub involvement_blacklist: HashSet<Addr>,
-    /// The perps contract's address — the anchor of the `/perps-events`
+    /// The perps contract's address — the anchor of the `/events/perps`
     /// shortcut route (the contract-events feeds with the contract argument
     /// pre-bound). Injected by the cli from the node's `app_config`
     /// (`addresses.perps`); `None` (the default) leaves the route unmounted.
