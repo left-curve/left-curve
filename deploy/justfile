@@ -258,6 +258,31 @@ deploy-archive network tag="latest":
       --limit archive-{{network}} \
       2>&1 | tee {{justfile_directory()}}/logs/$(date -u +%Y%m%d%H%M%S)-deploy-archive.log
 
+# Bootstrap public exposure for an archive network. Run this the first time a
+# host is exposed publicly, or after changing Traefik/Cloudflare routing. Normal
+# image deploys should use `deploy-archive`.
+setup-archive-public network tag="latest":
+  mkdir -p {{justfile_directory()}}/logs \
+    && { \
+      uv run ansible-playbook traefik.yml --limit archive-{{network}} \
+      && uv run ansible-playbook archive.yml -e archive_tag={{tag}} --limit archive-{{network}} \
+      && uv run ansible-playbook cloudflared.yml --limit archive-{{network}}; \
+    } 2>&1 | tee {{justfile_directory()}}/logs/$(date -u +%Y%m%d%H%M%S)-setup-archive-public.log
+
+# Reconcile the shared Traefik stack/static config for archive hosts.
+update-archive-traefik network:
+  mkdir -p {{justfile_directory()}}/logs \
+    && uv run ansible-playbook traefik.yml \
+      --limit archive-{{network}} \
+      2>&1 | tee {{justfile_directory()}}/logs/$(date -u +%Y%m%d%H%M%S)-update-archive-traefik.log
+
+# Reconcile Cloudflared, archive DNS records, and archive Cloudflare LB state.
+update-archive-cloudflare network:
+  mkdir -p {{justfile_directory()}}/logs \
+    && uv run ansible-playbook cloudflared.yml \
+      --limit archive-{{network}} \
+      2>&1 | tee {{justfile_directory()}}/logs/$(date -u +%Y%m%d%H%M%S)-update-archive-cloudflare.log
+
 stop-archive network:
   mkdir -p {{justfile_directory()}}/logs \
     && uv run ansible-playbook stop-archive.yml \

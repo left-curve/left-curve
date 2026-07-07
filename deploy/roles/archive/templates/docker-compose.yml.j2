@@ -35,19 +35,17 @@ services:
       # same dual binding as promtail/node-exporter.
       - "{{ wireguard_ip }}:{{ instance.metrics_host_port }}:9191"
       - "{{ tailscale_ip }}:{{ instance.metrics_host_port }}:9191"
-      # Read API (GraphQL httpd), VPN-only — the only way in until the
-      # Traefik/Cloudflare exposure lands (see commented traefik bits below).
+      # Read API (GraphQL httpd), VPN-only host bindings. Public traffic enters
+      # through cloudflared -> Traefik -> Docker network instead of these host
+      # ports when a Traefik route is enabled.
       - "{{ wireguard_ip }}:{{ instance.httpd_host_port }}:8080"
       - "{{ tailscale_ip }}:{{ instance.httpd_host_port }}:8080"
     networks:
-      # Re-enable together with the "Configure Traefik route" task in
-      # deploy-instance.yml when the public exposure (traefik + DNS) lands —
-      # traefik is not deployed on the archive hosts yet.
-      # - traefik
+      - traefik
       - postgres
 
 networks:
-  # traefik:
-  #   external: true
+  traefik:
+    external: true
   postgres:
     external: true

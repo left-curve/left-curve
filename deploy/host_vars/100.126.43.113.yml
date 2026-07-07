@@ -22,3 +22,6 @@ archive_instances:
     live_host_override: "10.99.0.10"
     metrics_host_port: 9192
     httpd_host_port: 9082
+    cloudflare:
+      enabled: true
+      load_balancer: true
