@@ -261,8 +261,8 @@ impl PendingEnv {
         // The `/events/perps` shortcut anchors on whatever address is injected.
         // The tests' window produces no perps activity (it stays below the
         // first perps cron), so anchor the shortcut on the **bank** instead:
-        // every `/events/by-contract/{bank}` assertion can then be replayed on
-        // `/events/perps` verbatim — same code path, real fixtures.
+        // every `/events/contract?contract={bank}` assertion can then be
+        // replayed on `/events/perps` verbatim — same code path, real fixtures.
         let projections: Vec<Arc<dyn Projection>> =
             vec![Arc::new(ActivityProjection::new(ActivityConfig {
                 perps_contract: Some(contracts.bank),
@@ -409,7 +409,7 @@ impl Env {
         Ok(body)
     }
 
-    /// Poll `GET /transactions/by-hash/{hash}` until that tx is indexed or
+    /// Poll `GET /transactions/{hash}` until that tx is indexed or
     /// `timeout` elapses — the catch-up signal. The projection advances
     /// contiguously, so once a block's tx is visible every block below it has
     /// been ingested too. Returns the list of matching units. Tolerates the read
@@ -419,7 +419,7 @@ impl Env {
         hash: &str,
         timeout: Duration,
     ) -> anyhow::Result<serde_json::Value> {
-        let path = format!("/transactions/by-hash/{hash}");
+        let path = format!("/transactions/{hash}");
         let start = std::time::Instant::now();
         loop {
             if let Ok(Some(units)) = self.get_opt(&path).await
@@ -438,7 +438,7 @@ impl Env {
     /// a producer loop that pumps the chain forward until the backfill catches
     /// up. A transport error (read API not yet up) reads as "not indexed".
     pub async fn is_tx_indexed(&self, hash: &str) -> anyhow::Result<bool> {
-        match self.get_opt(&format!("/transactions/by-hash/{hash}")).await {
+        match self.get_opt(&format!("/transactions/{hash}")).await {
             Ok(Some(units)) => Ok(units.as_array().is_some_and(|units| !units.is_empty())),
             _ => Ok(false),
         }
@@ -477,7 +477,7 @@ impl Env {
     /// newest-first across pages — exercising cursor pagination end to end.
     /// `path` is the feed's REST path including any non-pagination query
     /// arguments, e.g. `/transactions/involving/0x..?role=sender` or
-    /// `/events/by-contract/0x..?names=sent`.
+    /// `/events/contract?contract=0x..&names=sent`.
     pub async fn collect_heights(&self, path: &str) -> anyhow::Result<Vec<u64>> {
         let sep = if path.contains('?') {
             '&'

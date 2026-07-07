@@ -46,9 +46,9 @@ struct ApiDoc;
 ///
 /// Builds an actix-web server from the shared read handles and the app's route
 /// configurator: the Postgres pool and the block source are injected as app data
-/// (handlers pull them with `web::Data`), the core
-/// `GET /block/by-height/{height}`, `GET /block/latest`, and `GET /up` routes
-/// are mounted directly, and `configure` adds the projections' feed scopes.
+/// (handlers pull them with `web::Data`), the core `GET /blocks/{height}`,
+/// `GET /blocks/latest`, and `GET /up` routes are mounted directly, and
+/// `configure` adds the projections' feed scopes.
 ///
 /// `api_docs` are the projections' OpenAPI fragments (gathered by the app the
 /// same way the route configurator is); they are merged into the httpd's own
@@ -152,9 +152,12 @@ async fn serve_actix(
                 }
             })
             // Core routes: the block reads (not a projection) and the liveness
-            // probe.
-            .route("/block/latest", web::get().to(latest_block))
-            .route("/block/by-height/{height}", web::get().to(block))
+            // probe. `/blocks/latest` must be registered before
+            // `/blocks/{height}` so the literal segment wins the match (actix
+            // matches in registration order; after `{height}`, "latest" would
+            // be a failed u64 parse → 400).
+            .route("/blocks/latest", web::get().to(latest_block))
+            .route("/blocks/{height}", web::get().to(block))
             .route("/up", web::get().to(up))
             // The projections' feed scopes, mounted by the app's configurator.
             .configure(move |cfg| (*configure)(cfg))
@@ -187,7 +190,7 @@ async fn serve_actix(
 /// the same shape the node's `/block/full/{height}` route returns.
 #[utoipa::path(
     get,
-    path = "/block/by-height/{height}",
+    path = "/blocks/{height}",
     tag = "block",
     summary = "Block by height",
     description = "The full block at `height` — `{ block, outcome }`, the same \
@@ -217,16 +220,16 @@ async fn block(
 /// The latest indexed block — the block at the source's **contiguous
 /// frontier**: the highest `H` with every height in `[1, H]` stored, i.e. the
 /// newest block that can be served *together with all the history below it*
-/// (`GET /block/by-height/{height}` answers for every height up to this one).
-/// During a backfill this climbs from the bottom and can trail the chain tip
+/// (`GET /blocks/{height}` answers for every height up to this one). During a
+/// backfill this climbs from the bottom and can trail the chain tip
 /// the live tail is already storing above a gap; once the store is gap-free it
 /// **is** the tip. The frontier is O(1) in-memory state owned by the block
 /// store — no scan, no extra cache. `404` while the store holds no contiguous
 /// prefix yet (a cold, still-empty archive); the body is the same
-/// `{ block, outcome }` JSON as `/block/by-height/{height}`.
+/// `{ block, outcome }` JSON as `/blocks/{height}`.
 #[utoipa::path(
     get,
-    path = "/block/latest",
+    path = "/blocks/latest",
     tag = "block",
     summary = "Latest indexed block",
     description = "The block at the source's contiguous frontier — the highest \
@@ -234,7 +237,7 @@ async fn block(
                    block servable together with all the history below it. \
                    During a backfill this trails the chain tip; once the store \
                    is gap-free it is the tip. Same `{ block, outcome }` shape \
-                   as `/block/by-height/{height}`.",
+                   as `/blocks/{height}`.",
     responses(
         (status = 200, description = "The block at the contiguous frontier"),
         (status = 404, description = "The store holds no contiguous prefix yet (cold, still-empty archive)"),
@@ -339,19 +342,21 @@ mod tests {
         }
     }
 
-    /// The two block routes over a stub source, mounted as [`serve_actix`]
-    /// mounts them.
+    /// The two block routes over a stub source, mounted in the same order as
+    /// [`serve_actix`] — `/blocks/latest` before `/blocks/{height}`, so the
+    /// literal wins the match.
     fn block_routes(stub: StubSource) -> impl FnOnce(&mut web::ServiceConfig) {
         let source: Arc<dyn BlockSource> = Arc::new(stub);
         move |cfg| {
             cfg.app_data(web::Data::new(source))
-                .route("/block/latest", web::get().to(latest_block))
-                .route("/block/by-height/{height}", web::get().to(block));
+                .route("/blocks/latest", web::get().to(latest_block))
+                .route("/blocks/{height}", web::get().to(block));
         }
     }
 
-    /// The happy path: `latest` resolves the frontier and serves that block,
-    /// and the by-height route still works.
+    /// The happy path: `latest` resolves the frontier, serves that block (the
+    /// literal route wins over `{height}`), and the by-height route still
+    /// works.
     #[actix_web::test]
     async fn latest_block_serves_the_frontier() {
         let app = test::init_service(App::new().configure(block_routes(StubSource {
@@ -360,13 +365,11 @@ mod tests {
         })))
         .await;
 
-        let req = test::TestRequest::get().uri("/block/latest").to_request();
+        let req = test::TestRequest::get().uri("/blocks/latest").to_request();
         let body: serde_json::Value = test::call_and_read_body_json(&app, req).await;
         assert_eq!(body["block"]["info"]["height"].as_u64(), Some(7));
 
-        let req = test::TestRequest::get()
-            .uri("/block/by-height/3")
-            .to_request();
+        let req = test::TestRequest::get().uri("/blocks/3").to_request();
         let resp = test::call_service(&app, req).await;
         assert!(
             resp.status().is_success(),
@@ -384,7 +387,7 @@ mod tests {
         })))
         .await;
 
-        let req = test::TestRequest::get().uri("/block/latest").to_request();
+        let req = test::TestRequest::get().uri("/blocks/latest").to_request();
         let resp = test::call_service(&app, req).await;
         assert_eq!(resp.status().as_u16(), 404);
     }
@@ -400,7 +403,7 @@ mod tests {
         })))
         .await;
 
-        let req = test::TestRequest::get().uri("/block/latest").to_request();
+        let req = test::TestRequest::get().uri("/blocks/latest").to_request();
         let resp = test::call_service(&app, req).await;
         assert_eq!(resp.status().as_u16(), 500);
     }
@@ -437,7 +440,7 @@ mod tests {
         // The spec carries the httpd's own routes.
         let req = test::TestRequest::get().uri("/openapi.json").to_request();
         let spec: serde_json::Value = test::call_and_read_body_json(&app, req).await;
-        for path in ["/block/by-height/{height}", "/block/latest", "/up"] {
+        for path in ["/blocks/{height}", "/blocks/latest", "/up"] {
             assert!(
                 spec["paths"].get(path).is_some(),
                 "the spec should document {path}",
