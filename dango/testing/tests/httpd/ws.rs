@@ -10,7 +10,7 @@ use {
     actix_http::ws,
     anyhow::anyhow,
     dango_app::Indexer,
-    dango_primitives::{Block, BlockInfo, FullBlock},
+    dango_primitives::{Block, BlockInfo, FullBlock, QueryResponse},
     dango_testing::{
         TestOption, build_app_service, create_perps_fill, pair_id, setup_perps_env,
         setup_test_naive_with_indexer,
@@ -455,6 +455,90 @@ async fn ws_ping_pong_and_unsubscribe() -> anyhow::Result<()> {
                 })
                 .await?;
                 assert_eq!(unsub_ack["id"].as_u64(), Some(2));
+
+                Ok::<(), anyhow::Error>(())
+            })
+            .await
+        })
+        .await?
+}
+
+/// A `query` runs a one-time, read-only state query over the socket: the reply
+/// is a single `data` frame on the `query` channel carrying the raw
+/// `QueryResponse` — the same shape as REST `POST /query`. A failing query is
+/// answered with a co-located `queryFailed` error frame that ends nothing: the
+/// socket stays usable and the one-shot `id` becomes free to reuse.
+#[tokio::test(flavor = "multi_thread")]
+async fn ws_query_roundtrip_and_error() -> anyhow::Result<()> {
+    let (suite, _accounts, _, _contracts, _, ctx, _, _, _db_guard) =
+        setup_test_naive_with_indexer(TestOption::default()).await;
+    suite.app.indexer.wait_for_finish().await?;
+
+    let local_set = tokio::task::LocalSet::new();
+    local_set
+        .run_until(async {
+            tokio::task::spawn_local(async move {
+                let mut srv = actix_test::start(move || build_app_service(ctx.clone()));
+                let mut framed = srv
+                    .ws_at("/ws")
+                    .await
+                    .map_err(|err| anyhow!("ws upgrade failed: {err}"))?;
+
+                // A well-formed query is answered with the raw `QueryResponse`,
+                // tagged with the request's id.
+                send(
+                    &mut framed,
+                    json!({"method": "query", "id": 21, "query": {"config": {}}}),
+                )
+                .await?;
+                let reply = recv_until(&mut framed, |m| {
+                    channel(m) == Some("query") && m["id"].as_u64() == Some(21)
+                })
+                .await?;
+                let response: QueryResponse = serde_json::from_value(reply["data"].clone())
+                    .map_err(|err| anyhow!("frame data is not a QueryResponse: {err}"))?;
+                assert!(
+                    matches!(response, QueryResponse::Config(_)),
+                    "expected a config response: {reply:?}"
+                );
+
+                // A failing query — no contract lives at the zero address — is
+                // a co-located `queryFailed` error frame.
+                send(
+                    &mut framed,
+                    json!({"method": "query", "id": 22, "query": {"contract": {"address": "0x0000000000000000000000000000000000000000"}}}),
+                )
+                .await?;
+                let error = recv_until(&mut framed, |m| {
+                    channel(m) == Some("query") && m.get("error").is_some()
+                })
+                .await?;
+                assert_eq!(error["id"].as_u64(), Some(22));
+                assert_eq!(error["error"]["code"].as_str(), Some("queryFailed"));
+                assert!(
+                    !error["error"]["message"]
+                        .as_str()
+                        .unwrap_or_default()
+                        .is_empty(),
+                    "queryFailed must carry the query error: {error:?}"
+                );
+
+                // The failure ended nothing: the socket still answers, and the
+                // one-shot id is free to reuse.
+                send(&mut framed, json!({"method": "ping", "id": 23})).await?;
+                let pong = recv_until(&mut framed, |m| channel(m) == Some("pong")).await?;
+                assert_eq!(pong["id"].as_u64(), Some(23));
+
+                send(
+                    &mut framed,
+                    json!({"method": "query", "id": 22, "query": {"config": {}}}),
+                )
+                .await?;
+                let reply = recv_until(&mut framed, |m| {
+                    channel(m) == Some("query") && m.get("data").is_some()
+                })
+                .await?;
+                assert_eq!(reply["id"].as_u64(), Some(22));
 
                 Ok::<(), anyhow::Error>(())
             })

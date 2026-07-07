@@ -18,7 +18,7 @@ use {
                    GraphQL `queryApp` query.",
     request_body(
         content = serde_json::Value,
-        description = "A grug `Query` object, e.g. `{\"appConfig\": {}}`",
+        description = "A grug `Query` object, e.g. `{\"app_config\": {}}`",
         content_type = "application/json",
     ),
     responses(
