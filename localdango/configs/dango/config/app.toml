@@ -32,9 +32,6 @@ priority_range = [
 
 [indexer]
 
-# Whether to enable indexer.
-enabled = true
-
 # Whether to store block respnonses.
 keep_blocks = true
 

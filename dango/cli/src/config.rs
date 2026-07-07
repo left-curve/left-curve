@@ -63,7 +63,6 @@ pub struct SentryConfig {
 
 #[derive(Serialize, Deserialize, Default)]
 pub struct IndexerConfig {
-    pub enabled: bool,
     pub keep_blocks: bool,
     pub database: IndexerDatabaseConfig,
     pub clickhouse: ClickhouseConfig,

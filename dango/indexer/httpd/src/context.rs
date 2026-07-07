@@ -9,9 +9,10 @@ use {
     tokio::sync::RwLock,
 };
 
-/// Chain-only context — what `cfg.indexer.enabled = false` mode runs against.
-/// Holds just the chain query app. `FullContext` embeds one of these as its
-/// `base` field so `CoreQuery` resolvers work in either schema.
+/// The chain-query slice of [`FullContext`] — holds just the chain query app.
+/// `FullContext` embeds one as its `base` field, and it is also injected as its
+/// own `web::Data` so the `CoreQuery` resolvers and the `/query` / `/simulate`
+/// handlers can extract it without the full context.
 #[derive(Clone)]
 pub struct MinimalContext {
     pub dango_app: Arc<dyn QueryApp + Send + Sync>,
