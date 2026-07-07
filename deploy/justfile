@@ -290,13 +290,16 @@ stop-perps-bot:
 
 # Deploy the batch-block-backup bot for a network. testnet runs on hetzner2,
 # mainnet on hetzner1 (the full-app node hosts, so the blocks/ dir is on local
-# disk).
+# disk). Pass comma-separated heights as the third argument to rebuild and
+# re-upload their batches once at startup (redeploy without it afterwards, or
+# the rebuild re-runs on every container restart).
 # Usage: just deploy-batch-block-backup testnet
 #        just deploy-batch-block-backup mainnet v1.2.3
-deploy-batch-block-backup network tag="latest":
+#        just deploy-batch-block-backup testnet latest 200,300
+deploy-batch-block-backup network tag="latest" reupload_heights="":
   mkdir -p "{{justfile_directory()}}/logs" \
     && uv run ansible-playbook batch-block-backup.yml \
-      -e '{"batch_block_backup_networks": ["{{network}}"], "batch_block_backup_tag": "{{tag}}"}' \
+      -e '{"batch_block_backup_networks": ["{{network}}"], "batch_block_backup_tag": "{{tag}}", "batch_block_backup_reupload_heights": {"{{network}}": "{{reupload_heights}}"}}' \
       --limit batch-block-backup-{{network}} \
       2>&1 | tee "{{justfile_directory()}}/logs/$(date -u +%Y%m%d%H%M%S)-deploy-batch-block-backup.log"
 

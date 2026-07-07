@@ -14,3 +14,8 @@ batch_block_backup_http_port: 9320
 batch_block_backup_blocks_dir: {}
 # Lowest height that should be archived (see the image .env.example).
 batch_block_backup_start_height: 1
+# Comma-separated block heights whose batches should be rebuilt and re-uploaded
+# once at startup, keyed by network (e.g. {testnet: "200,300"}). One-shot: the
+# rebuild re-runs on every container restart while set, so redeploy without it
+# once the re-upload has completed.
+batch_block_backup_reupload_heights: {}
