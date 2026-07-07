@@ -15,12 +15,16 @@
 //! channel to attribute them to — an unparseable frame, or an `unsubscribe` for
 //! an unknown `id` — use the dedicated `error` channel.
 //!
-//! Two channel types are served, both reusing the in-memory validator stream
+//! Four channel types are served, all reusing the in-memory validator stream
 //! that backed the `full_block` / `perps_events` GraphQL subscriptions:
 //!
-//! - `fullBlock` — every finalized block (`{block, outcome}`).
 //! - `perpsEvents` — perps-contract events grouped per block, narrowed by the
 //!   `eventTypes` / `pairIds` / `users` / `orderIds` / `clientOrderIds` filters.
+//! - `blockInfo` — every finalized block's metadata
+//!   (`{height, timestamp, hash}`).
+//! - `block` — every finalized block without its execution outcome
+//!   (`{info, txs}`).
+//! - `fullBlock` — every finalized block in full (`{block, outcome}`).
 //!
 //! The transport is otherwise a thin shell over
 //! [`dango_indexer_stream::Context`]; only the framing differs from the SSE and
@@ -86,15 +90,20 @@ pub fn services() -> Resource {
                    Client messages are `method`-tagged JSON: `subscribe` — \
                    opening a `perpsEvents` feed (per-block perps events, \
                    narrowed by `eventTypes` / `pairIds` / `users` / `orderIds` \
-                   / `clientOrderIds` filters) or a `fullBlock` feed (every \
-                   finalized `{ block, outcome }`, the same shape as \
+                   / `clientOrderIds` filters), a `blockInfo` feed (every \
+                   finalized block's metadata, the `info` field of `Block`), \
+                   a `block` feed (every finalized block without its \
+                   execution outcome, the same shape as \
+                   `/block/info/{block_height}`), or a `fullBlock` feed \
+                   (every finalized `{ block, outcome }`, the same shape as \
                    `/block/full/{block_height}`) — plus `unsubscribe`, `ping`, \
                    and `broadcast` (submit a signed `Tx` over the socket). \
                    Server frames are `channel`-tagged: `subscriptionResponse`, \
-                   `fullBlock`, `perpsEvents`, `broadcast`, `pong`, and \
-                   `error`. The server pings every 20 seconds and closes a \
-                   socket idle for 60 seconds. **Swagger UI cannot open \
-                   WebSocket connections** — this entry is documentation only.",
+                   `perpsEvents`, `blockInfo`, `block`, `fullBlock`, \
+                   `broadcast`, `pong`, and `error`. The server pings every \
+                   20 seconds and closes a socket idle for 60 seconds. \
+                   **Swagger UI cannot open WebSocket connections** — this \
+                   entry is documentation only.",
     responses(
         (status = 101, description = "Switching Protocols — WebSocket handshake accepted; \
                                       all further traffic is JSON frames"),
@@ -170,6 +179,21 @@ enum Subscription {
         client_order_ids: Option<HashSet<String>>,
     },
 
+    /// Every finalized block's metadata (height, timestamp, hash) — the `info`
+    /// field of `Block`. Delivered on the `blockInfo` channel.
+    BlockInfo {
+        #[serde(default)]
+        since: Option<u64>,
+    },
+
+    /// Every finalized block as produced by the consensus engine — metadata
+    /// and transactions, without the execution outcome. Delivered on the
+    /// `block` channel.
+    Block {
+        #[serde(default)]
+        since: Option<u64>,
+    },
+
     /// Every finalized block in full (`Block` + `BlockOutcome`). Delivered on
     /// the `fullBlock` channel.
     FullBlock {
@@ -183,6 +207,8 @@ impl Subscription {
     fn channel(&self) -> &'static str {
         match self {
             Subscription::PerpsEvents { .. } => "perpsEvents",
+            Subscription::BlockInfo { .. } => "blockInfo",
+            Subscription::Block { .. } => "block",
             Subscription::FullBlock { .. } => "fullBlock",
         }
     }
@@ -474,6 +500,26 @@ fn open_stream(
 
             Ok(with_terminal("perpsEvents", id, frames))
         },
+        Subscription::BlockInfo { since } => {
+            let raw = stream_ctx
+                .blocks()
+                .subscribe(*since, |block| Some(block.block.info))
+                .map_err(|resync| resync.to_string())?;
+            let frames = guard_subscription_stream(raw, Some(guard))
+                .map(move |info| data_frame("blockInfo", id, &info));
+
+            Ok(with_terminal("blockInfo", id, frames))
+        },
+        Subscription::Block { since } => {
+            let raw = stream_ctx
+                .blocks()
+                .subscribe(*since, |block| Some(block.block.clone()))
+                .map_err(|resync| resync.to_string())?;
+            let frames = guard_subscription_stream(raw, Some(guard))
+                .map(move |block| data_frame("block", id, &block));
+
+            Ok(with_terminal("block", id, frames))
+        },
         Subscription::FullBlock { since } => {
             let raw = stream_ctx
                 .blocks()
@@ -646,6 +692,39 @@ mod tests {
             serde_json::from_str::<ClientMessage>(r#"{"method":"ping"}"#).unwrap(),
             ClientMessage::Ping { id: None }
         ));
+    }
+
+    #[test]
+    fn deserializes_block_info_and_block() {
+        // `blockInfo`, with a `since` cursor.
+        let message: ClientMessage = serde_json::from_str(
+            r#"{"method":"subscribe","id":3,"subscription":{"type":"blockInfo","since":42}}"#,
+        )
+        .unwrap();
+
+        let ClientMessage::Subscribe { id, subscription } = message else {
+            panic!("expected a subscribe message");
+        };
+
+        assert_eq!(id, 3);
+        assert_eq!(subscription.channel(), "blockInfo");
+        assert!(matches!(subscription, Subscription::BlockInfo {
+            since: Some(42)
+        }));
+
+        // `block`, without `since` (live-only).
+        let message: ClientMessage = serde_json::from_str(
+            r#"{"method":"subscribe","id":4,"subscription":{"type":"block"}}"#,
+        )
+        .unwrap();
+
+        let ClientMessage::Subscribe { id, subscription } = message else {
+            panic!("expected a subscribe message");
+        };
+
+        assert_eq!(id, 4);
+        assert_eq!(subscription.channel(), "block");
+        assert!(matches!(subscription, Subscription::Block { since: None }));
     }
 
     #[test]

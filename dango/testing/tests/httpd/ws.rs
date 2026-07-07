@@ -10,7 +10,7 @@ use {
     actix_http::ws,
     anyhow::anyhow,
     dango_app::Indexer,
-    dango_primitives::FullBlock,
+    dango_primitives::{Block, BlockInfo, FullBlock},
     dango_testing::{
         TestOption, build_app_service, create_perps_fill, pair_id, setup_perps_env,
         setup_test_naive_with_indexer,
@@ -81,6 +81,96 @@ where
 
 fn channel(message: &Value) -> Option<&str> {
     message.get("channel").and_then(Value::as_str)
+}
+
+/// Subscribing to `blockInfo` and `block` on one socket replays the retained
+/// window on each channel independently: both are acked, each frame parses into
+/// exactly its primitive — a bare `BlockInfo` (no transactions), a `Block` (no
+/// execution outcome); both types reject unknown fields, so parsing proves
+/// nothing extra leaked in — and the two channels report the same ascending
+/// heights, since they project the same ring.
+#[tokio::test(flavor = "multi_thread")]
+async fn ws_block_info_and_block_streams_replay_blocks() -> anyhow::Result<()> {
+    let (mut suite, mut accounts, _, contracts, _, ctx, _, _, _db_guard) =
+        setup_test_naive_with_indexer(TestOption::default()).await;
+
+    let pair = pair_id();
+    setup_perps_env(&mut suite, &mut accounts, &contracts, 2_000, 100_000).await;
+    create_perps_fill(&mut suite, &mut accounts, &contracts, &pair, 2_000, 3).await;
+    suite.app.indexer.wait_for_finish().await?;
+
+    let since = ctx.stream_context.blocks().floor().unwrap_or_default();
+
+    let local_set = tokio::task::LocalSet::new();
+    local_set
+        .run_until(async {
+            tokio::task::spawn_local(async move {
+                let mut srv = actix_test::start(move || build_app_service(ctx.clone()));
+                let mut framed = srv
+                    .ws_at("/ws")
+                    .await
+                    .map_err(|err| anyhow!("ws upgrade failed: {err}"))?;
+
+                send(
+                    &mut framed,
+                    json!({"method": "subscribe", "id": 8, "subscription": {"type": "blockInfo", "since": since}}),
+                )
+                .await?;
+                send(
+                    &mut framed,
+                    json!({"method": "subscribe", "id": 9, "subscription": {"type": "block", "since": since}}),
+                )
+                .await?;
+
+                let messages = drain(&mut framed, 256).await?;
+
+                // Both subscriptions are acknowledged.
+                for id in [8, 9] {
+                    messages
+                        .iter()
+                        .find(|m| {
+                            channel(m) == Some("subscriptionResponse")
+                                && m["id"].as_u64() == Some(id)
+                        })
+                        .ok_or_else(|| anyhow!("no ack for subscription {id}; got {messages:?}"))?;
+                }
+
+                // `blockInfo` frames are tagged id = 8 and parse into a bare
+                // `BlockInfo`, with ascending heights.
+                let mut info_heights = Vec::new();
+                for frame in messages.iter().filter(|m| channel(m) == Some("blockInfo")) {
+                    assert_eq!(frame["id"].as_u64(), Some(8));
+                    let info: BlockInfo = serde_json::from_value(frame["data"].clone())
+                        .map_err(|err| anyhow!("frame data is not a BlockInfo: {err}"))?;
+                    info_heights.push(info.height);
+                }
+                assert!(
+                    info_heights.len() >= 2,
+                    "expected at least two blockInfo frames; got {messages:?}"
+                );
+                assert!(
+                    info_heights.windows(2).all(|w| w[1] > w[0]),
+                    "blockInfo heights must ascend: {info_heights:?}"
+                );
+
+                // `block` frames are tagged id = 9 and parse into a `Block`.
+                let mut block_heights = Vec::new();
+                for frame in messages.iter().filter(|m| channel(m) == Some("block")) {
+                    assert_eq!(frame["id"].as_u64(), Some(9));
+                    let block: Block = serde_json::from_value(frame["data"].clone())
+                        .map_err(|err| anyhow!("frame data is not a Block: {err}"))?;
+                    block_heights.push(block.info.height);
+                }
+
+                // Both channels project the same ring, so they replay the same
+                // height sequence.
+                assert_eq!(info_heights, block_heights);
+
+                Ok::<(), anyhow::Error>(())
+            })
+            .await
+        })
+        .await?
 }
 
 /// Subscribing to `fullBlock` with a `since` replays the retained window then
