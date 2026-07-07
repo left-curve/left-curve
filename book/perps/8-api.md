@@ -2890,15 +2890,18 @@ Client messages are tagged by `method`; server messages are tagged by `channel`.
 {"method": "subscribe", "id": 2, "subscription": {"type": "blockInfo"}}
 {"method": "subscribe", "id": 3, "subscription": {"type": "block"}}
 {"method": "subscribe", "id": 4, "subscription": {"type": "fullBlock"}}
+{"method": "query", "id": 5, "query": {"balance": {"address": "0x33361de42571d6aa20c37daa6da4b5ab67bfaad9", "denom": "hyp/all/btc"}}}
 {"method": "unsubscribe", "id": 1}
 {"method": "ping", "id": 9}
 ```
 
-| Field          | Type     | Description                                                |
-| -------------- | -------- | ---------------------------------------------------------- |
-| `method`       | `String` | `subscribe`, `unsubscribe`, or `ping`                      |
-| `id`           | `Int`    | Subscription handle; required on `subscribe`/`unsubscribe` |
-| `subscription` | `Object` | The feed selector; see [§12.2](#122-channels)              |
+| Field          | Type     | Description                                                                               |
+| -------------- | -------- | ----------------------------------------------------------------------------------------- |
+| `method`       | `String` | `subscribe`, `unsubscribe`, `ping`, `broadcast`, or `query`                               |
+| `id`           | `Int`    | Operation handle, echoed on every resulting frame; optional on `ping`, required otherwise |
+| `subscription` | `Object` | The feed selector on `subscribe`; see [§12.2](#122-channels)                              |
+| `tx`           | `Object` | The signed `Tx` on `broadcast`; see [§12.2](#122-channels)                                |
+| `query`        | `Object` | The query request on `query`; see [§12.2](#122-channels)                                  |
 
 **Server → client:**
 
@@ -2909,6 +2912,7 @@ Client messages are tagged by `method`; server messages are tagged by `channel`.
 {"channel": "blockInfo", "id": 2, "data": { ... }}
 {"channel": "block", "id": 3, "data": { ... }}
 {"channel": "fullBlock", "id": 4, "data": { ... }}
+{"channel": "query", "id": 5, "data": { ... }}
 {"channel": "pong", "id": 9}
 {"channel": "error", "error": {"code": "badRequest", "message": "..."}}
 ```
@@ -2917,6 +2921,7 @@ Client messages are tagged by `method`; server messages are tagged by `channel`.
 | --------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `subscriptionResponse`                        | Acknowledges a `subscribe`/`unsubscribe`, echoing its `id`                                                                                              |
 | `perpsEvents`/`blockInfo`/`block`/`fullBlock` | A frame on a subscription's channel, tagged with its `id`: a `data` payload, or an `error` that ended the feed (see [§12.3](#123-reconnect-and-errors)) |
+| `broadcast`/`query`                           | The single reply to a `broadcast`/`query` request, tagged with its `id`: a `data` payload or an `error` (see [§12.2](#122-channels))                    |
 | `pong`                                        | Reply to a `ping`, echoing its `id`                                                                                                                     |
 | `error`                                       | A connection-level problem with no subscription to attribute it to (e.g. an unparseable frame); see [§12.3](#123-reconnect-and-errors)                  |
 
@@ -3039,6 +3044,31 @@ Stream every finalized block in full — the same `FullBlock` shape (`block` + `
 
 ```json
 {"channel": "fullBlock", "id": 4, "data": {"block": { ... }, "outcome": { ... }}}
+```
+
+#### `query`
+
+Run a one-time, read-only query against the latest finalized state — a **read** request/response (one request, one reply), not a subscription stream. The request and reply are the same raw grug `Query` / `QueryResponse` shapes as REST `POST /query` ([§11.1](#111-query)); this lets a client already holding a `/ws` connection query state without opening a separate HTTP request.
+
+```json
+{"method": "query", "id": 5, "query": {"balance": {"address": "0x33361de42571d6aa20c37daa6da4b5ab67bfaad9", "denom": "hyp/all/btc"}}}
+```
+
+| Field   | Type     | Description                                                     |
+| ------- | -------- | --------------------------------------------------------------- |
+| `id`    | `Int`    | Echoed on the reply frame                                       |
+| `query` | `Object` | The grug `Query` (same request payloads as [§11.1](#111-query)) |
+
+The reply rides the `query` channel. Success is a `data` frame holding the raw `QueryResponse`:
+
+```json
+{"channel": "query", "id": 5, "data": {"balance": {"denom": "hyp/all/btc", "amount": "12345"}}}
+```
+
+A failed query — an unknown contract, a contract query that errors, and so on — is an `error` frame with code `queryFailed`, carrying the same error message the REST route would return as a `400`. Note the asymmetry with `broadcast`: a mempool-rejected tx is still a `data` frame there, because `BroadcastTxOutcome` carries its own rejection, while `QueryResponse` is success-only, so any failure is an `error` frame. A failed query ends nothing — the socket and its subscriptions are unaffected, and the `id` is free to reuse.
+
+```json
+{"channel": "query", "id": 5, "error": {"code": "queryFailed", "message": "..."}}
 ```
 
 #### `broadcast`

@@ -2,7 +2,8 @@
 //!
 //! One socket carries any number of subscriptions, each identified by a
 //! client-chosen `id`. Client messages are `method`-tagged
-//! (`subscribe` / `unsubscribe` / `ping`); server messages are `channel`-tagged
+//! (`subscribe` / `unsubscribe` / `ping` / `broadcast` / `query`); server
+//! messages are `channel`-tagged
 //! (`subscriptionResponse` / `<channel>` / `pong`). The `id` of a `subscribe` is
 //! echoed on its acknowledgement and on every frame it produces, so concurrent
 //! subscriptions (e.g. several `perpsEvents` feeds with different filters) are
@@ -26,23 +27,29 @@
 //!   (`{info, txs}`).
 //! - `fullBlock` — every finalized block in full (`{block, outcome}`).
 //!
+//! Two one-shot request/response methods ride the same socket: `broadcast`
+//! (submit a signed transaction to the mempool) and `query` (run a read-only
+//! query against the latest finalized state, the same `Query`/`QueryResponse`
+//! shapes as REST `POST /query`). Each is answered with a single frame on its
+//! own channel, tagged with the request's `id`.
+//!
 //! The transport is otherwise a thin shell over
 //! [`dango_indexer_stream::Context`]; only the framing differs from the SSE and
 //! GraphQL transports. The message enums are left open (no `#[non_exhaustive]`
-//! barrier, but room in the protocol) so a future request/response write path
-//! (`broadcast` / `post`) and further read channels (`l2Book`, `candle`, …) can
-//! be added without breaking existing clients.
+//! barrier, but room in the protocol) so further read channels (`l2Book`,
+//! `candle`, …) can be added without breaking existing clients.
 
 use {
     crate::{
         context::FullContext,
+        graphql::query::core::CoreQuery,
         request_ip::RequesterIp,
         subscription_limiter::{ConnectionLimiter, SubscriptionLimiter, guard_subscription_stream},
     },
     actix_web::{HttpRequest, HttpResponse, Resource, guard, web},
     actix_ws::{AggregatedMessage, Session},
     dango_indexer_stream::{Context, make_perps_filter},
-    dango_primitives::{HttpRequestDetails, Tx},
+    dango_primitives::{HttpRequestDetails, Query, Tx},
     futures_util::{StreamExt, stream},
     serde::{Deserialize, Serialize},
     std::{collections::HashSet, pin::Pin, sync::Arc, time::Duration},
@@ -97,11 +104,13 @@ pub fn services() -> Resource {
                    `/block/info/{block_height}`), or a `fullBlock` feed \
                    (every finalized `{ block, outcome }`, the same shape as \
                    `/block/full/{block_height}`) — plus `unsubscribe`, `ping`, \
-                   and `broadcast` (submit a signed `Tx` over the socket). \
+                   `broadcast` (submit a signed `Tx` over the socket), and \
+                   `query` (run a one-time read-only state query, the same \
+                   `Query`/`QueryResponse` shapes as `POST /query`). \
                    Server frames are `channel`-tagged: `subscriptionResponse`, \
                    `perpsEvents`, `blockInfo`, `block`, `fullBlock`, \
-                   `broadcast`, `pong`, and `error`. The server pings every \
-                   20 seconds and closes a socket idle for 60 seconds. \
+                   `broadcast`, `query`, `pong`, and `error`. The server pings \
+                   every 20 seconds and closes a socket idle for 60 seconds. \
                    **Swagger UI cannot open WebSocket connections** — this \
                    entry is documentation only.",
     responses(
@@ -146,6 +155,13 @@ enum ClientMessage {
     /// default; this lets a client already holding a `/ws` connection broadcast
     /// without a separate HTTP request.
     Broadcast { id: u64, tx: Tx },
+
+    /// Run a one-time, read-only query against the latest finalized state.
+    /// Answered on the `query` channel: the raw `QueryResponse` (`data`) — the
+    /// same shape the REST `POST /query` returns — or an `error` frame if the
+    /// query fails. The REST route is the default; this lets a client already
+    /// holding a `/ws` connection query state without a separate HTTP request.
+    Query { id: u64, query: Query },
 }
 
 /// The feed a `subscribe` selects, discriminated by `type`.
@@ -455,6 +471,33 @@ async fn handle_text(
                     send(
                         session,
                         channel_error("broadcast", id, "broadcastFailed", &err.to_string()),
+                    )
+                    .await
+                },
+            }
+        },
+        ClientMessage::Query { id, query } => {
+            // Reject an `id` already bound to a live subscription on this socket,
+            // so the client can demultiplex the `query` reply unambiguously.
+            if streams.contains_key(&id) {
+                return send(
+                    session,
+                    channel_error("query", id, "badRequest", "id already in use"),
+                )
+                .await;
+            }
+
+            // Awaited inline: a query is a fast, in-process state read. Unlike
+            // `broadcast`, whose payload type carries its own rejection, a
+            // `QueryResponse` is success-only, so a failed query is an `error`
+            // frame — the WS mirror of the REST route's `400`. The reply drops
+            // the block height `query_app` reports, matching REST `/query`.
+            match CoreQuery::_query_app(&app_ctx.base, query).await {
+                Ok(res) => send(session, data_frame("query", id, &res.response)).await,
+                Err(err) => {
+                    send(
+                        session,
+                        channel_error("query", id, "queryFailed", &err.message),
                     )
                     .await
                 },
@@ -826,6 +869,59 @@ mod tests {
             ))
             .unwrap(),
             json!({"channel": "broadcast", "id": 5, "error": {"code": "broadcastFailed", "message": "connection refused"}}),
+        );
+    }
+
+    #[test]
+    fn deserializes_query() {
+        // A parameterless query variant.
+        let message: ClientMessage =
+            serde_json::from_str(r#"{"method":"query","id":5,"query":{"config":{}}}"#).unwrap();
+
+        let ClientMessage::Query { id, query } = message else {
+            panic!("expected a query message");
+        };
+
+        assert_eq!(id, 5);
+        assert!(matches!(query, Query::Config(_)));
+
+        // A variant with fields, proving the nested payload parses.
+        let message: ClientMessage = serde_json::from_str(
+            r#"{"method":"query","id":6,"query":{"balance":{"address":"0x33361de42571d6aa20c37daa6da4b5ab67bfaad9","denom":"hyp/all/btc"}}}"#,
+        )
+        .unwrap();
+
+        assert!(matches!(message, ClientMessage::Query {
+            id: 6,
+            query: Query::Balance(_)
+        }));
+    }
+
+    #[test]
+    fn serializes_query_frames() {
+        // A successful query rides a `data` frame on the `query` channel,
+        // carrying the raw `QueryResponse`.
+        assert_eq!(
+            serde_json::from_str::<serde_json::Value>(&data_frame(
+                "query",
+                5,
+                &json!({"balance": {"denom": "hyp/all/btc", "amount": "12345"}}),
+            ))
+            .unwrap(),
+            json!({"channel": "query", "id": 5, "data": {"balance": {"denom": "hyp/all/btc", "amount": "12345"}}}),
+        );
+
+        // A failed query is an `error` frame on the `query` channel — unlike
+        // `broadcast`, whose payload type carries its own rejection.
+        assert_eq!(
+            serde_json::from_str::<serde_json::Value>(&channel_error(
+                "query",
+                5,
+                "queryFailed",
+                "data not found",
+            ))
+            .unwrap(),
+            json!({"channel": "query", "id": 5, "error": {"code": "queryFailed", "message": "data not found"}}),
         );
     }
 }
