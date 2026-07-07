@@ -85,10 +85,24 @@ pub trait Projection: Send + Sync {
     /// A projection owns both its tables and the read surface over them, so the
     /// queries that expose its data live here, next to the schema that backs
     /// them. The handlers a scope mounts read the shared Postgres pool and block
-    /// source from actix app data; they never need the projection instance, so a
-    /// scope carries no state and is cheap to rebuild per worker. The default is
-    /// none — a write-only (or not-yet-served) projection contributes no routes.
+    /// source from actix app data; they never need the projection instance —
+    /// anything projection-specific a handler does need (e.g. the activity
+    /// projection's injected perps address) rides as scope-local app data, so a
+    /// scope stays self-contained and cheap to rebuild per worker. The default
+    /// is none — a write-only (or not-yet-served) projection contributes no
+    /// routes.
     fn services(&self) -> Vec<Scope> {
         vec![]
+    }
+
+    /// The OpenAPI fragment documenting this projection's read surface — the
+    /// docs counterpart of [`services`](Self::services), gathered by the app the
+    /// same way and merged by the httpd into the base document it serves at
+    /// `/openapi.json` (Swagger UI on `/docs/`). Built from the projection
+    /// instance, so conditionally-mounted routes (e.g. the activity projection's
+    /// `/perps-events` shortcut) appear in the docs exactly when they exist. The
+    /// default is none — a projection with no routes documents nothing.
+    fn api_doc(&self) -> Option<utoipa::openapi::OpenApi> {
+        None
     }
 }

@@ -25,6 +25,7 @@ dango-indexer-cache         = { workspace = true, features = ["metrics", "tracin
 dango-indexer-metrics       = { workspace = true, features = ["tracing"] }
 dango-primitives            = { workspace = true }
 dango-sdk                   = { workspace = true, features = ["tracing"] }
+dango-types                 = { workspace = true }
 futures                     = { workspace = true }
 home                        = { workspace = true }
 metrics                     = { workspace = true }

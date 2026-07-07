@@ -43,7 +43,7 @@ fn hash_from_bytes(bytes: Vec<u8>) -> Result<Hash256, ApiError> {
 /// How an `address` argument must relate to a unit in the
 /// `transactionsInvolving` feed. Omitted ⇒ **either** — the address sent the
 /// unit *or* was a party to one of its events (their union).
-#[derive(Deserialize, Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Deserialize, Clone, Copy, Debug, PartialEq, Eq, utoipa::ToSchema)]
 #[serde(rename_all = "snake_case")]
 pub(crate) enum AddressRole {
     /// The address sent the unit (`transactions.sender`). Cron units have no
@@ -56,7 +56,7 @@ pub(crate) enum AddressRole {
 
 /// The kind of an executed unit — mirrors [`dango_primitives::FlatCategory`].
 /// Serialized / parsed as `"cron"` / `"transaction"`.
-#[derive(Serialize, Deserialize, Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Clone, Copy, Debug, PartialEq, Eq, utoipa::ToSchema)]
 #[serde(rename_all = "snake_case")]
 pub(crate) enum UnitKind {
     Cron,
@@ -106,7 +106,7 @@ pub(crate) struct EventRow {
 /// for contract events; `data` is the decoded payload, hydrated eagerly (from
 /// the `event_data` blob for priority types, otherwise from the unit's block),
 /// `null` only if the source no longer holds the block.
-#[derive(Serialize, Clone, Debug)]
+#[derive(Serialize, Clone, Debug, utoipa::ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct Event {
     /// Height of the block the event was emitted in.
@@ -121,6 +121,7 @@ pub(crate) struct Event {
     #[serde(rename = "type")]
     pub ty: EventType,
     /// Emitting contract — present only for contract events.
+    #[schema(value_type = Option<String>)]
     pub contract: Option<Addr>,
     /// The contract-event name (`order_filled`, …) — present only for contract
     /// events.
@@ -129,6 +130,7 @@ pub(crate) struct Event {
     /// for priority types (decompressed from the joined blob) and by
     /// [`super::hydrate`] from the block for the rest; `null` when the block is
     /// unavailable.
+    #[schema(value_type = Option<Object>)]
     pub data: Option<serde_json::Value>,
 }
 
@@ -158,7 +160,7 @@ pub(crate) fn event_from_row(row: EventRow) -> Result<Event, ApiError> {
 /// columns are cheap; the full submitted `tx` and the execution `outcome` are
 /// hydrated eagerly from the unit's block (see [`super::hydrate`]) — `tx` is
 /// `null` for cron units, both are `null` if the block is unavailable.
-#[derive(Serialize, Clone, Debug)]
+#[derive(Serialize, Clone, Debug, utoipa::ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct Transaction {
     /// Height of the block the unit executed in.
@@ -168,8 +170,10 @@ pub(crate) struct Transaction {
     /// Whether this is a transaction or a cronjob.
     pub kind: UnitKind,
     /// Content hash — absent for cron units.
+    #[schema(value_type = Option<String>)]
     pub hash: Option<Hash256>,
     /// Account or contract that sent the unit — absent for cron units.
+    #[schema(value_type = Option<String>)]
     pub sender: Option<Addr>,
     /// Whether the unit's outcome was `Ok`.
     pub success: bool,
@@ -178,10 +182,12 @@ pub(crate) struct Transaction {
     pub timestamp: String,
     /// The full transaction as submitted on-chain (the `Tx` JSON the node
     /// serializes) — `null` for cron units. Hydrated from the block.
+    #[schema(value_type = Option<Object>)]
     pub tx: Option<serde_json::Value>,
     /// The unit's execution outcome as JSON — externally tagged
     /// `{"transaction": …}` / `{"cron": …}` (see [`UnitOutcome`]). Hydrated from
     /// the block.
+    #[schema(value_type = Option<Object>)]
     pub outcome: Option<serde_json::Value>,
 }
 

@@ -534,7 +534,7 @@ join.
 
 The eight access paths are served by `#[get]`-routed handlers in
 `http/services/` (one module per resource), over the database feeds in
-`http/feeds.rs`, folded into **four routes** — two on `transactions`, two on
+`http/feeds.rs`, folded into **five routes** — two on `transactions`, three on
 `events`:
 
 | route | access paths | arguments |
@@ -543,6 +543,7 @@ The eight access paths are served by `#[get]`-routed handlers in
 | `GET /transactions/involving/{address}` | 1 | + optional `role`, `kind` |
 | `GET /events` | 2, 5, 6 | `type` (a list) and/or `involved` — **at least one required** |
 | `GET /contract-events/{contract}` | 3 / 4 / 7 / 8 | + optional `user`, `names` (a list) |
+| `GET /perps-events` | 3 / 4 / 7 / 8, `contract` pre-bound to the perps address | + optional `user`, `names` (a list) |
 
 `/events` folds the by-type feed (Q2) and the involving feeds (Q5/Q6):
 `involved` anchors on the address (the type list is then a residual filter),
@@ -553,6 +554,18 @@ it is a **400**. `/contract-events` makes `contract` mandatory, which keeps ever
 reachable combination index-anchored and makes the unsupported shapes (a name
 filter without a contract, a type filter with a contract) structurally
 impossible.
+
+`/perps-events` is a **shortcut**, not a new access path: the same
+contract-events feeds with the `contract` argument pre-bound to the
+deployment's perps address, so the dominant consumer (perps activity) never has
+to carry the address around. The address is injected at construction — the cli
+resolves it from the node's `app_config` (the typed `addresses.perps`, next to
+the shape-agnostic `Extractable` harvest that seeds the involvement blacklist)
+and hands it to the projection through `ActivityConfig::perps_contract`, which
+the events scope carries as scope-local app data. The pre-bound contract is the
+index anchor, so the route needs no mandatory argument; when no address was
+injected (`None`), the route is simply not mounted. Read-time only — the field
+affects no written row, so changing it needs no re-backfill.
 
 Each runs the access path above verbatim: hand-written, `Binder`-parameterized
 SQL (`DISTINCT ON`, the involved ∪ sender union, the in-index `IN (…)` name
@@ -597,10 +610,15 @@ per distinct block in the page.
 
 The routes are served by the projection-agnostic `httpd` crate, which injects
 the Postgres pool and the block source as actix app data; the projection
-contributes them through `Projection::services()` — three `web::scope`s
-(`/transactions`, `/events`, `/contract-events`) of `#[get]`-routed handlers,
-grouped in `http/services/` one module per resource — and the app gathers every
-projection's scopes when it builds the server.
+contributes them through `Projection::services()` — four `web::scope`s
+(`/transactions`, `/events`, `/contract-events`, `/perps-events`) of
+`#[get]`-routed handlers, grouped in `http/services/` one module per resource —
+and the app gathers every projection's scopes when it builds the server. The
+docs follow the same path: `Projection::api_doc()` returns the OpenAPI fragment
+derived from the `#[utoipa::path]` annotations on those same handlers (each
+resource module owns its fragment, `/perps-events` included exactly when
+mounted), and the httpd merges it into the document it serves at
+`/openapi.json` / `/docs/`.
 
 ## Out of scope
 

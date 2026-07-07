@@ -80,8 +80,15 @@ impl App {
         // configurator that mounts every projection's `services()` scopes, run
         // the httpd over the shared pool + source, and supervise it as one more
         // task — so a server error stops the app too. The read surface is
-        // derived from the registered projections, never enumerated twice.
+        // derived from the registered projections, never enumerated twice; the
+        // OpenAPI docs come from the same projections (`api_doc()`), so the
+        // served spec always matches the mounted routes.
         if let Some(cfg) = self.read_cfg {
+            let api_docs = self
+                .projections
+                .iter()
+                .filter_map(|projection| projection.api_doc())
+                .collect();
             let projections = self.projections.clone();
             let configure: Configurator = Arc::new(move |service_config| {
                 for projection in &projections {
@@ -95,6 +102,7 @@ impl App {
                 self.db.clone(),
                 self.source.clone(),
                 configure,
+                api_docs,
             )));
         }
 
