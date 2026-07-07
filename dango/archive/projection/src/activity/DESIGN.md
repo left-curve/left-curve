@@ -499,13 +499,13 @@ ClickHouse path in V1.
 
 ## Crate layout
 
-`projection/src/activity/`: `mod.rs` (the `Projection` impl + `ActivityConfig`,
+`projection/src/activity.rs` (the `Projection` impl + `ActivityConfig`,
 `id = "activity"`, `min_height` left at the default genesis floor) ·
-`event_type.rs` (the `EventType`
+`projection/src/activity/`: `event_type.rs` (the `EventType`
 discriminant stored in `event_type`, plus the per-event contract / name
 taxonomy) · `entity/` (sea-orm types for the three tables) · `idens.rs`
-(migration identifiers) · `migrations/` (one file per table + a `mod.rs`
-assembling them, names prefixed `…activity…` for the shared `seaql_migrations`
+(migration identifiers) · `migrations/` (one file per table) + `migrations.rs`
+(assembles them, names prefixed `…activity…` for the shared `seaql_migrations`
 history — mirrors `app/src/committer/`). The read surface (below) lives in
 `http/` (`feeds.rs` DB queries · `services/` actix handlers + scopes, one module
 per resource: `transaction.rs`, `events.rs` · `hydrate.rs` eager payload
