@@ -16,7 +16,8 @@
 //! lives in the `httpd` crate, shared across projections; this module only adds
 //! the activity's own SQL, types, and cursor shapes.
 //!
-//! Only [`scopes`](services::scopes) escapes the module; everything else is
+//! Only [`scopes`](services::scopes) and its docs counterpart
+//! [`api_doc`](services::api_doc) escape the module; everything else is
 //! plumbing the app and the httpd never name. The handlers reach the shared
 //! Postgres pool and block source through actix app data, injected when the
 //! httpd builds the server.
@@ -26,4 +27,4 @@ mod hydrate;
 mod services;
 mod types;
 
-pub(crate) use services::scopes;
+pub(crate) use services::{api_doc, scopes};

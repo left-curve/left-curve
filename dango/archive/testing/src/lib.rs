@@ -20,7 +20,7 @@ use {
         RemoteBlockSourceConfig, RocksdbBlockStore, SentinelBlockFetcher, SentinelFetcherConfig,
     },
     dango_archive_httpd::HttpdConfig,
-    dango_archive_projection::{ActivityProjection, Committer, Projection},
+    dango_archive_projection::{ActivityConfig, ActivityProjection, Committer, Projection},
     dango_genesis::{Contracts, GenesisOption},
     dango_primitives::{
         Addr, BroadcastClient, Coins, Hash256, MOCK_CHAIN_ID, Message, NonEmpty, Signer,
@@ -258,7 +258,16 @@ impl PendingEnv {
 
         // The committer + projections — ClickHouse deferred (`None`).
         let committer: Arc<dyn Committer> = Arc::new(PgChCommitter::new(db.conn.clone(), None));
-        let projections: Vec<Arc<dyn Projection>> = vec![Arc::new(ActivityProjection::default())];
+        // The `/perps-events` shortcut anchors on whatever address is injected.
+        // The tests' window produces no perps activity (it stays below the
+        // first perps cron), so anchor the shortcut on the **bank** instead:
+        // every `/contract-events/{bank}` assertion can then be replayed on
+        // `/perps-events` verbatim — same code path, real fixtures.
+        let projections: Vec<Arc<dyn Projection>> =
+            vec![Arc::new(ActivityProjection::new(ActivityConfig {
+                perps_contract: Some(contracts.bank),
+                ..Default::default()
+            }))];
 
         // Migrate up front so the tables are queryable immediately; `App::run`
         // re-migrates idempotently at boot. Doing it here also surfaces a
@@ -381,6 +390,23 @@ impl Env {
         self.get_opt(path)
             .await?
             .with_context(|| format!("GET {path} returned 404"))
+    }
+
+    /// GET `path` returning the raw body as text (redirects followed),
+    /// requiring a `2xx` — for non-JSON resources like the Swagger UI page.
+    pub async fn get_text(&self, path: &str) -> anyhow::Result<String> {
+        let response = self
+            .http
+            .get(format!("{}{path}", self.read_url))
+            .send()
+            .await
+            .with_context(|| format!("GET {path}"))?;
+        let status = response.status();
+        let body = response.text().await.context("reading the response body")?;
+        if !status.is_success() {
+            anyhow::bail!("GET {path} -> {status}");
+        }
+        Ok(body)
     }
 
     /// Poll `GET /transactions/by-hash/{hash}` until that tx is indexed or

@@ -185,6 +185,8 @@ tracing-opentelemetry       = "0.33"
 tracing-subscriber          = { version = "0.3", features = ["env-filter", "fmt", "json"] }
 typenum                     = "1"
 url                         = "2.5.4"
+utoipa                      = "5"
+utoipa-swagger-ui           = { version = "9", features = ["actix-web", "vendored"] }
 uuid                        = { version = "1", features = ["serde", "v4"] }
 wasmer                      = "7"
 wasmer-middlewares          = "7"

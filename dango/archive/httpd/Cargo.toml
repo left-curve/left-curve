@@ -31,3 +31,9 @@ serde                      = { workspace = true, features = ["derive"] }
 serde_json                 = { workspace = true }
 tokio                      = { workspace = true }
 tracing                    = { workspace = true, optional = true }
+utoipa                     = { workspace = true }
+utoipa-swagger-ui          = { workspace = true }
+
+[dev-dependencies]
+async-trait      = { workspace = true }
+dango-primitives = { workspace = true }

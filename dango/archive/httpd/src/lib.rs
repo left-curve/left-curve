@@ -3,8 +3,12 @@
 //! A deliberately small actix-web service: given the shared read handles (the
 //! Postgres pool and the [`BlockSource`](dango_archive_block_source::BlockSource))
 //! plus the projections' route registrars, it injects the handles as actix app
-//! data, mounts the core `GET /block/{height}` and `GET /up` routes, applies each
-//! projection's feeds, and serves.
+//! data, mounts the core `GET /block/{height}`, `GET /block/latest` (the block
+//! at the source's contiguous frontier), and `GET /up` routes, applies each
+//! projection's feeds, and serves. The merged OpenAPI document (its own core
+//! paths + every projection's `api_doc()` fragment) is served at
+//! `GET /openapi.json`, with Swagger UI on `GET /docs/` and the base `GET /`
+//! redirecting there.
 //!
 //! - [`serve`] returns the boxed, supervised server task.
 //! - [`Configurator`] is the route-mounting closure the app builds from its

@@ -4,14 +4,17 @@
 //! built-in default), and `involvement_blacklist` is the config addresses
 //! merged with the deployment's **system contracts** — read from the node's
 //! `app_config` and harvested with `Extractable`, so the per-network addresses
-//! never have to be listed by hand.
+//! never have to be listed by hand. The same `app_config` also names the
+//! deployment's **perps contract** (`addresses.perps`), injected as the anchor
+//! of the read API's `/perps-events` shortcut.
 
 use {
     crate::config::ActivitySettings,
     anyhow::{Context, bail},
     dango_archive_projection::ActivityConfig,
-    dango_primitives::{Addr, Extractable, Json, QueryClientExt},
+    dango_primitives::{Addr, Extractable, Json, JsonDeExt, QueryClientExt},
     dango_sdk::HttpClient,
+    dango_types::config::AppConfig,
     std::{collections::HashSet, str::FromStr, time::Duration},
 };
 
@@ -21,8 +24,9 @@ const APP_CONFIG_ATTEMPTS: usize = 10;
 const APP_CONFIG_BACKOFF: Duration = Duration::from_secs(3);
 
 /// Resolve the activity projection's [`ActivityConfig`]: the event-type filters
-/// (config override, else the built-in default), and `involvement_blacklist` =
-/// the config addresses ∪ the node's system contracts (from `app_config`).
+/// (config override, else the built-in default), `involvement_blacklist` = the
+/// config addresses ∪ the node's system contracts (from `app_config`), and
+/// `perps_contract` = the typed `addresses.perps` of the same `app_config`.
 pub async fn config(settings: &ActivitySettings, node_url: &str) -> anyhow::Result<ActivityConfig> {
     let mut config = ActivityConfig::default();
 
@@ -36,43 +40,63 @@ pub async fn config(settings: &ActivitySettings, node_url: &str) -> anyhow::Resu
         config.involvement_filter = filter;
     }
 
-    // involvement_blacklist = config addresses ∪ the node's system contracts.
+    let app_config = app_config(node_url).await?;
+
+    // involvement_blacklist = config addresses ∪ the node's system contracts —
+    // the latter harvested generically with `Extractable`, so the per-network
+    // addresses never have to be listed by hand.
     let mut blacklist = HashSet::new();
     for raw in &settings.involvement_blacklist {
         let addr = Addr::from_str(raw)
             .with_context(|| format!("invalid involvement_blacklist address `{raw}`"))?;
         blacklist.insert(addr);
     }
-    blacklist.extend(system_contracts(node_url).await?);
+    let mut system_contracts = HashSet::new();
+    app_config.extract_addresses(&mut system_contracts);
+    tracing::info!(
+        count = system_contracts.len(),
+        "extracted system contracts from app_config"
+    );
+    blacklist.extend(system_contracts);
     tracing::info!(
         addresses = blacklist.len(),
         "activity involvement blacklist assembled"
     );
     config.involvement_blacklist = blacklist;
 
+    // The perps contract anchors the read API's `/perps-events` shortcut. The
+    // typed parse is best-effort: a deployment whose `app_config` no longer
+    // matches [`AppConfig`] only loses the shortcut route (warn), never ingest
+    // — the blacklist harvest above is shape-agnostic.
+    match app_config.deserialize_json::<AppConfig>() {
+        Ok(app_config) => {
+            tracing::info!(
+                perps = %app_config.addresses.perps,
+                "resolved the perps contract from app_config"
+            );
+            config.perps_contract = Some(app_config.addresses.perps);
+        },
+        Err(err) => tracing::warn!(
+            error = %err,
+            "app_config does not deserialize as AppConfig; \
+             the /perps-events shortcut will not be mounted"
+        ),
+    }
+
     Ok(config)
 }
 
-/// Query the node's `app_config` and extract every address in it — the
-/// deployment's system contracts. The block source needs the same node, so one
+/// Query the node's `app_config`. The block source needs the same node, so one
 /// that never answers is fatal: retry [`APP_CONFIG_ATTEMPTS`] times with a
 /// backoff, then give up and let the caller abort.
-async fn system_contracts(node_url: &str) -> anyhow::Result<HashSet<Addr>> {
+async fn app_config(node_url: &str) -> anyhow::Result<Json> {
     let client =
         HttpClient::new(node_url).with_context(|| format!("invalid node url `{node_url}`"))?;
 
     let mut last_err = None;
     for attempt in 1..=APP_CONFIG_ATTEMPTS {
         match client.query_app_config::<Json>().await {
-            Ok(app_config) => {
-                let mut addresses = HashSet::new();
-                app_config.extract_addresses(&mut addresses);
-                tracing::info!(
-                    count = addresses.len(),
-                    "extracted system contracts from app_config"
-                );
-                return Ok(addresses);
-            },
+            Ok(app_config) => return Ok(app_config),
             Err(err) => {
                 tracing::warn!(attempt, error = %err, "app_config query failed; retrying");
                 last_err = Some(err);

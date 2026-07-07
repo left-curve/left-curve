@@ -381,6 +381,43 @@ async fn backfill_then_live_then_query_coverage() {
         .unwrap();
     assert_eq!(ci4_sent, vec![marker_height]);
 
+    // ---- perpsEvents (the injected-anchor shortcut) ----
+    // The harness anchors the shortcut on the bank (see
+    // `PendingEnv::start_indexer`), so every `/contract-events/{bank}` read
+    // above must be reproducible on `/perps-events` verbatim — same feeds,
+    // the contract argument pre-bound instead of path-supplied.
+    let pe_all = env.collect_heights("/perps-events").await.unwrap();
+    assert_eq!(
+        pe_all.len(),
+        2 * total,
+        "the unfiltered shortcut serves the anchor's whole feed (sent + received)",
+    );
+    assert!(non_increasing(&pe_all));
+    let pe_sent = env
+        .collect_heights("/perps-events?names=sent")
+        .await
+        .unwrap();
+    assert_eq!(
+        pe_sent, sent_events,
+        "the shortcut's `names` filter matches the explicit route's",
+    );
+    let pe4 = env
+        .collect_heights(&format!("/perps-events?user={user4}"))
+        .await
+        .unwrap();
+    assert_eq!(
+        pe4, ci4,
+        "the shortcut's `user` filter matches the explicit route's",
+    );
+    let pe4_received = env
+        .collect_heights(&format!("/perps-events?user={user4}&names=received"))
+        .await
+        .unwrap();
+    assert_eq!(
+        pe4_received, ci4_received,
+        "the shortcut's combined `user` + `names` matches the explicit route's",
+    );
+
     // ===== eager payload hydration — the read paths back to the store =====
 
     // GET /block/{height}: the full `{ block, outcome }` read straight from the
@@ -401,6 +438,55 @@ async fn backfill_then_live_then_query_coverage() {
         .await
         .unwrap();
     assert!(absent.is_none(), "an un-ingested height is a 404");
+
+    // GET /block/latest: the block at the contiguous frontier. The projection
+    // has caught up to the last live block and the mock chain only produces on
+    // broadcast, so the frontier — which always leads the projection — must sit
+    // exactly at the tip: the marker (the lowest block) plus the `total`
+    // contiguous blocks asserted above.
+    let latest = env.get("/block/latest").await.unwrap();
+    let latest_height = latest["block"]["info"]["height"]
+        .as_u64()
+        .expect("latest height");
+    assert_eq!(
+        latest_height,
+        marker_height + total as u64 - 1,
+        "GET /block/latest is the contiguous frontier (== the tip once caught up)",
+    );
+    assert!(
+        latest["outcome"].is_object(),
+        "...with the same {{ block, outcome }} shape as /block/{{height}}"
+    );
+
+    // ===== the API docs =====
+
+    // The merged OpenAPI spec documents the core block routes and every
+    // activity feed — including /perps-events, since this harness injects an
+    // anchor (see `PendingEnv::start_indexer`).
+    let spec = env.get("/openapi.json").await.unwrap();
+    for path in [
+        "/block/{height}",
+        "/block/latest",
+        "/up",
+        "/transactions/by-hash/{hash}",
+        "/transactions/involving/{address}",
+        "/events",
+        "/contract-events/{contract}",
+        "/perps-events",
+    ] {
+        assert!(
+            spec["paths"].get(path).is_some(),
+            "the OpenAPI spec should document {path}",
+        );
+    }
+
+    // The base path lands on Swagger UI (via the /docs/ redirect, which the
+    // client follows).
+    let docs = env.get_text("/").await.unwrap();
+    assert!(
+        docs.contains("swagger-ui"),
+        "GET / should land on the Swagger UI page",
+    );
 
     // Transaction.tx / Transaction.outcome: hydrated eagerly from the unit's
     // block (→ source.get → RocksDB).

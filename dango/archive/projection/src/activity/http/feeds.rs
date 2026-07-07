@@ -276,7 +276,9 @@ fn single_type_scan(binder: &mut Binder, ty: EventType, keyset: &str, fetch: u64
 }
 
 /// Queries 3 / 4 — contract events emitted by a contract, optionally narrowed to
-/// a set of event names (a single value or a list).
+/// a set of event names (a single value or a list). Serves both
+/// `/contract-events/{contract}` and the `/perps-events` shortcut (the same
+/// call with the injected perps address).
 pub(crate) async fn contract_events(
     db: &DatabaseConnection,
     contract: Addr,
@@ -338,7 +340,8 @@ pub(crate) async fn events_involving(
 }
 
 /// Queries 7 / 8 — contract events of a contract **involving** an address,
-/// optionally narrowed to a set of event names.
+/// optionally narrowed to a set of event names. Like [`contract_events`], also
+/// serves the `/perps-events` shortcut.
 pub(crate) async fn contract_events_involving(
     db: &DatabaseConnection,
     address: Addr,

@@ -14,7 +14,7 @@ use {
 /// Serialized snake_case (`transfer`, `contract_event`, …): the spelling the
 /// read API accepts to filter the activity feeds by type and surfaces as an
 /// event's `type`.
-#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, Hash, utoipa::ToSchema)]
 #[serde(rename_all = "snake_case")]
 #[repr(i16)]
 pub enum EventType {

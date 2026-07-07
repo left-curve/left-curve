@@ -83,6 +83,12 @@ pub struct ActivityConfig {
     /// Addresses excluded from participation at write time — the deployment's
     /// system contracts, merged in by the cli from the node's `app_config`.
     pub involvement_blacklist: HashSet<Addr>,
+    /// The perps contract's address — the anchor of the `/perps-events`
+    /// shortcut route (the contract-events feeds with the contract argument
+    /// pre-bound). Injected by the cli from the node's `app_config`
+    /// (`addresses.perps`); `None` (the default) leaves the route unmounted.
+    /// Read-time only — it affects no written row.
+    pub perps_contract: Option<Addr>,
 }
 
 impl Default for ActivityConfig {
@@ -102,6 +108,7 @@ impl Default for ActivityConfig {
             event_data_filter: WhiteOrBlackList::Whitelist(priority.clone()),
             involvement_filter: WhiteOrBlackList::Whitelist(priority),
             involvement_blacklist: HashSet::new(),
+            perps_contract: None,
         }
     }
 }
@@ -132,7 +139,11 @@ impl Projection for ActivityProjection {
     }
 
     fn services(&self) -> Vec<Scope> {
-        http::scopes()
+        http::scopes(self.config.perps_contract)
+    }
+
+    fn api_doc(&self) -> Option<utoipa::openapi::OpenApi> {
+        Some(http::api_doc(self.config.perps_contract.is_some()))
     }
 
     #[cfg_attr(feature = "tracing", instrument(skip_all, fields(height = block.block.info.height)))]

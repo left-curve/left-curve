@@ -608,8 +608,23 @@ actix `Scope`s of `#[get]`-routed handlers, one per resource, just like the
 in-process indexer's `routes::blocks::services()`. The app gathers them in
 `run` into one configurator, and the httpd injects the shared read handles
 (the Postgres pool, the block source) as actix app data and applies it. The
-httpd never names a projection; its only built-in route is the generic
-`GET /block/{height}`, read straight from the `BlockSource`.
+httpd never names a projection; its only built-in routes are the generic
+`GET /block/{height}`, read straight from the `BlockSource`, and
+`GET /block/latest` — the block at the source's **contiguous frontier** (the
+highest `H` with every height in `[1, H]` stored, i.e. the newest block
+servable together with all the history below it; the frontier is the O(1)
+in-memory topology the block store already owns, so the route adds no state).
+During a backfill the frontier trails the chain tip the live tail is already
+storing above the gap; once gap-free, it is the tip.
+
+The surface is self-describing: each projection contributes an OpenAPI
+fragment through `Projection::api_doc()` — derived from the same
+`#[utoipa::path]` annotations sitting on its handlers, so conditionally-mounted
+routes are documented exactly when they exist — and the httpd merges the
+fragments into its own base document (the core routes above) and serves the
+result at `GET /openapi.json`, with Swagger UI on `GET /docs/`; the base
+`GET /` redirects there. The docs derivation mirrors the route derivation, so
+the served spec can never enumerate a surface different from the one mounted.
 
 Each feed is a `GET` whose path + query string carry the same arguments the
 queries always took (address, contract, type, role, kind, names, plus
