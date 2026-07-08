@@ -6,6 +6,12 @@
       - instance.live_url is defined
       - instance.metrics_host_port is defined
       - instance.httpd_host_port is defined
+      - instance.name is match('^[a-z0-9]([a-z0-9-]*[a-z0-9])?$')
+      - instance.cloudflare is not defined or instance.cloudflare.enabled is defined
+      - instance.cloudflare is not defined or instance.cloudflare.load_balancer is defined
+      - instance.cloudflare is not defined or instance.cloudflare.load_balancer is not defined or not instance.cloudflare.load_balancer or instance.cloudflare.enabled
+      - inventory_hostname in (groups['traefik'] | default([]))
+      - instance.cloudflare is not defined or not instance.cloudflare.enabled or inventory_hostname in (groups['cloudflared'] | default([]))
       - archive_db_password is defined
       - archive_db_password | length > 0
       - postgres_user is defined
@@ -13,9 +19,12 @@
       - ghcr_user is defined
       - ghcr_token is defined
     fail_msg: >-
-      archive instance needs name/live_url/metrics_host_port/httpd_host_port,
-      plus archive_db_password, postgres_user, postgres_password,
-      ghcr_user, ghcr_token
+      archive instance needs a DNS-safe name, live_url, metrics_host_port,
+      httpd_host_port, plus archive_db_password, postgres_user,
+      postgres_password, ghcr_user, ghcr_token. If cloudflare is present it
+      must include enabled and load_balancer. If cloudflare.enabled is true, the
+      host must be in [cloudflared]; all archive hosts must be in [traefik]
+      because the compose stack joins the external traefik network.
 
 - name: "{{ instance.name }} - Derive instance facts"
   set_fact:
@@ -36,6 +45,11 @@
 - name: "{{ instance.name }} - Ensure postgres docker network exists"
   community.docker.docker_network:
     name: postgres
+    state: present
+
+- name: "{{ instance.name }} - Ensure traefik docker network exists"
+  community.docker.docker_network:
+    name: traefik
     state: present
 
 - name: "{{ instance.name }} - Create postgres user"
@@ -108,11 +122,16 @@
     registry: ghcr.io
     state: absent
 
-# Public exposure via Traefik is parked until the DNS/cloudflared work lands
-# (traefik is not deployed on the archive hosts). Re-enable together with the
-# `traefik` network in templates/docker-compose.yml.j2.
-# - name: "{{ instance.name }} - Configure Traefik route"
-#   template:
-#     src: traefik-archive.yml.j2
-#     dest: "{{ traefik_dir }}/config/archive-{{ instance.name }}.yml"
-#     mode: "0644"
+- name: "{{ instance.name }} - Ensure Traefik config directory exists"
+  file:
+    path: "{{ traefik_dir }}/config"
+    state: directory
+    mode: "0755"
+  when: instance.cloudflare is defined and instance.cloudflare.enabled
+
+- name: "{{ instance.name }} - Configure Traefik route"
+  template:
+    src: traefik-archive.yml.j2
+    dest: "{{ traefik_dir }}/config/archive-{{ instance.name }}.yml"
+    mode: "0644"
+  when: instance.cloudflare is defined and instance.cloudflare.enabled

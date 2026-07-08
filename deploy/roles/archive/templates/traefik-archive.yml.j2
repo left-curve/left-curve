@@ -7,14 +7,14 @@ http:
 
   routers:
     archive-{{ instance.name }}-ssl:
-      rule: "Host(`archive-{{ instance.name }}.{{ dango_domain }}`)"
+      rule: "Host(`api-archive-{{ instance.name }}-{{ hostname }}.{{ dango_domain }}`) || Host(`api-archive-{{ instance.name }}.{{ dango_domain }}`)"
       entryPoints:
         - "websecure"
       tls: {}
       service: "archive-{{ instance.name }}"
 
     archive-{{ instance.name }}:
-      rule: "Host(`archive-{{ instance.name }}.{{ dango_domain }}`)"
+      rule: "Host(`api-archive-{{ instance.name }}-{{ hostname }}.{{ dango_domain }}`) || Host(`api-archive-{{ instance.name }}.{{ dango_domain }}`)"
       entryPoints:
         - "web"
       service: "archive-{{ instance.name }}"
