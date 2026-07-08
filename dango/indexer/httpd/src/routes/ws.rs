@@ -242,7 +242,7 @@ enum Subscription {
 /// — matching the GraphQL `query_app` default, and keeping the load modest
 /// when many clients subscribe without choosing an interval. A client that
 /// wants per-block updates asks for `interval: 1` explicitly.
-fn default_query_interval() -> u64 {
+const fn default_query_interval() -> u64 {
     10
 }
 
