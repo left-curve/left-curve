@@ -29,7 +29,6 @@ metrics             = { workspace = true, optional = true }
 rangemap            = { workspace = true }
 reqwest             = { workspace = true }
 rocksdb             = { workspace = true }
-serde               = { workspace = true, features = ["derive"] }
 serde_json          = { workspace = true }
 tokio               = { workspace = true }
 tokio-tungstenite   = { workspace = true }

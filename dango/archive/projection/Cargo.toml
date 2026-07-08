@@ -19,7 +19,6 @@ tracing = ["dep:tracing"]
 
 [dependencies]
 actix-web                  = { workspace = true }
-anyhow                     = { workspace = true }
 async-trait                = { workspace = true }
 borsh                      = { workspace = true }
 clickhouse                 = { workspace = true }

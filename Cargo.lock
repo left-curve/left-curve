@@ -3752,7 +3752,6 @@ dependencies = [
  "rangemap",
  "reqwest 0.13.4",
  "rocksdb",
- "serde",
  "serde_json",
  "tokio",
  "tokio-tungstenite 0.29.0",
@@ -3776,7 +3775,6 @@ dependencies = [
  "dango-primitives",
  "dango-sdk",
  "dango-types",
- "futures",
  "home",
  "metrics",
  "metrics-exporter-prometheus",
@@ -3815,7 +3813,6 @@ name = "dango-archive-projection"
 version = "0.0.0"
 dependencies = [
  "actix-web",
- "anyhow",
  "async-trait",
  "borsh",
  "clickhouse",
@@ -3864,7 +3861,6 @@ name = "dango-archive-types"
 version = "0.0.0"
 dependencies = [
  "anyhow",
- "borsh",
  "dango-primitives",
 ]
 
@@ -4334,7 +4330,6 @@ dependencies = [
  "metrics",
  "serde",
  "serde_json",
- "thiserror 2.0.18",
  "tokio",
  "tracing",
 ]
@@ -4389,7 +4384,6 @@ dependencies = [
  "hex",
  "metrics",
  "test-case",
- "tracing",
 ]
 
 [[package]]
