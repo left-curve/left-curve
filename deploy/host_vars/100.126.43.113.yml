@@ -3,9 +3,8 @@ tailscale_ip: "100.126.43.113"
 hostname: "hetzner7"
 wireguard_ip: "10.99.0.12"
 reboot_time: "15:30"
-dango_networks:
-  - mainnet
-cloudflare_lb_enabled: true
+dango_networks: []
+cloudflare_lb_enabled: false
 
 # Archive indexer instance — `just deploy-archive mainnet` (roles/archive).
 # live_host_override resolves the live_url hostname to the source node's

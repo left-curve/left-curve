@@ -20,7 +20,7 @@
         origin_name: "{{ pool.name }}-{{ dango_network }}-{{ hn }}"
       set_fact:
         pool_origins: "{{ pool_origins + [ { 'name': origin_name, 'address': addr, 'enabled': true, 'header': { 'Host': [ addr ] } } ] }}"
-      loop: "{{ groups['cloudflared'] | default([]) }}"
+      loop: "{{ (groups['cloudflared'] | default([])) | intersect(groups['full-app'] | default([])) }}"
       when:
         - pool_origins_override is not defined
         - dango_network in (hostvars[item].dango_networks | default([]))
