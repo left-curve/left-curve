@@ -1,5 +1,8 @@
 use {
-    crate::traits::{ConsensusClient, QueryApp},
+    crate::{
+        query_memo::QueryMemo,
+        traits::{ConsensusClient, QueryApp},
+    },
     dango_indexer_sql::{
         EventCacheReader, entity::perps_trade::PerpsTrade, pubsub::PubSub,
         write::perps_trades::PerpsTradeCache,
@@ -40,6 +43,9 @@ pub struct FullContext {
     pub consensus_client: Arc<dyn ConsensusClient + Send + Sync>,
     pub event_cache: EventCacheReader,
     pub static_files_path: Option<String>,
+    /// Per-block memo for the `/ws` `query` subscription: identical queries
+    /// triggered by the same block are executed once and shared.
+    pub query_memo: Arc<QueryMemo>,
 }
 
 impl FullContext {
@@ -65,6 +71,7 @@ impl FullContext {
             base: MinimalContext::new(dango_app),
             consensus_client,
             static_files_path,
+            query_memo: Arc::new(QueryMemo::new()),
         }
     }
 

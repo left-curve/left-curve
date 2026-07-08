@@ -10,14 +10,16 @@ use {
     actix_http::ws,
     anyhow::anyhow,
     dango_app::Indexer,
-    dango_primitives::{Block, BlockInfo, FullBlock, QueryResponse},
+    dango_primitives::{Addressable, Block, BlockInfo, FullBlock, QueryResponse, ResultExt, coins},
     dango_testing::{
         TestOption, build_app_service, create_perps_fill, pair_id, setup_perps_env,
         setup_test_naive_with_indexer,
     },
+    dango_types::constants::usdc,
     futures_util::{SinkExt, Stream, StreamExt},
     serde_json::{Value, json},
-    std::time::Duration,
+    std::{collections::HashMap, sync::Arc, time::Duration},
+    tokio::sync::{Mutex, mpsc},
 };
 
 /// Per-read idle budget. The in-memory snapshot arrives promptly and the live
@@ -539,6 +541,186 @@ async fn ws_query_roundtrip_and_error() -> anyhow::Result<()> {
                 })
                 .await?;
                 assert_eq!(reply["id"].as_u64(), Some(22));
+
+                Ok::<(), anyhow::Error>(())
+            })
+            .await
+        })
+        .await?
+}
+
+/// A `query` subscription streams `{blockHeight, response}` frames: an initial
+/// snapshot at subscribe time, then one frame per matching block. Two
+/// subscriptions holding the same query see identical payloads at equal
+/// heights (they are served from the shared per-block execution), each with
+/// strictly ascending heights.
+#[tokio::test(flavor = "multi_thread")]
+async fn ws_query_subscription_streams_on_new_blocks() -> anyhow::Result<()> {
+    let (suite, mut accounts, _, _contracts, _, ctx, _, _, _db_guard) =
+        setup_test_naive_with_indexer(TestOption::default()).await;
+    suite.app.indexer.wait_for_finish().await?;
+
+    // A producer task minting one transfer block per trigger, so ticks arrive
+    // while the subscriptions are live.
+    let suite = Arc::new(Mutex::new(suite));
+    let (make_block, mut block_requests) = mpsc::channel::<u32>(1);
+    tokio::spawn(async move {
+        while block_requests.recv().await.is_some() {
+            let mut suite = suite.lock().await;
+            suite
+                .transfer(
+                    &mut accounts.user1,
+                    accounts.user2.address(),
+                    coins! { usdc::DENOM.clone() => 100 },
+                )
+                .await
+                .should_succeed();
+        }
+    });
+
+    let local_set = tokio::task::LocalSet::new();
+    local_set
+        .run_until(async {
+            tokio::task::spawn_local(async move {
+                let mut srv = actix_test::start(move || build_app_service(ctx.clone()));
+                let mut framed = srv
+                    .ws_at("/ws")
+                    .await
+                    .map_err(|err| anyhow!("ws upgrade failed: {err}"))?;
+
+                // Two subscriptions holding the same query.
+                for id in [7, 8] {
+                    send(
+                        &mut framed,
+                        json!({"method": "subscribe", "id": id, "subscription": {"type": "query", "query": {"config": {}}, "interval": 1}}),
+                    )
+                    .await?;
+                }
+
+                // Both receive an initial snapshot whose response is a `Config`.
+                let mut last_heights: HashMap<u64, u64> = HashMap::new();
+                let mut payloads: HashMap<(u64, u64), Value> = HashMap::new();
+                for _ in 0..2 {
+                    let frame = recv_until(&mut framed, |m| {
+                        channel(m) == Some("query") && m.get("data").is_some()
+                    })
+                    .await?;
+                    let id = frame["id"].as_u64().unwrap();
+                    let height = frame["data"]["blockHeight"]
+                        .as_u64()
+                        .ok_or_else(|| anyhow!("missing blockHeight: {frame:?}"))?;
+                    let response: QueryResponse =
+                        serde_json::from_value(frame["data"]["response"].clone())?;
+                    assert!(
+                        matches!(response, QueryResponse::Config(_)),
+                        "expected a config response: {frame:?}"
+                    );
+                    payloads.insert((id, height), frame["data"].clone());
+                    last_heights.insert(id, height);
+                }
+                assert_eq!(last_heights.len(), 2, "both subscriptions must snapshot");
+                let initial_heights = last_heights.clone();
+
+                // Mint blocks until both subscriptions have ticked past their
+                // snapshot, asserting strict per-subscription height ascent.
+                make_block.send(1).await?;
+                make_block.send(1).await?;
+                while last_heights
+                    .iter()
+                    .any(|(id, height)| height <= &initial_heights[id])
+                {
+                    let frame = recv_until(&mut framed, |m| {
+                        channel(m) == Some("query") && m.get("data").is_some()
+                    })
+                    .await?;
+                    let id = frame["id"].as_u64().unwrap();
+                    let height = frame["data"]["blockHeight"].as_u64().unwrap();
+                    assert!(
+                        height > last_heights[&id],
+                        "heights must strictly ascend per subscription: {frame:?}"
+                    );
+                    payloads.insert((id, height), frame["data"].clone());
+                    last_heights.insert(id, height);
+                }
+
+                // Wherever the two subscriptions saw the same height — the
+                // initial snapshot guarantees at least one — the payloads are
+                // identical.
+                let mut shared = 0;
+                for ((id, height), data) in &payloads {
+                    let sibling = if *id == 7 { 8 } else { 7 };
+                    if let Some(other) = payloads.get(&(sibling, *height)) {
+                        assert_eq!(data, other, "same query at same height must match");
+                        shared += 1;
+                    }
+                }
+                assert!(shared > 0, "expected a height common to both subscriptions");
+
+                Ok::<(), anyhow::Error>(())
+            })
+            .await
+        })
+        .await?
+}
+
+/// Query-subscription error handling: a zero `interval` is rejected with a
+/// co-located `badRequest`; a subscription whose query fails is acked (the
+/// stream opens), then ended by a single terminal `queryFailed` frame — with
+/// the socket staying usable throughout.
+#[tokio::test(flavor = "multi_thread")]
+async fn ws_query_subscription_bad_interval_and_failing_query() -> anyhow::Result<()> {
+    let (suite, _accounts, _, _contracts, _, ctx, _, _, _db_guard) =
+        setup_test_naive_with_indexer(TestOption::default()).await;
+    suite.app.indexer.wait_for_finish().await?;
+
+    let local_set = tokio::task::LocalSet::new();
+    local_set
+        .run_until(async {
+            tokio::task::spawn_local(async move {
+                let mut srv = actix_test::start(move || build_app_service(ctx.clone()));
+                let mut framed = srv
+                    .ws_at("/ws")
+                    .await
+                    .map_err(|err| anyhow!("ws upgrade failed: {err}"))?;
+
+                // A zero interval is rejected up front, before any ack.
+                send(
+                    &mut framed,
+                    json!({"method": "subscribe", "id": 4, "subscription": {"type": "query", "query": {"config": {}}, "interval": 0}}),
+                )
+                .await?;
+                let error = recv_until(&mut framed, |m| {
+                    channel(m) == Some("query") && m.get("error").is_some()
+                })
+                .await?;
+                assert_eq!(error["id"].as_u64(), Some(4));
+                assert_eq!(error["error"]["code"].as_str(), Some("badRequest"));
+
+                // A failing query — no contract lives at the zero address — is
+                // acked, then ended by a terminal `queryFailed` (the initial
+                // snapshot is the failing execution).
+                send(
+                    &mut framed,
+                    json!({"method": "subscribe", "id": 5, "subscription": {"type": "query", "query": {"contract": {"address": "0x0000000000000000000000000000000000000000"}}}}),
+                )
+                .await?;
+                let ack = recv_until(&mut framed, |m| {
+                    channel(m) == Some("subscriptionResponse") && m["id"].as_u64() == Some(5)
+                })
+                .await?;
+                assert_eq!(ack["data"]["type"].as_str(), Some("query"));
+
+                let error = recv_until(&mut framed, |m| {
+                    channel(m) == Some("query") && m.get("error").is_some()
+                })
+                .await?;
+                assert_eq!(error["id"].as_u64(), Some(5));
+                assert_eq!(error["error"]["code"].as_str(), Some("queryFailed"));
+
+                // The failure ended only that subscription; the socket lives.
+                send(&mut framed, json!({"method": "ping", "id": 6})).await?;
+                let pong = recv_until(&mut framed, |m| channel(m) == Some("pong")).await?;
+                assert_eq!(pong["id"].as_u64(), Some(6));
 
                 Ok::<(), anyhow::Error>(())
             })

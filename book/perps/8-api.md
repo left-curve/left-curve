@@ -2872,12 +2872,13 @@ A native WebSocket endpoint for real-time feeds, distinct from the `graphql-ws` 
 
 **Endpoint:** `GET /ws` (WebSocket upgrade). See [Constants](9-constants.md#endpoints).
 
-Four channels are served, replacing the corresponding `graphql-ws` subscriptions:
+Five channels are served, replacing the corresponding `graphql-ws` subscriptions:
 
 - `perpsEvents` — perps-contract events grouped per block, with filters.
 - `blockInfo` — every finalized block's metadata (height, timestamp, hash).
 - `block` — every finalized block, without its execution outcome.
 - `fullBlock` — every finalized block in full (`Block` + `BlockOutcome`).
+- `query` — a standing state query, re-run every `interval` blocks (also usable as a one-shot request/response method).
 
 ### 12.1 Protocol
 
@@ -2890,7 +2891,8 @@ Client messages are tagged by `method`; server messages are tagged by `channel`.
 {"method": "subscribe", "id": 2, "subscription": {"type": "blockInfo"}}
 {"method": "subscribe", "id": 3, "subscription": {"type": "block"}}
 {"method": "subscribe", "id": 4, "subscription": {"type": "fullBlock"}}
-{"method": "query", "id": 5, "query": {"balance": {"address": "0x33361de42571d6aa20c37daa6da4b5ab67bfaad9", "denom": "hyp/all/btc"}}}
+{"method": "subscribe", "id": 5, "subscription": {"type": "query", "query": {"app_config": {}}, "interval": 5}}
+{"method": "query", "id": 6, "query": {"balance": {"address": "0x33361de42571d6aa20c37daa6da4b5ab67bfaad9", "denom": "hyp/all/btc"}}}
 {"method": "unsubscribe", "id": 1}
 {"method": "ping", "id": 9}
 ```
@@ -2912,20 +2914,21 @@ Client messages are tagged by `method`; server messages are tagged by `channel`.
 {"channel": "blockInfo", "id": 2, "data": { ... }}
 {"channel": "block", "id": 3, "data": { ... }}
 {"channel": "fullBlock", "id": 4, "data": { ... }}
-{"channel": "query", "id": 5, "data": { ... }}
+{"channel": "query", "id": 5, "data": {"blockHeight": 100001, "response": { ... }}}
+{"channel": "query", "id": 6, "data": { ... }}
 {"channel": "pong", "id": 9}
 {"channel": "error", "error": {"code": "badRequest", "message": "..."}}
 ```
 
-| `channel`                                     | Description                                                                                                                                             |
-| --------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `subscriptionResponse`                        | Acknowledges a `subscribe`/`unsubscribe`, echoing its `id`                                                                                              |
-| `perpsEvents`/`blockInfo`/`block`/`fullBlock` | A frame on a subscription's channel, tagged with its `id`: a `data` payload, or an `error` that ended the feed (see [§12.3](#123-reconnect-and-errors)) |
-| `broadcast`/`query`                           | The single reply to a `broadcast`/`query` request, tagged with its `id`: a `data` payload or an `error` (see [§12.2](#122-channels))                    |
-| `pong`                                        | Reply to a `ping`, echoing its `id`                                                                                                                     |
-| `error`                                       | A connection-level problem with no subscription to attribute it to (e.g. an unparseable frame); see [§12.3](#123-reconnect-and-errors)                  |
+| `channel`                                             | Description                                                                                                                                             |
+| ----------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `subscriptionResponse`                                | Acknowledges a `subscribe`/`unsubscribe`, echoing its `id`                                                                                              |
+| `perpsEvents`/`blockInfo`/`block`/`fullBlock`/`query` | A frame on a subscription's channel, tagged with its `id`: a `data` payload, or an `error` that ended the feed (see [§12.3](#123-reconnect-and-errors)) |
+| `broadcast`/`query`                                   | The single reply to a `broadcast`/`query` request, tagged with its `id`: a `data` payload or an `error` (see [§12.2](#122-channels))                    |
+| `pong`                                                | Reply to a `ping`, echoing its `id`                                                                                                                     |
+| `error`                                               | A connection-level problem with no subscription to attribute it to (e.g. an unparseable frame); see [§12.3](#123-reconnect-and-errors)                  |
 
-Each frame on a subscription's channel (`perpsEvents` / `blockInfo` / `block` / `fullBlock`) carries either a `data` payload or an `error`; a client demultiplexes by `id` and branches on which key is present. Errors are co-located this way so a feed's failure arrives on the same channel its data does — see [§12.3](#123-reconnect-and-errors).
+Each frame on a subscription's channel (`perpsEvents` / `blockInfo` / `block` / `fullBlock` / `query`) carries either a `data` payload or an `error`; a client demultiplexes by `id` and branches on which key is present. Errors are co-located this way so a feed's failure arrives on the same channel its data does — see [§12.3](#123-reconnect-and-errors). Note that the `query` channel carries both a `query` *subscription*'s stream and the single reply to a one-shot `query` *request* — the client's own `id` bookkeeping tells them apart.
 
 **Heartbeat.** The server sends a WebSocket ping every 20 seconds and closes a connection it has heard nothing from for 60 seconds. A client either lets its WebSocket stack answer those pings, or sends `{"method": "ping"}` itself; either keeps an idle subscription alive.
 
@@ -3051,7 +3054,7 @@ Stream every finalized block in full — the same `FullBlock` shape (`block` + `
 Run a one-time, read-only query against the latest finalized state — a **read** request/response (one request, one reply), not a subscription stream. The request and reply are the same raw grug `Query` / `QueryResponse` shapes as REST `POST /query` ([§11.1](#111-query)); this lets a client already holding a `/ws` connection query state without opening a separate HTTP request.
 
 ```json
-{"method": "query", "id": 5, "query": {"balance": {"address": "0x33361de42571d6aa20c37daa6da4b5ab67bfaad9", "denom": "hyp/all/btc"}}}
+{"method": "query", "id": 6, "query": {"balance": {"address": "0x33361de42571d6aa20c37daa6da4b5ab67bfaad9", "denom": "hyp/all/btc"}}}
 ```
 
 | Field   | Type     | Description                                                     |
@@ -3062,14 +3065,33 @@ Run a one-time, read-only query against the latest finalized state — a **read*
 The reply rides the `query` channel. Success is a `data` frame holding the raw `QueryResponse`:
 
 ```json
-{"channel": "query", "id": 5, "data": {"balance": {"denom": "hyp/all/btc", "amount": "12345"}}}
+{"channel": "query", "id": 6, "data": {"balance": {"denom": "hyp/all/btc", "amount": "12345"}}}
 ```
 
-A failed query — an unknown contract, a contract query that errors, and so on — is an `error` frame with code `queryFailed`, carrying the same error message the REST route would return as a `400`. Note the asymmetry with `broadcast`: a mempool-rejected tx is still a `data` frame there, because `BroadcastTxOutcome` carries its own rejection, while `QueryResponse` is success-only, so any failure is an `error` frame. A failed query ends nothing — the socket and its subscriptions are unaffected, and the `id` is free to reuse.
+A failed query — an unknown contract, a contract query that errors, and so on — is an `error` frame with code `queryFailed`, carrying the same error message the REST route would return as a `400`. Note the asymmetry with `broadcast`: a mempool-rejected tx is still a `data` frame there, because `BroadcastTxOutcome` carries its own rejection, while `QueryResponse` is success-only, so any failure is an `error` frame. A failed one-shot query ends nothing — the socket and its subscriptions are unaffected, and the `id` is free to reuse.
 
 ```json
-{"channel": "query", "id": 5, "error": {"code": "queryFailed", "message": "..."}}
+{"channel": "query", "id": 6, "error": {"code": "queryFailed", "message": "..."}}
 ```
+
+**Subscribing to a query.** The same `query` payload can also be held open as a standing subscription: the server answers with an initial snapshot immediately, then re-runs the query once per block whose height is a multiple of `interval`, streaming the results on the `query` channel. The alignment is absolute — a tick fires when `height % interval == 0` — so every subscription with the same query and interval ticks at the same heights, and identical concurrent subscriptions are served from a single shared execution per tick.
+
+```json
+{"method": "subscribe", "id": 5, "subscription": {"type": "query", "query": {"app_config": {}}, "interval": 5}}
+```
+
+| Field      | Type     | Description                                                     |
+| ---------- | -------- | --------------------------------------------------------------- |
+| `query`    | `Object` | The grug `Query` (same request payloads as [§11.1](#111-query)) |
+| `interval` | `Int`    | Re-run once per this many blocks; must be ≥ 1, defaults to 1    |
+
+Unlike the one-shot reply, each subscription frame wraps the response with the block height it was served at:
+
+```json
+{"channel": "query", "id": 5, "data": {"blockHeight": 100005, "response": {"app_config": { ... }}}}
+```
+
+Each frame's `blockHeight` is strictly greater than the previous frame's; under executor lag a tick may be skipped when its result would duplicate the previous frame. The feed is live-only — there is no `since` replay, because historical state cannot be re-queried; on reconnect, simply resubscribe and take the fresh initial snapshot. A failed execution (including a failing initial snapshot, which arrives after the ack) ends the subscription with a single terminal `queryFailed` error frame; a feed that falls behind the retained window ends with the standard terminal `resync` frame.
 
 #### `broadcast`
 
@@ -3098,7 +3120,7 @@ Only a transport failure to the consensus node is an `error` frame:
 
 ### 12.3 Reconnect and errors
 
-All four subscription channels are served from an in-memory window of recent blocks. Every data frame carries the block height (`blockHeight` for `perpsEvents`, `height` for `blockInfo`, `info.height` for `block`, `block.info.height` for `fullBlock`), so a client tracks the last height it saw and, on reconnect, resubscribes with `since` set to that height plus one. Subscriptions are not persisted across reconnects: a client that reconnects must resend its `subscribe` messages.
+The four block-backed subscription channels (`perpsEvents`, `blockInfo`, `block`, `fullBlock`) are served from an in-memory window of recent blocks. Every data frame carries the block height (`blockHeight` for `perpsEvents`, `height` for `blockInfo`, `info.height` for `block`, `block.info.height` for `fullBlock`), so a client tracks the last height it saw and, on reconnect, resubscribes with `since` set to that height plus one. A `query` subscription is live-only — its frames carry a `blockHeight` too, but there is no `since` replay, because historical state cannot be re-queried; on reconnect, simply resubscribe and take the fresh initial snapshot. Subscriptions are not persisted across reconnects: a client that reconnects must resend its `subscribe` messages.
 
 Problems are delivered as `error`-keyed frames. An error that concerns a specific subscription rides that subscription's own channel and `id` — an `error` sibling of the `data` frames it would otherwise send — so a client handles a feed's failure on the same channel it reads from. An error with no subscription to attribute it to (an unparseable message, or an `unsubscribe` for an unknown `id`) arrives on the dedicated `error` channel instead, carrying the offending `id` when there is one.
 
