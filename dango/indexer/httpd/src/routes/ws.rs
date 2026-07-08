@@ -238,9 +238,12 @@ enum Subscription {
     },
 }
 
-/// A `query` subscription that does not say otherwise re-runs on every block.
+/// A `query` subscription that does not say otherwise re-runs every 10 blocks
+/// — matching the GraphQL `query_app` default, and keeping the load modest
+/// when many clients subscribe without choosing an interval. A client that
+/// wants per-block updates asks for `interval: 1` explicitly.
 fn default_query_interval() -> u64 {
-    1
+    10
 }
 
 impl Subscription {
@@ -1082,7 +1085,7 @@ mod tests {
         assert!(matches!(query, Query::Config(_)));
         assert_eq!(interval, 5);
 
-        // An absent `interval` defaults to 1 (every block).
+        // An absent `interval` defaults to 10 (every tenth block).
         let message: ClientMessage = serde_json::from_str(
             r#"{"method":"subscribe","id":8,"subscription":{"type":"query","query":{"config":{}}}}"#,
         )
@@ -1093,7 +1096,7 @@ mod tests {
         };
 
         assert!(matches!(subscription, Subscription::Query {
-            interval: 1,
+            interval: 10,
             ..
         }));
     }

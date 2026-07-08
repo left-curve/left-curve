@@ -3083,7 +3083,7 @@ A failed query — an unknown contract, a contract query that errors, and so on 
 | Field      | Type     | Description                                                     |
 | ---------- | -------- | --------------------------------------------------------------- |
 | `query`    | `Object` | The grug `Query` (same request payloads as [§11.1](#111-query)) |
-| `interval` | `Int`    | Re-run once per this many blocks; must be ≥ 1, defaults to 1    |
+| `interval` | `Int`    | Re-run once per this many blocks; must be ≥ 1, defaults to 10   |
 
 Unlike the one-shot reply, each subscription frame wraps the response with the block height it was served at:
 
