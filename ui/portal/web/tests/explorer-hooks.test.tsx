@@ -30,6 +30,7 @@ vi.mock("../../../store/src/hooks/usePublicClient.js", () => ({
 }));
 
 const publicClient = {
+  chain: { id: "dev-9" },
   getAccountInfo: vi.fn(),
   getAccountStatus: vi.fn(),
   getBalances: vi.fn(),
@@ -53,6 +54,7 @@ const calculateBalance = vi.fn(
 
 describe("explorer hooks", () => {
   beforeEach(() => {
+    publicClient.chain = { id: "dev-9" };
     storeHookMocks.usePublicClient.mockReturnValue(publicClient);
     storeHookMocks.usePrices.mockReturnValue({ calculateBalance });
     storeHookMocks.useAppConfig.mockReturnValue({
@@ -67,7 +69,15 @@ describe("explorer hooks", () => {
   afterEach(() => {
     cleanup();
     vi.clearAllMocks();
+    vi.unstubAllGlobals();
   });
+
+  function jsonResponse(body: unknown, status = 200) {
+    return new Response(JSON.stringify(body), {
+      status,
+      headers: { "content-type": "application/json" },
+    });
+  }
 
   it("marks invalid block searches without querying a specific backend height", async () => {
     const currentBlock = { blockHeight: 100, hash: "current-block" };
@@ -159,6 +169,131 @@ describe("explorer hooks", () => {
     });
   });
 
+  it("uses the mainnet archive for concrete block explorer lookups", async () => {
+    publicClient.chain = { id: "dango-1" };
+    const currentBlock = { blockHeight: 200, hash: "current-block" };
+    publicClient.queryBlock.mockResolvedValue(currentBlock);
+    const sender = "0x73656e6465720000000000000000000000000000";
+    const txHash = "archive-tx-hash";
+    const fetchMock = vi.fn().mockResolvedValue(
+      jsonResponse({
+        block: {
+          info: {
+            height: 125,
+            timestamp: "31536000.123456789",
+            hash: "archive-block",
+          },
+          txs: [
+            [
+              {
+                sender,
+                gas_limit: 100,
+                msgs: [{ transfer: { [sender]: { usdc: "1" } } }],
+              },
+              txHash,
+            ],
+          ],
+        },
+        outcome: {
+          app_hash: "archive-app-hash",
+          cron_outcomes: [{ ok: true }],
+          tx_outcomes: [
+            {
+              gas_limit: 100,
+              gas_used: 75,
+              result: { ok: null },
+              events: { msgs_and_backrun: { msgs: [] } },
+            },
+          ],
+        },
+      }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const { result } = renderHook(() => useExplorerBlock("125"), {
+      wrapper: createQueryClientWrapper(),
+    });
+
+    await waitFor(() => expect(result.current.data?.searchBlock?.hash).toBe("archive-block"));
+
+    expect(publicClient.queryBlock).toHaveBeenCalledOnce();
+    expect(publicClient.queryBlock).toHaveBeenCalledWith();
+    expect((fetchMock.mock.calls[0]?.[0] as URL).toString()).toBe(
+      "https://api-archive-mainnet.dango.zone/blocks/125",
+    );
+    expect(result.current.data?.searchBlock).toMatchObject({
+      appHash: "archive-app-hash",
+      blockHeight: 125,
+      createdAt: "1971-01-01T00:00:00.123Z",
+      transactions: [
+        {
+          createdAt: "1971-01-01T00:00:00.123Z",
+          hash: txHash,
+          sender,
+          gasWanted: 100,
+          gasUsed: 75,
+          transactionIdx: 0,
+          transactionType: "TX",
+          hasSucceeded: true,
+        },
+      ],
+    });
+  });
+
+  it("uses the mainnet archive for latest block explorer lookups", async () => {
+    publicClient.chain = { id: "dango-1" };
+    publicClient.queryBlock.mockResolvedValue({ blockHeight: 200, hash: "live-current-block" });
+    const fetchMock = vi.fn().mockResolvedValue(
+      jsonResponse({
+        block: {
+          info: {
+            height: 199,
+            timestamp: "31535999",
+            hash: "archive-latest-block",
+          },
+          txs: [],
+        },
+        outcome: {
+          app_hash: "archive-latest-app-hash",
+          cron_outcomes: [],
+          tx_outcomes: [],
+        },
+      }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const { result } = renderHook(() => useExplorerBlock("latest"), {
+      wrapper: createQueryClientWrapper(),
+    });
+
+    await waitFor(() =>
+      expect(result.current.data?.searchBlock?.hash).toBe("archive-latest-block"),
+    );
+
+    expect(publicClient.queryBlock).toHaveBeenCalledOnce();
+    expect((fetchMock.mock.calls[0]?.[0] as URL).toString()).toBe(
+      "https://api-archive-mainnet.dango.zone/blocks/latest",
+    );
+    expect(result.current.data?.currentBlock.hash).toBe("live-current-block");
+  });
+
+  it("keeps future mainnet block detection on the live client without querying archive", async () => {
+    publicClient.chain = { id: "dango-1" };
+    publicClient.queryBlock.mockResolvedValue({ blockHeight: 100, hash: "current-block" });
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+
+    const { result } = renderHook(() => useExplorerBlock("125"), {
+      wrapper: createQueryClientWrapper(),
+    });
+
+    await waitFor(() => expect(result.current.data?.isFutureBlock).toBe(true));
+
+    expect(publicClient.queryBlock).toHaveBeenCalledOnce();
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(result.current.data?.searchBlock).toBeNull();
+  });
+
   it("surfaces backend failures for block explorer lookups", async () => {
     const queryError = new Error("block query unavailable");
     publicClient.queryBlock.mockRejectedValueOnce(queryError);
@@ -228,6 +363,70 @@ describe("explorer hooks", () => {
 
     await waitFor(() => expect(result.current.data).toEqual(indexedTransaction));
     expect(publicClient.searchTxs).toHaveBeenCalledWith({ hash: txHash });
+  });
+
+  it("uses the mainnet archive for direct transaction hash lookups", async () => {
+    publicClient.chain = { id: "dango-1" };
+    const txHash = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+    const sender = "0x73656e6465720000000000000000000000000000";
+    const contract = "0x636f6e7472616374000000000000000000000000";
+    const fetchMock = vi.fn().mockResolvedValue(
+      jsonResponse([
+        {
+          blockHeight: 77,
+          idx: 3,
+          kind: "transaction",
+          hash: txHash,
+          sender,
+          success: true,
+          timestamp: "2026-06-08T12:00:00Z",
+          tx: {
+            sender,
+            gas_limit: 120,
+            msgs: [{ execute: { contract, msg: { ping: {} }, funds: {} } }],
+          },
+          outcome: {
+            transaction: {
+              gas_limit: 120,
+              gas_used: 80,
+              result: { ok: null },
+              events: { msgs_and_backrun: { msgs: [] } },
+            },
+          },
+        },
+      ]),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const { result } = renderHook(() => useExplorerTransaction(txHash), {
+      wrapper: createQueryClientWrapper(),
+    });
+
+    await waitFor(() => expect(result.current.data?.hash).toBe(txHash));
+
+    expect(publicClient.searchTxs).not.toHaveBeenCalled();
+    expect((fetchMock.mock.calls[0]?.[0] as URL).toString()).toBe(
+      `https://api-archive-mainnet.dango.zone/transactions/${txHash.toUpperCase()}`,
+    );
+    expect(result.current.data).toMatchObject({
+      blockHeight: 77,
+      createdAt: "2026-06-08T12:00:00Z",
+      gasUsed: 80,
+      gasWanted: 120,
+      hasSucceeded: true,
+      messages: [
+        {
+          contractAddr: contract,
+          methodName: "execute",
+          orderIdx: 0,
+          senderAddr: sender,
+        },
+      ],
+      nestedEvents: JSON.stringify({ msgs_and_backrun: { msgs: [] } }),
+      sender,
+      transactionIdx: 3,
+      transactionType: "TX",
+    });
   });
 
   it("surfaces backend failures for direct transaction hash lookups", async () => {
@@ -346,6 +545,80 @@ describe("explorer hooks", () => {
     });
     expect(result.current.pagination.hasNextPage).toBe(true);
     expect(result.current.pagination.hasPreviousPage).toBe(false);
+  });
+
+  it("uses archive sender pagination with a local previous-page cursor stack on mainnet", async () => {
+    publicClient.chain = { id: "dango-1" };
+    const senderAddress = "0x73656e6465720000000000000000000000000000";
+    const firstPage = {
+      items: [
+        {
+          blockHeight: 10,
+          idx: 0,
+          kind: "transaction",
+          hash: "first-page",
+          sender: senderAddress,
+          success: true,
+          timestamp: "2026-06-08T12:00:00Z",
+          tx: { sender: senderAddress, gas_limit: 1, msgs: [] },
+          outcome: { transaction: { gas_limit: 1, gas_used: 1, result: { ok: null }, events: [] } },
+        },
+      ],
+      pageInfo: { hasNextPage: true, endCursor: "first-end" },
+    };
+    const secondPage = {
+      items: [
+        {
+          blockHeight: 9,
+          idx: 0,
+          kind: "transaction",
+          hash: "second-page",
+          sender: senderAddress,
+          success: true,
+          timestamp: "2026-06-08T12:00:01Z",
+          tx: { sender: senderAddress, gas_limit: 1, msgs: [] },
+          outcome: { transaction: { gas_limit: 1, gas_used: 1, result: { ok: null }, events: [] } },
+        },
+      ],
+      pageInfo: { hasNextPage: false, endCursor: "second-end" },
+    };
+    const fetchMock = vi.fn((input: URL) => {
+      const after = input.searchParams.get("after");
+      return Promise.resolve(jsonResponse(after === "first-end" ? secondPage : firstPage));
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const { result } = renderHook(() => useExplorerTransactionsBySender(senderAddress), {
+      wrapper: createQueryClientWrapper(),
+    });
+
+    await waitFor(() => expect(result.current.data?.nodes[0]?.hash).toBe("first-page"));
+    expect(result.current.pagination.hasNextPage).toBe(true);
+    expect(result.current.pagination.hasPreviousPage).toBe(false);
+
+    act(() => {
+      result.current.pagination.goNext();
+    });
+
+    await waitFor(() => expect(result.current.data?.nodes[0]?.hash).toBe("second-page"));
+    expect(result.current.pagination.hasNextPage).toBe(false);
+    expect(result.current.pagination.hasPreviousPage).toBe(true);
+
+    act(() => {
+      result.current.pagination.goPrev();
+    });
+
+    await waitFor(() => expect(result.current.data?.nodes[0]?.hash).toBe("first-page"));
+    expect(result.current.pagination.hasPreviousPage).toBe(false);
+    expect(publicClient.searchTxs).not.toHaveBeenCalled();
+    expect(fetchMock.mock.calls.map(([url]) => (url as URL).searchParams.get("after"))).toEqual([
+      null,
+      "first-end",
+      null,
+    ]);
+    expect(fetchMock.mock.calls.some(([url]) => (url as URL).searchParams.has("before"))).toBe(
+      false,
+    );
   });
 
   it("does not query sender transactions when disabled", () => {
