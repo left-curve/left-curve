@@ -27,7 +27,10 @@ use {
     utoipa_swagger_ui::SwaggerUi,
 };
 #[cfg(feature = "metrics")]
-use {crate::middlewares::metrics::init_httpd_metrics, actix_web_metrics::ActixWebMetricsBuilder};
+use {
+    crate::{middlewares::metrics::init_httpd_metrics, query_memo::init_query_memo_metrics},
+    actix_web_metrics::ActixWebMetricsBuilder,
+};
 
 /// The OpenAPI document of the node's HTTP API — the REST routes, plus
 /// documentation-only entries for the `/ws` WebSocket and the deprecated
@@ -158,6 +161,9 @@ pub async fn run_server(
 
     #[cfg(feature = "metrics")]
     init_httpd_metrics();
+
+    #[cfg(feature = "metrics")]
+    init_query_memo_metrics();
 
     let subscription_limiter = SubscriptionLimiter::new(
         httpd_config.max_subscriptions_per_connection,

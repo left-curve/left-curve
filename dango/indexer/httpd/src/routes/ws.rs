@@ -16,7 +16,7 @@
 //! channel to attribute them to — an unparseable frame, or an `unsubscribe` for
 //! an unknown `id` — use the dedicated `error` channel.
 //!
-//! Four channel types are served, all reusing the in-memory validator stream
+//! Five channel types are served, all reusing the in-memory validator stream
 //! that backed the `full_block` / `perps_events` GraphQL subscriptions:
 //!
 //! - `perpsEvents` — perps-contract events grouped per block, narrowed by the
@@ -26,6 +26,10 @@
 //! - `block` — every finalized block without its execution outcome
 //!   (`{info, txs}`).
 //! - `fullBlock` — every finalized block in full (`{block, outcome}`).
+//! - `query` — a standing query: an initial snapshot at subscribe time, then a
+//!   re-run once per block whose height is a multiple of `interval`, each
+//!   frame a `{blockHeight, response}`. Identical concurrent subscriptions
+//!   share one execution per tick (see [`crate::query_memo`]).
 //!
 //! Two one-shot request/response methods ride the same socket: `broadcast`
 //! (submit a signed transaction to the mempool) and `query` (run a read-only
@@ -43,12 +47,13 @@ use {
     crate::{
         context::FullContext,
         graphql::query::core::CoreQuery,
+        query_memo::QueryFrame,
         request_ip::RequesterIp,
         subscription_limiter::{ConnectionLimiter, SubscriptionLimiter, guard_subscription_stream},
     },
     actix_web::{HttpRequest, HttpResponse, Resource, guard, web},
     actix_ws::{AggregatedMessage, Session},
-    dango_indexer_stream::{Context, make_perps_filter},
+    dango_indexer_stream::make_perps_filter,
     dango_primitives::{HttpRequestDetails, Query, Tx},
     futures_util::{StreamExt, stream},
     serde::{Deserialize, Serialize},
@@ -101,11 +106,13 @@ pub fn services() -> Resource {
                    finalized block's metadata, the `info` field of `Block`), \
                    a `block` feed (every finalized block without its \
                    execution outcome, the same shape as \
-                   `/block/info/{block_height}`), or a `fullBlock` feed \
+                   `/block/info/{block_height}`), a `fullBlock` feed \
                    (every finalized `{ block, outcome }`, the same shape as \
-                   `/block/full/{block_height}`) — plus `unsubscribe`, `ping`, \
-                   `broadcast` (submit a signed `Tx` over the socket), and \
-                   `query` (run a one-time read-only state query, the same \
+                   `/block/full/{block_height}`), or a `query` feed (a \
+                   standing read-only state query, re-run every `interval` \
+                   blocks) — plus `unsubscribe`, `ping`, `broadcast` (submit \
+                   a signed `Tx` over the socket), and `query` (run a \
+                   one-time read-only state query, the same \
                    `Query`/`QueryResponse` shapes as `POST /query`). \
                    Server frames are `channel`-tagged: `subscriptionResponse`, \
                    `perpsEvents`, `blockInfo`, `block`, `fullBlock`, \
@@ -216,6 +223,27 @@ enum Subscription {
         #[serde(default)]
         since: Option<u64>,
     },
+
+    /// A standing read-only query: an initial snapshot at subscribe time, then
+    /// a re-run once per block whose height is a multiple of `interval`, each
+    /// frame carrying `{blockHeight, response}` on the `query` channel.
+    ///
+    /// Live-only — there is no `since` replay, because historical state cannot
+    /// be re-queried; on reconnect, resubscribe and take the fresh snapshot.
+    Query {
+        query: Query,
+
+        #[serde(default = "default_query_interval")]
+        interval: u64,
+    },
+}
+
+/// A `query` subscription that does not say otherwise re-runs every 10 blocks
+/// — matching the GraphQL `query_app` default, and keeping the load modest
+/// when many clients subscribe without choosing an interval. A client that
+/// wants per-block updates asks for `interval: 1` explicitly.
+const fn default_query_interval() -> u64 {
+    10
 }
 
 impl Subscription {
@@ -226,6 +254,7 @@ impl Subscription {
             Subscription::BlockInfo { .. } => "blockInfo",
             Subscription::Block { .. } => "block",
             Subscription::FullBlock { .. } => "fullBlock",
+            Subscription::Query { .. } => "query",
         }
     }
 }
@@ -430,12 +459,17 @@ async fn handle_text(
                 },
             };
 
-            match open_stream(id, &subscription, guard, &app_ctx.stream_context) {
+            match open_stream(id, &subscription, guard, app_ctx) {
                 Ok(frames) => {
                     streams.insert(id, frames);
                     send(session, ack(id, "subscribe", Some(channel))).await
                 },
-                Err(resync) => send(session, channel_error(channel, id, "resync", &resync)).await,
+                Err(SubscribeError::BadRequest(message)) => {
+                    send(session, channel_error(channel, id, "badRequest", &message)).await
+                },
+                Err(SubscribeError::Resync(message)) => {
+                    send(session, channel_error(channel, id, "resync", &message)).await
+                },
             }
         },
         ClientMessage::Unsubscribe { id } => {
@@ -506,6 +540,16 @@ async fn handle_text(
     }
 }
 
+/// Why a subscription could not be opened. Mapped to the co-located error
+/// frame's `code` at the `handle_text` call site.
+enum SubscribeError {
+    /// The request itself is invalid (e.g. a zero `interval`).
+    BadRequest(String),
+
+    /// The requested `since` predates the retained window.
+    Resync(String),
+}
+
 /// Open the validator stream for a subscription and project it to tagged JSON
 /// text frames. The `guard` is moved into the projected stream so it lives
 /// exactly as long as the subscription. On a connect-time resync (the requested
@@ -515,8 +559,10 @@ fn open_stream(
     id: u64,
     subscription: &Subscription,
     guard: Arc<crate::subscription_limiter::SubscriptionGuard>,
-    stream_ctx: &Context,
-) -> Result<FrameStream, String> {
+    app_ctx: &FullContext,
+) -> Result<FrameStream, SubscribeError> {
+    let stream_ctx = &app_ctx.stream_context;
+
     match subscription {
         Subscription::PerpsEvents {
             since,
@@ -537,7 +583,7 @@ fn open_stream(
             let raw = stream_ctx
                 .perps()
                 .subscribe(*since, filter)
-                .map_err(|resync| resync.to_string())?;
+                .map_err(|resync| SubscribeError::Resync(resync.to_string()))?;
             let frames = guard_subscription_stream(raw, Some(guard))
                 .map(move |block| data_frame("perpsEvents", id, &block));
 
@@ -547,7 +593,7 @@ fn open_stream(
             let raw = stream_ctx
                 .blocks()
                 .subscribe(*since, |block| Some(block.block.info))
-                .map_err(|resync| resync.to_string())?;
+                .map_err(|resync| SubscribeError::Resync(resync.to_string()))?;
             let frames = guard_subscription_stream(raw, Some(guard))
                 .map(move |info| data_frame("blockInfo", id, &info));
 
@@ -557,7 +603,7 @@ fn open_stream(
             let raw = stream_ctx
                 .blocks()
                 .subscribe(*since, |block| Some(block.block.clone()))
-                .map_err(|resync| resync.to_string())?;
+                .map_err(|resync| SubscribeError::Resync(resync.to_string()))?;
             let frames = guard_subscription_stream(raw, Some(guard))
                 .map(move |block| data_frame("block", id, &block));
 
@@ -567,11 +613,63 @@ fn open_stream(
             let raw = stream_ctx
                 .blocks()
                 .subscribe(*since, |block| Some(block.clone()))
-                .map_err(|resync| resync.to_string())?;
+                .map_err(|resync| SubscribeError::Resync(resync.to_string()))?;
             let frames = guard_subscription_stream(raw, Some(guard))
                 .map(move |block| data_frame("fullBlock", id, &block));
 
             Ok(with_terminal("fullBlock", id, frames))
+        },
+        Subscription::Query { query, interval } => {
+            if *interval == 0 {
+                return Err(SubscribeError::BadRequest(
+                    "`interval` must be >= 1".to_string(),
+                ));
+            }
+
+            let blocks = stream_ctx.blocks();
+
+            // The initial snapshot is keyed by the ring tip, so simultaneous
+            // identical subscriptions (e.g. a reconnect storm) share one
+            // execution. Height 0 covers the empty-ring case, before the first
+            // block is published.
+            let tip = blocks.tip().unwrap_or(0);
+
+            // The interval filter lives in the ring projection: non-matching
+            // blocks are suppressed (the subscriber's watermark still advances
+            // over them) and matching ones are projected to their height. The
+            // alignment is absolute — `height % interval == 0` — so every
+            // subscription with the same query and interval ticks at the same
+            // heights, which is what lets the memo collapse them.
+            let interval = *interval;
+            let raw = blocks
+                .subscribe(None, move |block| {
+                    let height = block.block.info.height;
+                    height.is_multiple_of(interval).then_some(height)
+                })
+                .map_err(|resync| SubscribeError::Resync(resync.to_string()))?;
+
+            let memo = app_ctx.query_memo.clone();
+            let base = app_ctx.base.clone();
+            let query = query.clone();
+
+            let initial = {
+                let memo = memo.clone();
+                let base = base.clone();
+                let query = query.clone();
+
+                stream::once(async move { memo.query_at(tip, query, base).await })
+            };
+            let ticks = raw.then(move |height| {
+                let memo = memo.clone();
+                let base = base.clone();
+                let query = query.clone();
+
+                async move { memo.query_at(height, query, base).await }
+            });
+
+            let items = guard_subscription_stream(initial.chain(ticks), Some(guard));
+
+            Ok(query_frames(id, items))
         },
     }
 }
@@ -595,6 +693,75 @@ where
     });
 
     Box::pin(frames.chain(terminal))
+}
+
+/// Project a `query` subscription's executions to tagged JSON text frames,
+/// enforcing the per-subscriber delivery contract:
+///
+/// - Each frame's `blockHeight` strictly exceeds the previous frame's. A tick
+///   whose result would duplicate an already-delivered height — possible when
+///   execution lags a full interval behind the ring, since a query always
+///   reads the *latest* state — is skipped, not re-sent.
+/// - A failed execution is a single terminal `queryFailed` error frame; the
+///   subscription ends without a trailing `resync`.
+/// - A feed that ends on its own (the ring outpaced the subscriber, or
+///   shutdown) closes with the standard terminal `resync` frame; there is no
+///   `since` replay, so "resync" here simply means resubscribe for a fresh
+///   snapshot.
+fn query_frames<S>(id: u64, items: S) -> FrameStream
+where
+    S: stream::Stream<Item = Result<Arc<QueryFrame>, String>> + Send + 'static,
+{
+    enum Tick {
+        Item(Result<Arc<QueryFrame>, String>),
+        Ended,
+    }
+
+    let tagged = items
+        .map(Tick::Item)
+        .chain(stream::once(async { Tick::Ended }));
+
+    let frames = tagged
+        .scan((None::<u64>, false), move |(last_height, done), tick| {
+            let out = if *done {
+                // A terminal frame has been emitted; end the stream. This is
+                // what keeps the chained `Ended` from adding a `resync` after
+                // a `queryFailed`.
+                None
+            } else {
+                Some(match tick {
+                    // The first frame is always delivered (a fresh chain
+                    // legitimately serves height 0); later ones must advance.
+                    Tick::Item(Ok(frame))
+                        if last_height.is_none_or(|last| frame.block_height > last) =>
+                    {
+                        *last_height = Some(frame.block_height);
+                        Some(data_frame("query", id, frame.as_ref()))
+                    },
+                    // A lag-induced repeat of an already-delivered height: the
+                    // state is unchanged, so the content is identical — skip.
+                    Tick::Item(Ok(_)) => None,
+                    Tick::Item(Err(message)) => {
+                        *done = true;
+                        Some(channel_error("query", id, "queryFailed", &message))
+                    },
+                    Tick::Ended => {
+                        *done = true;
+                        Some(channel_error(
+                            "query",
+                            id,
+                            "resync",
+                            "subscription ended; resubscribe for a fresh snapshot",
+                        ))
+                    },
+                })
+            };
+
+            std::future::ready(out)
+        })
+        .filter_map(std::future::ready);
+
+    Box::pin(frames)
 }
 
 // ---- serialization helpers ----
@@ -895,6 +1062,84 @@ mod tests {
             id: 6,
             query: Query::Balance(_)
         }));
+    }
+
+    #[test]
+    fn deserializes_query_subscription() {
+        let message: ClientMessage = serde_json::from_str(
+            r#"{"method":"subscribe","id":7,"subscription":{"type":"query","query":{"config":{}},"interval":5}}"#,
+        )
+        .unwrap();
+
+        let ClientMessage::Subscribe { id, subscription } = message else {
+            panic!("expected a subscribe message");
+        };
+
+        assert_eq!(id, 7);
+        assert_eq!(subscription.channel(), "query");
+
+        let Subscription::Query { query, interval } = subscription else {
+            panic!("expected a query subscription");
+        };
+
+        assert!(matches!(query, Query::Config(_)));
+        assert_eq!(interval, 5);
+
+        // An absent `interval` defaults to 10 (every tenth block).
+        let message: ClientMessage = serde_json::from_str(
+            r#"{"method":"subscribe","id":8,"subscription":{"type":"query","query":{"config":{}}}}"#,
+        )
+        .unwrap();
+
+        let ClientMessage::Subscribe { subscription, .. } = message else {
+            panic!("expected a subscribe message");
+        };
+
+        assert!(matches!(subscription, Subscription::Query {
+            interval: 10,
+            ..
+        }));
+    }
+
+    #[test]
+    fn query_frame_stream_is_monotonic_with_terminal_error() {
+        use dango_primitives::QueryResponse;
+
+        let frame = |height: u64| {
+            Ok(Arc::new(QueryFrame {
+                block_height: height,
+                response: QueryResponse::WasmRaw(None),
+            }))
+        };
+
+        // A lag-induced duplicate height is skipped; a failed execution is a
+        // single terminal `queryFailed` frame with no trailing `resync`.
+        let items = stream::iter(vec![frame(5), frame(5), frame(6), Err("boom".to_string())]);
+        let got = futures::executor::block_on(query_frames(9, items).collect::<Vec<_>>());
+
+        assert_eq!(got.len(), 3);
+        assert_eq!(
+            serde_json::from_str::<serde_json::Value>(&got[0]).unwrap(),
+            json!({"channel": "query", "id": 9, "data": {"blockHeight": 5, "response": {"wasm_raw": null}}}),
+        );
+        assert!(got[1].contains(r#""blockHeight":6"#));
+        assert_eq!(got[2], channel_error("query", 9, "queryFailed", "boom"));
+
+        // A feed that ends on its own closes with the terminal `resync` frame.
+        let items = stream::iter(vec![frame(5)]);
+        let got = futures::executor::block_on(query_frames(9, items).collect::<Vec<_>>());
+
+        assert_eq!(got.len(), 2);
+        assert!(got[1].contains(r#""code":"resync""#), "got: {:?}", got[1]);
+
+        // The first frame is delivered whatever its height — a fresh chain
+        // legitimately serves height 0 — and only repeats are skipped.
+        let items = stream::iter(vec![frame(0), frame(0), frame(1)]);
+        let got = futures::executor::block_on(query_frames(9, items).collect::<Vec<_>>());
+
+        assert_eq!(got.len(), 3, "got: {got:?}"); // heights 0 and 1, then resync
+        assert!(got[0].contains(r#""blockHeight":0"#));
+        assert!(got[1].contains(r#""blockHeight":1"#));
     }
 
     #[test]
