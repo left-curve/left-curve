@@ -23,6 +23,8 @@
 //!   advanced the generation to `N + 1` — bypasses the memo instead (see
 //!   [`QueryMemo::query_at`]).
 
+#[cfg(feature = "metrics")]
+use metrics::{counter, describe_counter};
 use {
     crate::context::MinimalContext,
     dango_primitives::{BorshSerExt, Query, QueryResponse},
@@ -90,45 +92,73 @@ impl QueryMemo {
         query: Query,
         ctx: MinimalContext,
     ) -> Result<Arc<QueryFrame>, String> {
-        // A query that cannot be serialized cannot be keyed; run it uncached.
-        // (Cannot actually happen for a `Query` that deserialized off the wire.)
-        let Ok(key) = query.to_borsh_vec() else {
-            return run_query(ctx, query).await;
+        // How the lookup was answered: sharing an existing execution, starting
+        // the execution others will share, or bypassing the memo entirely.
+        enum Lookup {
+            Hit(SharedQuery),
+            Miss(SharedQuery),
+            Bypass,
+        }
+
+        let lookup = match query.to_borsh_vec() {
+            Ok(key) => {
+                let mut inner = self.inner.lock().unwrap();
+
+                if height > inner.height {
+                    inner.entries.clear();
+                    inner.height = height;
+                }
+
+                if height < inner.height {
+                    // This caller is skewed behind the newest trigger. Its
+                    // execution would read *current* state, so parking the
+                    // result in the newer generation's map could serve, for
+                    // that newer trigger, state older than the trigger itself.
+                    // Bypass the memo: correctness over deduplication.
+                    Lookup::Bypass
+                } else if let Some(shared) = inner.entries.get(&key) {
+                    Lookup::Hit(shared.clone())
+                } else if inner.entries.len() >= MEMO_MAX_ENTRIES {
+                    Lookup::Bypass
+                } else {
+                    // Insert before awaiting, so concurrent askers coalesce
+                    // onto this execution rather than starting their own.
+                    let shared = run_query(ctx.clone(), query.clone()).boxed().shared();
+                    inner.entries.insert(key, shared.clone());
+                    Lookup::Miss(shared)
+                }
+            },
+            // A query that cannot be serialized cannot be keyed; run it
+            // uncached. (Cannot actually happen for a `Query` that
+            // deserialized off the wire.)
+            Err(_) => Lookup::Bypass,
         };
 
-        let shared = {
-            let mut inner = self.inner.lock().unwrap();
+        #[cfg(feature = "metrics")]
+        counter!("ws.query_memo.lookups.total", "result" => match &lookup {
+            Lookup::Hit(_) => "hit",
+            Lookup::Miss(_) => "miss",
+            Lookup::Bypass => "bypass",
+        })
+        .increment(1);
 
-            if height > inner.height {
-                inner.entries.clear();
-                inner.height = height;
-            }
-
-            if height < inner.height {
-                // This caller is skewed behind the newest trigger. Its
-                // execution would read *current* state, so parking the result
-                // in the newer generation's map could serve, for that newer
-                // trigger, state older than the trigger itself. Bypass the
-                // memo: correctness over deduplication.
-                None
-            } else if let Some(shared) = inner.entries.get(&key) {
-                Some(shared.clone())
-            } else if inner.entries.len() >= MEMO_MAX_ENTRIES {
-                None
-            } else {
-                // Insert before awaiting, so concurrent askers coalesce onto
-                // this execution rather than starting their own.
-                let shared = run_query(ctx.clone(), query.clone()).boxed().shared();
-                inner.entries.insert(key, shared.clone());
-                Some(shared)
-            }
-        };
-
-        match shared {
-            Some(shared) => shared.await,
-            None => run_query(ctx, query).await,
+        match lookup {
+            Lookup::Hit(shared) | Lookup::Miss(shared) => shared.await,
+            Lookup::Bypass => run_query(ctx, query).await,
         }
     }
+}
+
+/// Register the memo's lookup counter. An idempotent, describe-only call,
+/// invoked once at server startup alongside the other metric registrations.
+#[cfg(feature = "metrics")]
+pub fn init_query_memo_metrics() {
+    describe_counter!(
+        "ws.query_memo.lookups.total",
+        "Query-memo lookups by result: hit (served from a shared execution), \
+         miss (started the execution others share), bypass (ran uncached — \
+         stale trigger, full map, or unkeyable query)"
+    );
 }
 
 /// Execute the query against the app and shape the outcome into the shared
