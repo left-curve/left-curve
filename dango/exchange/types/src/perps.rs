@@ -4,7 +4,8 @@ use {
     dango_order_book::{
         ChildOrder, ClientOrderId, ConditionalOrder, Dimensionless, FillId, FundingPerUnit,
         FundingRate, LiquidityDepthResponse, OrderId, OrderKind, PairId, Quantity,
-        QueryOrderResponse, QueryOrdersByUserResponseItem, TriggerDirection, UsdPrice, UsdValue,
+        QueryOrderByClientOrderIdResponse, QueryOrderResponse, QueryOrdersByUserResponseItem,
+        TriggerDirection, UsdPrice, UsdValue,
     },
     dango_primitives::{Addr, Duration, NonEmpty, Op, Order as IterationOrder, Part, Timestamp},
     std::{
@@ -1058,6 +1059,13 @@ pub enum QueryMsg {
     /// Query all limit orders of a single user.
     #[returns(BTreeMap<OrderId, QueryOrdersByUserResponseItem>)]
     OrdersByUser { user: Addr },
+
+    /// Query a single limit order by the submitting user and client order ID.
+    #[returns(Option<QueryOrderByClientOrderIdResponse>)]
+    OrderByClientOrderId {
+        user: Addr,
+        client_order_id: ClientOrderId,
+    },
 
     /// Query aggregated order book depth at a specific bucket size.
     #[returns(LiquidityDepthResponse)]

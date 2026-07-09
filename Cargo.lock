@@ -4252,6 +4252,7 @@ dependencies = [
  "dango-indexer-clickhouse",
  "dango-indexer-sql",
  "dango-indexer-stream",
+ "dango-order-book",
  "dango-primitives",
  "dango-types",
  "futures",

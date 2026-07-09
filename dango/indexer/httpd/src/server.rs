@@ -61,6 +61,17 @@ use {
         crate::routes::query::query,
         crate::routes::simulate::simulate,
         crate::routes::broadcast::broadcast,
+        crate::routes::perps::param,
+        crate::routes::perps::pair_param,
+        crate::routes::perps::pair_params,
+        crate::routes::perps::state,
+        crate::routes::perps::pair_state,
+        crate::routes::perps::pair_states,
+        crate::routes::perps::liquidity_depth,
+        crate::routes::perps::user_state,
+        crate::routes::perps::orders_by_user,
+        crate::routes::perps::order_by_client_order_id,
+        crate::routes::perps::order,
         crate::routes::ws::ws_doc,
         crate::routes::graphql::graphql_doc,
     ),
@@ -70,6 +81,13 @@ use {
         (name = "chain", description = "Chain reads and writes proxied to the node: \
                                         state queries, transaction simulation, \
                                         transaction broadcast"),
+        (name = "perps", description = "GET aliases for the perps contract's queries. \
+                                       Each route mirrors one `wasm_smart` query to \
+                                       the perps contract — same read as `POST /query`, \
+                                       with the contract address resolved server-side \
+                                       and the parameters taken from the query string. \
+                                       Responses are the contract's response objects, \
+                                       verbatim."),
         (name = "websocket", description = "Realtime feeds over a multiplexed WebSocket"),
         (name = "graphql", description = "Deprecated GraphQL API — scheduled for removal"),
     )
@@ -96,6 +114,7 @@ where
             .service(routes::index::requester_ip)
             .service(routes::index::sentry_raise)
             .service(routes::blocks::services())
+            .service(routes::perps::services())
             .service(routes::ws::services())
             .service(routes::query::query)
             .service(routes::simulate::simulate)
@@ -297,6 +316,17 @@ mod tests {
             "/query",
             "/simulate",
             "/broadcast",
+            "/perps/param",
+            "/perps/pair_param",
+            "/perps/pair_params",
+            "/perps/state",
+            "/perps/pair_state",
+            "/perps/pair_states",
+            "/perps/liquidity_depth",
+            "/perps/user_state",
+            "/perps/order/by-user",
+            "/perps/order/by-client-order-id",
+            "/perps/order/{order_id}",
             "/ws",
             "/graphql",
         ] {

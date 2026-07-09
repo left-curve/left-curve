@@ -1,11 +1,17 @@
 use {
     assert_json_diff::assert_json_include,
     assertor::*,
-    dango_primitives::{Block, BlockOutcome},
-    dango_testing::{
-        TestOption, build_app_service, call_api, call_api_with_headers,
-        setup_test_naive_with_indexer, setup_test_naive_with_indexer_and_create_blocks,
+    dango_math::Uint64,
+    dango_order_book::{OrderKind, Quantity, TimeInForce, UsdPrice},
+    dango_primitives::{
+        Addressable, Block, BlockOutcome, Coins, QuerierExt, ResultExt, btree_map, btree_set,
     },
+    dango_testing::{
+        TestOption, build_app_service, call_api, call_api_post, call_api_with_headers, pair_id,
+        setup_perps_env, setup_test_naive_with_indexer,
+        setup_test_naive_with_indexer_and_create_blocks,
+    },
+    dango_types::perps,
     serde_json::json,
 };
 
@@ -133,6 +139,17 @@ async fn openapi_spec_is_served() -> anyhow::Result<()> {
                     "/query",
                     "/simulate",
                     "/broadcast",
+                    "/perps/param",
+                    "/perps/pair_param",
+                    "/perps/pair_params",
+                    "/perps/state",
+                    "/perps/pair_state",
+                    "/perps/pair_states",
+                    "/perps/liquidity_depth",
+                    "/perps/user_state",
+                    "/perps/order/by-user",
+                    "/perps/order/by-client-order-id",
+                    "/perps/order/{order_id}",
                     "/ws",
                     "/graphql",
                 ] {
@@ -141,6 +158,254 @@ async fn openapi_spec_is_served() -> anyhow::Result<()> {
                         "the spec should document {path}",
                     );
                 }
+
+                Ok::<(), anyhow::Error>(())
+            })
+            .await
+        })
+        .await?
+}
+
+/// The `/perps/*` aliases: each returns exactly what the equivalent raw
+/// `wasm_smart` query returns through `POST /query`, with the parameters
+/// parsed from the URL.
+#[tokio::test(flavor = "multi_thread")]
+async fn perps_aliases_mirror_contract_queries() -> anyhow::Result<()> {
+    let (mut suite, mut accounts, _, contracts, _, httpd_context, _, _, _db_guard) =
+        setup_test_naive_with_indexer(TestOption::default().with_mocked_clickhouse()).await;
+
+    // Oracle prices ($2,000 ETH) and margin for user1 and user2.
+    setup_perps_env(&mut suite, &mut accounts, &contracts, 2_000, 100_000).await;
+
+    // The test genesis configures no liquidity depth bucket sizes; add one so
+    // the `liquidity_depth` alias has something to return. Depth bookkeeping
+    // tracks orders placed after the bucket size is configured, so this comes
+    // before the orders. The current parameters are read back from the chain
+    // and re-submitted with only `bucket_sizes` changed.
+    let param: perps::Param = suite
+        .query_wasm_smart(contracts.perps, perps::QueryParamRequest {})
+        .should_succeed();
+    let pair_param: Option<perps::PairParam> = suite
+        .query_wasm_smart(contracts.perps, perps::QueryPairParamRequest {
+            pair_id: pair_id(),
+        })
+        .should_succeed();
+
+    suite
+        .execute(
+            &mut accounts.owner,
+            contracts.perps,
+            &perps::ExecuteMsg::Maintain(perps::MaintainerMsg::Configure {
+                param,
+                pair_params: btree_map! {
+                    pair_id() => perps::PairParam {
+                        bucket_sizes: btree_set! { UsdPrice::new_int(100) },
+                        ..pair_param.expect("the test genesis should have the pair")
+                    },
+                },
+            }),
+            Coins::new(),
+        )
+        .await
+        .should_succeed();
+
+    // Two resting bids for user1, priced below the oracle price so they rest
+    // on the book rather than cross; the second carries a client order ID.
+    for (price, client_order_id) in [(1_500, None), (1_400, Some(Uint64::new(42)))] {
+        suite
+            .execute(
+                &mut accounts.user1,
+                contracts.perps,
+                &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(
+                    perps::SubmitOrderRequest {
+                        pair_id: pair_id(),
+                        size: Quantity::new_int(5),
+                        kind: OrderKind::Limit {
+                            limit_price: UsdPrice::new_int(price),
+                            time_in_force: TimeInForce::GoodTilCanceled,
+                            client_order_id,
+                        },
+                        reduce_only: false,
+                        tp: None,
+                        sl: None,
+                    },
+                )),
+                Coins::new(),
+            )
+            .await
+            .should_succeed();
+    }
+
+    let user = accounts.user1.address();
+    let perps_contract = contracts.perps;
+
+    let local_set = tokio::task::LocalSet::new();
+
+    local_set
+        .run_until(async move {
+            tokio::task::spawn_local(async move {
+                // Parity: every alias returns what the equivalent raw query
+                // returns.
+                for (alias, msg) in [
+                    ("/perps/param".to_string(), json!({ "param": {} })),
+                    (
+                        format!("/perps/pair_param?pair_id={}", pair_id()),
+                        json!({ "pair_param": { "pair_id": pair_id() } }),
+                    ),
+                    (
+                        "/perps/pair_params".to_string(),
+                        json!({ "pair_params": {} }),
+                    ),
+                    ("/perps/state".to_string(), json!({ "state": {} })),
+                    (
+                        format!("/perps/pair_state?pair_id={}", pair_id()),
+                        json!({ "pair_state": { "pair_id": pair_id() } }),
+                    ),
+                    (
+                        "/perps/pair_states".to_string(),
+                        json!({ "pair_states": {} }),
+                    ),
+                    (
+                        format!("/perps/user_state?user={user}&include_all=true"),
+                        json!({ "user_state_extended": { "user": user, "include_all": true } }),
+                    ),
+                    (
+                        format!("/perps/order/by-user?user={user}"),
+                        json!({ "orders_by_user": { "user": user } }),
+                    ),
+                    (
+                        format!("/perps/order/by-client-order-id?user={user}&client_order_id=42"),
+                        json!({
+                            "order_by_client_order_id": {
+                                "user": user,
+                                "client_order_id": "42",
+                            },
+                        }),
+                    ),
+                ] {
+                    let alias_response = call_api::<serde_json::Value>(
+                        build_app_service(httpd_context.clone()),
+                        &alias,
+                    )
+                    .await?;
+
+                    let query_response = call_api_post::<serde_json::Value, _>(
+                        build_app_service(httpd_context.clone()),
+                        "/query",
+                        &json!({ "wasm_smart": { "contract": perps_contract, "msg": msg } }),
+                    )
+                    .await?;
+
+                    assert_eq!(
+                        alias_response, query_response["wasm_smart"],
+                        "alias {alias} should mirror the raw query",
+                    );
+                }
+
+                // The two resting bids show up in the aggregated depth at the
+                // pair's first configured bucket size.
+                let pair_param = call_api::<serde_json::Value>(
+                    build_app_service(httpd_context.clone()),
+                    &format!("/perps/pair_param?pair_id={}", pair_id()),
+                )
+                .await?;
+                let bucket_size = pair_param["bucket_sizes"][0]
+                    .as_str()
+                    .expect("pair should have at least one bucket size")
+                    .to_string();
+
+                let depth = call_api::<serde_json::Value>(
+                    build_app_service(httpd_context.clone()),
+                    &format!(
+                        "/perps/liquidity_depth?pair_id={}&bucket_size={bucket_size}",
+                        pair_id(),
+                    ),
+                )
+                .await?;
+                assert!(
+                    !depth["bids"].as_object().unwrap().is_empty(),
+                    "the resting bids should aggregate into at least one bucket",
+                );
+
+                // `user_state` computes the opt-in fields when asked.
+                let user_state = call_api::<serde_json::Value>(
+                    build_app_service(httpd_context.clone()),
+                    &format!("/perps/user_state?user={user}&include_all=true"),
+                )
+                .await?;
+                assert!(
+                    !user_state["equity"].is_null(),
+                    "include_all should compute the equity",
+                );
+
+                // The full order map, from which the two orders' system-
+                // assigned IDs are learned.
+                let orders = call_api::<serde_json::Value>(
+                    build_app_service(httpd_context.clone()),
+                    &format!("/perps/order/by-user?user={user}"),
+                )
+                .await?;
+                let order_ids = orders
+                    .as_object()
+                    .unwrap()
+                    .keys()
+                    .cloned()
+                    .collect::<Vec<_>>();
+                assert_that!(order_ids).has_length(2);
+
+                let oldest = order_ids
+                    .iter()
+                    .min_by_key(|id| id.parse::<u64>().unwrap())
+                    .unwrap()
+                    .clone();
+                let newest = order_ids
+                    .iter()
+                    .max_by_key(|id| id.parse::<u64>().unwrap())
+                    .unwrap()
+                    .clone();
+
+                // The path-parameter lookup returns the order in the
+                // `QueryOrderResponse` shape: the `by-user` item plus the
+                // order's user.
+                let order = call_api::<serde_json::Value>(
+                    build_app_service(httpd_context.clone()),
+                    &format!("/perps/order/{oldest}"),
+                )
+                .await?;
+                let mut expected = orders[&oldest].as_object().unwrap().clone();
+                expected.insert("user".to_string(), json!(user));
+                assert_eq!(order, serde_json::Value::Object(expected));
+
+                // An order ID not on the book is a 404 (a non-JSON body,
+                // surfacing here as an error).
+                let missing = call_api::<serde_json::Value>(
+                    build_app_service(httpd_context.clone()),
+                    "/perps/order/999999",
+                )
+                .await;
+                assert_that!(missing).is_err();
+
+                // The client-order-ID lookup returns the contract's
+                // `QueryOrderByClientOrderIdResponse`: the `by-user` item
+                // fields, plus the system-assigned `order_id`, minus the
+                // `client_order_id` the caller already knows.
+                let by_cid = call_api::<serde_json::Value>(
+                    build_app_service(httpd_context.clone()),
+                    &format!("/perps/order/by-client-order-id?user={user}&client_order_id=42"),
+                )
+                .await?;
+                let mut expected = orders[&newest].as_object().unwrap().clone();
+                expected.remove("client_order_id");
+                expected.insert("order_id".to_string(), json!(newest));
+                assert_eq!(by_cid, serde_json::Value::Object(expected));
+
+                // No resting order carries this client order ID: a 404.
+                let unknown_cid = call_api::<serde_json::Value>(
+                    build_app_service(httpd_context.clone()),
+                    &format!("/perps/order/by-client-order-id?user={user}&client_order_id=43"),
+                )
+                .await;
+                assert_that!(unknown_cid).is_err();
 
                 Ok::<(), anyhow::Error>(())
             })
