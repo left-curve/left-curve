@@ -1083,3 +1083,50 @@ async fn batch_referral_commissions_rollback() {
         "referee's cumulative referral data must be unchanged after batch rollback"
     );
 }
+
+/// The `orders_by_user` query is deliberately unpaginated: a user's resting
+/// orders are bounded by `Param::max_open_orders`, and the query returns all
+/// of them, however many there are.
+#[tokio::test]
+async fn orders_by_user_returns_all_orders() {
+    let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(TestOption::default());
+    register_oracle_prices(&mut suite, &mut accounts, 2_000).await;
+
+    suite
+        .execute(
+            &mut accounts.user1,
+            contracts.perps,
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit { to: None }),
+            Coins::one(usdc::DENOM.clone(), Uint128::new(10_000_000_000)).unwrap(),
+        )
+        .await
+        .should_succeed();
+
+    // 35 resting bids — more than `DEFAULT_PAGE_LIMIT` (30), the fallback
+    // most enumerative queries would truncate at — submitted in batches of
+    // `max_action_batch_size` (5), at distinct prices within the price band.
+    for batch in 0..7i128 {
+        let submits = (0..5i128)
+            .map(|i| SubmitOrCancelOrderRequest::Submit(limit_bid(1_200 + batch * 5 + i, 1, None)))
+            .collect::<Vec<_>>();
+
+        suite
+            .execute(
+                &mut accounts.user1,
+                contracts.perps,
+                &perps::ExecuteMsg::Trade(perps::TraderMsg::BatchUpdateOrders(
+                    NonEmpty::new(submits).unwrap(),
+                )),
+                Coins::new(),
+            )
+            .await
+            .should_succeed();
+    }
+
+    let all: BTreeMap<OrderId, QueryOrdersByUserResponseItem> = suite
+        .query_wasm_smart(contracts.perps, perps::QueryOrdersByUserRequest {
+            user: accounts.user1.address(),
+        })
+        .should_succeed();
+    assert_eq!(all.len(), 35);
+}

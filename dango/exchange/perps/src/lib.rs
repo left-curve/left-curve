@@ -314,6 +314,13 @@ pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> anyhow::Result<Json> {
             let res = query::query_orders_by_user(ctx, user)?;
             res.to_json_value()
         },
+        QueryMsg::OrderByClientOrderId {
+            user,
+            client_order_id,
+        } => {
+            let res = query::query_order_by_client_order_id(ctx, user, client_order_id)?;
+            res.to_json_value()
+        },
         QueryMsg::LiquidityDepth {
             pair_id,
             bucket_size,

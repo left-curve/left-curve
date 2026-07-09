@@ -15,9 +15,10 @@ use {
     },
     anyhow::ensure,
     dango_order_book::{
-        ASKS, BIDS, DEPTHS, Dimensionless, LimitOrder, LiquidityDepth, LiquidityDepthResponse,
-        OrderId, PairId, QueryOrderResponse, QueryOrdersByUserResponseItem, UsdPrice, UsdValue,
-        VOLUMES, round_to_day,
+        ASKS, BIDS, ClientOrderId, DEPTHS, Dimensionless, LimitOrder, LiquidityDepth,
+        LiquidityDepthResponse, OrderId, PairId, QueryOrderByClientOrderIdResponse,
+        QueryOrderResponse, QueryOrdersByUserResponseItem, UsdPrice, UsdValue, VOLUMES,
+        round_to_day,
     },
     dango_primitives::{
         Addr, Bound, DEFAULT_PAGE_LIMIT, ImmutableCtx, Order as IterationOrder, StdResult, Storage,
@@ -247,6 +248,44 @@ pub fn query_orders_by_user(
     Ok(items)
 }
 
+/// Search `BIDS` and `ASKS` for an order with the given submitter and client
+/// order ID, via the `(user, client_order_id)` unique index.
+pub fn query_order_by_client_order_id(
+    ctx: ImmutableCtx,
+    user: Addr,
+    client_order_id: ClientOrderId,
+) -> StdResult<Option<QueryOrderByClientOrderIdResponse>> {
+    // Check `BIDS` (un-invert price).
+    if let Some(((pair_id, stored_price, order_id), order)) = BIDS
+        .idx
+        .client_order_id
+        .may_load(ctx.storage, (user, client_order_id))?
+    {
+        return Ok(Some(limit_order_to_cid_response(
+            pair_id,
+            !stored_price,
+            order_id,
+            order,
+        )));
+    }
+
+    // Check `ASKS` (price as-is).
+    if let Some(((pair_id, limit_price, order_id), order)) = ASKS
+        .idx
+        .client_order_id
+        .may_load(ctx.storage, (user, client_order_id))?
+    {
+        return Ok(Some(limit_order_to_cid_response(
+            pair_id,
+            limit_price,
+            order_id,
+            order,
+        )));
+    }
+
+    Ok(None)
+}
+
 fn limit_order_to_response(
     pair_id: PairId,
     limit_price: UsdPrice,
@@ -263,6 +302,25 @@ fn limit_order_to_response(
         tp: order.tp,
         sl: order.sl,
         client_order_id: order.client_order_id,
+    }
+}
+
+fn limit_order_to_cid_response(
+    pair_id: PairId,
+    limit_price: UsdPrice,
+    order_id: OrderId,
+    order: LimitOrder,
+) -> QueryOrderByClientOrderIdResponse {
+    QueryOrderByClientOrderIdResponse {
+        order_id,
+        pair_id,
+        size: order.size,
+        limit_price,
+        reduce_only: order.reduce_only,
+        reserved_margin: order.reserved_margin,
+        created_at: order.created_at,
+        tp: order.tp,
+        sl: order.sl,
     }
 }
 
