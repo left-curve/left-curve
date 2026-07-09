@@ -4,14 +4,15 @@ use {
     dango_math::Uint64,
     dango_order_book::{OrderKind, Quantity, TimeInForce, UsdPrice},
     dango_primitives::{
-        Addressable, Block, BlockOutcome, Coins, QuerierExt, ResultExt, btree_map, btree_set,
+        Addressable, Block, BlockOutcome, ByteArray, Coins, QuerierExt, ResultExt, btree_map,
+        btree_set,
     },
     dango_testing::{
         TestOption, build_app_service, call_api, call_api_post, call_api_with_headers, pair_id,
         setup_perps_env, setup_test_naive_with_indexer,
         setup_test_naive_with_indexer_and_create_blocks,
     },
-    dango_types::perps,
+    dango_types::{account_factory, perps},
     serde_json::json,
 };
 
@@ -150,6 +151,11 @@ async fn openapi_spec_is_served() -> anyhow::Result<()> {
                     "/perps/order/by-user",
                     "/perps/order/by-client-order-id",
                     "/perps/order/{order_id}",
+                    "/account/{address}",
+                    "/account/{address}/user",
+                    "/account/{address}/seen-nonces",
+                    "/account/{address}/session-seen-nonces",
+                    "/account/{address}/balances",
                     "/ws",
                     "/graphql",
                 ] {
@@ -406,6 +412,186 @@ async fn perps_aliases_mirror_contract_queries() -> anyhow::Result<()> {
                 )
                 .await;
                 assert_that!(unknown_cid).is_err();
+
+                Ok::<(), anyhow::Error>(())
+            })
+            .await
+        })
+        .await?
+}
+
+/// The `/account/*` aliases: account parameters, the owning user (composed
+/// from two factory queries), seen nonces from the account contract itself,
+/// and chain-level balances — each mirroring the equivalent raw query
+/// through `POST /query`.
+#[tokio::test(flavor = "multi_thread")]
+async fn account_aliases_mirror_contract_queries() -> anyhow::Result<()> {
+    let (mut suite, mut accounts, _, contracts, _, httpd_context, _, _, _db_guard) =
+        setup_test_naive_with_indexer(TestOption::default().with_mocked_clickhouse()).await;
+
+    // Register a subaccount for user1, so the owning user has two accounts.
+    suite
+        .execute(
+            &mut accounts.user1,
+            contracts.account_factory,
+            &account_factory::ExecuteMsg::RegisterAccount {},
+            Coins::new(),
+        )
+        .await
+        .should_succeed();
+
+    let master = accounts.user1.address();
+    let factory = contracts.account_factory;
+
+    let local_set = tokio::task::LocalSet::new();
+
+    local_set
+        .run_until(async move {
+            tokio::task::spawn_local(async move {
+                // `/account/{address}`: the factory's `Account` object,
+                // verbatim.
+                let account = call_api::<serde_json::Value>(
+                    build_app_service(httpd_context.clone()),
+                    &format!("/account/{master}"),
+                )
+                .await?;
+
+                let raw = call_api_post::<serde_json::Value, _>(
+                    build_app_service(httpd_context.clone()),
+                    "/query",
+                    &json!({ "wasm_smart": {
+                        "contract": factory,
+                        "msg": { "account": { "address": master } },
+                    } }),
+                )
+                .await?;
+                assert_eq!(account, raw["wasm_smart"]);
+
+                // `/account/{address}/user`: equals the raw `user` query by
+                // the owner index taken from the `account` response...
+                let user = call_api::<serde_json::Value>(
+                    build_app_service(httpd_context.clone()),
+                    &format!("/account/{master}/user"),
+                )
+                .await?;
+
+                let raw = call_api_post::<serde_json::Value, _>(
+                    build_app_service(httpd_context.clone()),
+                    "/query",
+                    &json!({ "wasm_smart": {
+                        "contract": factory,
+                        "msg": { "user": { "index": account["owner"] } },
+                    } }),
+                )
+                .await?;
+                assert_eq!(user, raw["wasm_smart"]);
+
+                // ...contains both accounts, the master being the lowest
+                // account index...
+                let accounts_map = user["accounts"].as_object().unwrap();
+                assert_eq!(accounts_map.len(), 2);
+
+                let master_index = accounts_map
+                    .keys()
+                    .map(|index| index.parse::<u64>().unwrap())
+                    .min()
+                    .unwrap();
+                assert_eq!(
+                    accounts_map[master_index.to_string().as_str()],
+                    json!(master),
+                    "the lowest account index should be the master account",
+                );
+
+                // ...and is the same whether looked up via the master or the
+                // subaccount address.
+                let subaccount = accounts_map
+                    .values()
+                    .find(|address| **address != json!(master))
+                    .expect("the user should have a subaccount")
+                    .as_str()
+                    .unwrap()
+                    .to_string();
+
+                let via_subaccount = call_api::<serde_json::Value>(
+                    build_app_service(httpd_context.clone()),
+                    &format!("/account/{subaccount}/user"),
+                )
+                .await?;
+                assert_eq!(via_subaccount, user);
+
+                // `/account/{address}/seen-nonces`: non-empty — user1 has
+                // sent a transaction — and equal to the raw query against
+                // the account contract itself.
+                let nonces = call_api::<serde_json::Value>(
+                    build_app_service(httpd_context.clone()),
+                    &format!("/account/{master}/seen-nonces"),
+                )
+                .await?;
+                assert!(
+                    !nonces.as_array().unwrap().is_empty(),
+                    "the master account has sent a transaction, so it should \
+                     have recorded a nonce",
+                );
+
+                let raw = call_api_post::<serde_json::Value, _>(
+                    build_app_service(httpd_context.clone()),
+                    "/query",
+                    &json!({ "wasm_smart": {
+                        "contract": master,
+                        "msg": { "seen_nonces": {} },
+                    } }),
+                )
+                .await?;
+                assert_eq!(nonces, raw["wasm_smart"]);
+
+                // `/account/{address}/session-seen-nonces`: no session key
+                // has signed anything, so the alias and the raw query both
+                // return the empty set. The key travels in its base64 wire
+                // encoding, URL-encoded.
+                let session_key = ByteArray::<33>::from([7; 33]);
+                let encoded = session_key
+                    .to_string()
+                    .replace('+', "%2B")
+                    .replace('/', "%2F")
+                    .replace('=', "%3D");
+
+                let session_nonces = call_api::<serde_json::Value>(
+                    build_app_service(httpd_context.clone()),
+                    &format!("/account/{master}/session-seen-nonces?session_key={encoded}"),
+                )
+                .await?;
+                assert_eq!(session_nonces, json!([]));
+
+                let raw = call_api_post::<serde_json::Value, _>(
+                    build_app_service(httpd_context.clone()),
+                    "/query",
+                    &json!({ "wasm_smart": {
+                        "contract": master,
+                        "msg": { "session_seen_nonces": { "session_key": session_key } },
+                    } }),
+                )
+                .await?;
+                assert_eq!(session_nonces, raw["wasm_smart"]);
+
+                // `/account/{address}/balances`: the chain-level query — note
+                // the different response envelope.
+                let balances = call_api::<serde_json::Value>(
+                    build_app_service(httpd_context.clone()),
+                    &format!("/account/{master}/balances"),
+                )
+                .await?;
+                assert!(
+                    !balances.as_object().unwrap().is_empty(),
+                    "user1 should hold genesis balances",
+                );
+
+                let raw = call_api_post::<serde_json::Value, _>(
+                    build_app_service(httpd_context.clone()),
+                    "/query",
+                    &json!({ "balances": { "address": master } }),
+                )
+                .await?;
+                assert_eq!(balances, raw["balances"]);
 
                 Ok::<(), anyhow::Error>(())
             })

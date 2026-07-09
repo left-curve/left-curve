@@ -8,7 +8,7 @@ use {
         write::perps_trades::PerpsTradeCache,
     },
     dango_primitives::{Addr, JsonDeExt, Query},
-    dango_types::config::AppConfig,
+    dango_types::config::{AppAddresses, AppConfig},
     sea_orm::{ConnectOptions, Database, DatabaseConnection},
     std::sync::Arc,
     tokio::sync::{OnceCell, RwLock},
@@ -21,40 +21,49 @@ use {
 #[derive(Clone)]
 pub struct MinimalContext {
     pub dango_app: Arc<dyn QueryApp + Send + Sync>,
-    /// Address of the perps contract, resolved from the chain's app config on
-    /// first use (see [`Self::perps_address`]). Behind an `Arc` so that all
+    /// Addresses of the Dango contracts, resolved from the chain's app config
+    /// on first use (see [`Self::app_addresses`]). Behind an `Arc` so that all
     /// clones of the context — one per actix worker — share the one cache.
-    perps_address: Arc<OnceCell<Addr>>,
+    app_addresses: Arc<OnceCell<AppAddresses>>,
 }
 
 impl MinimalContext {
     pub fn new(dango_app: Arc<dyn QueryApp + Send + Sync>) -> Self {
         Self {
             dango_app,
-            perps_address: Arc::new(OnceCell::new()),
+            app_addresses: Arc::new(OnceCell::new()),
         }
     }
 
-    /// The address of the perps contract, per the chain's app config.
+    /// The addresses of the Dango contracts, per the chain's app config.
     ///
     /// Resolved lazily on first call rather than at server construction, so
     /// that serving does not depend on chain state being queryable at startup
     /// (on a fresh chain, the app config exists only once the genesis state is
     /// committed). A failed resolution is returned as an error and retried on
     /// the next call; a success is cached for the life of the process — the
-    /// perps address only changes with a chain upgrade, which entails a node
-    /// restart anyway.
-    pub async fn perps_address(&self) -> anyhow::Result<Addr> {
-        self.perps_address
+    /// contract addresses only change with a chain upgrade, which entails a
+    /// node restart anyway.
+    pub async fn app_addresses(&self) -> anyhow::Result<&AppAddresses> {
+        self.app_addresses
             .get_or_try_init(|| async {
                 let (response, _) = self.dango_app.query_app(Query::app_config()).await?;
 
                 let app_config: AppConfig = response.into_app_config().deserialize_json()?;
 
-                Ok::<_, anyhow::Error>(app_config.addresses.perps)
+                Ok::<_, anyhow::Error>(app_config.addresses)
             })
             .await
-            .copied()
+    }
+
+    /// The address of the perps contract, per the chain's app config.
+    pub async fn perps_address(&self) -> anyhow::Result<Addr> {
+        Ok(self.app_addresses().await?.perps)
+    }
+
+    /// The address of the account factory contract, per the chain's app config.
+    pub async fn account_factory_address(&self) -> anyhow::Result<Addr> {
+        Ok(self.app_addresses().await?.account_factory)
     }
 }
 

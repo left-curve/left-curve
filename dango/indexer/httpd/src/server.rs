@@ -72,6 +72,11 @@ use {
         crate::routes::perps::orders_by_user,
         crate::routes::perps::order_by_client_order_id,
         crate::routes::perps::order,
+        crate::routes::account::account,
+        crate::routes::account::user,
+        crate::routes::account::seen_nonces,
+        crate::routes::account::session_seen_nonces,
+        crate::routes::account::balances,
         crate::routes::ws::ws_doc,
         crate::routes::graphql::graphql_doc,
     ),
@@ -88,6 +93,11 @@ use {
                                        and the parameters taken from the query string. \
                                        Responses are the contract's response objects, \
                                        verbatim."),
+        (name = "account", description = "GET aliases for account-related queries, keyed \
+                                          by account address: account parameters and the \
+                                          owning user from the account factory, seen \
+                                          nonces from the account contract itself, and \
+                                          chain-level balances."),
         (name = "websocket", description = "Realtime feeds over a multiplexed WebSocket"),
         (name = "graphql", description = "Deprecated GraphQL API — scheduled for removal"),
     )
@@ -115,6 +125,7 @@ where
             .service(routes::index::sentry_raise)
             .service(routes::blocks::services())
             .service(routes::perps::services())
+            .service(routes::account::services())
             .service(routes::ws::services())
             .service(routes::query::query)
             .service(routes::simulate::simulate)
@@ -327,6 +338,11 @@ mod tests {
             "/perps/order/by-user",
             "/perps/order/by-client-order-id",
             "/perps/order/{order_id}",
+            "/account/{address}",
+            "/account/{address}/user",
+            "/account/{address}/seen-nonces",
+            "/account/{address}/session-seen-nonces",
+            "/account/{address}/balances",
             "/ws",
             "/graphql",
         ] {
