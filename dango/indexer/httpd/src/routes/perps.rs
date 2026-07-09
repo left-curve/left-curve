@@ -17,7 +17,7 @@ use {
 /// Routes under `/perps` — GET aliases for the perps contract's queries.
 ///
 /// Each route mirrors one `wasm_smart` query to the perps contract, so that,
-/// e.g. `GET /perps/liquidity_depth?pair_id=perp/ethusd&bucket_size=10` is the
+/// e.g. `GET /perps/liquidity-depth?pair_id=perp/ethusd&bucket_size=10` is the
 /// same read as `POST /query` with body:
 ///
 /// ```json
@@ -37,10 +37,13 @@ use {
 /// The perps contract address is resolved from the chain's app config
 /// server-side ([`MinimalContext::perps_address`]); clients never pass it.
 /// Responses are the contract's response objects verbatim, so client-side
-/// types written for the contract queries can be reused as-is. Query
-/// parameters take the same wire encoding as the JSON fields they alias
-/// (numbers inside grug types are string-encoded, so `bucket_size=10` parses
-/// as a `UsdPrice`; plain Rust integers such as `limit` are unquoted).
+/// types written for the contract queries can be reused as-is.
+///
+/// Casing convention: URL path segments are kebab-case; query parameters
+/// keep the snake_case spelling of the contract wire fields they forward to,
+/// and take the same wire encoding as the JSON fields they alias (numbers
+/// inside grug types are string-encoded, so `bucket_size=10` parses as a
+/// `UsdPrice`; plain Rust integers such as `limit` are unquoted).
 pub fn services() -> Scope {
     web::scope("/perps")
         .service(param)
@@ -121,7 +124,7 @@ pub async fn param(app_ctx: web::Data<MinimalContext>) -> Result<HttpResponse, E
 
 #[utoipa::path(
     get,
-    path = "/perps/pair_param",
+    path = "/perps/pair-param",
     tag = "perps",
     summary = "Pair parameters",
     description = "Parameters of a single trading pair: tick size, minimum \
@@ -138,7 +141,7 @@ pub async fn param(app_ctx: web::Data<MinimalContext>) -> Result<HttpResponse, E
     ),
 )]
 #[cfg_attr(feature = "tracing", tracing::instrument(skip_all))]
-#[get("/pair_param")]
+#[get("/pair-param")]
 pub async fn pair_param(
     query: web::Query<PairIdQuery>,
     app_ctx: web::Data<MinimalContext>,
@@ -155,7 +158,7 @@ pub async fn pair_param(
 
 #[utoipa::path(
     get,
-    path = "/perps/pair_params",
+    path = "/perps/pair-params",
     tag = "perps",
     summary = "Enumerate pair parameters",
     description = "Parameters of all trading pairs, as a map from pair ID to \
@@ -171,7 +174,7 @@ pub async fn pair_param(
     ),
 )]
 #[cfg_attr(feature = "tracing", tracing::instrument(skip_all))]
-#[get("/pair_params")]
+#[get("/pair-params")]
 pub async fn pair_params(
     query: web::Query<PairsPageQuery>,
     app_ctx: web::Data<MinimalContext>,
@@ -212,7 +215,7 @@ pub async fn state(app_ctx: web::Data<MinimalContext>) -> Result<HttpResponse, E
 
 #[utoipa::path(
     get,
-    path = "/perps/pair_state",
+    path = "/perps/pair-state",
     tag = "perps",
     summary = "Pair state",
     description = "State of a single trading pair: long and short open \
@@ -228,7 +231,7 @@ pub async fn state(app_ctx: web::Data<MinimalContext>) -> Result<HttpResponse, E
     ),
 )]
 #[cfg_attr(feature = "tracing", tracing::instrument(skip_all))]
-#[get("/pair_state")]
+#[get("/pair-state")]
 pub async fn pair_state(
     query: web::Query<PairIdQuery>,
     app_ctx: web::Data<MinimalContext>,
@@ -245,7 +248,7 @@ pub async fn pair_state(
 
 #[utoipa::path(
     get,
-    path = "/perps/pair_states",
+    path = "/perps/pair-states",
     tag = "perps",
     summary = "Enumerate pair states",
     description = "States of all trading pairs, as a map from pair ID to \
@@ -261,7 +264,7 @@ pub async fn pair_state(
     ),
 )]
 #[cfg_attr(feature = "tracing", tracing::instrument(skip_all))]
-#[get("/pair_states")]
+#[get("/pair-states")]
 pub async fn pair_states(
     query: web::Query<PairsPageQuery>,
     app_ctx: web::Data<MinimalContext>,
@@ -279,7 +282,7 @@ pub async fn pair_states(
 
 #[utoipa::path(
     get,
-    path = "/perps/liquidity_depth",
+    path = "/perps/liquidity-depth",
     tag = "perps",
     summary = "Order book depth",
     description = "Aggregated order book depth of one trading pair at one of \
@@ -298,7 +301,7 @@ pub async fn pair_states(
     ),
 )]
 #[cfg_attr(feature = "tracing", tracing::instrument(skip_all))]
-#[get("/liquidity_depth")]
+#[get("/liquidity-depth")]
 pub async fn liquidity_depth(
     query: web::Query<LiquidityDepthQuery>,
     app_ctx: web::Data<MinimalContext>,
@@ -323,7 +326,7 @@ pub async fn liquidity_depth(
 
 #[utoipa::path(
     get,
-    path = "/perps/user_state",
+    path = "/perps/user-state",
     tag = "perps",
     summary = "User state",
     description = "State of one user: margin, vault shares, pending unlocks, \
@@ -344,7 +347,7 @@ pub async fn liquidity_depth(
     ),
 )]
 #[cfg_attr(feature = "tracing", tracing::instrument(skip_all))]
-#[get("/user_state")]
+#[get("/user-state")]
 pub async fn user_state(
     query: web::Query<UserStateQuery>,
     app_ctx: web::Data<MinimalContext>,
@@ -755,10 +758,10 @@ mod tests {
     async fn single_item_lookups_respond_404_on_null() {
         let (ctx, app) = MockApp::context(0, |_| Json::null());
 
-        let (status, _) = get(&ctx, "/perps/pair_param?pair_id=perp/ethusd").await;
+        let (status, _) = get(&ctx, "/perps/pair-param?pair_id=perp/ethusd").await;
         assert_eq!(status, StatusCode::NOT_FOUND);
 
-        let (status, _) = get(&ctx, "/perps/pair_state?pair_id=perp/ethusd").await;
+        let (status, _) = get(&ctx, "/perps/pair-state?pair_id=perp/ethusd").await;
         assert_eq!(status, StatusCode::NOT_FOUND);
 
         let (status, _) = get(
@@ -836,7 +839,7 @@ mod tests {
         let (status, _) = get(
             &ctx,
             &format!(
-                "/perps/user_state?user={}&include_equity=true&include_all=true",
+                "/perps/user-state?user={}&include_equity=true&include_all=true",
                 user_addr(),
             ),
         )
@@ -867,7 +870,7 @@ mod tests {
 
         let (status, _) = get(
             &ctx,
-            "/perps/liquidity_depth?pair_id=perp/ethusd&bucket_size=10&limit=5",
+            "/perps/liquidity-depth?pair_id=perp/ethusd&bucket_size=10&limit=5",
         )
         .await;
         assert_eq!(status, StatusCode::OK);

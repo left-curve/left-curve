@@ -140,13 +140,13 @@ async fn openapi_spec_is_served() -> anyhow::Result<()> {
                     "/simulate",
                     "/broadcast",
                     "/perps/param",
-                    "/perps/pair_param",
-                    "/perps/pair_params",
+                    "/perps/pair-param",
+                    "/perps/pair-params",
                     "/perps/state",
-                    "/perps/pair_state",
-                    "/perps/pair_states",
-                    "/perps/liquidity_depth",
-                    "/perps/user_state",
+                    "/perps/pair-state",
+                    "/perps/pair-states",
+                    "/perps/liquidity-depth",
+                    "/perps/user-state",
                     "/perps/order/by-user",
                     "/perps/order/by-client-order-id",
                     "/perps/order/{order_id}",
@@ -249,24 +249,24 @@ async fn perps_aliases_mirror_contract_queries() -> anyhow::Result<()> {
                 for (alias, msg) in [
                     ("/perps/param".to_string(), json!({ "param": {} })),
                     (
-                        format!("/perps/pair_param?pair_id={}", pair_id()),
+                        format!("/perps/pair-param?pair_id={}", pair_id()),
                         json!({ "pair_param": { "pair_id": pair_id() } }),
                     ),
                     (
-                        "/perps/pair_params".to_string(),
+                        "/perps/pair-params".to_string(),
                         json!({ "pair_params": {} }),
                     ),
                     ("/perps/state".to_string(), json!({ "state": {} })),
                     (
-                        format!("/perps/pair_state?pair_id={}", pair_id()),
+                        format!("/perps/pair-state?pair_id={}", pair_id()),
                         json!({ "pair_state": { "pair_id": pair_id() } }),
                     ),
                     (
-                        "/perps/pair_states".to_string(),
+                        "/perps/pair-states".to_string(),
                         json!({ "pair_states": {} }),
                     ),
                     (
-                        format!("/perps/user_state?user={user}&include_all=true"),
+                        format!("/perps/user-state?user={user}&include_all=true"),
                         json!({ "user_state_extended": { "user": user, "include_all": true } }),
                     ),
                     (
@@ -306,7 +306,7 @@ async fn perps_aliases_mirror_contract_queries() -> anyhow::Result<()> {
                 // pair's first configured bucket size.
                 let pair_param = call_api::<serde_json::Value>(
                     build_app_service(httpd_context.clone()),
-                    &format!("/perps/pair_param?pair_id={}", pair_id()),
+                    &format!("/perps/pair-param?pair_id={}", pair_id()),
                 )
                 .await?;
                 let bucket_size = pair_param["bucket_sizes"][0]
@@ -317,7 +317,7 @@ async fn perps_aliases_mirror_contract_queries() -> anyhow::Result<()> {
                 let depth = call_api::<serde_json::Value>(
                     build_app_service(httpd_context.clone()),
                     &format!(
-                        "/perps/liquidity_depth?pair_id={}&bucket_size={bucket_size}",
+                        "/perps/liquidity-depth?pair_id={}&bucket_size={bucket_size}",
                         pair_id(),
                     ),
                 )
@@ -330,7 +330,7 @@ async fn perps_aliases_mirror_contract_queries() -> anyhow::Result<()> {
                 // `user_state` computes the opt-in fields when asked.
                 let user_state = call_api::<serde_json::Value>(
                     build_app_service(httpd_context.clone()),
-                    &format!("/perps/user_state?user={user}&include_all=true"),
+                    &format!("/perps/user-state?user={user}&include_all=true"),
                 )
                 .await?;
                 assert!(
