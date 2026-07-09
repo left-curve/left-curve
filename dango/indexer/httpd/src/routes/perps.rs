@@ -584,126 +584,11 @@ pub struct OrderByClientOrderIdQuery {
 mod tests {
     use {
         super::*,
-        crate::traits::QueryApp,
-        actix_web::{App, http::StatusCode, test},
-        async_trait::async_trait,
-        dango_app::{AppError, AppResult},
+        crate::routes::mock_app::{MockApp, get, perps_addr, user_addr},
+        actix_web::http::StatusCode,
         dango_order_book::{Quantity, QueryOrderByClientOrderIdResponse, UsdValue},
-        dango_primitives::{
-            BlockInfo, JsonSerExt, QueryResponse, Timestamp, TxOutcome, UnsignedTx,
-        },
-        dango_types::config::{AppAddresses, AppConfig},
-        std::sync::{
-            Arc, Mutex,
-            atomic::{AtomicUsize, Ordering},
-        },
+        dango_primitives::{JsonSerExt, Timestamp},
     };
-
-    fn perps_addr() -> Addr {
-        Addr::mock(9)
-    }
-
-    fn user_addr() -> Addr {
-        Addr::mock(1)
-    }
-
-    /// A `QueryApp` that serves `app_config` (with [`perps_addr`] as the
-    /// perps contract, after a configurable number of failures) and answers
-    /// every `wasm_smart` query with the canned responder, recording the last
-    /// request for assertions.
-    struct MockApp {
-        respond: Box<dyn Fn(&Json) -> Json + Send + Sync>,
-        app_config_calls: AtomicUsize,
-        app_config_failures: AtomicUsize,
-        last_wasm_smart: Mutex<Option<(Addr, Json)>>,
-    }
-
-    impl MockApp {
-        fn context<F>(app_config_failures: usize, respond: F) -> (MinimalContext, Arc<Self>)
-        where
-            F: Fn(&Json) -> Json + Send + Sync + 'static,
-        {
-            let app = Arc::new(Self {
-                respond: Box::new(respond),
-                app_config_calls: AtomicUsize::new(0),
-                app_config_failures: AtomicUsize::new(app_config_failures),
-                last_wasm_smart: Mutex::new(None),
-            });
-
-            (MinimalContext::new(app.clone()), app)
-        }
-    }
-
-    #[async_trait]
-    impl QueryApp for MockApp {
-        async fn query_app(&self, raw_req: Query) -> AppResult<(QueryResponse, u64)> {
-            match raw_req {
-                Query::AppConfig(_) => {
-                    self.app_config_calls.fetch_add(1, Ordering::SeqCst);
-
-                    if self
-                        .app_config_failures
-                        .fetch_update(Ordering::SeqCst, Ordering::SeqCst, |remaining| {
-                            remaining.checked_sub(1)
-                        })
-                        .is_ok()
-                    {
-                        return Err(AppError::vm("app config not ready".to_string()));
-                    }
-
-                    let app_config = AppConfig {
-                        addresses: AppAddresses {
-                            perps: perps_addr(),
-                            ..Default::default()
-                        },
-                        ..Default::default()
-                    };
-
-                    Ok((QueryResponse::AppConfig(app_config.to_json_value()?), 1))
-                },
-                Query::WasmSmart(req) => {
-                    let response = (self.respond)(&req.msg);
-
-                    *self.last_wasm_smart.lock().unwrap() = Some((req.contract, req.msg));
-
-                    Ok((QueryResponse::WasmSmart(response), 1))
-                },
-                _ => unimplemented!("not exercised by the perp routes"),
-            }
-        }
-
-        async fn simulate(&self, _unsigned_tx: UnsignedTx) -> AppResult<TxOutcome> {
-            unimplemented!("not exercised by the perp routes");
-        }
-
-        async fn chain_id(&self) -> AppResult<String> {
-            unimplemented!("not exercised by the perp routes");
-        }
-
-        async fn last_finalized_block(&self) -> AppResult<BlockInfo> {
-            unimplemented!("not exercised by the perp routes");
-        }
-    }
-
-    async fn get(ctx: &MinimalContext, uri: &str) -> (StatusCode, Json) {
-        let app = test::init_service(
-            App::new()
-                .app_data(web::Data::new(ctx.clone()))
-                .service(services()),
-        )
-        .await;
-
-        let response =
-            test::call_service(&app, test::TestRequest::get().uri(uri).to_request()).await;
-        let status = response.status();
-        let body = test::read_body(response).await;
-
-        // Error responses carry a plain-text body; substitute `null` so
-        // callers can assert on the status alone.
-        let json = serde_json::from_slice(&body).unwrap_or(Json::null());
-
-        (status, json)
-    }
 
     fn cid_order_response() -> QueryOrderByClientOrderIdResponse {
         QueryOrderByClientOrderIdResponse {
@@ -723,14 +608,14 @@ mod tests {
     async fn aliases_query_the_perps_contract_and_cache_its_address() {
         let canned = dango_primitives::json!({ "max_open_orders": 100 });
         let canned_clone = canned.clone();
-        let (ctx, app) = MockApp::context(0, move |_| canned_clone.clone());
+        let (ctx, app) = MockApp::context(0, move |_, _| canned_clone.clone());
 
         let (status, body) = get(&ctx, "/perps/param").await;
         assert_eq!(status, StatusCode::OK);
         assert_eq!(body, canned);
 
         // The query went to the perps contract, carrying the `param` message.
-        let (contract, msg) = app.last_wasm_smart.lock().unwrap().clone().unwrap();
+        let (contract, msg) = app.last_wasm_smart();
         assert_eq!(contract, perps_addr());
         assert_eq!(msg, perps::QueryMsg::Param {}.to_json_value().unwrap());
 
@@ -738,12 +623,12 @@ mod tests {
         // query.
         let (status, _) = get(&ctx, "/perps/param").await;
         assert_eq!(status, StatusCode::OK);
-        assert_eq!(app.app_config_calls.load(Ordering::SeqCst), 1);
+        assert_eq!(app.app_config_calls(), 1);
     }
 
     #[actix_web::test]
     async fn failed_address_resolution_is_a_503_and_is_retried() {
-        let (ctx, app) = MockApp::context(1, |_| Json::null());
+        let (ctx, app) = MockApp::context(1, |_, _| Json::null());
 
         let (status, _) = get(&ctx, "/perps/state").await;
         assert_eq!(status, StatusCode::SERVICE_UNAVAILABLE);
@@ -751,12 +636,12 @@ mod tests {
         // The failure is not cached: the next request retries and succeeds.
         let (status, _) = get(&ctx, "/perps/state").await;
         assert_eq!(status, StatusCode::OK);
-        assert_eq!(app.app_config_calls.load(Ordering::SeqCst), 2);
+        assert_eq!(app.app_config_calls(), 2);
     }
 
     #[actix_web::test]
     async fn single_item_lookups_respond_404_on_null() {
-        let (ctx, app) = MockApp::context(0, |_| Json::null());
+        let (ctx, app) = MockApp::context(0, |_, _| Json::null());
 
         let (status, _) = get(&ctx, "/perps/pair-param?pair_id=perp/ethusd").await;
         assert_eq!(status, StatusCode::NOT_FOUND);
@@ -778,7 +663,7 @@ mod tests {
         assert_eq!(status, StatusCode::NOT_FOUND);
 
         // The path parameter parsed into the order ID.
-        let (_, msg) = app.last_wasm_smart.lock().unwrap().clone().unwrap();
+        let (_, msg) = app.last_wasm_smart();
         assert_eq!(
             msg,
             perps::QueryMsg::Order {
@@ -791,12 +676,12 @@ mod tests {
 
     #[actix_web::test]
     async fn orders_by_user_is_a_passthrough() {
-        let (ctx, app) = MockApp::context(0, |_| dango_primitives::json!({}));
+        let (ctx, app) = MockApp::context(0, |_, _| dango_primitives::json!({}));
 
         let (status, _) = get(&ctx, &format!("/perps/order/by-user?user={}", user_addr())).await;
         assert_eq!(status, StatusCode::OK);
 
-        let (_, msg) = app.last_wasm_smart.lock().unwrap().clone().unwrap();
+        let (_, msg) = app.last_wasm_smart();
         assert_eq!(
             msg,
             perps::QueryMsg::OrdersByUser { user: user_addr() }
@@ -807,7 +692,7 @@ mod tests {
 
     #[actix_web::test]
     async fn order_by_client_order_id_is_a_passthrough() {
-        let (ctx, app) = MockApp::context(0, |_| cid_order_response().to_json_value().unwrap());
+        let (ctx, app) = MockApp::context(0, |_, _| cid_order_response().to_json_value().unwrap());
 
         let uri = format!(
             "/perps/order/by-client-order-id?user={}&client_order_id=7",
@@ -820,7 +705,7 @@ mod tests {
         assert_eq!(body, cid_order_response().to_json_value().unwrap());
 
         // The query params parsed into the contract query message.
-        let (_, msg) = app.last_wasm_smart.lock().unwrap().clone().unwrap();
+        let (_, msg) = app.last_wasm_smart();
         assert_eq!(
             msg,
             perps::QueryMsg::OrderByClientOrderId {
@@ -834,7 +719,7 @@ mod tests {
 
     #[actix_web::test]
     async fn user_state_forwards_the_include_flags() {
-        let (ctx, app) = MockApp::context(0, |_| dango_primitives::json!({}));
+        let (ctx, app) = MockApp::context(0, |_, _| dango_primitives::json!({}));
 
         let (status, _) = get(
             &ctx,
@@ -846,7 +731,7 @@ mod tests {
         .await;
         assert_eq!(status, StatusCode::OK);
 
-        let (_, msg) = app.last_wasm_smart.lock().unwrap().clone().unwrap();
+        let (_, msg) = app.last_wasm_smart();
         assert_eq!(
             msg,
             perps::QueryMsg::UserStateExtended {
@@ -866,7 +751,7 @@ mod tests {
 
     #[actix_web::test]
     async fn liquidity_depth_forwards_typed_params() {
-        let (ctx, app) = MockApp::context(0, |_| dango_primitives::json!({}));
+        let (ctx, app) = MockApp::context(0, |_, _| dango_primitives::json!({}));
 
         let (status, _) = get(
             &ctx,
@@ -875,7 +760,7 @@ mod tests {
         .await;
         assert_eq!(status, StatusCode::OK);
 
-        let (_, msg) = app.last_wasm_smart.lock().unwrap().clone().unwrap();
+        let (_, msg) = app.last_wasm_smart();
         assert_eq!(
             msg,
             perps::QueryMsg::LiquidityDepth {
