@@ -59,8 +59,10 @@ impl MigrationTrait for Migration {
             )
             .await?;
 
-        // Four secondary indexes serving the eight documented feeds. All carry
-        // the event-position `(block_height, category, category_index,
+        // Four secondary indexes serving the eight documented feeds (a fifth,
+        // `idx_activity_events_contract_name`, is added by a later migration to
+        // seek the name-filtered contract feed — see below). All carry the
+        // event-position `(block_height, category, category_index,
         // event_index)`, so each is a backward index scan ordered newest-first
         // (keyset-paginated). On the DISTINCT-ON feeds (by type, by contract)
         // `address` trails the position as the tiebreaker, so an event's
@@ -69,9 +71,13 @@ impl MigrationTrait for Migration {
         // Unique → Limit, with **no sort node** (verified via `EXPLAIN`; with
         // `address` ASC, or with `contract_event_name` wedged before `address`,
         // the planner adds an Incremental Sort). `contract_event_name` therefore
-        // sits at the very **tail** of the contract index — a pure in-index
-        // `= ANY(...)` filter (never a seek column, always paired with
-        // `contract`), costing the ordering nothing.
+        // sits at the very **tail** of the contract index — here a pure
+        // in-index `= ANY(...)` filter, not a seek column (the position
+        // columns separate it from `contract`, so a name predicate walks the
+        // contract's whole slice); a name-*filtered* feed instead seeks via
+        // the companion `(contract, contract_event_name, …)` index. Always
+        // paired with `contract`; at the tail it costs this index's ordering
+        // nothing.
         //
         // The type feeds are plain indexes (`event_type` is NOT NULL). The
         // contract feeds are partial on `contract IS NOT NULL` — only contract

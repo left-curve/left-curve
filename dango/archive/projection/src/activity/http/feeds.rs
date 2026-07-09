@@ -35,8 +35,8 @@ use {
     dango_archive_httpd::{ApiError, Binder, Page, PageInfo, decode_after, page_limit, paginate},
     dango_primitives::{Addr, Hash256},
     sea_orm::{
-        ColumnTrait, DatabaseConnection, DbBackend, EntityTrait, FromQueryResult, QueryFilter,
-        QueryOrder, Statement,
+        ColumnTrait, ConnectionTrait, DatabaseConnection, DatabaseTransaction, DbBackend, DbErr,
+        EntityTrait, FromQueryResult, QueryFilter, QueryOrder, Statement, TransactionTrait,
     },
     serde::{Deserialize, Serialize},
 };
@@ -85,15 +85,17 @@ pub(crate) async fn transactions_by_hash(
     db: &DatabaseConnection,
     hash: Hash256,
 ) -> Result<Vec<Transaction>, ApiError> {
+    let txn = read_txn(db).await?;
     let rows = timed_query(
         "transactions_by_hash",
         transactions::Entity::find()
             .filter(transactions::Column::Hash.eq(hash.as_ref().to_vec()))
             .order_by_desc(transactions::Column::BlockHeight)
             .order_by_desc(transactions::Column::Idx)
-            .all(db),
+            .all(&txn),
     )
     .await?;
+    txn.commit().await?;
     rows.into_iter().map(Transaction::try_from).collect()
 }
 
@@ -193,11 +195,14 @@ pub(crate) async fn transactions_involving(
              ORDER BY t.block_height DESC, t.kind DESC, t.idx DESC LIMIT {fetch}"
         );
         let stmt = Statement::from_sql_and_values(DbBackend::Postgres, sql, binder.into_values());
-        timed_query(
+        let txn = read_txn(db).await?;
+        let rows = timed_query(
             "transactions_involving",
-            transactions::Entity::find().from_raw_sql(stmt).all(db),
+            transactions::Entity::find().from_raw_sql(stmt).all(&txn),
         )
-        .await?
+        .await?;
+        txn.commit().await?;
+        rows
     };
 
     paginate(
@@ -369,6 +374,26 @@ pub(crate) async fn contract_events_involving(
 
 // ---- shared feed plumbing ----
 
+/// Per-statement timeout for the read feeds, set via `SET LOCAL` so it is scoped
+/// to the feed's own transaction. Ingest and migrations share the pool but not
+/// this path, so they are never capped (a blanket role/pool timeout would also
+/// cut short a long index-building migration). A generous ceiling: the heaviest
+/// legitimate feed — a 50-row page — returns well under two seconds, so this
+/// only ever fires on a pathological plan, freeing the backend instead of
+/// letting a runaway query pin a pool connection (a client disconnect does not
+/// cancel a query already executing). Postgres-only, like every feed statement.
+const READ_TIMEOUT_STATEMENT: &str = "SET LOCAL statement_timeout = '15s'";
+
+/// Begin a read transaction with [`READ_TIMEOUT_STATEMENT`] applied. The caller
+/// runs its query against the returned transaction and commits it; on any error
+/// (a timeout included) the dropped transaction rolls back — harmless for a
+/// read.
+async fn read_txn(db: &DatabaseConnection) -> Result<DatabaseTransaction, DbErr> {
+    let txn = db.begin().await?;
+    txn.execute_unprepared(READ_TIMEOUT_STATEMENT).await?;
+    Ok(txn)
+}
+
 /// Wrap a feed's event query so each row also carries its stored payload: the
 /// inner query (already selected, ordered, and limited over `events`) becomes a
 /// subquery, and `data` is pulled per row by a **correlated** lookup on
@@ -406,7 +431,9 @@ async fn run_event_feed(
         with_event_data(&sql),
         binder.into_values(),
     );
-    let rows = timed_query(query, EventRow::find_by_statement(stmt).all(db)).await?;
+    let txn = read_txn(db).await?;
+    let rows = timed_query(query, EventRow::find_by_statement(stmt).all(&txn)).await?;
+    txn.commit().await?;
     paginate(
         rows,
         limit,
