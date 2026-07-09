@@ -80,12 +80,19 @@ use {
         crate::routes::ws::ws_doc,
         crate::routes::graphql::graphql_doc,
     ),
+    // Swagger UI renders the sections in the order the tags are declared
+    // here (no `tagsSorter` is configured, so document order wins).
     tags(
-        (name = "meta", description = "Liveness and diagnostics"),
-        (name = "block", description = "Raw blocks from the node's block cache"),
         (name = "chain", description = "Chain reads and writes proxied to the node: \
                                         state queries, transaction simulation, \
                                         transaction broadcast"),
+        (name = "meta", description = "Liveness and diagnostics"),
+        (name = "block", description = "Raw blocks from the node's block cache"),
+        (name = "account", description = "GET aliases for account-related queries, keyed \
+                                          by account address: account parameters and the \
+                                          owning user from the account factory, seen \
+                                          nonces from the account contract itself, and \
+                                          chain-level balances."),
         (name = "perps", description = "GET aliases for the perps contract's queries. \
                                        Each route mirrors one `wasm_smart` query to \
                                        the perps contract — same read as `POST /query`, \
@@ -93,11 +100,6 @@ use {
                                        and the parameters taken from the query string. \
                                        Responses are the contract's response objects, \
                                        verbatim."),
-        (name = "account", description = "GET aliases for account-related queries, keyed \
-                                          by account address: account parameters and the \
-                                          owning user from the account factory, seen \
-                                          nonces from the account contract itself, and \
-                                          chain-level balances."),
         (name = "websocket", description = "Realtime feeds over a multiplexed WebSocket"),
         (name = "graphql", description = "Deprecated GraphQL API — scheduled for removal"),
     )
@@ -358,6 +360,26 @@ mod tests {
             spec["paths"]["/graphql"]["post"]["deprecated"],
             serde_json::Value::Bool(true),
             "the graphql entry should be flagged deprecated",
+        );
+
+        // The sections appear in the intended order — Swagger UI renders
+        // tags in document order.
+        assert_eq!(
+            spec["tags"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .map(|tag| tag["name"].as_str().unwrap())
+                .collect::<Vec<_>>(),
+            vec![
+                "chain",
+                "meta",
+                "block",
+                "account",
+                "perps",
+                "websocket",
+                "graphql",
+            ],
         );
     }
 }
