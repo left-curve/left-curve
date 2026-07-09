@@ -63,9 +63,10 @@ Two properties of the filters shape the schema:
   **included by default**; an optional `kind` filter narrows to transactions or
   cronjobs only (and `SENDER` + cron-only matches nothing).
 - **`contract_event_name` is always paired with `contract`** (never queried on
-  its own) and may be a **single value or a list**. It is also
-  **low-cardinality** — the busiest contract (perps) has ~15 distinct names — so
-  it is a **filter, never a seek column** (see Indexes).
+  its own) and may be a **single value or a list**. It is
+  **low-cardinality** — the busiest contract (perps) has ~15 distinct names — but
+  low cardinality does not make a *filter* cheap: paired with a hot contract it
+  needs its own `(contract, name)` **seek** index to stay bounded (see Indexes).
 
 ## Why one merged `events` table (not events + involvement)
 
@@ -247,7 +248,7 @@ event_index)`; the unit `(block_height, category, category_index)` joins
 `transactions(block_height, kind, idx)`. Distinct events are recovered with
 `DISTINCT ON` the position (a no-op at K = 1).
 
-**Indexes** (four). All carry the event-position `(block_height, category,
+**Indexes** (five). All carry the event-position `(block_height, category,
 category_index, event_index)`, so each is a backward scan ordered newest-first
 (keyset). On the two **attribute feeds** (by type, by contract) — the ones that
 `DISTINCT ON` the position — `address` **trails the position** as the
@@ -256,21 +257,34 @@ tiebreaker, so an event's participant rows are adjacent and the resolver's
 Scan → Unique → Limit, **no sort node** (verified via `EXPLAIN`; with `address`
 ASC — or with `contract_event_name` wedged before `address` — the planner adds
 an Incremental Sort). `contract_event_name` therefore sits at the very **tail**
-of the contract index: a pure in-index `= ANY()` filter (never a seek column,
-always paired with `contract`), costing the ordering nothing.
+of the un-filtered contract index, where it costs the ordering nothing — but the
+tail is useless for *filtering*: the position columns separate it from
+`contract`, so a `name =` predicate there is checked per row across the
+contract's whole slice, not sought. On a hot contract that slice is tens of
+millions of rows, so the name-filtered feed gets a **second** contract index
+leading with `(contract, contract_event_name)`.
 
 - `idx_…_addr_type` — `(address, event_type, …)` — **query 6** ("type-T events
   involving X" as a single seek). Plain index (`event_type` is NOT NULL).
 - `idx_…_addr_contract` — `(address, contract, …, contract_event_name)` —
   **queries 7/8** (contract events of C involving X, optionally a name list);
   address-led, no `DISTINCT ON`, so `contract_event_name` trails as the in-index
-  filter. Partial `WHERE contract IS NOT NULL`.
+  filter — bounded here because the **address** anchor already limits the scan
+  to one participant's events. Partial `WHERE contract IS NOT NULL`.
 - `idx_…_type` — `(event_type, …, address)` — **query 2** (events by type).
   Plain.
 - `idx_…_contract` — `(contract, …, address, contract_event_name)` —
-  **queries 3/4** (contract events of C, optionally a name list); `address`
-  trails the position (tiebreaker), `contract_event_name` at the tail (filter).
-  Partial.
+  **query 3** (contract events of C, *un-filtered*); `address` trails the
+  position (tiebreaker), `contract_event_name` at the tail (costs the ordering
+  nothing — but not a filter anchor, see above). Partial.
+- `idx_…_contract_name` — `(contract, contract_event_name, …, address)` —
+  **query 4** (contract events of C narrowed by a name list). Leading with
+  `(contract, name)` makes the name a **seek**: the query jumps to the
+  (contract, name) group, whose rows are already in position order, so it stays
+  a no-sort backward scan and a zero-match page returns at once instead of
+  walking the contract's whole slice. A companion to `idx_…_contract`, not a
+  replacement — neither column order serves both the filtered and the
+  un-filtered feed without a sort. Partial `WHERE contract IS NOT NULL`.
 
 The PK `(address, …)` itself serves **query 5** (events involving X) and, via
 `DISTINCT ON` the unit merged with `transactions.sender`, **query 1**.
@@ -368,14 +382,18 @@ LIMIT $N;
 ```
 
 The **name list** (Q4/Q8) is a plain `contract_event_name IN ($names…)`, never
-a per-name UNION: the column lives in the contract indexes (at the tail), so the
-filter is index-resident and rejects stay **off the heap**. The planner then
-picks one of two shapes by selectivity (both bounded by the ~15-name
-cardinality): a **non-selective** name keeps the ordered backward scan and
-short-circuits at N; a **selective** one is cheaper as a bitmap index scan on
-`(contract, name)` whose small match-set is sorted before the limit (confirmed
-via `EXPLAIN`). Either way the work is bounded by *(contract, name)* activity,
-not the table.
+a per-name UNION. **Q8** (address-anchored) keeps the name as an in-index filter
+that stays off the heap and is already bounded by the participant's own events.
+**Q4** (contract-anchored) is the trap: on the un-filtered contract index the
+name sits past the position columns, so `IN (…)` there is a per-row check over
+the contract's whole slice — a low- or zero-selectivity name (say one only a
+*different* contract emits) walks all of it, tens of millions of rows on a hot
+contract, seconds-to-minutes for an often-empty page, and a client disconnect
+does not cancel it. Q4 is therefore served by `idx_…_contract_name`, whose
+leading `(contract, contract_event_name)` turns `IN (…)` into a per-name seek:
+the match-set is already in position order, the work is bounded by
+*(contract, name)* activity, and a zero-match page returns at once
+(`EXPLAIN`-verified: `Limit` cost ~21k → ~34).
 
 ### Index summary — every feed is anchored by a selective seek
 
@@ -384,7 +402,7 @@ not the table.
 | Q1 tx involving X | `events` PK (involved) ∪ `transactions (sender, …)` → merge | 2 seeks + merge ~2N |
 | Q2 events by type T | `events (event_type, …, address)` + `DISTINCT ON` | seek + ~K·N |
 | Q3 contract events of C | `events (contract, …, address)` + `DISTINCT ON` | seek + ~K·N |
-| Q4 + name list | same index, `name = ANY()` in-index | seek + ~N/sel idx + N heap |
+| Q4 + name list | `events (contract, name, …)` seek | seek + N (small) |
 | Q5 events involving X | `events` PK `(address, …)` | seek + N |
 | Q6 + type T | `events (address, event_type, …)` | seek + N |
 | Q7 contract C involving X | `events (address, contract, …)` | seek + N (small) |
@@ -569,7 +587,11 @@ affects no written row, so changing it needs no re-backfill.
 
 Each runs the access path above verbatim: hand-written, `Binder`-parameterized
 SQL (`DISTINCT ON`, the involved ∪ sender union, the in-index `IN (…)` name
-list, the row-comparison keyset), mapped back to the sea-orm models. The
+list, the row-comparison keyset), mapped back to the sea-orm models, and run
+inside a transaction that applies `SET LOCAL statement_timeout` — a per-request
+bound scoped to the read path (ingest and migrations share the pool but not this
+transaction), so a pathological plan is cancelled server-side rather than
+pinning a pool connection past a client disconnect. The
 **type surface** — the `Transaction` / `Event` objects and the `UnitKind` /
 `AddressRole` enums — lives in `http/types.rs`; the **keyset machinery** —
 opaque `hex(json(tuple))` cursors, the page-size clamp, and the slim
