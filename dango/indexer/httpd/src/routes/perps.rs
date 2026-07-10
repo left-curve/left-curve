@@ -146,14 +146,9 @@ pub async fn pair_param(
     query: web::Query<PairIdQuery>,
     app_ctx: web::Data<MinimalContext>,
 ) -> Result<HttpResponse, Error> {
-    let PairIdQuery { pair_id } = query.into_inner();
+    let response = query_perps(&app_ctx, &query.to_pair_param_msg()).await?;
 
-    let response = query_perps(&app_ctx, &perps::QueryMsg::PairParam {
-        pair_id: pair_id.clone(),
-    })
-    .await?;
-
-    json_or_not_found(response, format!("pair `{pair_id}`"))
+    json_or_not_found(response, format!("pair `{}`", query.pair_id))
 }
 
 #[utoipa::path(
@@ -236,14 +231,9 @@ pub async fn pair_state(
     query: web::Query<PairIdQuery>,
     app_ctx: web::Data<MinimalContext>,
 ) -> Result<HttpResponse, Error> {
-    let PairIdQuery { pair_id } = query.into_inner();
+    let response = query_perps(&app_ctx, &query.to_pair_state_msg()).await?;
 
-    let response = query_perps(&app_ctx, &perps::QueryMsg::PairState {
-        pair_id: pair_id.clone(),
-    })
-    .await?;
-
-    json_or_not_found(response, format!("pair `{pair_id}`"))
+    json_or_not_found(response, format!("pair `{}`", query.pair_id))
 }
 
 #[utoipa::path(
@@ -306,18 +296,7 @@ pub async fn liquidity_depth(
     query: web::Query<LiquidityDepthQuery>,
     app_ctx: web::Data<MinimalContext>,
 ) -> Result<HttpResponse, Error> {
-    let LiquidityDepthQuery {
-        pair_id,
-        bucket_size,
-        limit,
-    } = query.into_inner();
-
-    let response = query_perps(&app_ctx, &perps::QueryMsg::LiquidityDepth {
-        pair_id,
-        bucket_size,
-        limit,
-    })
-    .await?;
+    let response = query_perps(&app_ctx, &query.to_query_msg()).await?;
 
     Ok(HttpResponse::Ok().json(response))
 }
@@ -352,28 +331,7 @@ pub async fn user_state(
     query: web::Query<UserStateQuery>,
     app_ctx: web::Data<MinimalContext>,
 ) -> Result<HttpResponse, Error> {
-    let UserStateQuery {
-        user,
-        include_equity,
-        include_available_margin,
-        include_maintenance_margin,
-        include_unrealized_pnl,
-        include_unrealized_funding,
-        include_liquidation_price,
-        include_all,
-    } = query.into_inner();
-
-    let response = query_perps(&app_ctx, &perps::QueryMsg::UserStateExtended {
-        user,
-        include_equity,
-        include_available_margin,
-        include_maintenance_margin,
-        include_unrealized_pnl,
-        include_unrealized_funding,
-        include_liquidation_price,
-        include_all,
-    })
-    .await?;
+    let response = query_perps(&app_ctx, &query.to_query_msg()).await?;
 
     Ok(HttpResponse::Ok().json(response))
 }
@@ -403,9 +361,7 @@ pub async fn orders_by_user(
     query: web::Query<OrdersByUserQuery>,
     app_ctx: web::Data<MinimalContext>,
 ) -> Result<HttpResponse, Error> {
-    let OrdersByUserQuery { user } = query.into_inner();
-
-    let response = query_perps(&app_ctx, &perps::QueryMsg::OrdersByUser { user }).await?;
+    let response = query_perps(&app_ctx, &query.to_query_msg()).await?;
 
     Ok(HttpResponse::Ok().json(response))
 }
@@ -489,11 +445,29 @@ pub async fn order(
 
 // ---- request/response types ----
 
-#[derive(Deserialize, IntoParams)]
+#[derive(Debug, Deserialize, IntoParams)]
 pub struct PairIdQuery {
     /// Trading pair ID, e.g. `perp/ethusd`.
     #[param(value_type = String, example = "perp/ethusd")]
-    pair_id: PairId,
+    pub(crate) pair_id: PairId,
+}
+
+impl PairIdQuery {
+    /// The `pair_param` query this parameter set selects.
+    fn to_pair_param_msg(&self) -> perps::QueryMsg {
+        perps::QueryMsg::PairParam {
+            pair_id: self.pair_id.clone(),
+        }
+    }
+
+    /// The `pair_state` query this parameter set selects — shared with the
+    /// WS `perpsPairState` subscription, so both desugar to the same wire
+    /// message.
+    pub(crate) fn to_pair_state_msg(&self) -> perps::QueryMsg {
+        perps::QueryMsg::PairState {
+            pair_id: self.pair_id.clone(),
+        }
+    }
 }
 
 #[derive(Deserialize, IntoParams)]
@@ -508,62 +482,102 @@ pub struct PairsPageQuery {
     limit: Option<u32>,
 }
 
-#[derive(Deserialize, IntoParams)]
+#[derive(Debug, Deserialize, IntoParams)]
 pub struct LiquidityDepthQuery {
     /// Trading pair ID, e.g. `perp/ethusd`.
     #[param(value_type = String, example = "perp/ethusd")]
-    pair_id: PairId,
+    pub(crate) pair_id: PairId,
 
     /// Price bucket size; must be one of the pair's configured
     /// `bucket_sizes` (see the pair's `PairParam`).
     #[param(value_type = String, example = "10")]
-    bucket_size: UsdPrice,
+    pub(crate) bucket_size: UsdPrice,
 
     /// Maximum number of buckets per side. The contract picks its default
     /// page limit when omitted.
-    limit: Option<u32>,
+    pub(crate) limit: Option<u32>,
 }
 
-#[derive(Deserialize, IntoParams)]
+impl LiquidityDepthQuery {
+    /// The `liquidity_depth` query this parameter set selects — shared with
+    /// the WS `perpsLiquidityDepth` subscription, so both desugar to the same
+    /// wire message.
+    pub(crate) fn to_query_msg(&self) -> perps::QueryMsg {
+        perps::QueryMsg::LiquidityDepth {
+            pair_id: self.pair_id.clone(),
+            bucket_size: self.bucket_size,
+            limit: self.limit,
+        }
+    }
+}
+
+#[derive(Debug, Deserialize, IntoParams)]
 pub struct UserStateQuery {
     /// Account address.
     #[param(value_type = String)]
-    user: Addr,
+    pub(crate) user: Addr,
 
     /// Compute the user's equity.
     #[serde(default)]
-    include_equity: bool,
+    pub(crate) include_equity: bool,
 
     /// Compute the user's available margin.
     #[serde(default)]
-    include_available_margin: bool,
+    pub(crate) include_available_margin: bool,
 
     /// Compute the user's maintenance margin.
     #[serde(default)]
-    include_maintenance_margin: bool,
+    pub(crate) include_maintenance_margin: bool,
 
     /// Compute each position's unrealized PnL.
     #[serde(default)]
-    include_unrealized_pnl: bool,
+    pub(crate) include_unrealized_pnl: bool,
 
     /// Compute each position's unrealized funding.
     #[serde(default)]
-    include_unrealized_funding: bool,
+    pub(crate) include_unrealized_funding: bool,
 
     /// Compute each position's liquidation price.
     #[serde(default)]
-    include_liquidation_price: bool,
+    pub(crate) include_liquidation_price: bool,
 
     /// Compute all of the above, overriding the individual flags.
     #[serde(default)]
-    include_all: bool,
+    pub(crate) include_all: bool,
 }
 
-#[derive(Deserialize, IntoParams)]
+impl UserStateQuery {
+    /// The `user_state_extended` query this parameter set selects — shared
+    /// with the WS `perpsUserState` subscription, so both desugar to the same
+    /// wire message.
+    pub(crate) fn to_query_msg(&self) -> perps::QueryMsg {
+        perps::QueryMsg::UserStateExtended {
+            user: self.user,
+            include_equity: self.include_equity,
+            include_available_margin: self.include_available_margin,
+            include_maintenance_margin: self.include_maintenance_margin,
+            include_unrealized_pnl: self.include_unrealized_pnl,
+            include_unrealized_funding: self.include_unrealized_funding,
+            include_liquidation_price: self.include_liquidation_price,
+            include_all: self.include_all,
+        }
+    }
+}
+
+#[derive(Debug, Deserialize, IntoParams)]
 pub struct OrdersByUserQuery {
     /// Account address.
     #[param(value_type = String)]
-    user: Addr,
+    pub(crate) user: Addr,
+}
+
+impl OrdersByUserQuery {
+    /// The `orders_by_user` query this parameter set selects — shared with
+    /// the WS `perpsOrdersByUser` subscription, so both desugar to the same
+    /// wire message.
+    pub(crate) fn to_query_msg(&self) -> perps::QueryMsg {
+        perps::QueryMsg::OrdersByUser { user: self.user }
+    }
 }
 
 #[derive(Deserialize, IntoParams)]
