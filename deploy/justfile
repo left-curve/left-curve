@@ -335,6 +335,21 @@ stop-batch-block-backup network:
       --limit batch-block-backup-{{network}} \
       2>&1 | tee "{{justfile_directory()}}/logs/$(date -u +%Y%m%d%H%M%S)-stop-batch-block-backup.log"
 
+# ------------------------------ Block Cleanup ---------------------------------
+
+# One-shot: delete an inclusive block height range from a node's local blocks/
+# dir, then exit. Make sure the range is already archived in the
+# dango-<network>-batches bucket before running! The playbook waits for the bot
+# to finish, prints its logs, and fails if it exited non-zero.
+# Usage: just block-cleanup mainnet hetzner1 1 1000000
+#        just block-cleanup testnet hetzner2 1 500000 latest true   # dry run
+block-cleanup network server start_height end_height tag="latest" dry_run="false":
+  mkdir -p "{{justfile_directory()}}/logs" \
+    && uv run ansible-playbook block-cleanup.yml \
+      -e '{"network": "{{network}}", "block_cleanup_start_height": {{start_height}}, "block_cleanup_end_height": {{end_height}}, "block_cleanup_tag": "{{tag}}", "block_cleanup_dry_run": "{{dry_run}}"}' \
+      --limit {{server}} \
+      2>&1 | tee "{{justfile_directory()}}/logs/$(date -u +%Y%m%d%H%M%S)-block-cleanup.log"
+
 # ----------------------------- Dango Assistant --------------------------------
 
 deploy-dango-assistant tag="latest":
