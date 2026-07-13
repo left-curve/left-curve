@@ -1,4 +1,4 @@
-import type { Address, Json, JsonValue, Message } from "./index.js";
+import type { Address, Json } from "./index.js";
 
 // biome-ignore format: no formatting
 type MBytes =
@@ -16,11 +16,6 @@ type MBits =
 export type TypedDataProperty = {
   name: string;
   type: SolidityTypes;
-};
-
-export type TypedDataParameter<T = TypedDataProperty> = {
-  type: T[];
-  extraTypes: Record<string, TypedDataProperty[]>;
 };
 
 export type SolidityTypes =
@@ -42,44 +37,13 @@ export type DomainType = [
 export type MessageType = [
   { name: "sender"; type: "address" },
   { name: "data"; type: "Metadata" },
-  { name: "gas_limit"; type: "uint32" },
+  { name: "gas_limit"; type: "string" },
   { name: "messages"; type: "TxMessage[]" },
 ];
 
-export type MetadataType = [
-  { name: "username"; type: "string" },
-  { name: "chainId"; type: "string" },
-  { name: "nonce"; type: "uint32" },
-];
+export type MetadataType = readonly TypedDataProperty[];
 
-export type TxMessageType =
-  | { name: "configure"; type: "Configure" }
-  | { name: "upgrade"; type: "Upgrade" }
-  | { name: "transfer"; type: "Transfer" }
-  | { name: "upload"; type: "Upload" }
-  | { name: "instantiate"; type: "Instantiate" }
-  | { name: "execute"; type: "Execute" }
-  | { name: "migrate"; type: "Migrate" };
-
-export type TypedData<TType extends TxMessageType | unknown = TxMessageType | unknown> = {
-  types: EIP712Types<TType>;
-  primaryType: "Message";
-  domain: EIP712Domain;
-  message: EIP712Message;
-};
-
-export type EIP712Types<TMessage extends TxMessageType | unknown = TxMessageType | unknown> =
-  Record<"Message", MessageType> &
-    Record<"TxMessage", TMessage[]> &
-    Record<"Metadata", TypedDataProperty[]> &
-    Record<"EIP712Domain", DomainType>;
-
-export type EIP712Message = {
-  sender: Address;
-  data: Json;
-  gas_limit: number;
-  messages: Message[];
-};
+export type TxMessageType = [{ name: "kind"; type: "string" }, { name: "payload"; type: "string" }];
 
 export type EIP712Domain = {
   name: string;
@@ -87,8 +51,81 @@ export type EIP712Domain = {
   verifyingContract: Address;
 };
 
-export type ArbitraryTypedData<message extends JsonValue = JsonValue> = {
-  message: message;
-  types: Record<string, TypedDataProperty[]>;
+/** EIP-712 typed data shared across all flavors (tx, session, onboard). */
+export type TypedData<
+  TTypes extends Record<string, readonly TypedDataProperty[]> = Record<
+    string,
+    readonly TypedDataProperty[]
+  >,
+  TMessage extends Json = Json,
+> = {
+  types: TTypes & { EIP712Domain: DomainType };
   primaryType: "Message";
+  domain: EIP712Domain;
+  message: TMessage;
 };
+
+/** Typed data for a Dango transaction (`SignDoc`). */
+export type TxTypedData = TypedData<
+  {
+    EIP712Domain: DomainType;
+    Message: MessageType;
+    Metadata: MetadataType;
+    TxMessage: TxMessageType;
+  },
+  TxTypedDataMessage
+>;
+
+export type TxTypedDataMessage = {
+  sender: Address;
+  data: TxTypedDataMetadata;
+  gas_limit: string;
+  messages: TxTypedDataEntry[];
+};
+
+export type TxTypedDataMetadata = {
+  user_index: number;
+  chain_id: string;
+  nonce: number;
+  expiry?: string;
+};
+
+export type TxTypedDataEntry = {
+  kind: string;
+  payload: string;
+};
+
+/** Typed data for a session authorization (`SessionInfo`). */
+export type SessionTypedData = TypedData<
+  {
+    EIP712Domain: DomainType;
+    Message: readonly TypedDataProperty[];
+  },
+  SessionTypedDataMessage
+>;
+
+export type SessionTypedDataMessage = {
+  chain_id: string;
+  session_key: string;
+  expire_at: string;
+};
+
+/** Typed data for user onboarding (`RegisterUserData`). */
+export type OnboardTypedData = TypedData<
+  {
+    EIP712Domain: DomainType;
+    Message: readonly TypedDataProperty[];
+  },
+  OnboardTypedDataMessage
+>;
+
+export type OnboardTypedDataMessage = {
+  chain_id: string;
+  key: string;
+  key_hash: string;
+  seed: number;
+  referrer?: number;
+};
+
+/** Typed data passed through the arbitrary signing API. */
+export type ArbitraryTypedData = SessionTypedData | OnboardTypedData;

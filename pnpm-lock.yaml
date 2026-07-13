@@ -243,6 +243,9 @@ importers:
       '@types/big.js':
         specifier: ^6.2.2
         version: 6.2.2
+      viem:
+        specifier: ^2.21.0
+        version: 2.39.0(typescript@5.9.3)(zod@3.25.76)
       vitest:
         specifier: 'catalog:'
         version: 2.1.1(@types/node@22.7.5)(jsdom@29.0.1(@noble/hashes@1.8.0))(less@1.7.5)(lightningcss@1.32.0)(terser@5.34.1)

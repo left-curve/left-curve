@@ -84,15 +84,10 @@ export function useSessionKey(parameters: UseSessionKeyParameters = {}): UseSess
     };
 
     const { credential } = await c.signArbitrary({
-      primaryType: "Message" as const,
-      message: sessionInfo,
-      types: {
-        Message: [
-          { name: "chain_id", type: "string" },
-          { name: "expire_at", type: "string" },
-          { name: "session_key", type: "string" },
-        ],
-      },
+      kind: "session",
+      chainId: sessionInfo.chainId,
+      sessionKey: sessionInfo.sessionKey,
+      expireAt: sessionInfo.expireAt,
     });
 
     if (!("standard" in credential)) throw new Error("unsupported credential type");

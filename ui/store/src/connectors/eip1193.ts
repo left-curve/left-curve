@@ -1,11 +1,15 @@
 import { createKeyHash, createSignerClient, toAccount } from "@left-curve/sdk";
 import { getUser } from "@left-curve/sdk/actions";
 import { decodeHex, encodeBase64, encodeUtf8 } from "@left-curve/encoding";
-import { composeArbitraryTypedData } from "@left-curve/utils";
+import {
+  composeOnboardTypedData,
+  composeSessionTypedData,
+  composeTxTypedData,
+} from "@left-curve/utils";
 
 import { createConnector } from "./createConnector.js";
 
-import type { Eip712Signature } from "@left-curve/types";
+import type { ArbitraryDoc, Eip712Signature, SignDoc } from "@left-curve/types";
 import type { Address } from "@left-curve/types";
 
 import type { ConnectorId } from "../types/connector.js";
@@ -130,14 +134,16 @@ export function eip1193(parameters: EIP1193ConnectorParameters) {
         const accounts = await this.getAccounts();
         return !!controllerAddress && accounts.length > 0;
       },
-      async signArbitrary(payload) {
-        const { types, primaryType, message } = payload;
+      async signArbitrary(payload: ArbitraryDoc) {
+        const typedData =
+          payload.kind === "session"
+            ? composeSessionTypedData(payload)
+            : composeOnboardTypedData(payload);
 
         const provider = await this.getProvider();
         await this.switchChain?.({ chainId: ETHEREUM_HEX_CHAIN_ID });
         const [controllerAddress] = await provider.request({ method: "eth_requestAccounts" });
 
-        const typedData = composeArbitraryTypedData({ message, types, primaryType });
         const signData = JSON.stringify(typedData);
 
         const signature = await provider.request({
@@ -157,12 +163,14 @@ export function eip1193(parameters: EIP1193ConnectorParameters) {
           signed: payload,
         };
       },
-      async signTx(signDoc) {
+      async signTx(signDoc: SignDoc) {
+        const typedData = composeTxTypedData(signDoc);
+
         const provider = await this.getProvider();
         await this.switchChain?.({ chainId: ETHEREUM_HEX_CHAIN_ID });
         const [controllerAddress] = await provider.request({ method: "eth_requestAccounts" });
 
-        const signData = JSON.stringify(signDoc);
+        const signData = JSON.stringify(typedData);
 
         const signature = await provider.request({
           method: "eth_signTypedData_v4",

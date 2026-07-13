@@ -1,12 +1,4 @@
-import type {
-  Address,
-  Client,
-  Message,
-  Signer,
-  TxMessageType,
-  TypedDataParameter,
-} from "@left-curve/types";
-import { composeTxTypedData } from "@left-curve/utils";
+import type { Address, Client, Message, SignDoc, Signer } from "@left-curve/types";
 import { getAccountSeenNonces } from "#actions/account-factory/queries/getAccountSeenNonces.js";
 import { getAccountSessionSeenNonces } from "#actions/account-factory/queries/getAccountSessionSeenNonces.js";
 import { getAccountInfo } from "#actions/account-factory/queries/getAccountInfo.js";
@@ -19,7 +11,6 @@ export type SignAndBroadcastTxParameters = {
   sender: Address;
   messages: Message[];
   gasLimit?: number;
-  typedData?: TypedDataParameter<TxMessageType>;
 };
 
 export type SignAndBroadcastTxReturnType = BroadcastTxSyncReturnType;
@@ -29,7 +20,7 @@ export async function signAndBroadcastTx(
   parameters: SignAndBroadcastTxParameters,
 ): SignAndBroadcastTxReturnType {
   if (!client.signer) throw new Error("client must have a signer");
-  const { messages, sender, typedData, gasLimit: gas } = parameters;
+  const { messages, sender, gasLimit: gas } = parameters;
 
   const chainId = await (async () => {
     if (client.chain?.id) return client.chain.id;
@@ -55,17 +46,12 @@ export async function signAndBroadcastTx(
     ? { gasUsed: gas }
     : await simulate(client, { simulate: { sender, msgs: messages, data: metadata } });
 
-  const domain = {
-    name: "dango",
-    chainId: 1,
-    verifyingContract: sender,
+  const signDoc: SignDoc = {
+    sender,
+    gasLimit: gasUsed,
+    messages,
+    data: metadata,
   };
-
-  const signDoc = composeTxTypedData(
-    { messages, gas_limit: gasUsed, data: metadata, sender },
-    domain,
-    typedData,
-  );
 
   const { credential } = await client.signer.signTx(signDoc);
 

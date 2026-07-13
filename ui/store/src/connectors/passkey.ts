@@ -13,6 +13,7 @@ import { getNavigatorOS, getRootDomain } from "@left-curve/utils";
 
 import { createConnector } from "./createConnector.js";
 
+import type { ArbitraryDoc, SignDoc } from "@left-curve/types";
 import type { Address } from "@left-curve/types";
 
 type PasskeyConnectorParameters = {
@@ -124,9 +125,8 @@ export function passkey(parameters: PasskeyConnectorParameters = {}) {
         const accounts = await this.getAccounts();
         return accounts.length > 0;
       },
-      async signArbitrary(payload) {
-        const { message } = payload;
-        const bytes = sha256(serialize(message));
+      async signArbitrary(payload: ArbitraryDoc) {
+        const bytes = sha256(serialize(toArbitraryPayload(payload)));
 
         const {
           webauthn,
@@ -151,13 +151,11 @@ export function passkey(parameters: PasskeyConnectorParameters = {}) {
 
         return {
           credential: { standard: { keyHash, signature: { passkey } } },
-          signed: message,
+          signed: payload,
         };
       },
-      async signTx(signDoc) {
-        const { message } = signDoc;
-
-        const tx = sha256(serialize(message));
+      async signTx(signDoc: SignDoc) {
+        const tx = sha256(serialize(toSignDocPayload(signDoc)));
 
         const {
           webauthn,
@@ -186,4 +184,30 @@ export function passkey(parameters: PasskeyConnectorParameters = {}) {
       },
     };
   });
+}
+
+function toSignDocPayload(signDoc: SignDoc) {
+  return {
+    sender: signDoc.sender,
+    gasLimit: signDoc.gasLimit,
+    messages: signDoc.messages,
+    data: signDoc.data,
+  };
+}
+
+function toArbitraryPayload(payload: ArbitraryDoc) {
+  if (payload.kind === "session") {
+    return {
+      chainId: payload.chainId,
+      sessionKey: payload.sessionKey,
+      expireAt: payload.expireAt,
+    };
+  }
+  return {
+    chainId: payload.chainId,
+    key: payload.key,
+    keyHash: payload.keyHash,
+    seed: payload.seed,
+    ...(payload.referrer !== undefined ? { referrer: payload.referrer } : {}),
+  };
 }

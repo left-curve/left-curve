@@ -2,7 +2,7 @@ import { type KeyPair, Secp256k1, sha256 } from "@left-curve/crypto";
 import { encodeBase64, serialize } from "@left-curve/encoding";
 import { createKeyHash } from "#account/key.js";
 
-import type { ArbitraryTypedData, KeyHash, SignDoc, Signer } from "@left-curve/types";
+import type { ArbitraryDoc, KeyHash, SignDoc, Signer } from "@left-curve/types";
 
 export class PrivateKeySigner implements Signer {
   #keyPair: KeyPair;
@@ -28,11 +28,8 @@ export class PrivateKeySigner implements Signer {
   }
 
   async signTx(signDoc: SignDoc) {
-    const { message } = signDoc;
-    const tx = sha256(serialize(message));
-
-    const signature = await this.signBytes(tx);
-
+    const bytes = sha256(serialize(toSignDocPayload(signDoc)));
+    const signature = await this.signBytes(bytes);
     const keyHash = await this.getKeyHash();
 
     const credential = {
@@ -45,9 +42,8 @@ export class PrivateKeySigner implements Signer {
     return { credential, signed: signDoc };
   }
 
-  async signArbitrary(payload: ArbitraryTypedData) {
-    const { message } = payload;
-    const bytes = sha256(serialize(message));
+  async signArbitrary(payload: ArbitraryDoc) {
+    const bytes = sha256(serialize(toArbitraryPayload(payload)));
     const signedBytes = await this.signBytes(bytes);
 
     const signature = { secp256k1: encodeBase64(signedBytes) };
@@ -62,4 +58,30 @@ export class PrivateKeySigner implements Signer {
   async signBytes(bytes: Uint8Array): Promise<Uint8Array> {
     return this.#keyPair.createSignature(bytes);
   }
+}
+
+function toSignDocPayload(signDoc: SignDoc) {
+  return {
+    sender: signDoc.sender,
+    gasLimit: signDoc.gasLimit,
+    messages: signDoc.messages,
+    data: signDoc.data,
+  };
+}
+
+function toArbitraryPayload(payload: ArbitraryDoc) {
+  if (payload.kind === "session") {
+    return {
+      chainId: payload.chainId,
+      sessionKey: payload.sessionKey,
+      expireAt: payload.expireAt,
+    };
+  }
+  return {
+    chainId: payload.chainId,
+    key: payload.key,
+    keyHash: payload.keyHash,
+    seed: payload.seed,
+    ...(payload.referrer !== undefined ? { referrer: payload.referrer } : {}),
+  };
 }

@@ -1,13 +1,11 @@
+pub mod eip712;
+
 use {
-    alloy::{
-        dyn_abi::{Eip712Domain, Resolver, TypedData},
-        primitives::{U160, U256, address, uint},
-    },
+    alloy::primitives::{U256, uint},
     anyhow::{anyhow, bail, ensure},
     dango_primitives::{
-        Addr, Api, AuthCtx, AuthMode, ByteArray, Coins, GENESIS_BLOCK_HEIGHT, Inner, JsonDeExt,
-        JsonSerExt, MutableCtx, QuerierExt, QuerierWrapper, SignData, StdError, StdResult, Storage,
-        Tx,
+        Addr, Api, AuthCtx, AuthMode, ByteArray, Coins, GENESIS_BLOCK_HEIGHT, JsonDeExt,
+        MutableCtx, QuerierExt, QuerierWrapper, SignData, StdError, StdResult, Storage, Tx,
     },
     dango_storage::StorageQuerier,
     dango_types::{
@@ -493,30 +491,6 @@ pub fn verify_nonce_and_signature(
     Ok(())
 }
 
-fn ensure_resolver_declares_fields(
-    resolver: &Resolver,
-    type_name: &str,
-    required_fields: &[&str],
-) -> anyhow::Result<()> {
-    let defs = resolver
-        .linearize(type_name)
-        .map_err(|err| anyhow!("EIP-712 resolver does not declare type `{type_name}`: {err}"))?;
-    let declared = defs
-        .first()
-        .ok_or_else(|| anyhow!("EIP-712 resolver does not declare type `{type_name}`"))?
-        .prop_names()
-        .collect::<BTreeSet<_>>();
-
-    for field in required_fields {
-        ensure!(
-            declared.contains(field),
-            "EIP-712 resolver missing required field `{field}` in type `{type_name}`"
-        );
-    }
-
-    Ok(())
-}
-
 pub fn verify_signature(
     api: &dyn Api,
     key: Key,
@@ -525,84 +499,15 @@ pub fn verify_signature(
 ) -> anyhow::Result<()> {
     match (key, signature) {
         (Key::Ethereum(addr), Signature::Eip712(cred)) => {
-            let TypedData {
-                resolver, domain, ..
-            } = cred.typed_data.deserialize_json()?;
-
-            // Ensure the resolver binds all critical fields to the signature
-            // hash before recreating the EIP-712 data for signing.
-            let (verifying_contract, message) = match data {
-                VerifyData::Transaction(sign_doc) => {
-                    const METADATA_FIELDS: [&str; 4] =
-                        ["user_index", "chain_id", "nonce", "expiry"];
-
-                    ensure_resolver_declares_fields(&resolver, "Message", &[
-                        "sender",
-                        "data",
-                        "gas_limit",
-                        "messages",
-                    ])?;
-
-                    ensure_resolver_declares_fields(
-                        &resolver,
-                        "Metadata",
-                        match &sign_doc.data.expiry {
-                            Some(_) => &METADATA_FIELDS,
-                            None => &METADATA_FIELDS[..3],
-                        },
-                    )?;
-
-                    (
-                        Some(U160::from_be_bytes(sign_doc.sender.into_inner()).into()),
-                        sign_doc.to_json_value()?,
-                    )
-                },
-                // The EIP-712 standard requires the `verifyingContract` field
-                // in the domain. Some wallets enforce this requirement.
-                // We use the zero address (0x00...00) as a placeholder for
-                // these cases, indicating the signature's 'arbitrary' nature.
-                VerifyData::Session(session_info) => {
-                    ensure_resolver_declares_fields(&resolver, "Message", &[
-                        "chain_id",
-                        "expire_at",
-                        "session_key",
-                    ])?;
-
-                    (
-                        Some(address!("0x0000000000000000000000000000000000000000")),
-                        session_info.to_json_value()?,
-                    )
-                },
-                VerifyData::Onboard(data) => {
-                    const MESSAGE_FIELDS: [&str; 5] =
-                        ["chain_id", "key", "key_hash", "seed", "referrer"];
-
-                    ensure_resolver_declares_fields(&resolver, "Message", match &data.referrer {
-                        Some(_) => &MESSAGE_FIELDS,
-                        None => &MESSAGE_FIELDS[..4],
-                    })?;
-
-                    (
-                        Some(address!("0x0000000000000000000000000000000000000000")),
-                        data.to_json_value()?,
-                    )
-                },
+            // The credential-supplied `typed_data` is for wallet display
+            // only; the signing hash is rebuilt from the payload itself.
+            let typed_data = match &data {
+                VerifyData::Transaction(sign_doc) => eip712::typed_data_for_transaction(sign_doc)?,
+                VerifyData::Session(session_info) => eip712::typed_data_for_session(session_info)?,
+                VerifyData::Onboard(register) => eip712::typed_data_for_onboard(register)?,
             };
 
-            // EIP-712 hash used in the signature.
-            let sign_bytes = TypedData {
-                resolver,
-                domain: Eip712Domain {
-                    name: domain.name,
-                    // We use Ethereum's EIP-155 chainId (0x1) for compatibility.
-                    chain_id: Some(EIP155_CHAIN_ID),
-                    verifying_contract,
-                    ..Default::default()
-                },
-                primary_type: "Message".to_string(),
-                message: message.into_inner(),
-            }
-            .eip712_signing_hash()?;
+            let sign_bytes = typed_data.eip712_signing_hash()?;
 
             // The first 64 bytes of the Ethereum signature is the typical
             // Secp256k1 signature, while the last byte is the recovery ID.
@@ -815,13 +720,13 @@ mod tests {
 
     #[test]
     fn eip712_authentication() {
-        let user_address = Addr::from_str("0x9ee0274ae30d0e209bef2c7e6ce9675a92ef96c8").unwrap();
-        let user_index = 123;
+        let user_address = Addr::from_str("0xd11c8c63a5185f597bbee259128ce7327709cea5").unwrap();
+        let user_index = 993516408;
         let user_keyhash =
-            Hash256::from_str("7D8FB7895BEAE0DF16E3E5F6FA7EB10CDE735E5B7C9A79DFCD8DD32A6BDD2165")
+            Hash256::from_str("E85C3498D28494A14B9BD76558F381CB54EED9C3AFA10A90837E7A0E94085552")
                 .unwrap();
         let user_key =
-            Key::Ethereum(Addr::from_str("0x4c9d879264227583f49af3c99eb396fe4735a935").unwrap());
+            Key::Ethereum(Addr::from_str("0xd11c8c63a5185f597bbee259128ce7327709cea5").unwrap());
 
         let mut storage = MockStorage::new();
 
@@ -852,37 +757,37 @@ mod tests {
             .with_storage(storage)
             .with_querier(querier)
             .with_contract(user_address)
-            .with_chain_id("dev-6")
+            .with_chain_id("dev-1")
             .with_mode(AuthMode::Finalize);
 
         let tx = r#"{
-          "sender": "0x9ee0274ae30d0e209bef2c7e6ce9675a92ef96c8",
-          "credential": {
-            "standard": {
-              "signature": {
-                "eip712": {
-                  "sig": "HVjOsIIx7o8SPbwXhSqpK/+N83V9Cz92+moM7vIIAaUz9YEelg8EesIN14ir5JcSSr/waG2b4gxPFbscaToUcBw=",
-                  "typed_data": "eyJ0eXBlcyI6eyJFSVA3MTJEb21haW4iOlt7Im5hbWUiOiJuYW1lIiwidHlwZSI6InN0cmluZyJ9LHsibmFtZSI6ImNoYWluSWQiLCJ0eXBlIjoidWludDI1NiJ9LHsibmFtZSI6InZlcmlmeWluZ0NvbnRyYWN0IiwidHlwZSI6ImFkZHJlc3MifV0sIk1lc3NhZ2UiOlt7Im5hbWUiOiJzZW5kZXIiLCJ0eXBlIjoiYWRkcmVzcyJ9LHsibmFtZSI6ImRhdGEiLCJ0eXBlIjoiTWV0YWRhdGEifSx7Im5hbWUiOiJnYXNfbGltaXQiLCJ0eXBlIjoidWludDMyIn0seyJuYW1lIjoibWVzc2FnZXMiLCJ0eXBlIjoiVHhNZXNzYWdlW10ifV0sIk1ldGFkYXRhIjpbeyJuYW1lIjoidXNlcl9pbmRleCIsInR5cGUiOiJ1aW50MzIifSx7Im5hbWUiOiJjaGFpbl9pZCIsInR5cGUiOiJzdHJpbmcifSx7Im5hbWUiOiJub25jZSIsInR5cGUiOiJ1aW50MzIifV0sIlR4TWVzc2FnZSI6W3sibmFtZSI6InRyYW5zZmVyIiwidHlwZSI6IlRyYW5zZmVyIn1dLCJUcmFuc2ZlciI6W3sibmFtZSI6IjB4MzMzNjFkZTQyNTcxZDZhYTIwYzM3ZGFhNmRhNGI1YWI2N2JmYWFkOSIsInR5cGUiOiJDb2luMCJ9XSwiQ29pbjAiOlt7Im5hbWUiOiJicmlkZ2UvdXNkYyIsInR5cGUiOiJzdHJpbmcifV19LCJwcmltYXJ5VHlwZSI6Ik1lc3NhZ2UiLCJkb21haW4iOnsibmFtZSI6ImRhbmdvIiwiY2hhaW5JZCI6MSwidmVyaWZ5aW5nQ29udHJhY3QiOiIweDllZTAyNzRhZTMwZDBlMjA5YmVmMmM3ZTZjZTk2NzVhOTJlZjk2YzgifSwibWVzc2FnZSI6eyJzZW5kZXIiOiIweDllZTAyNzRhZTMwZDBlMjA5YmVmMmM3ZTZjZTk2NzVhOTJlZjk2YzgiLCJkYXRhIjp7ImNoYWluX2lkIjoiZGV2LTYiLCJ1c2VyX2luZGV4IjoxMjMsIm5vbmNlIjowfSwiZ2FzX2xpbWl0IjoyODM0LCJtZXNzYWdlcyI6W3sidHJhbnNmZXIiOnsiMHgzMzM2MWRlNDI1NzFkNmFhMjBjMzdkYWE2ZGE0YjVhYjY3YmZhYWQ5Ijp7ImJyaWRnZS91c2RjIjoiMTAwMDAwMCJ9fX1dfX0="
-                }
-              },
-              "key_hash": "7D8FB7895BEAE0DF16E3E5F6FA7EB10CDE735E5B7C9A79DFCD8DD32A6BDD2165"
-            }
-          },
-          "data": {
-            "chain_id": "dev-6",
-            "user_index": 123,
-            "nonce": 0
-          },
+          "sender": "0xd11c8c63a5185f597bbee259128ce7327709cea5",
+          "gas_limit": 8369997155007416594,
           "msgs": [
             {
               "transfer": {
-                "0x33361de42571d6aa20c37daa6da4b5ab67bfaad9": {
-                  "bridge/usdc": "1000000"
+                "0x2631340ad080d6b4b524c6e5b4b33e4711c59d9e": {
+                  "bridge/usdc": "100000000"
                 }
               }
             }
           ],
-          "gas_limit": 2834
+          "data": {
+            "chain_id": "dev-1",
+            "nonce": 34,
+            "user_index": 993516408
+          },
+          "credential": {
+            "standard": {
+              "key_hash": "E85C3498D28494A14B9BD76558F381CB54EED9C3AFA10A90837E7A0E94085552",
+              "signature": {
+                "eip712": {
+                  "sig": "/cJCYUMvY3W658C3GutFM164NT5NY5wdOq3862em1qlG0oBJ74yzsKxo16rE5xHZIxsZZfLS8RBYhteYijGxyBs=",
+                  "typed_data": "eyJkb21haW4iOnsibmFtZSI6ImRhbmdvIiwiY2hhaW5JZCI6IjB4MSIsInZlcmlmeWluZ0NvbnRyYWN0IjoiMHhkMTFjOGM2M2E1MTg1ZjU5N2JiZWUyNTkxMjhjZTczMjc3MDljZWE1In0sInR5cGVzIjp7Ik1lc3NhZ2UiOlt7InR5cGUiOiJhZGRyZXNzIiwibmFtZSI6InNlbmRlciJ9LHsidHlwZSI6Ik1ldGFkYXRhIiwibmFtZSI6ImRhdGEifSx7InR5cGUiOiJzdHJpbmciLCJuYW1lIjoiZ2FzX2xpbWl0In0seyJ0eXBlIjoiVHhNZXNzYWdlW10iLCJuYW1lIjoibWVzc2FnZXMifV0sIk1ldGFkYXRhIjpbeyJ0eXBlIjoidWludDMyIiwibmFtZSI6InVzZXJfaW5kZXgifSx7InR5cGUiOiJzdHJpbmciLCJuYW1lIjoiY2hhaW5faWQifSx7InR5cGUiOiJ1aW50MzIiLCJuYW1lIjoibm9uY2UifV0sIlR4TWVzc2FnZSI6W3sidHlwZSI6InN0cmluZyIsIm5hbWUiOiJraW5kIn0seyJ0eXBlIjoic3RyaW5nIiwibmFtZSI6InBheWxvYWQifV19LCJwcmltYXJ5VHlwZSI6Ik1lc3NhZ2UiLCJtZXNzYWdlIjp7ImRhdGEiOnsiY2hhaW5faWQiOiJkZXYtMSIsIm5vbmNlIjozNCwidXNlcl9pbmRleCI6OTkzNTE2NDA4fSwiZ2FzX2xpbWl0IjoiODM2OTk5NzE1NTAwNzQxNjU5NCIsIm1lc3NhZ2VzIjpbeyJraW5kIjoidHJhbnNmZXIiLCJwYXlsb2FkIjoie1wiMHgyNjMxMzQwYWQwODBkNmI0YjUyNGM2ZTViNGIzM2U0NzExYzU5ZDllXCI6e1wiYnJpZGdlL3VzZGNcIjpcIjEwMDAwMDAwMFwifX0ifV0sInNlbmRlciI6IjB4ZDExYzhjNjNhNTE4NWY1OTdiYmVlMjU5MTI4Y2U3MzI3NzA5Y2VhNSJ9fQ=="
+                }
+              }
+            }
+          }
         }"#;
 
         authenticate_tx(ctx.as_auth(), tx.deserialize_json::<Tx>().unwrap(), None).should_succeed();
@@ -1075,13 +980,13 @@ mod tests {
 
     #[test]
     fn session_key_with_eip712_authentication() {
-        let user_address = Addr::from_str("0x95a85fe292991bfa52f81a15292f758cbc26669e").unwrap();
-        let user_index = 3253918834;
+        let user_address = Addr::from_str("0x67c3d3b9ad74f42c598e76b94750b7d29b9ea0bc").unwrap();
+        let user_index = 470085411;
         let user_keyhash =
-            Hash256::from_str("802C3DF10B0B24A63CD9B3B1D70B00D1574F04D9EE2C9DB1BAEBB2444579A204")
+            Hash256::from_str("5C5EFA321F8A9312E2FC319288E65B8893314578CE01CA77D3591A1D8BB32E8B")
                 .unwrap();
         let user_key =
-            Key::Ethereum(Addr::from_str("0x528b4cbc3c8f954b5aede2b90b5c69c796360e53").unwrap());
+            Key::Ethereum(Addr::from_str("0xb9f4f389c2f0a80d11d84676a3e6cbb254eb67b7").unwrap());
 
         let mut storage = MockStorage::new();
 
@@ -1116,41 +1021,41 @@ mod tests {
             .with_mode(AuthMode::Finalize);
 
         let tx = r#"{
-          "sender": "0x95a85fe292991bfa52f81a15292f758cbc26669e",
+          "sender": "0x67c3d3b9ad74f42c598e76b94750b7d29b9ea0bc",
+          "gas_limit": 6053667999784345350,
+          "msgs": [
+            {
+              "transfer": {
+                "0x27ac046fbe420e2d1f9f803635ccd702c6af3353": {
+                  "bridge/usdc": "100000000"
+                }
+              }
+            }
+          ],
+          "data": {
+            "chain_id": "dev-1",
+            "nonce": 83,
+            "user_index": 470085411
+          },
           "credential": {
             "session": {
               "authorization": {
-                "key_hash": "802C3DF10B0B24A63CD9B3B1D70B00D1574F04D9EE2C9DB1BAEBB2444579A204",
+                "key_hash": "5C5EFA321F8A9312E2FC319288E65B8893314578CE01CA77D3591A1D8BB32E8B",
                 "signature": {
                   "eip712": {
-                    "sig": "XZwKBnSP7AAWmLxWoEdnbkyGfbifT8eoFTc5ZMpEGTpHzsGugrRPLF+mNQxWWNT0aMQ9cRW1Wy0pgTFWmEHvZBw=",
-                    "typed_data": "eyJkb21haW4iOnsiY2hhaW5JZCI6MSwibmFtZSI6IkRhbmdvQXJiaXRyYXJ5TWVzc2FnZSIsInZlcmlmeWluZ0NvbnRyYWN0IjoiMHgwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwIn0sIm1lc3NhZ2UiOnsiY2hhaW5faWQiOiJkZXYtMSIsImV4cGlyZV9hdCI6IjM0MDI4MjM2NjkyMDkzODQ2MzQ2MzM3NDYwNzQzMS43NjgyMTE0NTUiLCJzZXNzaW9uX2tleSI6IkFnYU5Va1kzdUdEdXFqR2puam8xRXFTb205RnFQaHArN3R2dld4NzVtRkVuIn0sInByaW1hcnlUeXBlIjoiTWVzc2FnZSIsInR5cGVzIjp7IkVJUDcxMkRvbWFpbiI6W3sibmFtZSI6Im5hbWUiLCJ0eXBlIjoic3RyaW5nIn0seyJuYW1lIjoiY2hhaW5JZCIsInR5cGUiOiJ1aW50MjU2In0seyJuYW1lIjoidmVyaWZ5aW5nQ29udHJhY3QiLCJ0eXBlIjoiYWRkcmVzcyJ9XSwiTWVzc2FnZSI6W3sibmFtZSI6ImNoYWluX2lkIiwidHlwZSI6InN0cmluZyJ9LHsibmFtZSI6ImV4cGlyZV9hdCIsInR5cGUiOiJzdHJpbmcifSx7Im5hbWUiOiJzZXNzaW9uX2tleSIsInR5cGUiOiJzdHJpbmcifV19fQ=="
+                    "sig": "WQKTkZ4ntAsUshqsWyTjX6411jSoj4l7CvyOn6yoeM81bKUu6Bj182AYr4NYLDzLIMMaOrboBLwwcQdfPZZPZhs=",
+                    "typed_data": "eyJkb21haW4iOnsibmFtZSI6ImRhbmdvIiwiY2hhaW5JZCI6IjB4MSIsInZlcmlmeWluZ0NvbnRyYWN0IjoiMHgwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwIn0sInR5cGVzIjp7Ik1lc3NhZ2UiOlt7InR5cGUiOiJzdHJpbmciLCJuYW1lIjoiY2hhaW5faWQifSx7InR5cGUiOiJzdHJpbmciLCJuYW1lIjoic2Vzc2lvbl9rZXkifSx7InR5cGUiOiJzdHJpbmciLCJuYW1lIjoiZXhwaXJlX2F0In1dfSwicHJpbWFyeVR5cGUiOiJNZXNzYWdlIiwibWVzc2FnZSI6eyJjaGFpbl9pZCI6ImRldi0xIiwiZXhwaXJlX2F0IjoiMzQwMjgyMzY2OTIwOTM4NDYzNDYzMzc0NjA3NDMxLjc2ODIxMTQ1NSIsInNlc3Npb25fa2V5IjoiQXcvZmtjYUFzUkpucEVYVmRJVFJHeGk1eml0MjZEaTVIbXhuSzNIYmxFN0UifX0="
                   }
                 }
               },
               "session_info": {
                 "chain_id": "dev-1",
                 "expire_at": "340282366920938463463374607431.768211455",
-                "session_key": "AgaNUkY3uGDuqjGjnjo1EqSom9FqPhp+7tvvWx75mFEn"
+                "session_key": "Aw/fkcaAsRJnpEXVdITRGxi5zit26Di5HmxnK3HblE7E"
               },
-              "session_signature": "/1+xBGwj+eXQ3/u8kPTVcEbgJrQ2unUwg1Bl5+d6bZQOsgemwzSmNm8lQMZaaePW1h7MCt3AQSfyirWW5F2/ZQ=="
+              "session_signature": "0Q2tD0HLadNWpza4e7zlXg/OYA8OSA6b3UJXJYxXrlosX447iE9wBd4UYZuI+7fYFVEH9XDIaEtDiKgSo4ouyw=="
             }
-          },
-          "data": {
-            "chain_id": "dev-1",
-            "nonce": 40,
-            "user_index": 3253918834
-          },
-          "msgs": [
-            {
-              "transfer": {
-                "0x531806a49f59bf49f2eea445fe45aaee32eeca4d": {
-                  "bridge/usdc": "100000000"
-                }
-              }
-            }
-          ],
-          "gas_limit": 1324321884761996338
+          }
         }"#;
 
         authenticate_tx(ctx.as_auth(), tx.deserialize_json::<Tx>().unwrap(), None).should_succeed();
@@ -1240,9 +1145,9 @@ mod tests {
     #[test]
     fn authenticate_onboarding_eip712() {
         let user_key =
-            Key::Ethereum(Addr::from_str("0xefb2aa13efde345af9d1d952366d125d67d9e323").unwrap());
+            Key::Ethereum(Addr::from_str("0xaf1f9c713011315b891a401f07f3abd9a37cb975").unwrap());
         let key_hash =
-            Hash256::from_str("A3489E124277F4E5020596F6A9CEE0EC0A85AA28BEF2E0C126999CF1C639E8E1")
+            Hash256::from_str("182FFC10DD3C6E854C0754FD09A14DCE132D33674596EB48BAC9F0AAD36A7BFE")
                 .unwrap();
 
         let mut storage = MockStorage::new();
@@ -1258,8 +1163,8 @@ mod tests {
 
         let signature = r#"{
           "eip712": {
-            "typed_data": "eyJkb21haW4iOnsiY2hhaW5JZCI6MSwibmFtZSI6IkRhbmdvQXJiaXRyYXJ5TWVzc2FnZSIsInZlcmlmeWluZ0NvbnRyYWN0IjoiMHgwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwIn0sIm1lc3NhZ2UiOnsiY2hhaW5faWQiOiJkZXYtMSIsImtleSI6eyJldGhlcmV1bSI6IjB4ZWZiMmFhMTNlZmRlMzQ1YWY5ZDFkOTUyMzY2ZDEyNWQ2N2Q5ZTMyMyJ9LCJrZXlfaGFzaCI6IkEzNDg5RTEyNDI3N0Y0RTUwMjA1OTZGNkE5Q0VFMEVDMEE4NUFBMjhCRUYyRTBDMTI2OTk5Q0YxQzYzOUU4RTEiLCJzZWVkIjowfSwicHJpbWFyeVR5cGUiOiJNZXNzYWdlIiwidHlwZXMiOnsiRUlQNzEyRG9tYWluIjpbeyJuYW1lIjoibmFtZSIsInR5cGUiOiJzdHJpbmcifSx7Im5hbWUiOiJjaGFpbklkIiwidHlwZSI6InVpbnQyNTYifSx7Im5hbWUiOiJ2ZXJpZnlpbmdDb250cmFjdCIsInR5cGUiOiJhZGRyZXNzIn1dLCJLZXkiOlt7Im5hbWUiOiJldGhlcmV1bSIsInR5cGUiOiJzdHJpbmcifV0sIk1lc3NhZ2UiOlt7Im5hbWUiOiJjaGFpbl9pZCIsInR5cGUiOiJzdHJpbmcifSx7Im5hbWUiOiJrZXkiLCJ0eXBlIjoiS2V5In0seyJuYW1lIjoia2V5X2hhc2giLCJ0eXBlIjoic3RyaW5nIn0seyJuYW1lIjoic2VlZCIsInR5cGUiOiJ1aW50MzIifV19fQ==",
-            "sig": "PNY87kaAoxSUJwjLsd27bwiaPcHBxkqdI8bSifnSWTsfBw/5g78yAZiKhePraXhv1vYW2yL9YS/MNYDXzMuXZhw="
+            "typed_data": "eyJkb21haW4iOnsibmFtZSI6ImRhbmdvIiwiY2hhaW5JZCI6IjB4MSIsInZlcmlmeWluZ0NvbnRyYWN0IjoiMHgwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwIn0sInR5cGVzIjp7Ik1lc3NhZ2UiOlt7InR5cGUiOiJzdHJpbmciLCJuYW1lIjoiY2hhaW5faWQifSx7InR5cGUiOiJzdHJpbmciLCJuYW1lIjoia2V5In0seyJ0eXBlIjoic3RyaW5nIiwibmFtZSI6ImtleV9oYXNoIn0seyJ0eXBlIjoidWludDMyIiwibmFtZSI6InNlZWQifV19LCJwcmltYXJ5VHlwZSI6Ik1lc3NhZ2UiLCJtZXNzYWdlIjp7ImNoYWluX2lkIjoiZGV2LTEiLCJrZXkiOiJ7XCJldGhlcmV1bVwiOlwiMHhhZjFmOWM3MTMwMTEzMTViODkxYTQwMWYwN2YzYWJkOWEzN2NiOTc1XCJ9Iiwia2V5X2hhc2giOiIxODJGRkMxMEREM0M2RTg1NEMwNzU0RkQwOUExNERDRTEzMkQzMzY3NDU5NkVCNDhCQUM5RjBBQUQzNkE3QkZFIiwic2VlZCI6MH19",
+            "sig": "Dk/vcdOUflIKgL32JxzIbkYiTIxmEbohC57/8AIB/Lgpm7c51A+vpb2dR/0X7rqbyzPGWmqKul9IxF2bXJJdKBw="
           }
         }"#.deserialize_json::<Signature>().unwrap();
 
@@ -1279,16 +1184,14 @@ mod tests {
     }
 
     #[test]
-    fn eip712_rejects_resolver_missing_required_field() {
-        use data_encoding::BASE64;
-
-        let user_address = Addr::from_str("0x9ee0274ae30d0e209bef2c7e6ce9675a92ef96c8").unwrap();
-        let user_index = 123;
+    fn eip712_ignores_credential_typed_data_for_verification() {
+        let user_address = Addr::from_str("0xd11c8c63a5185f597bbee259128ce7327709cea5").unwrap();
+        let user_index = 993516408;
         let user_keyhash =
-            Hash256::from_str("7D8FB7895BEAE0DF16E3E5F6FA7EB10CDE735E5B7C9A79DFCD8DD32A6BDD2165")
+            Hash256::from_str("E85C3498D28494A14B9BD76558F381CB54EED9C3AFA10A90837E7A0E94085552")
                 .unwrap();
         let user_key =
-            Key::Ethereum(Addr::from_str("0x4c9d879264227583f49af3c99eb396fe4735a935").unwrap());
+            Key::Ethereum(Addr::from_str("0xd11c8c63a5185f597bbee259128ce7327709cea5").unwrap());
 
         let mut storage = MockStorage::new();
 
@@ -1319,55 +1222,40 @@ mod tests {
             .with_storage(storage)
             .with_querier(querier)
             .with_contract(user_address)
-            .with_chain_id("dev-6")
+            .with_chain_id("dev-1")
             .with_mode(AuthMode::Finalize);
 
-        // Take the typed_data from `eip712_authentication` and drop the
-        // `messages` entry from the `Message` type so the resolver no longer
-        // binds it to the signature hash.
-        let original_typed_data = "eyJ0eXBlcyI6eyJFSVA3MTJEb21haW4iOlt7Im5hbWUiOiJuYW1lIiwidHlwZSI6InN0cmluZyJ9LHsibmFtZSI6ImNoYWluSWQiLCJ0eXBlIjoidWludDI1NiJ9LHsibmFtZSI6InZlcmlmeWluZ0NvbnRyYWN0IiwidHlwZSI6ImFkZHJlc3MifV0sIk1lc3NhZ2UiOlt7Im5hbWUiOiJzZW5kZXIiLCJ0eXBlIjoiYWRkcmVzcyJ9LHsibmFtZSI6ImRhdGEiLCJ0eXBlIjoiTWV0YWRhdGEifSx7Im5hbWUiOiJnYXNfbGltaXQiLCJ0eXBlIjoidWludDMyIn0seyJuYW1lIjoibWVzc2FnZXMiLCJ0eXBlIjoiVHhNZXNzYWdlW10ifV0sIk1ldGFkYXRhIjpbeyJuYW1lIjoidXNlcl9pbmRleCIsInR5cGUiOiJ1aW50MzIifSx7Im5hbWUiOiJjaGFpbl9pZCIsInR5cGUiOiJzdHJpbmcifSx7Im5hbWUiOiJub25jZSIsInR5cGUiOiJ1aW50MzIifV0sIlR4TWVzc2FnZSI6W3sibmFtZSI6InRyYW5zZmVyIiwidHlwZSI6IlRyYW5zZmVyIn1dLCJUcmFuc2ZlciI6W3sibmFtZSI6IjB4MzMzNjFkZTQyNTcxZDZhYTIwYzM3ZGFhNmRhNGI1YWI2N2JmYWFkOSIsInR5cGUiOiJDb2luMCJ9XSwiQ29pbjAiOlt7Im5hbWUiOiJicmlkZ2UvdXNkYyIsInR5cGUiOiJzdHJpbmcifV19LCJwcmltYXJ5VHlwZSI6Ik1lc3NhZ2UiLCJkb21haW4iOnsibmFtZSI6ImRhbmdvIiwiY2hhaW5JZCI6MSwidmVyaWZ5aW5nQ29udHJhY3QiOiIweDllZTAyNzRhZTMwZDBlMjA5YmVmMmM3ZTZjZTk2NzVhOTJlZjk2YzgifSwibWVzc2FnZSI6eyJzZW5kZXIiOiIweDllZTAyNzRhZTMwZDBlMjA5YmVmMmM3ZTZjZTk2NzVhOTJlZjk2YzgiLCJkYXRhIjp7ImNoYWluX2lkIjoiZGV2LTYiLCJ1c2VyX2luZGV4IjoxMjMsIm5vbmNlIjowfSwiZ2FzX2xpbWl0IjoyODM0LCJtZXNzYWdlcyI6W3sidHJhbnNmZXIiOnsiMHgzMzM2MWRlNDI1NzFkNmFhMjBjMzdkYWE2ZGE0YjVhYjY3YmZhYWQ5Ijp7ImJyaWRnZS91c2RjIjoiMTAwMDAwMCJ9fX1dfX0=";
+        let tx = r#"{
+          "sender": "0xd11c8c63a5185f597bbee259128ce7327709cea5",
+          "gas_limit": 8369997155007416594,
+          "msgs": [
+            {
+              "transfer": {
+                "0x2631340ad080d6b4b524c6e5b4b33e4711c59d9e": {
+                  "bridge/usdc": "100000000"
+                }
+              }
+            }
+          ],
+          "data": {
+            "chain_id": "dev-1",
+            "nonce": 34,
+            "user_index": 993516408
+          },
+          "credential": {
+            "standard": {
+              "key_hash": "E85C3498D28494A14B9BD76558F381CB54EED9C3AFA10A90837E7A0E94085552",
+              "signature": {
+                "eip712": {
+                  "sig": "/cJCYUMvY3W658C3GutFM164NT5NY5wdOq3862em1qlG0oBJ74yzsKxo16rE5xHZIxsZZfLS8RBYhteYijGxyBs=",
+                  "typed_data": "eyJub3QiOiJjYW5vbmljYWwifQ=="
+                }
+              }
+            }
+          }
+        }"#;
 
-        let decoded = BASE64.decode(original_typed_data.as_bytes()).unwrap();
-        let mut typed_data_json: serde_json::Value = serde_json::from_slice(&decoded).unwrap();
-        let message_props = typed_data_json["types"]["Message"].as_array_mut().unwrap();
-        message_props.retain(|p| p["name"].as_str() != Some("messages"));
-        let tampered_bytes = serde_json::to_vec(&typed_data_json).unwrap();
-        let tampered_typed_data = BASE64.encode(&tampered_bytes);
-
-        let tx = format!(
-            r#"{{
-              "sender": "0x9ee0274ae30d0e209bef2c7e6ce9675a92ef96c8",
-              "credential": {{
-                "standard": {{
-                  "signature": {{
-                    "eip712": {{
-                      "sig": "HVjOsIIx7o8SPbwXhSqpK/+N83V9Cz92+moM7vIIAaUz9YEelg8EesIN14ir5JcSSr/waG2b4gxPFbscaToUcBw=",
-                      "typed_data": "{tampered_typed_data}"
-                    }}
-                  }},
-                  "key_hash": "7D8FB7895BEAE0DF16E3E5F6FA7EB10CDE735E5B7C9A79DFCD8DD32A6BDD2165"
-                }}
-              }},
-              "data": {{
-                "chain_id": "dev-6",
-                "user_index": 123,
-                "nonce": 0
-              }},
-              "msgs": [
-                {{
-                  "transfer": {{
-                    "0x33361de42571d6aa20c37daa6da4b5ab67bfaad9": {{
-                      "bridge/usdc": "1000000"
-                    }}
-                  }}
-                }}
-              ],
-              "gas_limit": 2834
-            }}"#
-        );
-
-        authenticate_tx(ctx.as_auth(), tx.deserialize_json::<Tx>().unwrap(), None)
-            .should_fail_with_error("missing required field");
+        authenticate_tx(ctx.as_auth(), tx.deserialize_json::<Tx>().unwrap(), None).should_succeed();
     }
 
     /// Regression test for security audit Finding 16:

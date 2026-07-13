@@ -62,9 +62,10 @@ export {
 } from "./browser.js";
 
 export {
-  getCoinsTypedData,
   composeTxTypedData,
-  composeArbitraryTypedData,
+  composeSessionTypedData,
+  composeOnboardTypedData,
+  canonicalJson,
 } from "./typedData.js";
 
 export {

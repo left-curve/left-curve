@@ -29,6 +29,7 @@
   "devDependencies": {
     "@left-curve/config": "workspace:^",
     "@types/big.js": "^6.2.2",
+    "viem": "^2.21.0",
     "vitest": "catalog:"
   },
   "dependencies": {

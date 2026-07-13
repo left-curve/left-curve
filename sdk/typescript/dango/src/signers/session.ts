@@ -18,10 +18,8 @@ export const createSessionSigner = (session: SigningSession): Signer => {
   }
 
   async function signTx(signDoc: SignDoc) {
-    const { message } = signDoc;
-
-    const tx = sha256(serialize(message));
-    const signature = signer.createSignature(tx);
+    const bytes = sha256(serialize(toSignDocPayload(signDoc)));
+    const signature = signer.createSignature(bytes);
 
     const session: SessionCredential = {
       sessionInfo,
@@ -36,8 +34,7 @@ export const createSessionSigner = (session: SigningSession): Signer => {
   }
 
   async function signArbitrary(payload: ArbitraryDoc) {
-    const { message } = payload;
-    const bytes = sha256(serialize(message));
+    const bytes = sha256(serialize(toArbitraryPayload(payload)));
     const signature = signer.createSignature(bytes);
 
     const session: SessionCredential = {
@@ -48,7 +45,7 @@ export const createSessionSigner = (session: SigningSession): Signer => {
 
     return {
       credential: { session },
-      signed: message,
+      signed: payload,
     };
   }
 
@@ -58,3 +55,29 @@ export const createSessionSigner = (session: SigningSession): Signer => {
     signArbitrary,
   };
 };
+
+function toSignDocPayload(signDoc: SignDoc) {
+  return {
+    sender: signDoc.sender,
+    gasLimit: signDoc.gasLimit,
+    messages: signDoc.messages,
+    data: signDoc.data,
+  };
+}
+
+function toArbitraryPayload(payload: ArbitraryDoc) {
+  if (payload.kind === "session") {
+    return {
+      chainId: payload.chainId,
+      sessionKey: payload.sessionKey,
+      expireAt: payload.expireAt,
+    };
+  }
+  return {
+    chainId: payload.chainId,
+    key: payload.key,
+    keyHash: payload.keyHash,
+    seed: payload.seed,
+    ...(payload.referrer !== undefined ? { referrer: payload.referrer } : {}),
+  };
+}

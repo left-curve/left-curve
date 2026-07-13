@@ -98,6 +98,43 @@ fn generate_secp256k1_session_test_data() -> anyhow::Result<()> {
 
 // ---------------------------------- eip712 -----------------------------------
 
+fn generate_eip712_standard_test_data() -> anyhow::Result<()> {
+    let (sk, eth_addr) = generate_random_ethereum_key_pair();
+    let eth_addr_grug = Addr::from_inner(eth_addr);
+    let eth_addr_key_hash = eth_addr.hash256();
+
+    // For Ethereum-key accounts the Dango account address typically equals the
+    // Ethereum address. The verifier uses `sign_doc.sender` as the EIP-712
+    // `verifyingContract`, so signing with `sender = eth_addr_grug` recovers
+    // the Ethereum key cleanly.
+    let mut sign_doc = generate_random_unsigned_transaction()?;
+    sign_doc.sender = eth_addr_grug;
+
+    let typed_data = dango_auth::eip712::typed_data_for_transaction(&sign_doc)?;
+    let eip712_sig = eip712_sign_typed(&sk, typed_data)?;
+
+    let credential = Credential::Standard(StandardCredential {
+        key_hash: eth_addr_key_hash,
+        signature: Signature::Eip712(eip712_sig),
+    });
+
+    let tx = Tx {
+        sender: sign_doc.sender,
+        gas_limit: sign_doc.gas_limit,
+        msgs: sign_doc.messages,
+        data: sign_doc.data.to_json_value()?,
+        credential: credential.to_json_value()?,
+    };
+
+    println!("user_address = {}", sign_doc.sender);
+    println!("user_index   = {}", sign_doc.data.user_index);
+    println!("user_keyhash = {}", hex::encode(eth_addr_key_hash));
+    println!("user_key     = ethereum:{}", eth_addr_grug);
+    println!("tx:\n{}", tx.to_json_string_pretty()?);
+
+    Ok(())
+}
+
 fn generate_eip712_session_test_data() -> anyhow::Result<()> {
     // Main key is an Ethereum key; session key is secp256k1.
     let (sk1, eth_addr) = generate_random_ethereum_key_pair();
@@ -113,10 +150,10 @@ fn generate_eip712_session_test_data() -> anyhow::Result<()> {
         expire_at: Timestamp::from_nanos(u128::MAX),
     };
 
-    // Sign SessionInfo via EIP-712.
+    // Sign SessionInfo via canonical EIP-712.
     let authorization = {
-        let session_info_json = session_info.to_json_value()?;
-        let eip712_sig = eip712_sign_arbitrary(&sk1, session_info_json)?;
+        let typed_data = dango_auth::eip712::typed_data_for_session(&session_info)?;
+        let eip712_sig = eip712_sign_typed(&sk1, typed_data)?;
         StandardCredential {
             key_hash: eth_addr_key_hash,
             signature: Signature::Eip712(eip712_sig),
@@ -162,8 +199,8 @@ fn generate_eip712_onboard_test_data() -> anyhow::Result<()> {
         referrer: None,
     };
 
-    let register_json = register_data.to_json_value()?;
-    let eip712_sig = eip712_sign_arbitrary(&sk, register_json)?;
+    let typed_data = dango_auth::eip712::typed_data_for_onboard(&register_data)?;
+    let eip712_sig = eip712_sign_typed(&sk, typed_data)?;
 
     let signature_json = Signature::Eip712(eip712_sig).to_json_string_pretty()?;
 
@@ -285,14 +322,6 @@ fn generate_random_ethereum_key_pair() -> (k256::ecdsa::SigningKey, [u8; 20]) {
     (sk, addr)
 }
 
-fn capitalize(s: &str) -> String {
-    let mut chars = s.chars();
-    match chars.next() {
-        Some(c) => c.to_uppercase().chain(chars).collect(),
-        None => String::new(),
-    }
-}
-
 fn secp256k1_sign<T>(sk: &k256::ecdsa::SigningKey, sign_doc: &T) -> anyhow::Result<ByteArray<64>>
 where
     T: SignData,
@@ -306,81 +335,16 @@ where
     Ok(ByteArray::from_inner(signature.to_bytes().into()))
 }
 
-/// Sign arbitrary data via EIP-712, producing an `Eip712Signature`.
+/// Sign a precomputed `TypedData`, producing an `Eip712Signature`.
 ///
-/// The message fields are sorted alphabetically by `to_json_value()`.
-/// All values are typed as "string" in the EIP-712 type system, which matches
-/// how the frontend `composeArbitraryTypedData` works for arbitrary messages.
-fn eip712_sign_arbitrary(
+/// The `TypedData` must be the canonical form built by `dango_auth::eip712`,
+/// otherwise the verifier will recover a different address.
+fn eip712_sign_typed(
     sk: &k256::ecdsa::SigningKey,
-    message: dango_primitives::Json,
+    typed_data: alloy::dyn_abi::TypedData,
 ) -> anyhow::Result<Eip712Signature> {
-    // Build the EIP-712 "Message" type from the message keys.
-    // All fields are typed as "string" (matching the frontend pattern).
-    let message_inner = message.clone().into_inner();
-    let message_map = message_inner
-        .as_object()
-        .expect("message must be a JSON object");
-
-    let mut message_types = Vec::new();
-    for key in message_map.keys() {
-        let eip712_type = if message_map[key].is_object() {
-            // For nested objects (like `key: { "ethereum": "0x..." }`),
-            // use a sub-struct type named after the capitalized key.
-            capitalize(key)
-        } else if message_map[key].is_number() {
-            "uint32".to_string()
-        } else {
-            "string".to_string()
-        };
-        message_types.push(serde_json::json!({ "name": key, "type": eip712_type }));
-    }
-
-    let mut types = serde_json::json!({
-        "EIP712Domain": [
-            { "name": "name", "type": "string" },
-            { "name": "chainId", "type": "uint256" },
-            { "name": "verifyingContract", "type": "address" }
-        ],
-        "Message": message_types
-    });
-
-    // Add sub-struct types for any nested objects.
-    for (key, value) in message_map {
-        if let Some(obj) = value.as_object() {
-            let type_name = capitalize(key);
-            let sub_types: Vec<_> = obj
-                .keys()
-                .map(|k| serde_json::json!({ "name": k, "type": "string" }))
-                .collect();
-            types
-                .as_object_mut()
-                .unwrap()
-                .insert(type_name, serde_json::json!(sub_types));
-        }
-    }
-
-    // Convert the dango_primitives::Json message to serde_json::Value for the typed data.
-    let msg_value: serde_json::Value = serde_json::from_str(&message.to_string())?;
-
-    let typed_data_json = serde_json::json!({
-        "domain": {
-            "name": "DangoArbitraryMessage",
-            "chainId": 1,
-            "verifyingContract": "0x0000000000000000000000000000000000000000"
-        },
-        "message": msg_value,
-        "primaryType": "Message",
-        "types": types
-    });
-
-    let typed_data_str = serde_json::to_string(&typed_data_json)?;
-
-    // Parse with alloy to compute the EIP-712 signing hash.
-    let typed_data: alloy::dyn_abi::TypedData = serde_json::from_str(&typed_data_str)?;
     let signing_hash = typed_data.eip712_signing_hash()?;
-
-    // Sign with Ethereum-style recoverable signature.
+    let typed_data_str = serde_json::to_string(&typed_data)?;
     let sig_bytes = dango_eth_utils::sign_digest(signing_hash.0, sk);
 
     Ok(Eip712Signature {
@@ -436,6 +400,9 @@ fn main() -> anyhow::Result<()> {
 
     println!("\n====================== Secp256k1 Session ======================");
     generate_secp256k1_session_test_data()?;
+
+    println!("\n======================== EIP712 Standard =======================");
+    generate_eip712_standard_test_data()?;
 
     println!("\n======================== EIP712 Session ========================");
     generate_eip712_session_test_data()?;

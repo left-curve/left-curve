@@ -1,11 +1,43 @@
-import type { Base64 } from "./encoding.js";
-import type { JsonValue } from "./encoding.js";
+import type { Address } from "./address.js";
+import type { Base64, JsonValue } from "./encoding.js";
 import type { Credential } from "./credential.js";
-import type { ArbitraryTypedData, TxMessageType, TypedData } from "./typedData.js";
+import type { Key, KeyHash } from "./key.js";
+import type { Message } from "./tx.js";
 
-export type SignDoc = TypedData<TxMessageType>;
+/** Canonical Dango SignDoc — what the user signs to authorize a transaction. */
+export type SignDoc = {
+  sender: Address;
+  /** `bigint` is accepted so values above 2^53 don't lose precision through JS `Number`. */
+  gasLimit: number | bigint;
+  messages: Message[];
+  data: SignDocMetadata;
+};
 
-export type ArbitraryDoc<T extends JsonValue = JsonValue> = ArbitraryTypedData<T>;
+export type SignDocMetadata = {
+  chainId: string;
+  userIndex: number;
+  nonce: number;
+  expiry?: string;
+};
+
+/** Arbitrary payloads the user signs outside of a transaction context. */
+export type ArbitraryDoc = SessionDoc | OnboardDoc;
+
+export type SessionDoc = {
+  kind: "session";
+  chainId: string;
+  sessionKey: string;
+  expireAt: string;
+};
+
+export type OnboardDoc = {
+  kind: "onboard";
+  chainId: string;
+  key: Key;
+  keyHash: KeyHash;
+  seed: number;
+  referrer?: number;
+};
 
 export type SignatureOutcome = {
   credential: Credential;
