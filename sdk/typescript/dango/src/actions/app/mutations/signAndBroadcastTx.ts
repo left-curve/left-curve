@@ -29,7 +29,11 @@ export async function signAndBroadcastTx(
   parameters: SignAndBroadcastTxParameters,
 ): SignAndBroadcastTxReturnType {
   if (!client.signer) throw new Error("client must have a signer");
-  const { messages, sender, typedData, gasLimit: gas } = parameters;
+  // `typedData` in the parameters is accepted for backward compatibility but no
+  // longer used: EIP-712 transaction messages are now bound as canonical JSON
+  // strings (see `composeTxTypedData`), so per-message type declarations are
+  // obsolete.
+  const { messages, sender, gasLimit: gas } = parameters;
 
   const chainId = await (async () => {
     if (client.chain?.id) return client.chain.id;
@@ -64,7 +68,6 @@ export async function signAndBroadcastTx(
   const signDoc = composeTxTypedData(
     { messages, gas_limit: gasUsed, data: metadata, sender },
     domain,
-    typedData,
   );
 
   const { credential } = await client.signer.signTx(signDoc);

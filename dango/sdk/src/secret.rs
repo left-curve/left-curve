@@ -1,14 +1,8 @@
 use {
-    alloy::{
-        dyn_abi::{Eip712Domain, TypedData},
-        primitives::U160,
-    },
     bip32::{Mnemonic, PublicKey, XPrv},
-    dango_auth::EIP155_CHAIN_ID,
+    dango_auth::VerifyData,
     dango_identity::Identity256,
-    dango_primitives::{
-        Addr, ByteArray, Hash256, HashExt, Inner, JsonDeExt, JsonSerExt, SignData, json,
-    },
+    dango_primitives::{Addr, ByteArray, Hash256, HashExt, JsonSerExt, SignData},
     dango_types::auth::{Eip712Signature, Key, SignDoc, Signature},
     k256::{ecdsa::signature::DigestSigner, schnorr::CryptoRngCore},
     rand::rngs::OsRng,
@@ -169,38 +163,11 @@ impl Secret for Eip712 {
     }
 
     fn sign_transaction(&self, sign_doc: SignDoc) -> anyhow::Result<Signature> {
-        let mut metadata_fields = vec![
-            json!({ "name": "user_index", "type": "uint32" }),
-            json!({ "name": "chain_id",   "type": "string" }),
-            json!({ "name": "nonce",      "type": "uint32" }),
-        ];
-        if sign_doc.data.expiry.is_some() {
-            metadata_fields.push(json!({ "name": "expiry", "type": "string" }));
-        }
-
-        let resolver = json!({
-            "Message": [
-                { "name": "sender",    "type": "address"     },
-                { "name": "data",      "type": "Metadata"    },
-                { "name": "gas_limit", "type": "uint32"      },
-                { "name": "messages",  "type": "TxMessage[]" },
-            ],
-            "Metadata": metadata_fields,
-            "TxMessage": [],
-        })
-        .deserialize_json()?;
-
-        let data = TypedData {
-            resolver,
-            domain: Eip712Domain {
-                name: Some("dango".into()),
-                chain_id: Some(EIP155_CHAIN_ID),
-                verifying_contract: Some(U160::from_be_bytes(sign_doc.sender.into_inner()).into()),
-                ..Default::default()
-            },
-            primary_type: "Message".to_string(),
-            message: sign_doc.to_json_value()?.into_inner(),
-        };
+        // Build the typed data via `dango_auth`'s shared builder, so the SDK and
+        // the on-chain verifier produce byte-identical EIP-712 hashes. `messages`
+        // is bound as an array of canonical JSON strings (EIP-712 can't express
+        // the `Message` enum as a struct).
+        let data = dango_auth::build_eip712_typed_data(&VerifyData::Transaction(sign_doc))?;
 
         let sign_bytes = data.eip712_signing_hash()?;
         let digest = Identity256::from(sign_bytes.0);

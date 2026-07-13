@@ -43,15 +43,23 @@ export type MessageType = [
   { name: "sender"; type: "address" },
   { name: "data"; type: "Metadata" },
   { name: "gas_limit"; type: "uint32" },
-  { name: "messages"; type: "TxMessage[]" },
+  { name: "messages"; type: "string[]" },
 ];
 
 export type MetadataType = [
-  { name: "username"; type: "string" },
-  { name: "chainId"; type: "string" },
+  { name: "user_index"; type: "uint32" },
+  { name: "chain_id"; type: "string" },
   { name: "nonce"; type: "uint32" },
 ];
 
+/**
+ * EIP-712 has no sum type, so a transaction's `messages` can't be expressed as
+ * structs; they are bound as canonical JSON strings instead (`Message.messages`
+ * is typed `string[]`, and the `eip1193` signer stringifies the values). This
+ * per-variant type is therefore no longer used to build the transaction typed
+ * data -- it remains only for the vestigial `typedData` parameters still
+ * accepted (and ignored) by the action mutations, pending their removal.
+ */
 export type TxMessageType =
   | { name: "configure"; type: "Configure" }
   | { name: "upgrade"; type: "Upgrade" }
@@ -61,18 +69,16 @@ export type TxMessageType =
   | { name: "execute"; type: "Execute" }
   | { name: "migrate"; type: "Migrate" };
 
-export type TypedData<TType extends TxMessageType | unknown = TxMessageType | unknown> = {
-  types: EIP712Types<TType>;
+export type TypedData = {
+  types: EIP712Types;
   primaryType: "Message";
   domain: EIP712Domain;
   message: EIP712Message;
 };
 
-export type EIP712Types<TMessage extends TxMessageType | unknown = TxMessageType | unknown> =
-  Record<"Message", MessageType> &
-    Record<"TxMessage", TMessage[]> &
-    Record<"Metadata", TypedDataProperty[]> &
-    Record<"EIP712Domain", DomainType>;
+export type EIP712Types = Record<"Message", MessageType> &
+  Record<"Metadata", TypedDataProperty[]> &
+  Record<"EIP712Domain", DomainType>;
 
 export type EIP712Message = {
   sender: Address;
