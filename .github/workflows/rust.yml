@@ -36,9 +36,8 @@ on:
       - "clippy.toml"
       - "rustfmt.toml"
       - ".force_backend_rebuild"
-      - ".force_localdango"
+      - ".force_ci_stack"
       - ".force_deploy"
-      - "localdango/**"
       # - "sdk/typescript/**"
       # - "ui/store/**"
       # - "ui/portal/**"
@@ -62,9 +61,8 @@ on:
       - "clippy.toml"
       - "rustfmt.toml"
       - ".force_backend_rebuild"
-      - ".force_localdango"
+      - ".force_ci_stack"
       - ".force_deploy"
-      - "localdango/**"
       # - "sdk/typescript/**"
       # - "ui/store/**"
       # - "ui/portal/**"
@@ -80,7 +78,7 @@ jobs:
       backend: ${{ steps.filter.outputs.backend }}
       frontend_app: ${{ steps.filter.outputs.frontend_app }}
       frontend_docker: ${{ steps.filter.outputs.frontend_docker }}
-      localdango: ${{ steps.filter.outputs.localdango }}
+      ci_stack: ${{ steps.filter.outputs.ci_stack }}
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
         with:
@@ -111,15 +109,15 @@ jobs:
               - 'biome.json'
             frontend_docker:
               - 'docker/dango-frontend/**'
-            localdango:
-              - 'localdango/**'
-              - ".force_localdango"
+            ci_stack:
+              - 'docker/ci-stack/**'
+              - ".force_ci_stack"
       - name: Add detected changes to summary
         env:
           BACKEND_STATUS: ${{ steps.filter.outputs.backend }}
           FRONTEND_APP_STATUS: ${{ steps.filter.outputs.frontend_app }}
           FRONTEND_DOCKER_STATUS: ${{ steps.filter.outputs.frontend_docker }}
-          LOCALDANGO_STATUS: ${{ steps.filter.outputs.localdango }}
+          CI_STACK_STATUS: ${{ steps.filter.outputs.ci_stack }}
         run: |
           echo "## 🔍 Detected Changes" >> $GITHUB_STEP_SUMMARY
           echo "| Component | Changes Detected |" >> $GITHUB_STEP_SUMMARY
@@ -127,7 +125,7 @@ jobs:
           backend_status="$BACKEND_STATUS"
           frontend_app_status="$FRONTEND_APP_STATUS"
           frontend_docker_status="$FRONTEND_DOCKER_STATUS"
-          localdango_status="$LOCALDANGO_STATUS"
+          ci_stack_status="$CI_STACK_STATUS"
           if [ "$backend_status" = "true" ]; then
             echo "| backend | ✅ Yes |" >> $GITHUB_STEP_SUMMARY
           else
@@ -143,10 +141,10 @@ jobs:
           else
             echo "| frontend_docker | ❌ No |" >> $GITHUB_STEP_SUMMARY
           fi
-          if [ "$localdango_status" = "true" ]; then
-            echo "| localdango | ✅ Yes |" >> $GITHUB_STEP_SUMMARY
+          if [ "$ci_stack_status" = "true" ]; then
+            echo "| ci_stack | ✅ Yes |" >> $GITHUB_STEP_SUMMARY
           else
-            echo "| localdango | ❌ No |" >> $GITHUB_STEP_SUMMARY
+            echo "| ci_stack | ❌ No |" >> $GITHUB_STEP_SUMMARY
           fi
 
   zizmor:
@@ -1069,7 +1067,7 @@ jobs:
       packages: read
       deployments: write
       contents: read
-    needs: [security-artifacts, set-image-tags, localdango, changes]
+    needs: [security-artifacts, set-image-tags, ci-stack, changes]
     runs-on: [self-hosted]
     env:
       PR_NUMBER: ${{ github.event.pull_request.number }}
@@ -1143,9 +1141,9 @@ jobs:
           ansible-playbook full-app.yml -e dango_network=pr-${PR_NUMBER} -e deployment_name=pr-${PR_NUMBER} -e github_pr_number=${PR_NUMBER} -e github_sha=${PR_HEAD_SHA} -e dango_image_tag=$DEPLOY_BACKEND_IMAGE_TAG -e dango_image_digest=$DEPLOY_BACKEND_DIGEST -e '{"expose_ports": true, "cometbft_generate_keys": true, "perps_bot_enabled": true, "faucet_bot_enabled": true, "github_deployments_enabled": true, "chain_id": "pr-'"${PR_NUMBER}"'", "cloudflare_tunnel_enabled": true'"$VERIFY_SIGS_JSON"'}' -e deploy_env=preview -e ghcr_token=$GHCR_TOKEN --limit 100.96.253.40,100.107.248.71,100.122.37.57
           fi
 
-  localdango:
+  ci-stack:
     timeout-minutes: 30
-    name: Testing localdango
+    name: Testing ci-stack
     runs-on: [self-hosted]
     environment: ci
     needs: [set-image-tags, changes]
@@ -1153,33 +1151,33 @@ jobs:
       BACKEND_CHANGED: ${{ needs.changes.outputs.backend }}
       FRONTEND_APP_CHANGED: ${{ needs.changes.outputs.frontend_app }}
       FRONTEND_DOCKER_CHANGED: ${{ needs.changes.outputs.frontend_docker }}
-      LOCALDANGO_CHANGED: ${{ needs.changes.outputs.localdango }}
+      CI_STACK_CHANGED: ${{ needs.changes.outputs.ci_stack }}
     permissions:
       packages: read
       contents: read
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
-        if: env.BACKEND_CHANGED == 'true' || env.FRONTEND_APP_CHANGED == 'true' || env.FRONTEND_DOCKER_CHANGED == 'true' || env.LOCALDANGO_CHANGED == 'true'
+        if: env.BACKEND_CHANGED == 'true' || env.FRONTEND_APP_CHANGED == 'true' || env.FRONTEND_DOCKER_CHANGED == 'true' || env.CI_STACK_CHANGED == 'true'
         with:
           persist-credentials: false
           ref: ${{ github.head_ref || github.ref }}
 
       - uses: pnpm/action-setup@c5ba7f7862a0f64c1b1a05fbac13e0b8e86ba08c # v4
-        if: env.BACKEND_CHANGED == 'true' || env.FRONTEND_APP_CHANGED == 'true' || env.FRONTEND_DOCKER_CHANGED == 'true' || env.LOCALDANGO_CHANGED == 'true'
+        if: env.BACKEND_CHANGED == 'true' || env.FRONTEND_APP_CHANGED == 'true' || env.FRONTEND_DOCKER_CHANGED == 'true' || env.CI_STACK_CHANGED == 'true'
         with:
           version: 10.16.1
 
       - name: Setup Node.js
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
-        if: env.BACKEND_CHANGED == 'true' || env.FRONTEND_APP_CHANGED == 'true' || env.FRONTEND_DOCKER_CHANGED == 'true' || env.LOCALDANGO_CHANGED == 'true'
+        if: env.BACKEND_CHANGED == 'true' || env.FRONTEND_APP_CHANGED == 'true' || env.FRONTEND_DOCKER_CHANGED == 'true' || env.CI_STACK_CHANGED == 'true'
         with:
           node-version: 24
           cache: "pnpm"
 
       - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
-        if: env.BACKEND_CHANGED == 'true' || env.FRONTEND_APP_CHANGED == 'true' || env.FRONTEND_DOCKER_CHANGED == 'true' || env.LOCALDANGO_CHANGED == 'true'
+        if: env.BACKEND_CHANGED == 'true' || env.FRONTEND_APP_CHANGED == 'true' || env.FRONTEND_DOCKER_CHANGED == 'true' || env.CI_STACK_CHANGED == 'true'
       - uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
-        if: env.BACKEND_CHANGED == 'true' || env.FRONTEND_APP_CHANGED == 'true' || env.FRONTEND_DOCKER_CHANGED == 'true' || env.LOCALDANGO_CHANGED == 'true'
+        if: env.BACKEND_CHANGED == 'true' || env.FRONTEND_APP_CHANGED == 'true' || env.FRONTEND_DOCKER_CHANGED == 'true' || env.CI_STACK_CHANGED == 'true'
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -1203,8 +1201,8 @@ jobs:
             -t ghcr.io/left-curve/left-curve/dango-frontend:local \
             -f docker/dango-frontend/Dockerfile .
 
-      - name: Ensure localdango works
-        if: env.BACKEND_CHANGED == 'true' || env.FRONTEND_APP_CHANGED == 'true' || env.FRONTEND_DOCKER_CHANGED == 'true' || env.LOCALDANGO_CHANGED == 'true'
+      - name: Ensure ci-stack works
+        if: env.BACKEND_CHANGED == 'true' || env.FRONTEND_APP_CHANGED == 'true' || env.FRONTEND_DOCKER_CHANGED == 'true' || env.CI_STACK_CHANGED == 'true'
         env:
           DANGO_TAG: ${{ needs.set-image-tags.outputs.backend_tag }}
           FRONTEND_TAG: ${{ needs.changes.outputs.frontend_docker == 'true' && 'local' || 'latest' }}
@@ -1216,13 +1214,12 @@ jobs:
           PYTH__ACCESS_TOKEN: ${{ secrets.PYTH__ACCESS_TOKEN }}
         run: |
           set -euo pipefail
-          cd localdango
-          cp env-example .env
-          docker compose --profile dango --profile faucet --profile frontend -f docker-compose.yml down -v
+          cd docker/ci-stack
+          docker compose --profile frontend -f docker-compose.yml down -v
 
-          docker compose --profile dango -f docker-compose.yml pull
+          docker compose -f docker-compose.yml pull
 
-          docker compose --profile dango --profile faucet -f docker-compose.yml up -d --wait || {
+          docker compose -f docker-compose.yml up -d --wait || {
             # Use this if other services fail
             # docker compose logs
             docker compose logs faucet --tail=10
@@ -1234,11 +1231,11 @@ jobs:
 
           # Capture the actual ports assigned to the services
           DANGO_PORT=$(\
-            docker compose --profile dango -f docker-compose.yml \
+            docker compose -f docker-compose.yml \
               port dango 8080 | awk -F: '{print $NF}' \
           )
           FAUCET_PORT=$(\
-            docker compose --profile dango -f docker-compose.yml \
+            docker compose -f docker-compose.yml \
               port faucet 8082 | awk -F: '{print $NF}' \
           )
 
@@ -1247,7 +1244,7 @@ jobs:
 
           CHAIN_ID="$(jq -r '.chain_id' configs/cometbft/config/genesis.json)"
           DANGO_CONFIG_JSON="$(jq -c -n \
-            --slurpfile chain ../sdk/typescript/dango/src/chains/definitions/local.json \
+            --slurpfile chain ../../sdk/typescript/dango/src/chains/definitions/local.json \
             --arg chain_id "$CHAIN_ID" \
             --arg api_url "http://localhost:$DANGO_PORT" \
             --arg faucet_url "http://localhost:$FAUCET_PORT/mint" \
@@ -1258,7 +1255,7 @@ jobs:
                 upUrl: ($api_url + "/up"),
                 pointsUrl: "http://localhost:8083/points-api"
               },
-              banner: "Localdango",
+              banner: "Dango CI",
               enabledFeatures: []
             }')"
 
@@ -1272,9 +1269,9 @@ jobs:
           echo "FRONTEND_MODE=$FRONTEND_MODE (app=$FRONTEND_APP_CHANGED, docker=$FRONTEND_DOCKER_CHANGED)"
 
           {
-            echo "LOCALDANGO_DANGO_PORT=$DANGO_PORT"
-            echo "LOCALDANGO_FAUCET_PORT=$FAUCET_PORT"
-            echo "LOCALDANGO_CHAIN_ID=$CHAIN_ID"
+            echo "CI_STACK_DANGO_PORT=$DANGO_PORT"
+            echo "CI_STACK_FAUCET_PORT=$FAUCET_PORT"
+            echo "CI_STACK_CHAIN_ID=$CHAIN_ID"
             echo "FRONTEND_MODE=$FRONTEND_MODE"
             echo "DANGO_CONFIG_JSON<<EOF"
             echo "$DANGO_CONFIG_JSON"
@@ -1297,15 +1294,15 @@ jobs:
           docker compose ps
 
       - name: Verify frontend and backend connection
-        if: env.BACKEND_CHANGED == 'true' || env.FRONTEND_APP_CHANGED == 'true' || env.FRONTEND_DOCKER_CHANGED == 'true' || env.LOCALDANGO_CHANGED == 'true'
+        if: env.BACKEND_CHANGED == 'true' || env.FRONTEND_APP_CHANGED == 'true' || env.FRONTEND_DOCKER_CHANGED == 'true' || env.CI_STACK_CHANGED == 'true'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
-          cd localdango
-          echo "Dango endpoint: http://localhost:$LOCALDANGO_DANGO_PORT"
+          cd docker/ci-stack
+          echo "Dango endpoint: http://localhost:$CI_STACK_DANGO_PORT"
           echo "Dango /up chain_id:"
-          curl -sSf "http://localhost:$LOCALDANGO_DANGO_PORT/up" | jq -r '.chain_id'
+          curl -sSf "http://localhost:$CI_STACK_DANGO_PORT/up" | jq -r '.chain_id'
 
           if [ "$FRONTEND_MODE" = "container" ]; then
             FRONTEND_URL="http://localhost:5081"
@@ -1314,7 +1311,7 @@ jobs:
             echo "Frontend /up status code:"
             curl -sS -o /dev/null -w "%{http_code}\n" "$FRONTEND_URL/up"
           fi
-          cd ..
+          cd ../..
 
           pnpm i --frozen-lockfile
           pnpm exec playwright install --only-shell chromium
@@ -1330,9 +1327,9 @@ jobs:
           fi
 
       - name: Cleanup
-        if: always() && (env.BACKEND_CHANGED == 'true' || env.FRONTEND_APP_CHANGED == 'true' || env.FRONTEND_DOCKER_CHANGED == 'true' || env.LOCALDANGO_CHANGED == 'true')
+        if: always() && (env.BACKEND_CHANGED == 'true' || env.FRONTEND_APP_CHANGED == 'true' || env.FRONTEND_DOCKER_CHANGED == 'true' || env.CI_STACK_CHANGED == 'true')
         run: |
-          cd localdango
-          docker compose --profile dango --profile faucet --profile frontend -f docker-compose.yml down -v || true
+          cd docker/ci-stack
+          docker compose --profile frontend -f docker-compose.yml down -v || true
           docker image prune -af --filter "until=72h" || true
           docker volume prune -f || true
