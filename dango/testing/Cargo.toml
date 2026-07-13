@@ -90,6 +90,7 @@ prost                       = { workspace = true }
 rand                        = { workspace = true }
 reqwest                     = { workspace = true, features = ["json"] }
 serde                       = { workspace = true }
+sha2                        = { workspace = true }
 test-case                   = { workspace = true }
 thiserror                   = { workspace = true }
 tokio                       = { workspace = true, features = ["full"] }

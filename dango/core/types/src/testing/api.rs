@@ -48,26 +48,6 @@ impl Api for MockApi {
         dango_crypto::sha2_256(data)
     }
 
-    fn sha2_512(&self, data: &[u8]) -> [u8; 64] {
-        dango_crypto::sha2_512(data)
-    }
-
-    fn sha2_512_truncated(&self, data: &[u8]) -> [u8; 32] {
-        dango_crypto::sha2_512_truncated(data)
-    }
-
-    fn sha3_256(&self, data: &[u8]) -> [u8; 32] {
-        dango_crypto::sha3_256(data)
-    }
-
-    fn sha3_512(&self, data: &[u8]) -> [u8; 64] {
-        dango_crypto::sha3_512(data)
-    }
-
-    fn sha3_512_truncated(&self, data: &[u8]) -> [u8; 32] {
-        dango_crypto::sha3_512_truncated(data)
-    }
-
     fn keccak256(&self, data: &[u8]) -> [u8; 32] {
         dango_crypto::keccak256(data)
     }

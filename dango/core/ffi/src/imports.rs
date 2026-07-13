@@ -40,11 +40,6 @@ unsafe extern "C" {
 
     // Hashes
     fn sha2_256(data_ptr: usize) -> usize;
-    fn sha2_512(data_ptr: usize) -> usize;
-    fn sha2_512_truncated(data_ptr: usize) -> usize;
-    fn sha3_256(data_ptr: usize) -> usize;
-    fn sha3_512(data_ptr: usize) -> usize;
-    fn sha3_512_truncated(data_ptr: usize) -> usize;
     fn keccak256(data_ptr: usize) -> usize;
 
     // Print a debug message to the client's CLI output.
@@ -273,16 +268,6 @@ macro_rules! impl_hash_method {
 
 impl Api for ExternalApi {
     impl_hash_method!(sha2_256, 32);
-
-    impl_hash_method!(sha2_512, 64);
-
-    impl_hash_method!(sha2_512_truncated, 32);
-
-    impl_hash_method!(sha3_256, 32);
-
-    impl_hash_method!(sha3_512, 64);
-
-    impl_hash_method!(sha3_512_truncated, 32);
 
     impl_hash_method!(keccak256, 32);
 

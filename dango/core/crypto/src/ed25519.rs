@@ -62,10 +62,14 @@ pub fn ed25519_batch_verify(
 mod tests {
     use {
         super::*,
-        crate::sha2_512,
         ed25519_dalek::{DigestSigner, Signer, SigningKey},
         rand::rngs::OsRng,
     };
+
+    fn sha2_512(data: &[u8]) -> [u8; 64] {
+        use sha2::{Digest, Sha512};
+        Sha512::digest(data).into()
+    }
 
     #[test]
     fn verify_ed25519() {

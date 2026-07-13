@@ -5,7 +5,7 @@ use {
     },
     dango_crypto::{
         ed25519_batch_verify, ed25519_verify, keccak256, secp256k1_pubkey_recover,
-        secp256k1_verify, secp256r1_verify, sha2_256, sha2_512, sha3_256, sha3_512,
+        secp256k1_verify, secp256r1_verify, sha2_256,
     },
     dango_identity::{Identity256, Identity512},
     ed25519_dalek::Signer,
@@ -67,30 +67,6 @@ fn bench_hashers(c: &mut Criterion) {
             b.iter_batched(
                 || generate_random_msg(*size),
                 |data| sha2_256(black_box(&data)),
-                BatchSize::SmallInput,
-            );
-        });
-
-        group.bench_with_input(BenchmarkId::new("sha2_512", size), &size, |b, size| {
-            b.iter_batched(
-                || generate_random_msg(*size),
-                |data| sha2_512(black_box(&data)),
-                BatchSize::SmallInput,
-            );
-        });
-
-        group.bench_with_input(BenchmarkId::new("sha3_256", size), &size, |b, size| {
-            b.iter_batched(
-                || generate_random_msg(*size),
-                |data| sha3_256(black_box(&data)),
-                BatchSize::SmallInput,
-            );
-        });
-
-        group.bench_with_input(BenchmarkId::new("sha3_512", size), &size, |b, size| {
-            b.iter_batched(
-                || generate_random_msg(*size),
-                |data| sha3_512(black_box(&data)),
                 BatchSize::SmallInput,
             );
         });
@@ -196,6 +172,11 @@ fn bench_verifiers(c: &mut Criterion) {
     group.bench_function("ed25519_verify", |b| {
         b.iter_batched(
             || {
+                fn sha2_512(data: &[u8]) -> [u8; 64] {
+                    use sha2::{Digest, Sha512};
+                    Sha512::digest(data).into()
+                }
+
                 let msg = generate_random_msg(SIGN_MSG_LEN);
                 let msg_hash = Identity512::from(sha2_512(&msg));
                 let sk = ed25519_dalek::SigningKey::generate(&mut OsRng);

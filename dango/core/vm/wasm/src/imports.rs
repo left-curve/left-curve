@@ -380,11 +380,6 @@ macro_rules! impl_hash_method {
 }
 
 impl_hash_method!(sha2_256, "sha2_256");
-impl_hash_method!(sha2_512, "sha2_512");
-impl_hash_method!(sha2_512_truncated, "sha2_512_truncated");
-impl_hash_method!(sha3_256, "sha3_256");
-impl_hash_method!(sha3_512, "sha3_512");
-impl_hash_method!(sha3_512_truncated, "sha3_512_truncated");
 impl_hash_method!(keccak256, "keccak256");
 
 /// Pack a KV pair into a single byte array in the following format:
@@ -935,16 +930,21 @@ mod tests {
     fn generate_ed25519_verify_request() -> VerifyTest {
         use ed25519_dalek::{DigestSigner, SigningKey, VerifyingKey};
 
+        fn sha2_512(data: &[u8]) -> [u8; 64] {
+            use sha2::{Digest, Sha512};
+            Sha512::digest(data).into()
+        }
+
         let sk = SigningKey::generate(&mut OsRng);
         let vk = VerifyingKey::from(&sk);
-        let msg_hash = Identity512::from(dango_crypto::sha2_512(MSG));
+        let msg_hash = Identity512::from(sha2_512(MSG));
         let sig = sk.sign_digest(msg_hash.clone());
 
         VerifyTest {
             pk: vk.to_bytes().to_vec(),
             sig: sig.to_bytes().to_vec(),
             msg_hash: msg_hash.into_bytes().into(),
-            wrong_msg: dango_crypto::sha2_512(WRONG_MSG).to_vec(),
+            wrong_msg: sha2_512(WRONG_MSG).to_vec(),
         }
     }
 
@@ -1134,31 +1134,6 @@ mod tests {
         crate::sha2_256,
         dango_crypto::sha2_256;
         "sha2_256"
-    )]
-    #[test_case(
-        crate::sha2_512,
-        dango_crypto::sha2_512;
-        "sha2_512"
-    )]
-    #[test_case(
-        crate::sha2_512_truncated,
-        dango_crypto::sha2_512_truncated;
-        "sha2_512_truncated"
-    )]
-    #[test_case(
-        crate::sha3_256,
-        dango_crypto::sha3_256;
-        "sha3_256"
-    )]
-    #[test_case(
-        crate::sha3_512,
-        dango_crypto::sha3_512;
-        "sha3_512"
-    )]
-    #[test_case(
-        crate::sha3_512_truncated,
-        dango_crypto::sha3_512_truncated;
-        "sha3_512_truncated"
     )]
     #[test_case(
         crate::keccak256,

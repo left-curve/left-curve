@@ -1,7 +1,8 @@
 use {
+    super::{WASM_CACHE_CAPACITY, read_wasm_file},
     dango_app::{AppError, NaiveProposalPreparer, NullIndexer},
     dango_backtrace::Backtraceable,
-    dango_crypto::{sha2_256, sha2_512},
+    dango_crypto::sha2_256,
     dango_db_memory::MemDb,
     dango_genesis::{GenesisCodes, GenesisOption},
     dango_identity::{Identity256, Identity512},
@@ -23,7 +24,10 @@ use {
     test_case::test_case,
 };
 
-use super::{WASM_CACHE_CAPACITY, read_wasm_file};
+fn sha2_512(data: &[u8]) -> [u8; 64] {
+    use sha2::{Digest, Sha512};
+    Sha512::digest(data).into()
+}
 
 async fn setup_test() -> (
     TestSuite<MemDb, HybridVm, NaiveProposalPreparer>,

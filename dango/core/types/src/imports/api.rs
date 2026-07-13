@@ -59,21 +59,6 @@ pub trait Api {
     /// Perform the SHA2-256 hash.
     fn sha2_256(&self, data: &[u8]) -> [u8; 32];
 
-    /// Perform the SHA2-512 hash.
-    fn sha2_512(&self, data: &[u8]) -> [u8; 64];
-
-    /// Perform the SHA2-512 hash, truncated to the first 32 bytes.
-    fn sha2_512_truncated(&self, data: &[u8]) -> [u8; 32];
-
-    /// Perform the SHA3-256 hash.
-    fn sha3_256(&self, data: &[u8]) -> [u8; 32];
-
-    /// Perform the SHA3-512 hash.
-    fn sha3_512(&self, data: &[u8]) -> [u8; 64];
-
-    /// Perform the SHA3-512 hash, truncated to the first 32 bytes.
-    fn sha3_512_truncated(&self, data: &[u8]) -> [u8; 32];
-
     /// Perform the Keccak-256 hash.
     fn keccak256(&self, data: &[u8]) -> [u8; 32];
 }
