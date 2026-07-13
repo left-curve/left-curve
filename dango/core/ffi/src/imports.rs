@@ -3,7 +3,7 @@ use {
     dango_backtrace::BacktracedError,
     dango_primitives::{
         Addr, Api, BorshDeExt, BorshSerExt, Order, Querier, Query, QueryResponse, QueryResult,
-        Record, StdError, StdResult, Storage, VerificationError, encode_sections,
+        Record, StdError, StdResult, Storage, VerificationError,
     },
 };
 
@@ -35,8 +35,6 @@ unsafe extern "C" {
         recovery_id: u8,
         compressed: u8,
     ) -> u64;
-    fn ed25519_verify(msg_hash_ptr: usize, sig_ptr: usize, pk_ptr: usize) -> u32;
-    fn ed25519_batch_verify(prehash_msgs_ptr: usize, sigs_ptr: usize, pks_ptr: usize) -> u32;
 
     // Hashes
     fn sha2_256(data_ptr: usize) -> usize;
@@ -358,59 +356,6 @@ impl Api for ExternalApi {
             Ok(pk)
         } else {
             Err(VerificationError::from_error_code(error_code).into())
-        }
-    }
-
-    fn ed25519_verify(&self, msg_hash: &[u8], sig: &[u8], pk: &[u8]) -> StdResult<()> {
-        let msg_hash_region = Region::build(msg_hash);
-        let msg_hash_ptr = &*msg_hash_region as *const Region;
-
-        let sig_region = Region::build(sig);
-        let sig_ptr = &*sig_region as *const Region;
-
-        let pk_region = Region::build(pk);
-        let pk_ptr = &*pk_region as *const Region;
-
-        let return_value =
-            unsafe { ed25519_verify(msg_hash_ptr as usize, sig_ptr as usize, pk_ptr as usize) };
-
-        if return_value == 0 {
-            Ok(())
-        } else {
-            Err(VerificationError::from_error_code(return_value).into())
-        }
-    }
-
-    fn ed25519_batch_verify(
-        &self,
-        prehash_msgs: &[&[u8]],
-        sigs: &[&[u8]],
-        pks: &[&[u8]],
-    ) -> StdResult<()> {
-        let prehash_msgs = encode_sections(prehash_msgs)?;
-        let prehash_msgs_region = Region::build(&prehash_msgs);
-        let prehash_msgs_ptr = &*prehash_msgs_region as *const Region;
-
-        let sigs = encode_sections(sigs)?;
-        let sigs_region = Region::build(&sigs);
-        let sigs_ptr = &*sigs_region as *const Region;
-
-        let pks = encode_sections(pks)?;
-        let pks_region = Region::build(&pks);
-        let pks_ptr = &*pks_region as *const Region;
-
-        let return_value = unsafe {
-            ed25519_batch_verify(
-                prehash_msgs_ptr as usize,
-                sigs_ptr as usize,
-                pks_ptr as usize,
-            )
-        };
-
-        if return_value == 0 {
-            Ok(())
-        } else {
-            Err(VerificationError::from_error_code(return_value).into())
         }
     }
 }

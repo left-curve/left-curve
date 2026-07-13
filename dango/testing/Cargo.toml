@@ -79,7 +79,6 @@ dango-storage               = { workspace = true }
 dango-tester                = { workspace = true, features = ["library"] }
 dango-vm-hybrid             = { workspace = true }
 dango-vm-wasm               = { workspace = true }
-ed25519-dalek               = { workspace = true, features = ["batch", "digest"] }
 graphql_client              = { workspace = true }
 hex                         = { workspace = true }
 itertools                   = { workspace = true }
@@ -90,7 +89,6 @@ prost                       = { workspace = true }
 rand                        = { workspace = true }
 reqwest                     = { workspace = true, features = ["json"] }
 serde                       = { workspace = true }
-sha2                        = { workspace = true }
 test-case                   = { workspace = true }
 thiserror                   = { workspace = true }
 tokio                       = { workspace = true, features = ["full"] }

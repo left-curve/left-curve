@@ -120,7 +120,6 @@ dialoguer                   = "0.12"
 digest                      = "0.10" # FIXME: can't bump to 0.11 because RustCrypto requires 0.10
 dotenvy                     = "0.15.7"
 dyn-clone                   = "1"
-ed25519-dalek               = "2"
 elsa                        = "1"
 futures                     = "0.3"
 futures-util                = "0.3"

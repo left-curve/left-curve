@@ -4,11 +4,9 @@ use {
         criterion_main,
     },
     dango_crypto::{
-        ed25519_batch_verify, ed25519_verify, keccak256, secp256k1_pubkey_recover,
-        secp256k1_verify, secp256r1_verify, sha2_256,
+        keccak256, secp256k1_pubkey_recover, secp256k1_verify, secp256r1_verify, sha2_256,
     },
-    dango_identity::{Identity256, Identity512},
-    ed25519_dalek::Signer,
+    dango_identity::Identity256,
     p256::ecdsa::signature::DigestSigner,
     rand::{RngCore, rngs::OsRng},
     std::{hint::black_box, time::Duration},
@@ -41,13 +39,6 @@ const HASH_MSG_LENS: [usize; 5] = [200_000, 400_000, 600_000, 800_000, 1_000_000
 /// This length doesn't matter, because verifiers only concern hashes, so we
 /// just pick a small number.
 const SIGN_MSG_LEN: usize = 10;
-
-/// Batch sizes for benchmarking `ed25519_batch_verify`.
-///
-/// The most common situation this function is called is in the ICS-07 Tendermint
-/// light client, where it verifies block headers. Cosmos chains usually have up
-/// to 150 validators, so we choose a number of batch sizes up to that.
-const ED25519_BATCH_SIZES: [usize; 6] = [25, 50, 75, 100, 125, 150];
 
 fn generate_random_msg(i: usize) -> Vec<u8> {
     let mut vec = vec![0; i];
@@ -168,72 +159,6 @@ fn bench_verifiers(c: &mut Criterion) {
             BatchSize::SmallInput,
         );
     });
-
-    group.bench_function("ed25519_verify", |b| {
-        b.iter_batched(
-            || {
-                fn sha2_512(data: &[u8]) -> [u8; 64] {
-                    use sha2::{Digest, Sha512};
-                    Sha512::digest(data).into()
-                }
-
-                let msg = generate_random_msg(SIGN_MSG_LEN);
-                let msg_hash = Identity512::from(sha2_512(&msg));
-                let sk = ed25519_dalek::SigningKey::generate(&mut OsRng);
-                let vk = ed25519_dalek::VerifyingKey::from(&sk);
-                let sig = sk.sign_digest(msg_hash.clone());
-
-                (
-                    msg_hash.to_vec(),
-                    sig.to_bytes().to_vec(),
-                    vk.as_bytes().to_vec(),
-                )
-            },
-            |(msg_hash, sig, vk)| {
-                assert!(ed25519_verify(&msg_hash, &sig, &vk).is_ok());
-            },
-            BatchSize::SmallInput,
-        );
-    });
-
-    for size in ED25519_BATCH_SIZES {
-        group.bench_with_input(
-            BenchmarkId::new("ed25519_batch_verify", size),
-            &size,
-            |b, size| {
-                b.iter_batched(
-                    || {
-                        let mut prehash_msgs = vec![];
-                        let mut sigs = vec![];
-                        let mut vks = vec![];
-
-                        // We use a batch size of 100, because the typical use case of
-                        // `ed25519_batch_verify` is in Tendermint light clients, while
-                        // the average size of validator sets of Cosmos chains is ~100.
-                        for _ in 0..*size {
-                            let prehash_msg = generate_random_msg(SIGN_MSG_LEN);
-                            let sk = ed25519_dalek::SigningKey::generate(&mut OsRng);
-                            let vk = ed25519_dalek::VerifyingKey::from(&sk);
-                            let sig = sk.sign(&prehash_msg);
-
-                            prehash_msgs.push(prehash_msg);
-                            sigs.push(sig.to_bytes().to_vec());
-                            vks.push(vk.to_bytes().to_vec());
-                        }
-
-                        (prehash_msgs, sigs, vks)
-                    },
-                    |(msgs, sigs, vks)| {
-                        let msgs: Vec<_> = msgs.iter().map(|m| m.as_slice()).collect();
-                        let sigs: Vec<_> = sigs.iter().map(|s| s.as_slice()).collect();
-                        let vks: Vec<_> = vks.iter().map(|k| k.as_slice()).collect();
-                        assert!(ed25519_batch_verify(&msgs, &sigs, &vks).is_ok());
-                    },
-                    BatchSize::SmallInput,
-                );
-            },
-        );
-    }
 
     group.finish();
 }

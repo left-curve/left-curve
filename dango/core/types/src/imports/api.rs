@@ -40,22 +40,6 @@ pub trait Api {
         compressed: bool,
     ) -> StdResult<Vec<u8>>;
 
-    /// Verify an ED25519 signature with the given hashed message and public
-    /// key.
-    ///
-    /// NOTE: This function takes the hash of the message, not the prehash.
-    fn ed25519_verify(&self, msg_hash: &[u8], sig: &[u8], pk: &[u8]) -> StdResult<()>;
-
-    /// Verify a batch of ED25519 signatures with the given hashed message and public
-    /// key.
-    /// NOTE: This function takes the hash of the messages, not the prehash.
-    fn ed25519_batch_verify(
-        &self,
-        prehash_msgs: &[&[u8]],
-        sigs: &[&[u8]],
-        pks: &[&[u8]],
-    ) -> StdResult<()>;
-
     /// Perform the SHA2-256 hash.
     fn sha2_256(&self, data: &[u8]) -> [u8; 32];
 

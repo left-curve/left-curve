@@ -29,21 +29,6 @@ impl Api for MockApi {
             .map_err(|err| VerificationError::from_error_code(err.into_error_code()).into())
     }
 
-    fn ed25519_verify(&self, msg_hash: &[u8], sig: &[u8], pk: &[u8]) -> StdResult<()> {
-        dango_crypto::ed25519_verify(msg_hash, sig, pk)
-            .map_err(|err| VerificationError::from_error_code(err.into_error_code()).into())
-    }
-
-    fn ed25519_batch_verify(
-        &self,
-        prehash_msgs: &[&[u8]],
-        sigs: &[&[u8]],
-        pks: &[&[u8]],
-    ) -> StdResult<()> {
-        dango_crypto::ed25519_batch_verify(prehash_msgs, sigs, pks)
-            .map_err(|err| VerificationError::from_error_code(err.into_error_code()).into())
-    }
-
     fn sha2_256(&self, data: &[u8]) -> [u8; 32] {
         dango_crypto::sha2_256(data)
     }

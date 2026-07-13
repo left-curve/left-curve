@@ -1,9 +1,9 @@
 use {
     crate::{
         Cache, Environment, Gatekeeper, LimitingTunables, VmError, VmResult, db_next, db_next_key,
-        db_next_value, db_read, db_remove, db_remove_range, db_scan, db_write, debug,
-        ed25519_batch_verify, ed25519_verify, keccak256, query_chain, read_then_wipe,
-        secp256k1_pubkey_recover, secp256k1_verify, secp256r1_verify, sha2_256, write_to_memory,
+        db_next_value, db_read, db_remove, db_remove_range, db_scan, db_write, debug, keccak256,
+        query_chain, read_then_wipe, secp256k1_pubkey_recover, secp256k1_verify, secp256r1_verify,
+        sha2_256, write_to_memory,
     },
     dango_app::{GasTracker, Instance, QuerierProvider, StorageProvider, Vm},
     dango_primitives::{BorshSerExt, Context, Hash256},
@@ -130,8 +130,6 @@ impl Vm for WasmVm {
                 "secp256k1_verify"         => Function::new_typed_with_env(&mut store, &fe, secp256k1_verify),
                 "secp256r1_verify"         => Function::new_typed_with_env(&mut store, &fe, secp256r1_verify),
                 "secp256k1_pubkey_recover" => Function::new_typed_with_env(&mut store, &fe, secp256k1_pubkey_recover),
-                "ed25519_verify"           => Function::new_typed_with_env(&mut store, &fe, ed25519_verify),
-                "ed25519_batch_verify"     => Function::new_typed_with_env(&mut store, &fe, ed25519_batch_verify),
                 "sha2_256"                 => Function::new_typed_with_env(&mut store, &fe, sha2_256),
                 "keccak256"                => Function::new_typed_with_env(&mut store, &fe, keccak256),
                 "debug"                    => Function::new_typed_with_env(&mut store, &fe, debug),

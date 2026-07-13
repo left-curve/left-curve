@@ -24,18 +24,11 @@ pub const GAS_COSTS: GasCosts = GasCosts {
     secp256r1_verify: 1_880_000,
     secp256k1_verify: 770_000,
     secp256k1_pubkey_recover: 1_580_000,
-    ed25519_verify: 410_000,
-    ed25519_batch_verify: LinearGasCost::new(1_340_000, 188_000),
     // Hashers.
     //
     // For hashers, `per_item` means per byte.
     // The truncated versions have the same cost as the untruncated counterparts.
     sha2_256: LinearGasCost::new(0, 27),
-    sha2_512: LinearGasCost::new(0, 16),
-    sha2_512_truncated: LinearGasCost::new(0, 16),
-    sha3_256: LinearGasCost::new(0, 15),
-    sha3_512: LinearGasCost::new(0, 28),
-    sha3_512_truncated: LinearGasCost::new(0, 28),
     keccak256: LinearGasCost::new(0, 15),
 };
 
@@ -50,15 +43,8 @@ pub struct GasCosts {
     pub secp256r1_verify: u64,
     pub secp256k1_verify: u64,
     pub secp256k1_pubkey_recover: u64,
-    pub ed25519_verify: u64,
-    pub ed25519_batch_verify: LinearGasCost,
     // Hashers
     pub sha2_256: LinearGasCost,
-    pub sha2_512: LinearGasCost,
-    pub sha2_512_truncated: LinearGasCost,
-    pub sha3_256: LinearGasCost,
-    pub sha3_512: LinearGasCost,
-    pub sha3_512_truncated: LinearGasCost,
     pub keccak256: LinearGasCost,
 }
 
