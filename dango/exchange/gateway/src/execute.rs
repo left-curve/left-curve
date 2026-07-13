@@ -9,8 +9,8 @@ use {
     dango_types::{
         bank,
         gateway::{
-            Addr32, ExecuteMsg, InstantiateMsg, NAMESPACE, Origin, PersonalQuota, RateLimit,
-            Remote, SetPersonalQuotaRequest, Traceable, WithdrawalFee,
+            Addr32, Deposited, ExecuteMsg, InstantiateMsg, NAMESPACE, Origin, PersonalQuota,
+            RateLimit, Remote, SetPersonalQuotaRequest, Traceable, WithdrawalFee, Withdrawn,
             bridge::{self, BridgeMsg},
         },
     },
@@ -270,7 +270,17 @@ fn receive_remote(
         } else {
             None
         })
-        .add_message(Message::transfer(recipient, coins! { denom => amount })?))
+        .add_message(Message::transfer(
+            recipient,
+            coins! { denom.clone() => amount },
+        )?)
+        .add_event(Deposited {
+            user: recipient,
+            bridge: ctx.sender,
+            remote,
+            denom,
+            amount,
+        })?)
 }
 
 fn transfer_remote(ctx: MutableCtx, remote: Remote, recipient: Addr32) -> anyhow::Result<Response> {
@@ -373,10 +383,22 @@ fn transfer_remote(ctx: MutableCtx, remote: Remote, recipient: Addr32) -> anyhow
             None
         })
         .may_add_message(if let Some(fee) = maybe_fee {
-            Some(Message::transfer(owner, coins! { coin.denom => fee })?)
+            Some(Message::transfer(
+                owner,
+                coins! { coin.denom.clone() => fee },
+            )?)
         } else {
             None
-        }))
+        })
+        .add_event(Withdrawn {
+            user: ctx.sender,
+            bridge,
+            remote,
+            recipient,
+            denom: coin.denom,
+            amount: coin.amount,
+            fee: maybe_fee.unwrap_or(Uint128::ZERO),
+        })?)
 }
 
 pub fn cron_execute(ctx: SudoCtx) -> StdResult<Response> {

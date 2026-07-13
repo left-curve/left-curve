@@ -6,7 +6,7 @@ use {
     dango_genesis::Contracts,
     dango_hyperlane_types::{Addr32, mailbox},
     dango_math::Uint128,
-    dango_primitives::{Addr, Addressable, Coins, Hash256, Signer},
+    dango_primitives::{Addr, Addressable, Coins, Hash256, Signer, TxOutcome},
     dango_types::{gateway::Domain, warp::TokenMessage},
     dango_vm_rust::RustVm,
     std::ops::{Deref, DerefMut},
@@ -87,6 +87,32 @@ where
         R: Addressable,
         A: Into<Uint128>,
     {
+        self.receive_warp_transfer_with_outcome(
+            relayer,
+            origin_domain,
+            origin_warp,
+            recipient,
+            amount,
+        )
+        .await
+        .map(|(message_id, _)| message_id)
+    }
+
+    /// Same as `receive_warp_transfer`, but also returns the outcome of the
+    /// mailbox `process` transaction, so callers can inspect the events it
+    /// emitted.
+    pub async fn receive_warp_transfer_with_outcome<R, A>(
+        &mut self,
+        relayer: &mut (dyn Signer + Send + Sync),
+        origin_domain: Domain,
+        origin_warp: Addr32,
+        recipient: &R,
+        amount: A,
+    ) -> anyhow::Result<(Hash256, TxOutcome)>
+    where
+        R: Addressable,
+        A: Into<Uint128>,
+    {
         // Mock validator set signs the message.
         let (message_id, raw_message, raw_metadata) = self
             .validator_sets
@@ -109,7 +135,8 @@ where
             );
 
         // Deliver the message to Dango mailbox.
-        self.suite
+        let outcome = self
+            .suite
             .execute(
                 relayer,
                 self.mailbox,
@@ -119,11 +146,13 @@ where
                 },
                 Coins::new(),
             )
-            .await
-            .result
-            .map_err(|err| anyhow!(err))?;
+            .await;
 
-        // Return the message ID.
-        Ok(message_id)
+        if let Err(err) = &outcome.result {
+            return Err(anyhow!(err.clone()));
+        }
+
+        // Return the message ID along with the transaction outcome.
+        Ok((message_id, outcome))
     }
 }
