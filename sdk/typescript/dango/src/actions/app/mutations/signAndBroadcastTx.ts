@@ -1,11 +1,4 @@
-import type {
-  Address,
-  Client,
-  Message,
-  Signer,
-  TxMessageType,
-  TypedDataParameter,
-} from "@left-curve/types";
+import type { Address, Client, Message, Signer } from "@left-curve/types";
 import { composeTxTypedData } from "@left-curve/utils";
 import { getAccountSeenNonces } from "#actions/account-factory/queries/getAccountSeenNonces.js";
 import { getAccountSessionSeenNonces } from "#actions/account-factory/queries/getAccountSessionSeenNonces.js";
@@ -19,7 +12,6 @@ export type SignAndBroadcastTxParameters = {
   sender: Address;
   messages: Message[];
   gasLimit?: number;
-  typedData?: TypedDataParameter<TxMessageType>;
 };
 
 export type SignAndBroadcastTxReturnType = BroadcastTxSyncReturnType;
@@ -29,10 +21,6 @@ export async function signAndBroadcastTx(
   parameters: SignAndBroadcastTxParameters,
 ): SignAndBroadcastTxReturnType {
   if (!client.signer) throw new Error("client must have a signer");
-  // `typedData` in the parameters is accepted for backward compatibility but no
-  // longer used: EIP-712 transaction messages are now bound as canonical JSON
-  // strings (see `composeTxTypedData`), so per-message type declarations are
-  // obsolete.
   const { messages, sender, gasLimit: gas } = parameters;
 
   const chainId = await (async () => {

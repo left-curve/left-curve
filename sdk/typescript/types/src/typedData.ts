@@ -18,11 +18,6 @@ export type TypedDataProperty = {
   type: SolidityTypes;
 };
 
-export type TypedDataParameter<T = TypedDataProperty> = {
-  type: T[];
-  extraTypes: Record<string, TypedDataProperty[]>;
-};
-
 export type SolidityTypes =
   | "string"
   | "address"
@@ -51,23 +46,6 @@ export type MetadataType = [
   { name: "chain_id"; type: "string" },
   { name: "nonce"; type: "uint32" },
 ];
-
-/**
- * EIP-712 has no sum type, so a transaction's `messages` can't be expressed as
- * structs; they are bound as canonical JSON strings instead (`Message.messages`
- * is typed `string[]`, and the `eip1193` signer stringifies the values). This
- * per-variant type is therefore no longer used to build the transaction typed
- * data -- it remains only for the vestigial `typedData` parameters still
- * accepted (and ignored) by the action mutations, pending their removal.
- */
-export type TxMessageType =
-  | { name: "configure"; type: "Configure" }
-  | { name: "upgrade"; type: "Upgrade" }
-  | { name: "transfer"; type: "Transfer" }
-  | { name: "upload"; type: "Upload" }
-  | { name: "instantiate"; type: "Instantiate" }
-  | { name: "execute"; type: "Execute" }
-  | { name: "migrate"; type: "Migrate" };
 
 export type TypedData = {
   types: EIP712Types;

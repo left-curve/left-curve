@@ -2,13 +2,11 @@ import { camelToSnake, recursiveTransform } from "./index.js";
 
 import type {
   ArbitraryTypedData,
-  Coins,
   EIP712Domain,
   EIP712Message,
   Json,
   Message,
   TypedData,
-  TypedDataProperty,
 } from "@left-curve/types";
 
 /**
@@ -90,15 +88,4 @@ export function composeTxTypedData(message: EIP712Message, domain: EIP712Domain)
       messages: recursiveTransform(messages, camelToSnake) as Message[],
     },
   };
-}
-
-/**
- * @description Gets the typed data for coins.
- *
- * @param coins The coins to get the typed data for.
- * @returns The typed data properties.
- */
-export function getCoinsTypedData(coins?: Coins): TypedDataProperty[] {
-  if (!coins) return [];
-  return Object.keys(coins).map((coin) => ({ name: coin, type: "string" }));
 }
