@@ -84,7 +84,7 @@ book:
 
 # Update wasm artifacts used in tests
 update-testdata:
-  cp -v artifacts/dango_tester.wasm dango/testing/testdata/
+  cp -v artifacts/dango_tester.wasm dango/core/vm/wasm/testdata/
 
 # ---------------------------------- Frontend ----------------------------------
 
