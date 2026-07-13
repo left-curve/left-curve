@@ -22,7 +22,6 @@ bip32                       = { workspace = true }
 dango-auth                  = { workspace = true }
 dango-backtrace             = { workspace = true }
 dango-eth-utils             = { workspace = true }
-dango-identity              = { workspace = true }
 dango-indexer-graphql-types = { workspace = true }
 dango-primitives            = { workspace = true }
 dango-types                 = { workspace = true }

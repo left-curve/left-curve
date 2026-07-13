@@ -359,7 +359,6 @@ mod tests {
             db_scan, db_write, debug, read_from_memory, write_to_memory,
         },
         dango_app::{APP_CONFIG, GAS_COSTS, GasTracker, QuerierProviderImpl, StorageProvider},
-        dango_identity::Identity256,
         dango_primitives::{
             Addr, BlockInfo, BorshDeExt, BorshSerExt, GenericResult, Hash256, MockStorage, Order,
             Query, QueryResponse, ResultExt, Shared, Storage, Timestamp, json,
@@ -841,33 +840,33 @@ mod tests {
     }
 
     fn generate_secp256r1_verify_request() -> VerifyTest {
-        use p256::ecdsa::{Signature, SigningKey, VerifyingKey, signature::DigestSigner};
+        use p256::ecdsa::{Signature, SigningKey, VerifyingKey, signature::hazmat::PrehashSigner};
 
         let sk = SigningKey::random(&mut OsRng);
         let vk = VerifyingKey::from(&sk);
-        let msg_hash = Identity256::from(dango_crypto::sha2_256(MSG));
-        let sig: Signature = sk.sign_digest(msg_hash.clone());
+        let msg_hash = dango_crypto::sha2_256(MSG);
+        let sig: Signature = sk.sign_prehash(&msg_hash).unwrap();
 
         VerifyTest {
             pk: vk.to_sec1_bytes().to_vec(),
             sig: sig.to_bytes().to_vec(),
-            msg_hash: msg_hash.into_bytes().into(),
+            msg_hash: msg_hash.into(),
             wrong_msg: dango_crypto::sha2_256(WRONG_MSG).to_vec(),
         }
     }
 
     fn generate_secp256k1_verify_request() -> VerifyTest {
-        use k256::ecdsa::{Signature, SigningKey, VerifyingKey, signature::DigestSigner};
+        use k256::ecdsa::{Signature, SigningKey, VerifyingKey, signature::hazmat::PrehashSigner};
 
         let sk = SigningKey::random(&mut OsRng);
         let vk = VerifyingKey::from(&sk);
-        let msg_hash = Identity256::from(dango_crypto::sha2_256(MSG));
-        let sig: Signature = sk.sign_digest(msg_hash.clone());
+        let msg_hash = dango_crypto::sha2_256(MSG);
+        let sig: Signature = sk.sign_prehash(&msg_hash).unwrap();
 
         VerifyTest {
             pk: vk.to_sec1_bytes().to_vec(),
             sig: sig.to_bytes().to_vec(),
-            msg_hash: msg_hash.into_bytes().into(),
+            msg_hash: msg_hash.into(),
             wrong_msg: dango_crypto::sha2_256(WRONG_MSG).to_vec(),
         }
     }
@@ -925,13 +924,13 @@ mod tests {
 
             let sk = SigningKey::random(&mut OsRng);
             let vk = VerifyingKey::from(&sk);
-            let msg_hash = Identity256::from(dango_crypto::sha2_256(MSG));
-            let (sig, recovery_id) = sk.sign_digest_recoverable(msg_hash.clone()).unwrap();
+            let msg_hash = dango_crypto::sha2_256(MSG);
+            let (sig, recovery_id) = sk.sign_prehash_recoverable(&msg_hash);
 
             (
                 vk.to_sec1_bytes().to_vec(),
                 sig.to_vec(),
-                msg_hash.into_bytes().to_vec(),
+                msg_hash.to_vec(),
                 recovery_id.to_byte(),
                 1,
             )

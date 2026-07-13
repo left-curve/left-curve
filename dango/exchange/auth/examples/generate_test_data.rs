@@ -1,6 +1,5 @@
 use {
     dango_auth::MAX_NONCE_INCREASE,
-    dango_identity::Identity256,
     dango_primitives::{
         Addr, Binary, ByteArray, Hash256, HashExt, Inner, JsonSerExt, MOCK_CHAIN_ID, Message,
         NonEmpty, SignData, Timestamp, Tx, coins,
@@ -13,7 +12,7 @@ use {
         },
     },
     data_encoding::BASE64URL_NOPAD,
-    k256::ecdsa::signature::DigestSigner,
+    k256::ecdsa::signature::hazmat::PrehashSigner,
     rand::{Rng, RngCore},
     sha2::{Digest, Sha256},
 };
@@ -182,7 +181,7 @@ fn generate_passkey_session_test_data() -> anyhow::Result<()> {
     let sk1 = p256::ecdsa::SigningKey::random(&mut rand::rngs::OsRng);
     let vk1: [u8; 33] = sk1
         .verifying_key()
-        .to_encoded_point(true)
+        .to_sec1_point(true)
         .as_bytes()
         .try_into()?;
     let vk1_hash = vk1.sha2_256();
@@ -270,7 +269,7 @@ fn generate_random_secp256k1_key_pair()
     let sk = k256::ecdsa::SigningKey::random(&mut rand::rngs::OsRng);
     let vk: [u8; 33] = sk
         .verifying_key()
-        .to_encoded_point(true)
+        .to_sec1_point(true)
         .as_bytes()
         .try_into()?;
     let vk_hash = vk.sha2_256();
@@ -300,8 +299,7 @@ where
 {
     let prehash_sign_data = sign_doc.to_prehash_sign_data()?;
     let sign_data = prehash_sign_data.sha2_256();
-    let digest = Identity256::from(sign_data.into_inner());
-    let signature: k256::ecdsa::Signature = sk.sign_digest(digest);
+    let signature: k256::ecdsa::Signature = sk.sign_prehash(&sign_data.into_inner())?;
 
     Ok(ByteArray::from_inner(signature.to_bytes().into()))
 }
@@ -419,9 +417,7 @@ where
     let signed_hash: [u8; 32] = Sha256::digest(&signed_data).into();
 
     // Sign with p256.
-    use p256::ecdsa::signature::DigestSigner;
-    let digest = Identity256::from(signed_hash);
-    let signature: p256::ecdsa::Signature = sk.sign_digest(digest);
+    let signature: p256::ecdsa::Signature = sk.sign_prehash(&signed_hash)?;
 
     Ok(PasskeySignature {
         sig: ByteArray::from_inner(signature.to_bytes().into()),

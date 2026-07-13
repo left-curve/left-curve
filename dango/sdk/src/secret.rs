@@ -3,14 +3,13 @@ use {
         dyn_abi::{Eip712Domain, TypedData},
         primitives::U160,
     },
-    bip32::{Mnemonic, PublicKey, XPrv},
+    bip32::{Mnemonic, XPrv},
     dango_auth::EIP155_CHAIN_ID,
-    dango_identity::Identity256,
     dango_primitives::{
         Addr, ByteArray, Hash256, HashExt, Inner, JsonDeExt, JsonSerExt, SignData, json,
     },
     dango_types::auth::{Eip712Signature, Key, SignDoc, Signature},
-    k256::{ecdsa::signature::DigestSigner, schnorr::CryptoRngCore},
+    k256::{ecdsa::signature::hazmat::PrehashSigner, schnorr::CryptoRngCore},
     rand::rngs::OsRng,
 };
 
@@ -94,7 +93,10 @@ impl Secret for Secp256k1 {
         let path = format!("m/44'/{coin_type}'/0'/0/0");
         let xprv = XPrv::derive_from_path(&seed, &path.parse()?)?;
 
-        Ok(Self { inner: xprv.into() })
+        // Go through the raw private key bytes instead of bip32's `From<XPrv>`
+        // conversion, which targets the k256 version pinned by bip32 rather
+        // than the one used by this crate.
+        Self::from_bytes(xprv.to_bytes())
     }
 
     fn private_key(&self) -> [u8; 32] {
@@ -102,7 +104,12 @@ impl Secret for Secp256k1 {
     }
 
     fn public_key(&self) -> [u8; 33] {
-        self.inner.verifying_key().to_bytes()
+        self.inner
+            .verifying_key()
+            .to_sec1_point(true)
+            .as_bytes()
+            .try_into()
+            .expect("compressed pubkey is 33 bytes")
     }
 
     fn key(&self) -> Key {
@@ -115,8 +122,7 @@ impl Secret for Secp256k1 {
 
     fn sign_transaction(&self, sign_doc: SignDoc) -> anyhow::Result<Signature> {
         let sign_data = sign_doc.to_sign_data()?;
-        let digest = Identity256::from_inner(sign_data);
-        let signature: k256::ecdsa::Signature = self.inner.sign_digest(digest);
+        let signature: k256::ecdsa::Signature = self.inner.sign_prehash(&sign_data)?;
 
         Ok(Signature::Secp256k1(ByteArray::from_inner(
             signature.to_bytes().into(),
@@ -203,8 +209,7 @@ impl Secret for Eip712 {
         };
 
         let sign_bytes = data.eip712_signing_hash()?;
-        let digest = Identity256::from(sign_bytes.0);
-        let (signature, recovery_id) = self.inner.inner.sign_digest_recoverable(digest)?;
+        let (signature, recovery_id) = self.inner.inner.sign_prehash_recoverable(&sign_bytes.0);
 
         Ok(Signature::Eip712(Eip712Signature {
             typed_data: data.to_json_vec()?.into(),

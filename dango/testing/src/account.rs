@@ -89,7 +89,7 @@ impl TestAccount<Undefined<UserIndex>, Undefined<Addr>> {
         let sk = SigningKey::random(&mut OsRng);
         let pk = sk
             .verifying_key()
-            .to_encoded_point(true)
+            .to_sec1_point(true)
             .to_bytes()
             .to_vec()
             .try_into()
@@ -113,7 +113,7 @@ impl TestAccount<Undefined<UserIndex>, Undefined<Addr>> {
     pub fn new(sk: SigningKey) -> Self {
         let pk = sk
             .verifying_key()
-            .to_encoded_point(true)
+            .to_sec1_point(true)
             .to_bytes()
             .to_vec()
             .try_into()

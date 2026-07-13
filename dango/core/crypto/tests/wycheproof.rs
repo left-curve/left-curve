@@ -47,11 +47,11 @@ impl<'de> de::Deserialize<'de> for Key {
         let compressed =
             // Secp256k1
             if let Ok(vk) = k256::ecdsa::VerifyingKey::from_sec1_bytes(&uncompressed_byte) {
-                vk.to_encoded_point(true).to_bytes()
+                vk.to_sec1_point(true).to_bytes()
             }
             // Secp256r1
             else if let Ok(vk) = p256::ecdsa::VerifyingKey::from_sec1_bytes(&uncompressed_byte) {
-                vk.to_encoded_point(true).to_bytes()
+                vk.to_sec1_point(true).to_bytes()
             } else {
                 Err(de::Error::custom(format!("Key {} is not in sep256k1 or sep256r1 format", temp.uncompressed)))?
             };

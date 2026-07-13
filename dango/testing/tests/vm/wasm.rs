@@ -5,7 +5,6 @@ use {
     dango_crypto::sha2_256,
     dango_db_memory::MemDb,
     dango_genesis::{GenesisCodes, GenesisOption},
-    dango_identity::Identity256,
     dango_primitives::{
         Addr, Binary, Coins, GenericResult, InnerMut, Message, QuerierExt, QueryRequest, ResultExt,
         VerificationError,
@@ -161,32 +160,32 @@ const MSG: &[u8] = b"finger but hole";
 const WRONG_MSG: &[u8] = b"precious item ahead";
 
 fn generate_secp256r1_verify_request() -> QueryVerifySecp256r1Request {
-    use p256::ecdsa::{Signature, SigningKey, VerifyingKey, signature::DigestSigner};
+    use p256::ecdsa::{Signature, SigningKey, VerifyingKey, signature::hazmat::PrehashSigner};
 
     let sk = SigningKey::random(&mut OsRng);
     let vk = VerifyingKey::from(&sk);
-    let msg_hash = Identity256::from(sha2_256(MSG));
-    let sig: Signature = sk.sign_digest(msg_hash.clone());
+    let msg_hash = sha2_256(MSG);
+    let sig: Signature = sk.sign_prehash(&msg_hash).unwrap();
 
     QueryVerifySecp256r1Request {
         pk: vk.to_sec1_bytes().to_vec().into(),
         sig: sig.to_bytes().to_vec().into(),
-        msg_hash: msg_hash.into_bytes().into(),
+        msg_hash: msg_hash.into(),
     }
 }
 
 fn generate_secp256k1_verify_request() -> QueryVerifySecp256k1Request {
-    use k256::ecdsa::{Signature, SigningKey, VerifyingKey, signature::DigestSigner};
+    use k256::ecdsa::{Signature, SigningKey, VerifyingKey, signature::hazmat::PrehashSigner};
 
     let sk = SigningKey::random(&mut OsRng);
     let vk = VerifyingKey::from(&sk);
-    let msg_hash = Identity256::from(sha2_256(MSG));
-    let sig: Signature = sk.sign_digest(msg_hash.clone());
+    let msg_hash = sha2_256(MSG);
+    let sig: Signature = sk.sign_prehash(&msg_hash).unwrap();
 
     QueryVerifySecp256k1Request {
         pk: vk.to_sec1_bytes().to_vec().into(),
         sig: sig.to_bytes().to_vec().into(),
-        msg_hash: msg_hash.into_bytes().into(),
+        msg_hash: msg_hash.into(),
     }
 }
 
@@ -329,12 +328,12 @@ async fn recovering_secp256k1_pubkey() {
 
         let sk = SigningKey::random(&mut OsRng);
         let vk = VerifyingKey::from(&sk);
-        let msg_hash = Identity256::from(sha2_256(MSG));
-        let (sig, recovery_id) = sk.sign_digest_recoverable(msg_hash.clone()).unwrap();
+        let msg_hash = sha2_256(MSG);
+        let (sig, recovery_id) = sk.sign_prehash_recoverable(&msg_hash);
 
         (vk, QueryRecoverSecp256k1Request {
             sig: sig.to_vec().into(),
-            msg_hash: msg_hash.into_bytes().to_vec().into(),
+            msg_hash: msg_hash.to_vec().into(),
             recovery_id: recovery_id.to_byte(),
             compressed: true,
         })

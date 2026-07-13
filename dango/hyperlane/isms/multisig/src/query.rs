@@ -151,7 +151,6 @@ mod tests {
     use {
         super::*,
         dango_hyperlane_types::{Addr32, IncrementalMerkleTree, addr32, mailbox::MAILBOX_VERSION},
-        dango_identity::Identity256,
         dango_primitives::{Inner, MockContext, ResultExt, btree_set},
         hex_literal::hex,
         rand::rngs::OsRng,
@@ -256,7 +255,7 @@ mod tests {
             .iter()
             .map(|sk| {
                 let pk = k256::ecdsa::VerifyingKey::from(sk)
-                    .to_encoded_point(false)
+                    .to_sec1_point(false)
                     .to_bytes();
                 let pk_hash = (&pk[1..]).keccak256();
                 HexByteArray::from_inner(pk_hash[12..].try_into().unwrap())
@@ -267,9 +266,8 @@ mod tests {
         let signatures = validators
             .iter()
             .map(|sk| {
-                let (signature, recovery_id) = sk
-                    .sign_digest_recoverable(Identity256::from(multisig_hash.into_inner()))
-                    .unwrap();
+                let (signature, recovery_id) =
+                    sk.sign_prehash_recoverable(&multisig_hash.into_inner());
                 let mut packed = [0_u8; 65];
                 packed[..64].copy_from_slice(&signature.to_bytes());
                 packed[64] = recovery_id.to_byte() + 27;
@@ -407,7 +405,7 @@ mod tests {
             .iter()
             .map(|sk| {
                 let pk = k256::ecdsa::VerifyingKey::from(sk)
-                    .to_encoded_point(false)
+                    .to_sec1_point(false)
                     .to_bytes();
                 let pk_hash = (&pk[1..]).keccak256();
                 HexByteArray::from_inner(pk_hash[12..].try_into().unwrap())
@@ -415,9 +413,8 @@ mod tests {
             .collect::<Vec<_>>();
 
         // Validator 0 signs the message.
-        let (signature, recovery_id) = validators[0]
-            .sign_digest_recoverable(Identity256::from(multisig_hash.into_inner()))
-            .unwrap();
+        let (signature, recovery_id) =
+            validators[0].sign_prehash_recoverable(&multisig_hash.into_inner());
 
         let v = recovery_id.to_byte() + 27;
         let mut original = [0u8; 65];
@@ -470,9 +467,7 @@ mod tests {
         // ------------------- 4. Sanity: two real signers ---------------------
 
         // Two distinct validators should succeed (proves the test setup is valid).
-        let (sig1, rid1) = validators[1]
-            .sign_digest_recoverable(Identity256::from(multisig_hash.into_inner()))
-            .unwrap();
+        let (sig1, rid1) = validators[1].sign_prehash_recoverable(&multisig_hash.into_inner());
         let mut packed1 = [0u8; 65];
         packed1[..64].copy_from_slice(&sig1.to_bytes());
         packed1[64] = rid1.to_byte() + 27;

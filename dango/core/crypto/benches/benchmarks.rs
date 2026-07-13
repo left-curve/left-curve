@@ -6,8 +6,7 @@ use {
     dango_crypto::{
         keccak256, secp256k1_pubkey_recover, secp256k1_verify, secp256r1_verify, sha2_256,
     },
-    dango_identity::Identity256,
-    p256::ecdsa::signature::DigestSigner,
+    p256::ecdsa::signature::hazmat::PrehashSigner,
     rand::{RngCore, rngs::OsRng},
     std::{hint::black_box, time::Duration},
 };
@@ -85,18 +84,13 @@ fn bench_verifiers(c: &mut Criterion) {
         b.iter_batched(
             || {
                 let msg = generate_random_msg(SIGN_MSG_LEN);
-                let msg_hash = Identity256::from(sha2_256(&msg));
+                let msg_hash = sha2_256(&msg);
                 let sk = p256::ecdsa::SigningKey::random(&mut OsRng);
                 let vk = p256::ecdsa::VerifyingKey::from(&sk);
-                // For some reason, we have to explicitly specify the trait here;
-                // the compiler can't infer it.
-                let sig = <p256::ecdsa::SigningKey as DigestSigner<_, p256::ecdsa::Signature>>::sign_digest(
-                    &sk,
-                    msg_hash.clone(),
-                );
+                let sig: p256::ecdsa::Signature = sk.sign_prehash(&msg_hash).unwrap();
 
                 (
-                    msg_hash.as_bytes().to_vec(),
+                    msg_hash.to_vec(),
                     sig.to_bytes().to_vec(),
                     vk.to_sec1_bytes().to_vec(),
                 )
@@ -112,16 +106,13 @@ fn bench_verifiers(c: &mut Criterion) {
         b.iter_batched(
             || {
                 let msg = generate_random_msg(SIGN_MSG_LEN);
-                let msg_hash = Identity256::from(sha2_256(&msg));
+                let msg_hash = sha2_256(&msg);
                 let sk = k256::ecdsa::SigningKey::random(&mut OsRng);
                 let vk = k256::ecdsa::VerifyingKey::from(&sk);
-                let sig = <k256::ecdsa::SigningKey as DigestSigner<_, k256::ecdsa::Signature>>::sign_digest(
-                    &sk,
-                    msg_hash.clone(),
-                );
+                let sig: k256::ecdsa::Signature = sk.sign_prehash(&msg_hash).unwrap();
 
                 (
-                    msg_hash.as_bytes().to_vec(),
+                    msg_hash.to_vec(),
                     sig.to_bytes().to_vec(),
                     vk.to_sec1_bytes().to_vec(),
                 )
@@ -137,13 +128,13 @@ fn bench_verifiers(c: &mut Criterion) {
         b.iter_batched(
             || {
                 let msg = generate_random_msg(SIGN_MSG_LEN);
-                let msg_hash = Identity256::from(sha2_256(&msg));
+                let msg_hash = sha2_256(&msg);
                 let sk = k256::ecdsa::SigningKey::random(&mut OsRng);
                 let vk = k256::ecdsa::VerifyingKey::from(&sk);
-                let (sig, recovery_id) = sk.sign_digest_recoverable(msg_hash.clone()).unwrap();
+                let (sig, recovery_id) = sk.sign_prehash_recoverable(&msg_hash);
 
                 (
-                    msg_hash.as_bytes().to_vec(),
+                    msg_hash.to_vec(),
                     sig.to_bytes().to_vec(),
                     vk.to_sec1_bytes().to_vec(),
                     recovery_id.to_byte(),
