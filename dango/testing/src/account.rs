@@ -15,7 +15,7 @@ use {
         auth::{Credential, Key, Metadata, Nonce, SignDoc, Signature, StandardCredential},
         signer::SequencedSigner,
     },
-    k256::{ecdsa::SigningKey, elliptic_curve::rand_core::OsRng},
+    k256::{ecdsa::SigningKey, elliptic_curve::Generate},
     sha2::Sha256,
     std::{array, collections::BTreeMap},
 };
@@ -86,7 +86,7 @@ where
 
 impl TestAccount<Undefined<UserIndex>, Undefined<Addr>> {
     pub fn new_key_pair() -> (SigningKey, Key) {
-        let sk = SigningKey::random(&mut OsRng);
+        let sk = SigningKey::generate();
         let pk = sk
             .verifying_key()
             .to_sec1_point(true)
@@ -99,7 +99,7 @@ impl TestAccount<Undefined<UserIndex>, Undefined<Addr>> {
     }
 
     pub fn new_random() -> Self {
-        let sk = SigningKey::random(&mut OsRng);
+        let sk = SigningKey::generate();
 
         Self::new(sk)
     }

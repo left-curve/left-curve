@@ -2,12 +2,12 @@ use {
     dango_primitives::ByteArray,
     k256::{
         ecdsa::{Signature, SigningKey, signature::hazmat::PrehashSigner},
-        elliptic_curve::rand_core::OsRng,
+        elliptic_curve::Generate,
     },
 };
 
 pub fn generate_random_key() -> (SigningKey, ByteArray<33>) {
-    let sk = SigningKey::random(&mut OsRng);
+    let sk = SigningKey::generate();
     let pk = sk
         .verifying_key()
         .to_sec1_point(true)

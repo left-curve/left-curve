@@ -363,7 +363,6 @@ mod tests {
             Addr, BlockInfo, BorshDeExt, BorshSerExt, GenericResult, Hash256, MockStorage, Order,
             Query, QueryResponse, ResultExt, Shared, Storage, Timestamp, json,
         },
-        rand::rngs::OsRng,
         std::{fmt::Debug, sync::Arc},
         test_case::test_case,
         wasmer::{
@@ -840,9 +839,12 @@ mod tests {
     }
 
     fn generate_secp256r1_verify_request() -> VerifyTest {
-        use p256::ecdsa::{Signature, SigningKey, VerifyingKey, signature::hazmat::PrehashSigner};
+        use p256::{
+            ecdsa::{Signature, SigningKey, VerifyingKey, signature::hazmat::PrehashSigner},
+            elliptic_curve::Generate,
+        };
 
-        let sk = SigningKey::random(&mut OsRng);
+        let sk = SigningKey::generate();
         let vk = VerifyingKey::from(&sk);
         let msg_hash = dango_crypto::sha2_256(MSG);
         let sig: Signature = sk.sign_prehash(&msg_hash).unwrap();
@@ -856,9 +858,12 @@ mod tests {
     }
 
     fn generate_secp256k1_verify_request() -> VerifyTest {
-        use k256::ecdsa::{Signature, SigningKey, VerifyingKey, signature::hazmat::PrehashSigner};
+        use k256::{
+            ecdsa::{Signature, SigningKey, VerifyingKey, signature::hazmat::PrehashSigner},
+            elliptic_curve::Generate,
+        };
 
-        let sk = SigningKey::random(&mut OsRng);
+        let sk = SigningKey::generate();
         let vk = VerifyingKey::from(&sk);
         let msg_hash = dango_crypto::sha2_256(MSG);
         let sig: Signature = sk.sign_prehash(&msg_hash).unwrap();
@@ -920,9 +925,12 @@ mod tests {
         let mut suite = setup_test();
 
         let (pk, sig, msg_hash, recovery_id, compressed) = {
-            use k256::ecdsa::{SigningKey, VerifyingKey};
+            use k256::{
+                ecdsa::{SigningKey, VerifyingKey},
+                elliptic_curve::Generate,
+            };
 
-            let sk = SigningKey::random(&mut OsRng);
+            let sk = SigningKey::generate();
             let vk = VerifyingKey::from(&sk);
             let msg_hash = dango_crypto::sha2_256(MSG);
             let (sig, recovery_id) = sk.sign_prehash_recoverable(&msg_hash);

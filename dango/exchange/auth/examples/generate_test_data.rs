@@ -12,8 +12,8 @@ use {
         },
     },
     data_encoding::BASE64URL_NOPAD,
-    k256::ecdsa::signature::hazmat::PrehashSigner,
-    rand::{Rng, RngCore},
+    k256::{ecdsa::signature::hazmat::PrehashSigner, elliptic_curve::Generate},
+    rand::Rng,
     sha2::{Digest, Sha256},
 };
 
@@ -178,7 +178,7 @@ fn generate_eip712_onboard_test_data() -> anyhow::Result<()> {
 
 fn generate_passkey_session_test_data() -> anyhow::Result<()> {
     // Main key is a passkey (Secp256r1); session key is secp256k1.
-    let sk1 = p256::ecdsa::SigningKey::random(&mut rand::rngs::OsRng);
+    let sk1 = p256::ecdsa::SigningKey::generate();
     let vk1: [u8; 33] = sk1
         .verifying_key()
         .to_sec1_point(true)
@@ -234,14 +234,14 @@ fn generate_passkey_session_test_data() -> anyhow::Result<()> {
 
 fn generate_random_unsigned_transaction() -> anyhow::Result<SignDoc> {
     let mut sender = Addr::mock(0);
-    rand::thread_rng().fill_bytes(&mut sender);
+    rand::rng().fill_bytes(&mut sender);
 
     let mut recipient = Addr::mock(0);
-    rand::thread_rng().fill_bytes(&mut recipient);
+    rand::rng().fill_bytes(&mut recipient);
 
-    let user_index = rand::thread_rng().r#gen();
-    let nonce = rand::thread_rng().gen_range(0..MAX_NONCE_INCREASE);
-    let gas_limit = rand::thread_rng().r#gen();
+    let user_index = rand::random();
+    let nonce = rand::random_range(0..MAX_NONCE_INCREASE);
+    let gas_limit = rand::random();
 
     let messages = NonEmpty::new_unchecked(vec![Message::transfer(
         recipient,
@@ -266,7 +266,7 @@ fn generate_random_unsigned_transaction() -> anyhow::Result<SignDoc> {
 /// Return the private key, public key, and SHA-256 hash of the public key.
 fn generate_random_secp256k1_key_pair()
 -> anyhow::Result<(k256::ecdsa::SigningKey, [u8; 33], Hash256)> {
-    let sk = k256::ecdsa::SigningKey::random(&mut rand::rngs::OsRng);
+    let sk = k256::ecdsa::SigningKey::generate();
     let vk: [u8; 33] = sk
         .verifying_key()
         .to_sec1_point(true)
@@ -279,7 +279,7 @@ fn generate_random_secp256k1_key_pair()
 
 /// Generate a random Ethereum key pair, returning (signing_key, 20-byte address).
 fn generate_random_ethereum_key_pair() -> (k256::ecdsa::SigningKey, [u8; 20]) {
-    let sk = k256::ecdsa::SigningKey::random(&mut rand::rngs::OsRng);
+    let sk = k256::ecdsa::SigningKey::generate();
     let addr = dango_eth_utils::derive_address(sk.verifying_key());
     (sk, addr)
 }

@@ -16,7 +16,7 @@ use {
     dango_vm_hybrid::HybridVm,
     dango_vm_rust::RustVm,
     dango_vm_wasm::VmError,
-    rand::rngs::OsRng,
+    k256::elliptic_curve::Generate,
     serde::{Serialize, de::DeserializeOwned},
     std::fmt::Debug,
     test_case::test_case,
@@ -162,7 +162,7 @@ const WRONG_MSG: &[u8] = b"precious item ahead";
 fn generate_secp256r1_verify_request() -> QueryVerifySecp256r1Request {
     use p256::ecdsa::{Signature, SigningKey, VerifyingKey, signature::hazmat::PrehashSigner};
 
-    let sk = SigningKey::random(&mut OsRng);
+    let sk = SigningKey::generate();
     let vk = VerifyingKey::from(&sk);
     let msg_hash = sha2_256(MSG);
     let sig: Signature = sk.sign_prehash(&msg_hash).unwrap();
@@ -177,7 +177,7 @@ fn generate_secp256r1_verify_request() -> QueryVerifySecp256r1Request {
 fn generate_secp256k1_verify_request() -> QueryVerifySecp256k1Request {
     use k256::ecdsa::{Signature, SigningKey, VerifyingKey, signature::hazmat::PrehashSigner};
 
-    let sk = SigningKey::random(&mut OsRng);
+    let sk = SigningKey::generate();
     let vk = VerifyingKey::from(&sk);
     let msg_hash = sha2_256(MSG);
     let sig: Signature = sk.sign_prehash(&msg_hash).unwrap();
@@ -226,7 +226,7 @@ fn generate_secp256k1_verify_request() -> QueryVerifySecp256k1Request {
 #[test_case(
     generate_secp256r1_verify_request,
     |mut req| {
-        let sk = p256::ecdsa::SigningKey::random(&mut OsRng);
+        let sk = p256::ecdsa::SigningKey::generate();
         let vk = p256::ecdsa::VerifyingKey::from(&sk);
         req.pk = vk.to_sec1_bytes().to_vec().into();
         req
@@ -280,7 +280,7 @@ fn generate_secp256k1_verify_request() -> QueryVerifySecp256k1Request {
 #[test_case(
     generate_secp256k1_verify_request,
     |mut req| {
-        let sk = k256::ecdsa::SigningKey::random(&mut OsRng);
+        let sk = k256::ecdsa::SigningKey::generate();
         let vk = k256::ecdsa::VerifyingKey::from(&sk);
         req.pk = vk.to_sec1_bytes().to_vec().into();
         req
@@ -326,7 +326,7 @@ async fn recovering_secp256k1_pubkey() {
     let (vk, req) = {
         use k256::ecdsa::{SigningKey, VerifyingKey};
 
-        let sk = SigningKey::random(&mut OsRng);
+        let sk = SigningKey::generate();
         let vk = VerifyingKey::from(&sk);
         let msg_hash = sha2_256(MSG);
         let (sig, recovery_id) = sk.sign_prehash_recoverable(&msg_hash);

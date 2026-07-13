@@ -29,7 +29,6 @@ dango-math   = { workspace = true }
 dango-tester = { workspace = true, features = ["library"] }
 k256         = { workspace = true }
 p256         = { workspace = true }
-rand         = { workspace = true }
 test-case    = { workspace = true }
 tokio        = { workspace = true }
 

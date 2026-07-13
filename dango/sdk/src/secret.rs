@@ -9,8 +9,7 @@ use {
         Addr, ByteArray, Hash256, HashExt, Inner, JsonDeExt, JsonSerExt, SignData, json,
     },
     dango_types::auth::{Eip712Signature, Key, SignDoc, Signature},
-    k256::{ecdsa::signature::hazmat::PrehashSigner, schnorr::CryptoRngCore},
-    rand::rngs::OsRng,
+    k256::{ecdsa::signature::hazmat::PrehashSigner, elliptic_curve::Generate},
 };
 
 /// Represents a secret key that can sign transactions.
@@ -24,13 +23,8 @@ pub trait Secret: Sized {
     /// Byte array representing the signature produced by this secret key.
     type Signature;
 
-    /// Generate a new random private key with the [`OsRng`](https://docs.rs/rand/latest/rand/rngs/struct.OsRng.html).
-    fn new_random() -> Self {
-        Self::from_rng(&mut OsRng)
-    }
-
-    /// Generate a new random private key with the given RNG.
-    fn from_rng(rng: &mut impl CryptoRngCore) -> Self;
+    /// Generate a new random private key using the system's secure RNG.
+    fn new_random() -> Self;
 
     /// Recover a private key from raw bytes.
     fn from_bytes(bytes: Self::Private) -> anyhow::Result<Self>;
@@ -71,9 +65,9 @@ impl Secret for Secp256k1 {
     type Public = [u8; 33];
     type Signature = [u8; 64];
 
-    fn from_rng(rng: &mut impl CryptoRngCore) -> Self {
+    fn new_random() -> Self {
         Self {
-            inner: k256::ecdsa::SigningKey::random(rng),
+            inner: k256::ecdsa::SigningKey::generate(),
         }
     }
 
@@ -146,8 +140,8 @@ impl Secret for Eip712 {
     // 64 bytes of signature + 1 byte of recovery ID
     type Signature = [u8; 65];
 
-    fn from_rng(rng: &mut impl CryptoRngCore) -> Self {
-        Secp256k1::from_rng(rng).into()
+    fn new_random() -> Self {
+        Secp256k1::new_random().into()
     }
 
     fn from_bytes(bytes: [u8; 32]) -> anyhow::Result<Self> {

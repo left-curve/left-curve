@@ -153,7 +153,7 @@ mod tests {
         dango_hyperlane_types::{Addr32, IncrementalMerkleTree, addr32, mailbox::MAILBOX_VERSION},
         dango_primitives::{Inner, MockContext, ResultExt, btree_set},
         hex_literal::hex,
-        rand::rngs::OsRng,
+        k256::elliptic_curve::Generate,
         test_case::test_case,
     };
 
@@ -247,7 +247,7 @@ mod tests {
 
         // Generate 4 validator keys.
         let validators = (0..4)
-            .map(|_| k256::ecdsa::SigningKey::random(&mut OsRng))
+            .map(|_| k256::ecdsa::SigningKey::generate())
             .collect::<Vec<_>>();
 
         // Derive the corresponding Ethereum addresses.
@@ -398,7 +398,7 @@ mod tests {
         // --------------------- 2. Prepare validator set ----------------------
 
         let validators = (0..3)
-            .map(|_| k256::ecdsa::SigningKey::random(&mut OsRng))
+            .map(|_| k256::ecdsa::SigningKey::generate())
             .collect::<Vec<_>>();
 
         let validator_set = validators

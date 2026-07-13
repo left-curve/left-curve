@@ -6,8 +6,7 @@ use {
     dango_crypto::{
         keccak256, secp256k1_pubkey_recover, secp256k1_verify, secp256r1_verify, sha2_256,
     },
-    p256::ecdsa::signature::hazmat::PrehashSigner,
-    rand::{RngCore, rngs::OsRng},
+    p256::{ecdsa::signature::hazmat::PrehashSigner, elliptic_curve::Generate},
     std::{hint::black_box, time::Duration},
 };
 
@@ -41,7 +40,7 @@ const SIGN_MSG_LEN: usize = 10;
 
 fn generate_random_msg(i: usize) -> Vec<u8> {
     let mut vec = vec![0; i];
-    OsRng.fill_bytes(&mut vec);
+    getrandom::fill(&mut vec).unwrap();
     vec
 }
 
@@ -85,7 +84,7 @@ fn bench_verifiers(c: &mut Criterion) {
             || {
                 let msg = generate_random_msg(SIGN_MSG_LEN);
                 let msg_hash = sha2_256(&msg);
-                let sk = p256::ecdsa::SigningKey::random(&mut OsRng);
+                let sk = p256::ecdsa::SigningKey::generate();
                 let vk = p256::ecdsa::VerifyingKey::from(&sk);
                 let sig: p256::ecdsa::Signature = sk.sign_prehash(&msg_hash).unwrap();
 
@@ -107,7 +106,7 @@ fn bench_verifiers(c: &mut Criterion) {
             || {
                 let msg = generate_random_msg(SIGN_MSG_LEN);
                 let msg_hash = sha2_256(&msg);
-                let sk = k256::ecdsa::SigningKey::random(&mut OsRng);
+                let sk = k256::ecdsa::SigningKey::generate();
                 let vk = k256::ecdsa::VerifyingKey::from(&sk);
                 let sig: k256::ecdsa::Signature = sk.sign_prehash(&msg_hash).unwrap();
 
@@ -129,7 +128,7 @@ fn bench_verifiers(c: &mut Criterion) {
             || {
                 let msg = generate_random_msg(SIGN_MSG_LEN);
                 let msg_hash = sha2_256(&msg);
-                let sk = k256::ecdsa::SigningKey::random(&mut OsRng);
+                let sk = k256::ecdsa::SigningKey::generate();
                 let vk = k256::ecdsa::VerifyingKey::from(&sk);
                 let (sig, recovery_id) = sk.sign_prehash_recoverable(&msg_hash);
 

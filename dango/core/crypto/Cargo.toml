@@ -19,9 +19,9 @@ thiserror = { workspace = true }
 
 [dev-dependencies]
 criterion   = { workspace = true }
+getrandom   = { workspace = true }
 hex         = { workspace = true, features = ["serde"] }
 hex-literal = { workspace = true }
-rand        = { workspace = true }
 serde       = { workspace = true, features = ["alloc", "derive"] }
 serde_json  = { workspace = true }
 

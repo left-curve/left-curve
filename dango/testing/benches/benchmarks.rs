@@ -13,15 +13,15 @@ use {
         account_factory::{self, Salt},
         constants::usdc,
     },
-    rand::{Rng, distributions::Alphanumeric},
+    rand::{RngExt, distr::Alphanumeric},
     std::time::Duration,
 };
 
 const MEASUREMENT_TIME: Duration = Duration::from_secs(90);
 
 fn random_string(len: usize) -> String {
-    rand::thread_rng()
-        .sample_iter(&Alphanumeric)
+    rand::rng()
+        .sample_iter(Alphanumeric)
         .take(len)
         .map(char::from)
         .collect()

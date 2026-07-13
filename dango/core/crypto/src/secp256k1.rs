@@ -82,14 +82,16 @@ mod tests {
     use {
         super::*,
         crate::sha2_256,
-        k256::ecdsa::{Signature, SigningKey, signature::hazmat::PrehashSigner},
-        rand::rngs::OsRng,
+        k256::{
+            ecdsa::{Signature, SigningKey, signature::hazmat::PrehashSigner},
+            elliptic_curve::Generate,
+        },
     };
 
     #[test]
     fn verifying_secp256k1() {
         // Generate a valid signature
-        let sk = SigningKey::random(&mut OsRng);
+        let sk = SigningKey::generate();
         let vk = VerifyingKey::from(&sk);
         let msg = b"Jake";
         let msg_hash = sha2_256(msg);
@@ -102,7 +104,7 @@ mod tests {
 
         // Incorrect private key
         {
-            let false_sk = SigningKey::random(&mut OsRng);
+            let false_sk = SigningKey::generate();
             let false_sig: Signature = false_sk.sign_prehash(&msg_hash).unwrap();
             assert!(
                 secp256k1_verify(&msg_hash, &false_sig.to_bytes(), &vk.to_sec1_bytes()).is_err()
@@ -111,7 +113,7 @@ mod tests {
 
         // Incorrect public key
         {
-            let false_sk = SigningKey::random(&mut OsRng);
+            let false_sk = SigningKey::generate();
             let false_vk = VerifyingKey::from(&false_sk);
             assert!(
                 secp256k1_verify(&msg_hash, &sig.to_bytes(), &false_vk.to_sec1_bytes()).is_err()
@@ -131,7 +133,7 @@ mod tests {
     #[test]
     fn recovering_secp256k1() {
         // Generate a valid signature
-        let sk = SigningKey::random(&mut OsRng);
+        let sk = SigningKey::generate();
         let vk = VerifyingKey::from(&sk);
         let msg = b"Jake";
         let msg_hash = sha2_256(msg);
