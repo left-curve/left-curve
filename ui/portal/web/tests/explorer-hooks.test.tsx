@@ -240,6 +240,42 @@ describe("explorer hooks", () => {
     });
   });
 
+  it("uses the testnet archive for concrete block explorer lookups", async () => {
+    publicClient.chain = { id: "dango-testnet-1" };
+    publicClient.queryBlock.mockResolvedValue({ blockHeight: 200, hash: "current-block" });
+    const fetchMock = vi.fn().mockResolvedValue(
+      jsonResponse({
+        block: {
+          info: {
+            height: 125,
+            timestamp: "31536000",
+            hash: "archive-testnet-block",
+          },
+          txs: [],
+        },
+        outcome: {
+          app_hash: "archive-testnet-app-hash",
+          cron_outcomes: [],
+          tx_outcomes: [],
+        },
+      }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const { result } = renderHook(() => useExplorerBlock("125"), {
+      wrapper: createQueryClientWrapper(),
+    });
+
+    await waitFor(() =>
+      expect(result.current.data?.searchBlock?.hash).toBe("archive-testnet-block"),
+    );
+
+    expect(publicClient.queryBlock).toHaveBeenCalledOnce();
+    expect((fetchMock.mock.calls[0]?.[0] as URL).toString()).toBe(
+      "https://api-archive-testnet.dango.zone/blocks/125",
+    );
+  });
+
   it("uses the mainnet archive for latest block explorer lookups", async () => {
     publicClient.chain = { id: "dango-1" };
     publicClient.queryBlock.mockResolvedValue({ blockHeight: 200, hash: "live-current-block" });

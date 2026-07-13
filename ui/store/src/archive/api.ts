@@ -8,8 +8,10 @@ import type {
   Json,
 } from "@left-curve/types";
 
-const MAINNET_CHAIN_ID = "dango-1";
-const MAINNET_ARCHIVE_URL = "https://api-archive-mainnet.dango.zone";
+const ARCHIVE_URL_BY_CHAIN_ID: Record<string, string> = {
+  "dango-1": "https://api-archive-mainnet.dango.zone",
+  "dango-testnet-1": "https://api-archive-testnet.dango.zone",
+};
 const EMPTY_PAGE_INFO = {
   hasNextPage: false,
   hasPreviousPage: false,
@@ -93,28 +95,31 @@ type ArchiveTxOutcome = {
 };
 
 export function getArchiveApi(chain: Chain | undefined): ArchiveApi | null {
-  if (chain?.id !== MAINNET_CHAIN_ID) return null;
+  const archiveUrl = chain ? ARCHIVE_URL_BY_CHAIN_ID[chain.id] : undefined;
+  if (!archiveUrl) return null;
 
   return {
-    queryBlock,
-    searchTxs,
+    queryBlock: (height) => queryBlock(archiveUrl, height),
+    searchTxs: (parameters) => searchTxs(archiveUrl, parameters),
   };
 }
 
-async function queryBlock(height?: number): Promise<IndexedBlock | null> {
+async function queryBlock(archiveUrl: string, height?: number): Promise<IndexedBlock | null> {
   const blockPath = height === undefined ? "/blocks/latest" : `/blocks/${height}`;
-  const block = await archiveFetch<ArchiveFullBlock>(blockPath, undefined, {
+  const block = await archiveFetch<ArchiveFullBlock>(archiveUrl, blockPath, undefined, {
     allowNotFound: true,
   });
   return block ? normalizeBlock(block) : null;
 }
 
 async function searchTxs(
+  archiveUrl: string,
   parameters: ArchiveSearchTxsParameters,
 ): Promise<GraphqlQueryResult<IndexedTransaction>> {
   if (parameters.hash) {
     const hash = parameters.hash.replace(/^0x/i, "").toUpperCase();
     const items = await archiveFetch<ArchiveTransaction[]>(
+      archiveUrl,
       `/transactions/${encodeURIComponent(hash)}`,
     );
     return toGraphqlResult((items ?? []).map(normalizeTransaction));
@@ -122,6 +127,7 @@ async function searchTxs(
 
   if (parameters.senderAddress) {
     const page = await archiveFetch<ArchivePage<ArchiveTransaction>>(
+      archiveUrl,
       `/transactions/involving/${encodeURIComponent(parameters.senderAddress)}`,
       {
         role: "sender",
@@ -137,11 +143,12 @@ async function searchTxs(
 }
 
 async function archiveFetch<T>(
+  archiveUrl: string,
   path: string,
   query?: Record<string, string | undefined>,
   options: { allowNotFound?: boolean } = {},
 ): Promise<T | null> {
-  const url = new URL(path, MAINNET_ARCHIVE_URL);
+  const url = new URL(path, archiveUrl);
   for (const [key, value] of Object.entries(query ?? {})) {
     if (value !== undefined) url.searchParams.set(key, value);
   }

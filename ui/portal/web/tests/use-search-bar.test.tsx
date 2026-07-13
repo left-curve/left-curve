@@ -183,82 +183,88 @@ describe("useSearchBar", () => {
     expect(queryClient.getQueryData(["block", "0"])).toEqual(block);
   });
 
-  it("uses archive lookups for mainnet block and transaction searches", async () => {
-    publicClient.chain = { id: "dango-1" };
-    const queryClient = renderUseSearchBar();
-    const hash = "a".repeat(64);
-    const sender = "0x73656e6465720000000000000000000000000000";
-    const fetchMock = vi.fn((input: URL) => {
-      if (input.pathname === "/blocks/123") {
-        return Promise.resolve(
-          jsonResponse({
-            block: {
-              info: {
-                height: 123,
-                timestamp: "2026-06-08T12:00:00Z",
-                hash: "archive-block",
+  it.each([
+    ["mainnet", "dango-1", "https://api-archive-mainnet.dango.zone"],
+    ["testnet", "dango-testnet-1", "https://api-archive-testnet.dango.zone"],
+  ])(
+    "uses archive lookups for %s block and transaction searches",
+    async (_, chainId, archiveUrl) => {
+      publicClient.chain = { id: chainId };
+      const queryClient = renderUseSearchBar();
+      const hash = "a".repeat(64);
+      const sender = "0x73656e6465720000000000000000000000000000";
+      const fetchMock = vi.fn((input: URL) => {
+        if (input.pathname === "/blocks/123") {
+          return Promise.resolve(
+            jsonResponse({
+              block: {
+                info: {
+                  height: 123,
+                  timestamp: "2026-06-08T12:00:00Z",
+                  hash: "archive-block",
+                },
+                txs: [],
               },
-              txs: [],
+              outcome: {
+                app_hash: "archive-app-hash",
+                cron_outcomes: [],
+                tx_outcomes: [],
+              },
+            }),
+          );
+        }
+
+        return Promise.resolve(
+          jsonResponse([
+            {
+              blockHeight: 123,
+              idx: 0,
+              kind: "transaction",
+              hash,
+              sender,
+              success: true,
+              timestamp: "2026-06-08T12:00:00Z",
+              tx: { sender, gas_limit: 1, msgs: [] },
+              outcome: {
+                transaction: { gas_limit: 1, gas_used: 1, result: { ok: null }, events: [] },
+              },
             },
-            outcome: {
-              app_hash: "archive-app-hash",
-              cron_outcomes: [],
-              tx_outcomes: [],
-            },
-          }),
+          ]),
         );
-      }
+      });
+      vi.stubGlobal("fetch", fetchMock);
 
-      return Promise.resolve(
-        jsonResponse([
-          {
-            blockHeight: 123,
-            idx: 0,
-            kind: "transaction",
-            hash,
-            sender,
-            success: true,
-            timestamp: "2026-06-08T12:00:00Z",
-            tx: { sender, gas_limit: 1, msgs: [] },
-            outcome: {
-              transaction: { gas_limit: 1, gas_used: 1, result: { ok: null }, events: [] },
-            },
-          },
-        ]),
-      );
-    });
-    vi.stubGlobal("fetch", fetchMock);
+      fireEvent.change(screen.getByLabelText("Search"), {
+        target: { value: "123" },
+      });
 
-    fireEvent.change(screen.getByLabelText("Search"), {
-      target: { value: "123" },
-    });
-
-    await waitFor(() => {
-      expect(readJson("result").block).toMatchObject({
+      await waitFor(() => {
+        expect(readJson("result").block).toMatchObject({
+          blockHeight: 123,
+          hash: "archive-block",
+        });
+      });
+      expect(publicClient.queryBlock).not.toHaveBeenCalled();
+      expect(queryClient.getQueryData(["block", "123"])).toMatchObject({
         blockHeight: 123,
         hash: "archive-block",
       });
-    });
-    expect(publicClient.queryBlock).not.toHaveBeenCalled();
-    expect(queryClient.getQueryData(["block", "123"])).toMatchObject({
-      blockHeight: 123,
-      hash: "archive-block",
-    });
 
-    fireEvent.change(screen.getByLabelText("Search"), {
-      target: { value: hash },
-    });
+      fireEvent.change(screen.getByLabelText("Search"), {
+        target: { value: hash },
+      });
 
-    await waitFor(() => {
-      expect(readJson("result").txs).toMatchObject([{ hash, sender }]);
-    });
-    expect(publicClient.searchTxs).not.toHaveBeenCalled();
-    expect(queryClient.getQueryData(["tx", hash])).toMatchObject({ hash, sender });
-    expect(fetchMock.mock.calls.map(([url]) => (url as URL).pathname)).toEqual([
-      "/blocks/123",
-      `/transactions/${hash.toUpperCase()}`,
-    ]);
-  });
+      await waitFor(() => {
+        expect(readJson("result").txs).toMatchObject([{ hash, sender }]);
+      });
+      expect(publicClient.searchTxs).not.toHaveBeenCalled();
+      expect(queryClient.getQueryData(["tx", hash])).toMatchObject({ hash, sender });
+      expect(fetchMock.mock.calls.map(([url]) => (url as URL).toString())).toEqual([
+        `${archiveUrl}/blocks/123`,
+        `${archiveUrl}/transactions/${hash.toUpperCase()}`,
+      ]);
+    },
+  );
 
   it("clears backend-derived search results when the search text is cleared", async () => {
     const block = { height: 123, hash: "block-hash" };
