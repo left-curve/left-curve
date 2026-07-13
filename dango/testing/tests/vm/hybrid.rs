@@ -29,7 +29,7 @@ pub async fn setup_test() -> (
 
     let vm = HybridVm::new(WASM_CACHE_CAPACITY, {
         let mut rust_hashes = codes.all_code_hashes();
-        rust_hashes.insert(rust_tester.hash256());
+        rust_hashes.insert(rust_tester.sha2_256());
         rust_hashes
     });
 

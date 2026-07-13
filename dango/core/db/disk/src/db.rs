@@ -314,7 +314,7 @@ where
 
     fn prove(&self, key: &[u8], version: Option<u64>) -> DbResult<Self::Proof> {
         let version = version.unwrap_or_else(|| self.latest_version().unwrap_or(0));
-        Ok(T::prove(&self.state_commitment(), key.hash256(), version)?)
+        Ok(T::prove(&self.state_commitment(), key.sha2_256(), version)?)
     }
 
     fn flush_but_not_commit(&self, batch: Batch) -> DbResult<(u64, Option<Hash256>)> {
@@ -1552,8 +1552,8 @@ mod tests_jmt {
                 None,
                 Proof::NonMembership(NonMembershipProof {
                     node: ProofNode::Leaf {
-                        key_hash: "jake".hash256(),
-                        value_hash: "shepherd".hash256(),
+                        key_hash: "jake".sha2_256(),
+                        value_hash: "shepherd".sha2_256(),
                     },
                     sibling_hashes: vec![Some(v0::HASH_0)],
                 }),
@@ -1580,8 +1580,8 @@ mod tests_jmt {
                 None,
                 Proof::NonMembership(NonMembershipProof {
                     node: ProofNode::Leaf {
-                        key_hash: "donald".hash256(),
-                        value_hash: "duck".hash256(),
+                        key_hash: "donald".sha2_256(),
+                        value_hash: "duck".sha2_256(),
                     },
                     sibling_hashes: vec![Some(v1::HASH_00), Some(v1::HASH_1)],
                 }),
@@ -1614,8 +1614,8 @@ mod tests_jmt {
             assert!(
                 verify_proof(
                     root_hash,
-                    key.as_bytes().hash256(),
-                    value.map(|v| v.hash256()),
+                    key.as_bytes().sha2_256(),
+                    value.map(|v| v.sha2_256()),
                     &found_proof,
                 )
                 .is_ok()
