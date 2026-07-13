@@ -71,16 +71,4 @@ impl Api for MockApi {
     fn keccak256(&self, data: &[u8]) -> [u8; 32] {
         dango_crypto::keccak256(data)
     }
-
-    fn blake2s_256(&self, data: &[u8]) -> [u8; 32] {
-        dango_crypto::blake2s_256(data)
-    }
-
-    fn blake2b_512(&self, data: &[u8]) -> [u8; 64] {
-        dango_crypto::blake2b_512(data)
-    }
-
-    fn blake3(&self, data: &[u8]) -> [u8; 32] {
-        dango_crypto::blake3(data)
-    }
 }

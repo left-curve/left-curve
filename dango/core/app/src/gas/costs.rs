@@ -37,9 +37,6 @@ pub const GAS_COSTS: GasCosts = GasCosts {
     sha3_512: LinearGasCost::new(0, 28),
     sha3_512_truncated: LinearGasCost::new(0, 28),
     keccak256: LinearGasCost::new(0, 15),
-    blake2s_256: LinearGasCost::new(0, 15),
-    blake2b_512: LinearGasCost::new(0, 9),
-    blake3: LinearGasCost::new(0, 5),
 };
 
 pub struct GasCosts {
@@ -63,9 +60,6 @@ pub struct GasCosts {
     pub sha3_512: LinearGasCost,
     pub sha3_512_truncated: LinearGasCost,
     pub keccak256: LinearGasCost,
-    pub blake2s_256: LinearGasCost,
-    pub blake2b_512: LinearGasCost,
-    pub blake3: LinearGasCost,
 }
 
 pub struct LinearGasCost {

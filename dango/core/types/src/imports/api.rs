@@ -76,13 +76,4 @@ pub trait Api {
 
     /// Perform the Keccak-256 hash.
     fn keccak256(&self, data: &[u8]) -> [u8; 32];
-
-    /// Perform the BLAKE2s-256 hash.
-    fn blake2s_256(&self, data: &[u8]) -> [u8; 32];
-
-    /// Perform the BLAKE2b-512 hash.
-    fn blake2b_512(&self, data: &[u8]) -> [u8; 64];
-
-    /// Perform the BLAKE3 hash.
-    fn blake3(&self, data: &[u8]) -> [u8; 32];
 }

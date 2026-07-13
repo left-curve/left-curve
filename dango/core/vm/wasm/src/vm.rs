@@ -1,11 +1,10 @@
 use {
     crate::{
-        Cache, Environment, Gatekeeper, LimitingTunables, VmError, VmResult, blake2b_512,
-        blake2s_256, blake3, db_next, db_next_key, db_next_value, db_read, db_remove,
-        db_remove_range, db_scan, db_write, debug, ed25519_batch_verify, ed25519_verify, keccak256,
-        query_chain, read_then_wipe, secp256k1_pubkey_recover, secp256k1_verify, secp256r1_verify,
-        sha2_256, sha2_512, sha2_512_truncated, sha3_256, sha3_512, sha3_512_truncated,
-        write_to_memory,
+        Cache, Environment, Gatekeeper, LimitingTunables, VmError, VmResult, db_next, db_next_key,
+        db_next_value, db_read, db_remove, db_remove_range, db_scan, db_write, debug,
+        ed25519_batch_verify, ed25519_verify, keccak256, query_chain, read_then_wipe,
+        secp256k1_pubkey_recover, secp256k1_verify, secp256r1_verify, sha2_256, sha2_512,
+        sha2_512_truncated, sha3_256, sha3_512, sha3_512_truncated, write_to_memory,
     },
     dango_app::{GasTracker, Instance, QuerierProvider, StorageProvider, Vm},
     dango_primitives::{BorshSerExt, Context, Hash256},
@@ -141,9 +140,6 @@ impl Vm for WasmVm {
                 "sha3_512"                 => Function::new_typed_with_env(&mut store, &fe, sha3_512),
                 "sha3_512_truncated"       => Function::new_typed_with_env(&mut store, &fe, sha3_512_truncated),
                 "keccak256"                => Function::new_typed_with_env(&mut store, &fe, keccak256),
-                "blake2s_256"              => Function::new_typed_with_env(&mut store, &fe, blake2s_256),
-                "blake2b_512"              => Function::new_typed_with_env(&mut store, &fe, blake2b_512),
-                "blake3"                   => Function::new_typed_with_env(&mut store, &fe, blake3),
                 "debug"                    => Function::new_typed_with_env(&mut store, &fe, debug),
                 "query_chain"              => Function::new_typed_with_env(&mut store, &fe, query_chain),
             }

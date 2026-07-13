@@ -15,7 +15,7 @@
 // TODO: `generic-array` 0.14.9 deprecated the entire `GenericArray` type to push
 // users toward 1.x, but `digest 0.10` (latest stable) still re-exports 0.14.
 // Suppress until the RustCrypto ecosystem ships stable `digest 0.11`.
-// Relevant RustCrypto crates: blake2, sha2, ecdsa, k256, p256, hmac, signature, curve25519-dalek
+// Relevant RustCrypto crates: sha2, ecdsa, k256, p256, hmac, signature, curve25519-dalek
 #![allow(deprecated)]
 
 use {

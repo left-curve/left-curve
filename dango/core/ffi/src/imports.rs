@@ -46,9 +46,6 @@ unsafe extern "C" {
     fn sha3_512(data_ptr: usize) -> usize;
     fn sha3_512_truncated(data_ptr: usize) -> usize;
     fn keccak256(data_ptr: usize) -> usize;
-    fn blake2s_256(data_ptr: usize) -> usize;
-    fn blake2b_512(data_ptr: usize) -> usize;
-    fn blake3(data_ptr: usize) -> usize;
 
     // Print a debug message to the client's CLI output.
     fn debug(addr_ptr: usize, msg_ptr: usize);
@@ -288,12 +285,6 @@ impl Api for ExternalApi {
     impl_hash_method!(sha3_512_truncated, 32);
 
     impl_hash_method!(keccak256, 32);
-
-    impl_hash_method!(blake2s_256, 32);
-
-    impl_hash_method!(blake2b_512, 64);
-
-    impl_hash_method!(blake3, 32);
 
     fn debug(&self, addr: Addr, msg: &str) {
         let addr_region = Region::build(&addr);

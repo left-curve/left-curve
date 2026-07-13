@@ -386,9 +386,6 @@ impl_hash_method!(sha3_256, "sha3_256");
 impl_hash_method!(sha3_512, "sha3_512");
 impl_hash_method!(sha3_512_truncated, "sha3_512_truncated");
 impl_hash_method!(keccak256, "keccak256");
-impl_hash_method!(blake2s_256, "blake2s_256");
-impl_hash_method!(blake2b_512, "blake2b_512");
-impl_hash_method!(blake3, "blake3");
 
 /// Pack a KV pair into a single byte array in the following format:
 ///
@@ -507,9 +504,6 @@ mod tests {
                     "sha3_512"                 => Function::new_typed(&mut store, |_: u32|                       -> u32 { 0 }),
                     "sha3_512_truncated"       => Function::new_typed(&mut store, |_: u32|                       -> u32 { 0 }),
                     "keccak256"                => Function::new_typed(&mut store, |_: u32|                       -> u32 { 0 }),
-                    "blake2s_256"              => Function::new_typed(&mut store, |_: u32|                       -> u32 { 0 }),
-                    "blake2b_512"              => Function::new_typed(&mut store, |_: u32|                       -> u32 { 0 }),
-                    "blake3"                   => Function::new_typed(&mut store, |_: u32|                       -> u32 { 0 }),
                     "debug"                    => Function::new_typed(&mut store, |_: u32, _: u32|                      {   }),
                     "query_chain"              => Function::new_typed(&mut store, |_: u32,|                      -> u32 { 0 }),
                 },
@@ -1170,21 +1164,6 @@ mod tests {
         crate::keccak256,
         dango_crypto::keccak256;
         "keccak256"
-    )]
-    #[test_case(
-        crate::blake2s_256,
-        dango_crypto::blake2s_256;
-        "blake2s_256"
-    )]
-    #[test_case(
-        crate::blake2b_512,
-        dango_crypto::blake2b_512;
-        "blake2b_512"
-    )]
-    #[test_case(
-        crate::blake3,
-        dango_crypto::blake3;
-        "blake3"
     )]
     fn hash_works<H, G, const S: usize>(hash: H, generate: G)
     where

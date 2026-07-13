@@ -4,9 +4,8 @@ use {
         criterion_main,
     },
     dango_crypto::{
-        blake2b_512, blake2s_256, blake3, ed25519_batch_verify, ed25519_verify, keccak256,
-        secp256k1_pubkey_recover, secp256k1_verify, secp256r1_verify, sha2_256, sha2_512, sha3_256,
-        sha3_512,
+        ed25519_batch_verify, ed25519_verify, keccak256, secp256k1_pubkey_recover,
+        secp256k1_verify, secp256r1_verify, sha2_256, sha2_512, sha3_256, sha3_512,
     },
     dango_identity::{Identity256, Identity512},
     ed25519_dalek::Signer,
@@ -100,30 +99,6 @@ fn bench_hashers(c: &mut Criterion) {
             b.iter_batched(
                 || generate_random_msg(*size),
                 |data| keccak256(black_box(&data)),
-                BatchSize::SmallInput,
-            );
-        });
-
-        group.bench_with_input(BenchmarkId::new("blake2s_256", size), &size, |b, size| {
-            b.iter_batched(
-                || generate_random_msg(*size),
-                |data| blake2s_256(black_box(&data)),
-                BatchSize::SmallInput,
-            );
-        });
-
-        group.bench_with_input(BenchmarkId::new("blake2b_512", size), &size, |b, size| {
-            b.iter_batched(
-                || generate_random_msg(*size),
-                |data| blake2b_512(black_box(&data)),
-                BatchSize::SmallInput,
-            );
-        });
-
-        group.bench_with_input(BenchmarkId::new("blake3", size), &size, |b, size| {
-            b.iter_batched(
-                || generate_random_msg(*size),
-                |data| blake3(black_box(&data)),
                 BatchSize::SmallInput,
             );
         });

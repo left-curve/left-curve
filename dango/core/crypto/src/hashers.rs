@@ -1,6 +1,5 @@
 use {
     crate::utils::truncate,
-    blake2::{Blake2b512, Blake2s256},
     sha2::{Digest, Sha256, Sha512},
     sha3::{Keccak256, Sha3_256, Sha3_512},
 };
@@ -33,18 +32,6 @@ pub fn keccak256(data: &[u8]) -> [u8; 32] {
     Keccak256::digest(data).into()
 }
 
-pub fn blake2s_256(data: &[u8]) -> [u8; 32] {
-    Blake2s256::digest(data).into()
-}
-
-pub fn blake2b_512(data: &[u8]) -> [u8; 64] {
-    Blake2b512::digest(data).into()
-}
-
-pub fn blake3(data: &[u8]) -> [u8; 32] {
-    blake3::hash(data).into()
-}
-
 // ----------------------------------- tests -----------------------------------
 
 #[cfg(test)]
@@ -68,7 +55,4 @@ mod tests {
     hash_test!(sha3_512,           "food" => "8cd7cab3e1e542c16c56d91e105f48145313557c34dab00014b5ed56151eb78f96d58948646579904192e9c88d6577d74a69702de7d52f519e31dad1cef3115d");
     hash_test!(sha3_512_truncated, "food" => "8cd7cab3e1e542c16c56d91e105f48145313557c34dab00014b5ed56151eb78f");
     hash_test!(keccak256,          "food" => "a471c7c90860799b1facb54795f0a93d821fb727241025770865602471b765a8");
-    hash_test!(blake2s_256,        "food" => "5a1ec796f11f3dfc7e8ca5de13828edf2e910eb7dd41caaac356a4acbefb1758");
-    hash_test!(blake2b_512,        "food" => "b1f115361afc179415d93d4f58dc2fc7d8fa434192d7cb9b65fca592f6aa904103d1f12b28655c2355478e10908ab002c418dc52a4367d8e645309cd25e3a504");
-    hash_test!(blake3,             "food" => "f775a8ccf8cb78cd1c63ade4e9802de4ead836b36cea35242accf31d2c6a3697");
 }

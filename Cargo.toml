@@ -103,8 +103,6 @@ aws-sdk-s3                  = "1"
 axum                        = { version = "0.8", features = ["ws"] }
 bigdecimal                  = "0.4"
 bip32                       = "0.5"
-blake2                      = "0.10"
-blake3                      = "1"
 bnum                        = "0.14"
 borsh                       = "1"
 byteorder                   = "1"
