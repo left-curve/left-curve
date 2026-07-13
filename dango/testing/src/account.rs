@@ -119,7 +119,7 @@ impl TestAccount<Undefined<UserIndex>, Undefined<Addr>> {
             .try_into()
             .unwrap();
         let key = Key::Secp256k1(pk);
-        let key_hash = pk.hash256();
+        let key_hash = pk.sha2_256();
 
         Self {
             user_index: Undefined::new(),

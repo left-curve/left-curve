@@ -70,7 +70,7 @@ where
 
     // Make a block that contains 100 transactions.
     // The i-th transaction is the i-th sender sending coins to the i-receiver.
-    let code_account_single = codes.account.into().hash256();
+    let code_account_single = codes.account.into().sha2_256();
     (0..100)
         .map(|i| {
             // Predict the sender address.

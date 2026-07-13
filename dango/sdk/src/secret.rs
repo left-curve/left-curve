@@ -110,7 +110,7 @@ impl Secret for Secp256k1 {
     }
 
     fn key_hash(&self) -> Hash256 {
-        self.public_key().hash256() // SHA-256 key
+        self.public_key().sha2_256() // SHA-256 key
     }
 
     fn sign_transaction(&self, sign_doc: SignDoc) -> anyhow::Result<Signature> {
@@ -165,7 +165,7 @@ impl Secret for Eip712 {
     }
 
     fn key_hash(&self) -> Hash256 {
-        Addr::from(self.address).to_string().as_bytes().hash256()
+        Addr::from(self.address).to_string().as_bytes().sha2_256()
     }
 
     fn sign_transaction(&self, sign_doc: SignDoc) -> anyhow::Result<Signature> {

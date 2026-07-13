@@ -102,7 +102,7 @@ fn generate_eip712_session_test_data() -> anyhow::Result<()> {
     // Main key is an Ethereum key; session key is secp256k1.
     let (sk1, eth_addr) = generate_random_ethereum_key_pair();
     let eth_addr_dango = Addr::from_inner(eth_addr);
-    let eth_addr_key_hash = eth_addr.hash256();
+    let eth_addr_key_hash = eth_addr.sha2_256();
 
     let (sk2, vk2, _) = generate_random_secp256k1_key_pair()?;
     let sign_doc = generate_random_unsigned_transaction()?;
@@ -152,7 +152,7 @@ fn generate_eip712_session_test_data() -> anyhow::Result<()> {
 fn generate_eip712_onboard_test_data() -> anyhow::Result<()> {
     let (sk, eth_addr) = generate_random_ethereum_key_pair();
     let eth_addr_dango = Addr::from_inner(eth_addr);
-    let eth_addr_key_hash = eth_addr.hash256();
+    let eth_addr_key_hash = eth_addr.sha2_256();
 
     let register_data = RegisterUserData {
         chain_id: MOCK_CHAIN_ID.to_string(),
@@ -185,7 +185,7 @@ fn generate_passkey_session_test_data() -> anyhow::Result<()> {
         .to_encoded_point(true)
         .as_bytes()
         .try_into()?;
-    let vk1_hash = vk1.hash256();
+    let vk1_hash = vk1.sha2_256();
 
     let (sk2, vk2, _) = generate_random_secp256k1_key_pair()?;
     let sign_doc = generate_random_unsigned_transaction()?;
@@ -273,7 +273,7 @@ fn generate_random_secp256k1_key_pair()
         .to_encoded_point(true)
         .as_bytes()
         .try_into()?;
-    let vk_hash = vk.hash256();
+    let vk_hash = vk.sha2_256();
 
     Ok((sk, vk, vk_hash))
 }
@@ -299,7 +299,7 @@ where
     anyhow::Error: From<T::Error>,
 {
     let prehash_sign_data = sign_doc.to_prehash_sign_data()?;
-    let sign_data = prehash_sign_data.hash256();
+    let sign_data = prehash_sign_data.sha2_256();
     let digest = Identity256::from(sign_data.into_inner());
     let signature: k256::ecdsa::Signature = sk.sign_digest(digest);
 

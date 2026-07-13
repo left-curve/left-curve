@@ -288,7 +288,7 @@ where
     B: Into<Binary>,
 {
     let code = code.into();
-    let code_hash = code.hash256();
+    let code_hash = code.sha2_256();
 
     msgs.push(Message::upload(code));
 
