@@ -1144,6 +1144,10 @@ query {
 | `short_oi`         | `Quantity`       | Total short open interest                           |
 | `funding_per_unit` | `FundingPerUnit` | Cumulative funding accumulator                      |
 | `funding_rate`     | `FundingRate`    | Current per-day funding rate (positive = longs pay) |
+| `index_price`      | `UsdPrice`       | Mark price. Snaps to the oracle in a regular session; otherwise EWMA-driven and bounded to ±`initial_margin_ratio` of `oracle_price` |
+| `last_index_time`  | `Timestamp`      | Block time `index_price` was last updated           |
+| `oracle_price`     | `UsdPrice`       | Last regular-session oracle price. Reference for the order price band and the closed-session index bound |
+| `last_oracle_time` | `Timestamp`      | Observation time of `oracle_price`                  |
 
 For funding mechanics, see [Funding](3-funding.md).
 
@@ -2655,6 +2659,10 @@ One action inside a [`batch_update_orders`](#66-batch-update-orders) list. Condi
 | `short_oi`         | `Quantity`       | Total short open interest                           |
 | `funding_per_unit` | `FundingPerUnit` | Cumulative funding accumulator                      |
 | `funding_rate`     | `FundingRate`    | Current per-day funding rate (positive = longs pay) |
+| `index_price`      | `UsdPrice`       | Mark price. Snaps to the oracle in a regular session; otherwise EWMA-driven and bounded to ±`initial_margin_ratio` of `oracle_price` |
+| `last_index_time`  | `Timestamp`      | Block time `index_price` was last updated           |
+| `oracle_price`     | `UsdPrice`       | Last regular-session oracle price. Reference for the order price band and the closed-session index bound |
+| `last_oracle_time` | `Timestamp`      | Observation time of `oracle_price`                  |
 
 **State** (global state) — see [§4.2](#42-global-state) for all fields.
 
