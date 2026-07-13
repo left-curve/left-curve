@@ -20,76 +20,62 @@
 
 use {
     digest::{
-        FixedOutput, HashMarker, Output, OutputSizeUser, Update,
-        consts::{U32, U64},
+        FixedOutput, HashMarker, Output, OutputSizeUser, Update, consts::U32,
         generic_array::GenericArray,
     },
     std::ops::Deref,
 };
 
-macro_rules! identity {
-    ($name:ident, $array_len:ty, $len:literal, $doc:literal) => {
-        #[derive(Clone)]
-        #[doc = $doc]
-        pub struct $name {
-            bytes: [u8; $len],
-        }
-
-        impl Default for $name {
-            fn default() -> Self {
-                Self { bytes: [0u8; $len] }
-            }
-        }
-
-        impl $name {
-            pub fn from_inner(bytes: impl Into<[u8; $len]>) -> Self {
-                Self {
-                    bytes: bytes.into(),
-                }
-            }
-
-            pub fn into_bytes(self) -> [u8; $len] {
-                self.bytes
-            }
-
-            pub fn as_bytes(&self) -> &[u8] {
-                &self.bytes
-            }
-        }
-
-        impl From<[u8; $len]> for $name {
-            fn from(bytes: [u8; $len]) -> Self {
-                Self { bytes }
-            }
-        }
-
-        impl Deref for $name {
-            type Target = [u8];
-
-            fn deref(&self) -> &Self::Target {
-                &self.bytes
-            }
-        }
-
-        impl Update for $name {
-            fn update(&mut self, data: &[u8]) {
-                self.bytes = data.try_into().expect("data length mismatch");
-            }
-        }
-
-        impl FixedOutput for $name {
-            fn finalize_into(self, out: &mut Output<Self>) {
-                *out = GenericArray::from(self.bytes);
-            }
-        }
-
-        impl OutputSizeUser for $name {
-            type OutputSize = $array_len;
-        }
-
-        impl HashMarker for $name {}
-    };
+/// A digest of 32 byte length.
+#[derive(Default, Clone)]
+pub struct Identity256 {
+    bytes: [u8; 32],
 }
 
-identity!(Identity256, U32, 32, "A digest of 32 byte length");
-identity!(Identity512, U64, 64, "A digest of 64 byte length");
+impl Identity256 {
+    pub fn from_inner(bytes: impl Into<[u8; 32]>) -> Self {
+        Self {
+            bytes: bytes.into(),
+        }
+    }
+
+    pub fn into_bytes(self) -> [u8; 32] {
+        self.bytes
+    }
+
+    pub fn as_bytes(&self) -> &[u8] {
+        &self.bytes
+    }
+}
+
+impl From<[u8; 32]> for Identity256 {
+    fn from(bytes: [u8; 32]) -> Self {
+        Self { bytes }
+    }
+}
+
+impl Deref for Identity256 {
+    type Target = [u8];
+
+    fn deref(&self) -> &Self::Target {
+        &self.bytes
+    }
+}
+
+impl Update for Identity256 {
+    fn update(&mut self, data: &[u8]) {
+        self.bytes = data.try_into().expect("data length mismatch");
+    }
+}
+
+impl FixedOutput for Identity256 {
+    fn finalize_into(self, out: &mut Output<Self>) {
+        *out = GenericArray::from(self.bytes);
+    }
+}
+
+impl OutputSizeUser for Identity256 {
+    type OutputSize = U32;
+}
+
+impl HashMarker for Identity256 {}
