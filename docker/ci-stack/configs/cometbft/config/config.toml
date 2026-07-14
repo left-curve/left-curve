@@ -520,7 +520,18 @@ timeout_precommit_delta = "500ms"
 # How long we wait after committing a block, before starting on the new
 # height (this gives us a chance to receive some more precommits, even
 # though we already have +2/3).
-timeout_commit = "50ms"
+#
+# This is our deliberate block-pacing knob. With gossip poll latency tuned
+# out (peer_gossip_sleep_duration = 10ms), the chain ran at ~171 ms blocks
+# on devnet -- faster than we want to operate for now, so we raised this
+# from 50 ms to pace the chain into the 200-250 ms band (expected ~220 ms
+# median). The timer starts once the node has +2/3 precommits and runs
+# concurrently with block execution, so it is spent after the block is
+# already final: it sets cadence without adding variance, absorbs execution
+# spikes up to its value, and gives late precommits time to land in
+# LastCommit. It must be uniform across all validators -- a node with a
+# lower value produces faster blocks on its own proposal turns.
+timeout_commit = "100ms"
 
 # How many blocks to look back to check existence of the node's consensus votes before joining consensus
 # When non-zero, the node will panic upon restart
