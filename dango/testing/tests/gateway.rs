@@ -2,8 +2,8 @@ use {
     dango_hyperlane_types::{Addr32, isms},
     dango_math::{MathError, NumberConst, Udec128, Uint128},
     dango_primitives::{
-        Addr, Addressable, Coin, Coins, Duration, Op, QuerierExt, ResultExt, btree_map, btree_set,
-        coins,
+        Addr, Addressable, CheckedContractEvent, Coin, Coins, Duration, JsonDeExt, Op, QuerierExt,
+        ResultExt, SearchEvent, btree_map, btree_set, coins,
     },
     dango_testing::{
         BalanceChange, HyperlaneTestSuite, MockValidatorSet, TestOption, TestSuite, mock_arbitrum,
@@ -535,6 +535,107 @@ async fn native_denom() {
     suite.balances().should_change(&accounts.user2, btree_map! {
         dango::DENOM.clone() => BalanceChange::Increased(100),
     });
+}
+
+#[tokio::test]
+async fn deposit_and_withdraw_events() {
+    let (suite, mut accounts, _, contracts, valset) = setup_test(TestOption {
+        bridge_ops: |_| vec![],
+        ..TestOption::default()
+    });
+
+    let mut suite = HyperlaneTestSuite::new(suite, valset, &contracts);
+
+    let remote = Remote::Warp {
+        domain: mock_arbitrum::DOMAIN,
+        contract: mock_arbitrum::USDC_WARP,
+    };
+
+    let mock_arbitrum_recipient: Addr32 = Addr::mock(201).into();
+
+    // Receiving a warp transfer should emit a `deposited` event from the
+    // gateway.
+    {
+        let (_, outcome) = suite
+            .receive_warp_transfer_with_outcome(
+                &mut accounts.user1,
+                mock_arbitrum::DOMAIN,
+                mock_arbitrum::USDC_WARP,
+                &accounts.user2,
+                100_000_000_u128,
+            )
+            .await
+            .unwrap();
+
+        let deposits = outcome
+            .events
+            .search_event::<CheckedContractEvent>()
+            .with_predicate(move |e| e.contract == contracts.gateway && e.ty == "deposited")
+            .take()
+            .all()
+            .into_iter()
+            .map(|e| {
+                e.event
+                    .data
+                    .deserialize_json::<gateway::Deposited>()
+                    .unwrap()
+            })
+            .collect::<Vec<_>>();
+
+        assert_eq!(deposits, vec![gateway::Deposited {
+            user: accounts.user2.address(),
+            bridge: contracts.warp,
+            remote,
+            denom: usdc::DENOM.clone(),
+            amount: Uint128::new(100_000_000),
+        }]);
+    }
+
+    // Sending a remote transfer should emit a `withdrawn` event from the
+    // gateway, reporting the bridged amount net of the withdrawal fee.
+    {
+        let events = suite
+            .execute(
+                &mut accounts.user2,
+                contracts.gateway,
+                &gateway::ExecuteMsg::TransferRemote {
+                    remote,
+                    recipient: mock_arbitrum_recipient,
+                },
+                Coin::new(
+                    usdc::DENOM.clone(),
+                    50_000_000 + ARBITRUM_USDC_WITHDRAWAL_FEE,
+                )
+                .unwrap(),
+            )
+            .await
+            .should_succeed()
+            .events;
+
+        let withdrawals = events
+            .search_event::<CheckedContractEvent>()
+            .with_predicate(move |e| e.contract == contracts.gateway && e.ty == "withdrawn")
+            .take()
+            .all()
+            .into_iter()
+            .map(|e| {
+                e.event
+                    .data
+                    .deserialize_json::<gateway::Withdrawn>()
+                    .unwrap()
+            })
+            .collect::<Vec<_>>();
+
+        assert_eq!(withdrawals, vec![gateway::Withdrawn {
+            user: accounts.user2.address(),
+            bridge: contracts.warp,
+            remote,
+            recipient: mock_arbitrum_recipient,
+            denom: usdc::DENOM.clone(),
+            amount: Uint128::new(50_000_000),
+            fee: Uint128::new(ARBITRUM_USDC_WITHDRAWAL_FEE),
+        }]);
+    }
 }
 
 #[tokio::test]
