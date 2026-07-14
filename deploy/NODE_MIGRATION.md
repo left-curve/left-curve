@@ -159,7 +159,7 @@ Creates a non-validator `priv_validator_key.json` + a fresh `priv_validator_stat
 ssh deploy@$TARGET_IP "mkdir -p $DATA_DIR/cometbft && \
   docker run --rm \
   -v $DATA_DIR/cometbft:/root/.cometbft \
-  ghcr.io/left-curve/left-curve/cometbft:v0.38.21 \
+  ghcr.io/left-curve/left-curve/cometbft:v0.39.3 \
   cometbft init --home /root/.cometbft"
 ```
 
@@ -308,8 +308,8 @@ If a rsync gets interrupted (network blip, server restart, etc.), re-run the sam
 2. Confirm the target's `node_key.json` matches source's. We use plain `docker run` (not `docker compose run`) because the compose service has an `entrypoint: sh -c '... cometbft start'` that ignores any appended command — `cometbft show-node-id` would silently turn into `cometbft start`. `docker run` against the image directly only inherits the image's `CMD` (which `cometbft show-node-id` cleanly overrides).
 
    ```bash
-   ssh deploy@$SOURCE_IP "docker run --rm -v $DATA_DIR/cometbft:/root/.cometbft ghcr.io/left-curve/left-curve/cometbft:v0.38.21 cometbft show-node-id --home /root/.cometbft"
-   ssh deploy@$TARGET_IP "docker run --rm -v $DATA_DIR/cometbft:/root/.cometbft ghcr.io/left-curve/left-curve/cometbft:v0.38.21 cometbft show-node-id --home /root/.cometbft"
+   ssh deploy@$SOURCE_IP "docker run --rm -v $DATA_DIR/cometbft:/root/.cometbft ghcr.io/left-curve/left-curve/cometbft:v0.39.3 cometbft show-node-id --home /root/.cometbft"
+   ssh deploy@$TARGET_IP "docker run --rm -v $DATA_DIR/cometbft:/root/.cometbft ghcr.io/left-curve/left-curve/cometbft:v0.39.3 cometbft show-node-id --home /root/.cometbft"
    ```
 
    Expected: same id printed by both.
