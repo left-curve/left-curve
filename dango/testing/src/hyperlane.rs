@@ -12,6 +12,16 @@ use {
     std::ops::{Deref, DerefMut},
 };
 
+/// The Hyperlane wrapper around the default `TestSuite` returned by
+/// `setup_test` (which uses the Pyth proposal preparer, unlike this
+/// struct's `Naive` default).
+pub type DefaultHyperlaneTestSuite = HyperlaneTestSuite<
+    MemDb,
+    RustVm,
+    dango_proposal_preparer::ProposalPreparer<dango_pyth_client::PythClientCache>,
+    NullIndexer,
+>;
+
 pub struct HyperlaneTestSuite<DB = MemDb, VM = RustVm, PP = NaiveProposalPreparer, ID = NullIndexer>
 where
     DB: Db,
