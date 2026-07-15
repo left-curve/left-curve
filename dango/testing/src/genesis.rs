@@ -361,6 +361,10 @@ impl Preset for GatewayOption {
                 eth::DENOM.clone()  => Bounded::new_unchecked(Udec128::new_percent(10)),
             },
             rate_limit_refresh_period: Duration::from_days(1),
+            // No guardian in the test genesis; the owner responds to
+            // withdrawal requests. Tests that exercise the guardian flow set
+            // one at runtime via `SetWithdrawalGuardian`.
+            guardian: None,
         }
     }
 }
