@@ -11,10 +11,7 @@ use {
     },
     dango_types::{
         constants::{dango, usdc},
-        gateway::{
-            self, Origin, RateLimit, Remote, SetPersonalQuotaRequest, WithdrawalResponse,
-            WithdrawalStatus,
-        },
+        gateway::{self, Origin, RateLimit, Remote, SetPersonalQuotaRequest, WithdrawalResponse},
     },
 };
 
@@ -3181,6 +3178,304 @@ async fn remove_native_route() {
     suite.balances().should_change(&accounts.user2, btree_map! {
         dango::DENOM.clone() => BalanceChange::Increased(100),
     });
+}
+
+/// Only the chain owner can set or update the withdrawal guardian.
+#[tokio::test]
+async fn set_guardian_only_owner() {
+    let (suite, mut accounts, _, contracts, valset) = setup_test(TestOption {
+        bridge_ops: |_| vec![],
+        ..TestOption::default()
+    });
+
+    let mut suite = HyperlaneTestSuite::new(suite, valset, &contracts);
+
+    let guardian_addr = accounts.user3.address();
+
+    // A non-owner can't set the guardian.
+    suite
+        .execute(
+            &mut accounts.user1,
+            contracts.gateway,
+            &gateway::ExecuteMsg::SetGuardian(guardian_addr),
+            Coins::default(),
+        )
+        .await
+        .should_fail_with_error("only the owner can set the withdrawal guardian");
+
+    // The guardian is still unset.
+    suite
+        .query_wasm_smart(contracts.gateway, gateway::QueryGuardianRequest {})
+        .should_succeed_and_equal(None);
+
+    // The owner can set it.
+    suite
+        .execute(
+            &mut accounts.owner,
+            contracts.gateway,
+            &gateway::ExecuteMsg::SetGuardian(guardian_addr),
+            Coins::default(),
+        )
+        .await
+        .should_succeed();
+
+    suite
+        .query_wasm_smart(contracts.gateway, gateway::QueryGuardianRequest {})
+        .should_succeed_and_equal(Some(guardian_addr));
+
+    // Updating an already-set guardian follows the same rule: a non-owner
+    // (not even the current guardian) can't overwrite it; the owner can.
+    suite
+        .execute(
+            &mut accounts.user3,
+            contracts.gateway,
+            &gateway::ExecuteMsg::SetGuardian(accounts.user1.address()),
+            Coins::default(),
+        )
+        .await
+        .should_fail_with_error("only the owner can set the withdrawal guardian");
+
+    // The failed attempt left the guardian unchanged.
+    suite
+        .query_wasm_smart(contracts.gateway, gateway::QueryGuardianRequest {})
+        .should_succeed_and_equal(Some(guardian_addr));
+
+    suite
+        .execute(
+            &mut accounts.owner,
+            contracts.gateway,
+            &gateway::ExecuteMsg::SetGuardian(accounts.user1.address()),
+            Coins::default(),
+        )
+        .await
+        .should_succeed();
+
+    suite
+        .query_wasm_smart(contracts.gateway, gateway::QueryGuardianRequest {})
+        .should_succeed_and_equal(Some(accounts.user1.address()));
+}
+
+/// Only the chain owner and the guardian can respond to a withdrawal
+/// request.
+#[tokio::test]
+async fn respond_only_owner_or_guardian() {
+    let (mut suite, mut accounts, _, contracts, valset) = setup_test(TestOption {
+        bridge_ops: |_| vec![],
+        ..TestOption::default()
+    });
+
+    suite.block_time = Duration::ZERO;
+
+    let mut suite = HyperlaneTestSuite::new(suite, valset, &contracts);
+
+    let guardian_addr = accounts.user3.address();
+
+    let remote = Remote::Warp {
+        domain: mock_arbitrum::DOMAIN,
+        contract: mock_arbitrum::USDC_WARP,
+    };
+    let mock_arbitrum_recipient: Addr32 = Addr::mock(201).into();
+
+    // Fund user2 so it can open withdrawal requests.
+    suite
+        .receive_warp_transfer(
+            &mut accounts.user1,
+            mock_arbitrum::DOMAIN,
+            mock_arbitrum::USDC_WARP,
+            &accounts.user2,
+            100_000_000,
+        )
+        .await
+        .should_succeed();
+
+    suite
+        .execute(
+            &mut accounts.owner,
+            contracts.gateway,
+            &gateway::ExecuteMsg::SetGuardian(guardian_addr),
+            Coins::default(),
+        )
+        .await
+        .should_succeed();
+
+    // Open a request.
+    let id = suite
+        .request_transfer_remote(
+            &mut accounts.user2,
+            contracts.gateway,
+            remote,
+            mock_arbitrum_recipient,
+            Coin::new(
+                usdc::DENOM.clone(),
+                1_000_000 + ARBITRUM_USDC_WITHDRAWAL_FEE,
+            )
+            .unwrap(),
+        )
+        .await;
+
+    // A random account can't respond — regardless of the response kind.
+    for response in [
+        WithdrawalResponse::Approve,
+        WithdrawalResponse::Reject,
+        WithdrawalResponse::Freeze,
+        WithdrawalResponse::Confiscate,
+    ] {
+        suite
+            .respond_to_withdrawal(&mut accounts.user1, contracts.gateway, id, response)
+            .await
+            .should_fail_with_error("you don't have the right, O you don't have the right");
+    }
+
+    // Neither can the requester themself.
+    suite
+        .respond_to_withdrawal(
+            &mut accounts.user2,
+            contracts.gateway,
+            id,
+            WithdrawalResponse::Approve,
+        )
+        .await
+        .should_fail_with_error("you don't have the right, O you don't have the right");
+
+    // The guardian can respond.
+    suite
+        .respond_to_withdrawal(
+            &mut accounts.user3,
+            contracts.gateway,
+            id,
+            WithdrawalResponse::Approve,
+        )
+        .await
+        .should_succeed();
+
+    // The owner can respond as well — open a second request for it.
+    let id = suite
+        .request_transfer_remote(
+            &mut accounts.user2,
+            contracts.gateway,
+            remote,
+            mock_arbitrum_recipient,
+            Coin::new(
+                usdc::DENOM.clone(),
+                1_000_000 + ARBITRUM_USDC_WITHDRAWAL_FEE,
+            )
+            .unwrap(),
+        )
+        .await;
+
+    suite
+        .respond_to_withdrawal(
+            &mut accounts.owner,
+            contracts.gateway,
+            id,
+            WithdrawalResponse::Approve,
+        )
+        .await
+        .should_succeed();
+}
+
+/// Once a request is frozen, only the owner can respond to it — the
+/// guardian who froze it is locked out.
+#[tokio::test]
+async fn respond_frozen_only_owner() {
+    let (mut suite, mut accounts, _, contracts, valset) = setup_test(TestOption {
+        bridge_ops: |_| vec![],
+        ..TestOption::default()
+    });
+
+    suite.block_time = Duration::ZERO;
+
+    let mut suite = HyperlaneTestSuite::new(suite, valset, &contracts);
+
+    let guardian_addr = accounts.user3.address();
+
+    let remote = Remote::Warp {
+        domain: mock_arbitrum::DOMAIN,
+        contract: mock_arbitrum::USDC_WARP,
+    };
+    let mock_arbitrum_recipient: Addr32 = Addr::mock(201).into();
+
+    // Fund user2 so it can open withdrawal requests.
+    suite
+        .receive_warp_transfer(
+            &mut accounts.user1,
+            mock_arbitrum::DOMAIN,
+            mock_arbitrum::USDC_WARP,
+            &accounts.user2,
+            100_000_000,
+        )
+        .await
+        .should_succeed();
+
+    suite
+        .execute(
+            &mut accounts.owner,
+            contracts.gateway,
+            &gateway::ExecuteMsg::SetGuardian(guardian_addr),
+            Coins::default(),
+        )
+        .await
+        .should_succeed();
+
+    // Open a request and let the guardian freeze it.
+    let id = suite
+        .request_transfer_remote(
+            &mut accounts.user2,
+            contracts.gateway,
+            remote,
+            mock_arbitrum_recipient,
+            Coin::new(
+                usdc::DENOM.clone(),
+                1_000_000 + ARBITRUM_USDC_WITHDRAWAL_FEE,
+            )
+            .unwrap(),
+        )
+        .await;
+
+    suite
+        .respond_to_withdrawal(
+            &mut accounts.user3,
+            contracts.gateway,
+            id,
+            WithdrawalResponse::Freeze,
+        )
+        .await
+        .should_succeed();
+
+    // The guardian who froze it can no longer respond in any way.
+    for response in [
+        WithdrawalResponse::Approve,
+        WithdrawalResponse::Reject,
+        WithdrawalResponse::Freeze,
+        WithdrawalResponse::Confiscate,
+    ] {
+        suite
+            .respond_to_withdrawal(&mut accounts.user3, contracts.gateway, id, response)
+            .await
+            .should_fail_with_error("only the owner can respond to a frozen withdrawal request");
+    }
+
+    // A random account still fails the generic auth check.
+    suite
+        .respond_to_withdrawal(
+            &mut accounts.user1,
+            contracts.gateway,
+            id,
+            WithdrawalResponse::Approve,
+        )
+        .await
+        .should_fail_with_error("you don't have the right, O you don't have the right");
+
+    // The owner can resolve the frozen request.
+    suite
+        .respond_to_withdrawal(
+            &mut accounts.owner,
+            contracts.gateway,
+            id,
+            WithdrawalResponse::Approve,
+        )
+        .await
+        .should_succeed();
 }
 
 // /// Full lifecycle of the withdrawal request flow: guardian configuration,
