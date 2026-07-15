@@ -12,7 +12,10 @@ use {
     },
     dango_types::{
         constants::{dango, usdc},
-        gateway::{self, Origin, RateLimit, Remote, SetPersonalQuotaRequest, WithdrawalResponse},
+        gateway::{
+            self, Origin, RateLimit, Remote, SetPersonalQuotaRequest, WithdrawalResponse,
+            WithdrawalStatus,
+        },
     },
 };
 
@@ -3599,6 +3602,13 @@ async fn withdrawal_approval_coin_accounting() {
     suite
         .query_balance(&contracts.gateway, usdc::DENOM.clone())
         .should_succeed_and_equal(Uint128::ZERO);
+
+    // The approved request is deleted from storage.
+    suite
+        .query_wasm_smart(contracts.gateway, gateway::QueryWithdrawalRequestRequest {
+            id,
+        })
+        .should_fail_with_error("data not found");
 }
 
 /// Rejecting a withdrawal request refunds the full withheld amount to the
@@ -3651,6 +3661,13 @@ async fn withdrawal_rejection_coin_accounting() {
     suite
         .query_balance(&contracts.gateway, usdc::DENOM.clone())
         .should_succeed_and_equal(Uint128::ZERO);
+
+    // The rejected request is deleted from storage.
+    suite
+        .query_wasm_smart(contracts.gateway, gateway::QueryWithdrawalRequestRequest {
+            id,
+        })
+        .should_fail_with_error("data not found");
 }
 
 /// Freezing a withdrawal request leaves the withheld coins inside the
@@ -3698,6 +3715,14 @@ async fn withdrawal_freeze_coin_accounting() {
     suite
         .query_balance(&contracts.gateway, usdc::DENOM.clone())
         .should_succeed_and_equal(WITHDRAW.into());
+
+    // Unlike the terminal responses, freezing keeps the request in storage
+    // — now in the frozen state — awaiting the owner's decision.
+    suite
+        .query_wasm_smart(contracts.gateway, gateway::QueryWithdrawalRequestRequest {
+            id,
+        })
+        .should_succeed_and(|req| req.status == WithdrawalStatus::Frozen);
 }
 
 /// Confiscating a frozen withdrawal request sends the withheld coins to
@@ -3760,6 +3785,13 @@ async fn withdrawal_confiscation_coin_accounting() {
     suite
         .query_balance(&contracts.gateway, usdc::DENOM.clone())
         .should_succeed_and_equal(Uint128::ZERO);
+
+    // The confiscated request is deleted from storage.
+    suite
+        .query_wasm_smart(contracts.gateway, gateway::QueryWithdrawalRequestRequest {
+            id,
+        })
+        .should_fail_with_error("data not found");
 }
 
 // /// Full lifecycle of the withdrawal request flow: guardian configuration,
