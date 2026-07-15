@@ -117,6 +117,9 @@ impl QueryApp for MockApp {
             Query::AppConfig(_) => {
                 self.app_config_calls.fetch_add(1, Ordering::SeqCst);
 
+                // `fetch_update` is deprecated on nightly in favor of
+                // `try_update`, which is not yet available on stable.
+                #[allow(deprecated)]
                 if self
                     .app_config_failures
                     .fetch_update(Ordering::SeqCst, Ordering::SeqCst, |remaining| {
