@@ -92,23 +92,23 @@ pub fn apply_admin_update(
     RATE_LIMITS.save(storage, &new_limits)
 }
 
-/// Enforce the trailing-24h rolling-window cap against the post-personal-
-/// quota residue and record the residue into the current hour bucket. The
-/// cap is derived from the supply snapshot (frozen at the last cron tick)
-/// times the currently-configured limit.
+/// Check the trailing-24h rolling-window cap against the post-personal-
+/// quota residue, without recording anything. The cap is derived from the
+/// supply snapshot (frozen at the last cron tick) times the currently-
+/// configured limit.
 ///
 /// A missing `SUPPLY_SNAPSHOTS` entry means the denom is not rate-limited
 /// at all and this is a no-op. A zero residue is also a no-op — the
 /// caller may have fully covered the withdraw with a personal-quota
-/// allowance, in which case nothing is consumed from the global window.
+/// allowance, in which case nothing counts against the global window.
 ///
 /// `requested` is the user-facing withdraw amount (post-fee, pre-PQ-
 /// deduction) and is only used to build a debuggable error message;
 /// `residue` is what actually counts against the cap. The personal-quota
 /// deduction itself is the caller's responsibility — this function never
 /// reads or writes `PERSONAL_QUOTAS`.
-pub fn enforce(
-    storage: &mut dyn Storage,
+pub fn check(
+    storage: &dyn Storage,
     denom: &Denom,
     now: Timestamp,
     requested: Uint128,
@@ -144,7 +144,28 @@ pub fn enforce(
         cap,
     );
 
-    record_withdraw(storage, denom, now, residue)?;
+    Ok(())
+}
+
+/// Same check as [`check`], but on success also record the residue into
+/// the current hour bucket, consuming the quota. Used when a withdrawal is
+/// actually executed; `check` alone serves the fail-fast validation at
+/// request time.
+pub fn enforce(
+    storage: &mut dyn Storage,
+    denom: &Denom,
+    now: Timestamp,
+    requested: Uint128,
+    residue: Uint128,
+) -> anyhow::Result<()> {
+    check(storage, denom, now, requested, residue)?;
+
+    // Record only when the residue actually counts against a tracked
+    // window: for a denom that isn't rate-limited, recording would leave
+    // stray volume entries that no cron tick ever prunes.
+    if !residue.is_zero() && SUPPLY_SNAPSHOTS.has(storage, denom) {
+        record_withdraw(storage, denom, now, residue)?;
+    }
 
     Ok(())
 }

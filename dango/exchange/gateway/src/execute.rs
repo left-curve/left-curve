@@ -1,16 +1,22 @@
 use {
-    crate::{PERSONAL_QUOTAS, RESERVES, REVERSE_ROUTES, ROUTES, WITHDRAWAL_FEES, rate_limit},
-    anyhow::{anyhow, ensure},
+    crate::{
+        FROZEN_WITHDRAWAL_REQUESTS, NEXT_WITHDRAWAL_REQUEST_ID, PERSONAL_QUOTAS, RESERVES,
+        REVERSE_ROUTES, ROUTES, WITHDRAWAL_FEES, WITHDRAWAL_GUARDIAN, WITHDRAWAL_REQUESTS,
+        rate_limit,
+    },
+    anyhow::{anyhow, bail, ensure},
     dango_math::{IsZero, Number, NumberConst, Uint128},
     dango_primitives::{
         Addr, Coins, Denom, Inner, Message, MutableCtx, Op, Order, QuerierExt, Response, StdError,
-        StdResult, Storage, SudoCtx, coins,
+        StdResult, Storage, SudoCtx, Timestamp, coins,
     },
     dango_types::{
         bank,
         gateway::{
             Addr32, Deposited, ExecuteMsg, InstantiateMsg, NAMESPACE, Origin, PersonalQuota,
-            RateLimit, Remote, SetPersonalQuotaRequest, Traceable, WithdrawalFee, Withdrawn,
+            RateLimit, Remote, SetPersonalQuotaRequest, Traceable, WithdrawalConfiscated,
+            WithdrawalFee, WithdrawalFrozen, WithdrawalRejected, WithdrawalRequest,
+            WithdrawalRequested, WithdrawalResponse, WithdrawalStatus, Withdrawn,
             bridge::{self, BridgeMsg},
         },
     },
@@ -22,6 +28,10 @@ pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> anyhow::Result<Respo
     rate_limit::init(ctx.storage, msg.rate_limits)?;
     _set_withdrawal_fees(ctx.storage, msg.withdrawal_fees)?;
 
+    if let Some(guardian) = msg.guardian {
+        WITHDRAWAL_GUARDIAN.save(ctx.storage, &guardian)?;
+    }
+
     Ok(Response::new())
 }
 
@@ -31,12 +41,16 @@ pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
         ExecuteMsg::RemoveRoutes(routes) => remove_routes(ctx, routes),
         ExecuteMsg::SetRateLimits(rate_limits) => set_rate_limits(ctx, rate_limits),
         ExecuteMsg::SetWithdrawalFees(withdrawal_fees) => set_withdrawal_fees(ctx, withdrawal_fees),
+        ExecuteMsg::SetGuardian(guardian) => set_withdrawal_guardian(ctx, guardian),
         ExecuteMsg::ReceiveRemote {
             remote,
             amount,
             recipient,
         } => receive_remote(ctx, remote, amount, recipient),
         ExecuteMsg::TransferRemote { remote, recipient } => transfer_remote(ctx, remote, recipient),
+        ExecuteMsg::RespondToWithdrawal { id, response } => {
+            respond_to_withdrawal(ctx, id, response)
+        },
         ExecuteMsg::SetPersonalQuota { user, denom, quota } => {
             set_personal_quota(ctx, user, denom, quota)
         },
@@ -193,6 +207,17 @@ fn _set_withdrawal_fees(
     Ok(())
 }
 
+fn set_withdrawal_guardian(ctx: MutableCtx, guardian: Addr) -> anyhow::Result<Response> {
+    ensure!(
+        ctx.sender == ctx.querier.query_owner()?,
+        "only the owner can set the withdrawal guardian"
+    );
+
+    WITHDRAWAL_GUARDIAN.save(ctx.storage, &guardian)?;
+
+    Ok(Response::new())
+}
+
 fn set_personal_quota(
     ctx: MutableCtx,
     user: Addr,
@@ -285,7 +310,191 @@ fn receive_remote(
 
 fn transfer_remote(ctx: MutableCtx, remote: Remote, recipient: Addr32) -> anyhow::Result<Response> {
     // The user must have sent exactly one coin.
-    let mut coin = ctx.funds.into_one_coin()?;
+    let coin = ctx.funds.into_one_coin()?;
+
+    // Fail fast if no route exists for the (denom, remote) tuple, so the
+    // user can't escrow funds behind a request that can never be approved.
+    REVERSE_ROUTES.load(ctx.storage, (&coin.denom, remote))?;
+
+    // Fail fast if the amount doesn't cover the currently-configured fee.
+    // This is a courtesy check only — the authoritative one happens at
+    // approval time, as the fee may change while the request is pending.
+    let bridged_amount = match WITHDRAWAL_FEES.may_load(ctx.storage, (&coin.denom, remote))? {
+        Some(fee) => coin.amount.checked_sub(fee).map_err(|_| {
+            anyhow!(
+                "withdrawal amount not sufficient to cover fee: {} < {}",
+                coin.amount,
+                fee
+            )
+        })?,
+        None => coin.amount,
+    };
+
+    // Fail fast if the withdrawal would already exceed the rate limit,
+    // mirroring the computation done at approval time: the user's active
+    // personal quota covers the amount first, and only the residue counts
+    // against the global rolling window. Nothing is consumed or recorded
+    // here — quotas only move when the request is approved — so several
+    // pending requests may each pass this check yet still fail at approval.
+    let residue = {
+        let pq_amount =
+            active_personal_quota(ctx.storage, (ctx.sender, &coin.denom), ctx.block.timestamp)?
+                .map_or(Uint128::ZERO, |pq| pq.amount);
+
+        bridged_amount.checked_sub(pq_amount.min(bridged_amount))?
+    };
+
+    rate_limit::check(
+        ctx.storage,
+        &coin.denom,
+        ctx.block.timestamp,
+        bridged_amount,
+        residue,
+    )?;
+
+    // Hold the funds in escrow and store the request. Fees, reserves,
+    // personal quotas, and rate limits are all applied if and when the
+    // guardian or the owner approves the request.
+    let (id, _) = NEXT_WITHDRAWAL_REQUEST_ID.increment(ctx.storage)?;
+
+    WITHDRAWAL_REQUESTS.save(ctx.storage, id, &WithdrawalRequest {
+        user: ctx.sender,
+        remote,
+        recipient,
+        coin: coin.clone(),
+        status: WithdrawalStatus::Pending,
+        created_at: ctx.block.timestamp,
+    })?;
+
+    Ok(Response::new().add_event(WithdrawalRequested {
+        id,
+        user: ctx.sender,
+        remote,
+        recipient,
+        denom: coin.denom,
+        amount: coin.amount,
+    })?)
+}
+
+fn respond_to_withdrawal(
+    ctx: MutableCtx,
+    id: u64,
+    response: WithdrawalResponse,
+) -> anyhow::Result<Response> {
+    // Look the request up in the pending queue first, then the frozen one.
+    // `queue` is the map currently holding it, so the response arms below
+    // remove or update the right entry.
+    let (request, queue) = if let Some(request) = WITHDRAWAL_REQUESTS.may_load(ctx.storage, id)? {
+        (request, &WITHDRAWAL_REQUESTS)
+    } else if let Some(request) = FROZEN_WITHDRAWAL_REQUESTS.may_load(ctx.storage, id)? {
+        (request, &FROZEN_WITHDRAWAL_REQUESTS)
+    } else {
+        bail!("withdrawal request not found: {id}");
+    };
+
+    let owner = ctx.querier.query_owner()?;
+    let guardian = WITHDRAWAL_GUARDIAN.may_load(ctx.storage)?;
+
+    ensure!(
+        ctx.sender == owner || Some(ctx.sender) == guardian,
+        "you don't have the right, O you don't have the right"
+    );
+
+    // A frozen request is escalated to the owner; the guardian can no
+    // longer act on it.
+    if request.status == WithdrawalStatus::Frozen {
+        ensure!(
+            ctx.sender == owner,
+            "only the owner can respond to a frozen withdrawal request"
+        );
+    }
+
+    match response {
+        WithdrawalResponse::Approve => {
+            queue.remove(ctx.storage, id);
+
+            process_withdrawal(ctx, id, request)
+        },
+        WithdrawalResponse::Reject => {
+            queue.remove(ctx.storage, id);
+
+            // Refund the full escrowed amount to the user; no fee is
+            // charged on a rejected withdrawal.
+            Ok(Response::new()
+                .add_message(Message::transfer(request.user, request.coin.clone())?)
+                .add_event(WithdrawalRejected {
+                    id,
+                    user: request.user,
+                    denom: request.coin.denom,
+                    amount: request.coin.amount,
+                    rejected_by: ctx.sender,
+                })?)
+        },
+        WithdrawalResponse::Freeze => {
+            ensure!(
+                request.status == WithdrawalStatus::Pending,
+                "withdrawal request is already frozen: {id}"
+            );
+
+            // Move the request out of the guardian's queue into the owner's.
+            WITHDRAWAL_REQUESTS.remove(ctx.storage, id);
+            FROZEN_WITHDRAWAL_REQUESTS.save(ctx.storage, id, &WithdrawalRequest {
+                status: WithdrawalStatus::Frozen,
+                ..request.clone()
+            })?;
+
+            Ok(Response::new().add_event(WithdrawalFrozen {
+                id,
+                user: request.user,
+                denom: request.coin.denom,
+                amount: request.coin.amount,
+                frozen_by: ctx.sender,
+            })?)
+        },
+        WithdrawalResponse::Confiscate => {
+            ensure!(
+                ctx.sender == owner,
+                "only the owner can confiscate a withdrawal request"
+            );
+
+            ensure!(
+                request.status == WithdrawalStatus::Frozen,
+                "only a frozen withdrawal request can be confiscated: {id}"
+            );
+
+            FROZEN_WITHDRAWAL_REQUESTS.remove(ctx.storage, id);
+
+            Ok(Response::new()
+                .add_message(Message::transfer(owner, request.coin.clone())?)
+                .add_event(WithdrawalConfiscated {
+                    id,
+                    user: request.user,
+                    denom: request.coin.denom,
+                    amount: request.coin.amount,
+                })?)
+        },
+    }
+}
+
+/// Execute an approved withdrawal request: deduct the fee, decrement the
+/// reserve, consume the user's personal quota, enforce the rate limits, and
+/// dispatch the transfer to the bridge contract.
+///
+/// All checks run against the state at approval time, not request time: the
+/// rate-limit window, the fee, the reserve, and the personal quota may all
+/// have changed while the request was pending.
+fn process_withdrawal(
+    ctx: MutableCtx,
+    id: u64,
+    request: WithdrawalRequest,
+) -> anyhow::Result<Response> {
+    let WithdrawalRequest {
+        user,
+        remote,
+        recipient,
+        mut coin,
+        ..
+    } = request;
 
     // Find the bridge contract corresponding to the (denom, remote) tuple.
     let bridge = REVERSE_ROUTES.load(ctx.storage, (&coin.denom, remote))?;
@@ -319,14 +528,13 @@ fn transfer_remote(ctx: MutableCtx, remote: Remote, recipient: Addr32) -> anyhow
         })?;
     }
 
-    // Consume the sender's personal quota first, if any and still active.
-    // Whatever is left over falls through to the global outbound quota.
-    let key = (ctx.sender, &coin.denom);
+    // Consume the requesting user's personal quota first, if any and still
+    // active. Whatever is left over falls through to the global outbound
+    // quota.
+    let key = (user, &coin.denom);
     let mut remaining = coin.amount;
 
-    if let Some(pq) = PERSONAL_QUOTAS.may_load(ctx.storage, key)?
-        && pq.expire_at.is_none_or(|t| ctx.block.timestamp < t)
-    {
+    if let Some(pq) = active_personal_quota(ctx.storage, key, ctx.block.timestamp)? {
         let consumed = pq.amount.min(remaining);
         remaining = remaining.checked_sub(consumed)?;
 
@@ -391,7 +599,8 @@ fn transfer_remote(ctx: MutableCtx, remote: Remote, recipient: Addr32) -> anyhow
             None
         })
         .add_event(Withdrawn {
-            user: ctx.sender,
+            id,
+            user,
             bridge,
             remote,
             recipient,
@@ -399,6 +608,19 @@ fn transfer_remote(ctx: MutableCtx, remote: Remote, recipient: Addr32) -> anyhow
             amount: coin.amount,
             fee: maybe_fee.unwrap_or(Uint128::ZERO),
         })?)
+}
+
+/// Load the user's personal quota, if one exists and is still active at
+/// `now`. An expired entry is treated as absent (it is left in storage;
+/// scrubbing is the consumer's concern).
+fn active_personal_quota(
+    storage: &dyn Storage,
+    key: (Addr, &Denom),
+    now: Timestamp,
+) -> StdResult<Option<PersonalQuota>> {
+    Ok(PERSONAL_QUOTAS
+        .may_load(storage, key)?
+        .filter(|pq| pq.expire_at.is_none_or(|t| now < t)))
 }
 
 pub fn cron_execute(ctx: SudoCtx) -> StdResult<Response> {
