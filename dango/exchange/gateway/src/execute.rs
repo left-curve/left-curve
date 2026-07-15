@@ -7,8 +7,8 @@ use {
     anyhow::{anyhow, bail, ensure},
     dango_math::{IsZero, Number, NumberConst, Uint128},
     dango_primitives::{
-        Addr, Coins, Denom, Inner, Message, MutableCtx, Op, Order, QuerierExt, Response, StdError,
-        StdResult, Storage, SudoCtx, Timestamp, coins,
+        Addr, Coin, Coins, Denom, Inner, Message, MutableCtx, Op, Order, QuerierExt, Response,
+        StdError, StdResult, Storage, SudoCtx, Timestamp, coins,
     },
     dango_types::{
         bank,
@@ -312,45 +312,13 @@ fn transfer_remote(ctx: MutableCtx, remote: Remote, recipient: Addr32) -> anyhow
     // The user must have sent exactly one coin.
     let coin = ctx.funds.into_one_coin()?;
 
-    // Fail fast if no route exists for the (denom, remote) tuple, so the
-    // user can't escrow funds behind a request that can never be approved.
-    REVERSE_ROUTES.load(ctx.storage, (&coin.denom, remote))?;
-
-    // Fail fast if the amount doesn't cover the currently-configured fee.
-    // This is a courtesy check only — the authoritative one happens at
-    // approval time, as the fee may change while the request is pending.
-    let bridged_amount = match WITHDRAWAL_FEES.may_load(ctx.storage, (&coin.denom, remote))? {
-        Some(fee) => coin.amount.checked_sub(fee).map_err(|_| {
-            anyhow!(
-                "withdrawal amount not sufficient to cover fee: {} < {}",
-                coin.amount,
-                fee
-            )
-        })?,
-        None => coin.amount,
-    };
-
-    // Fail fast if the withdrawal would already exceed the rate limit,
-    // mirroring the computation done at approval time: the user's active
-    // personal quota covers the amount first, and only the residue counts
-    // against the global rolling window. Nothing is consumed or recorded
-    // here — quotas only move when the request is approved — so several
-    // pending requests may each pass this check yet still fail at approval.
-    let residue = {
-        let pq_amount =
-            active_personal_quota(ctx.storage, (ctx.sender, &coin.denom), ctx.block.timestamp)?
-                .map_or(Uint128::ZERO, |pq| pq.amount);
-
-        bridged_amount.checked_sub(pq_amount.min(bridged_amount))?
-    };
-
-    rate_limit::check(
-        ctx.storage,
-        &coin.denom,
-        ctx.block.timestamp,
-        bridged_amount,
-        residue,
-    )?;
+    // Fail fast if the withdrawal couldn't be executed against the current
+    // state: missing route, amount not covering the fee, insufficient
+    // reserve, or rate limit exceeded. The resulting plan is discarded —
+    // nothing is consumed or recorded until the request is approved, so
+    // several pending requests may each pass this validation yet still
+    // fail at approval, where it runs again authoritatively.
+    validate_withdrawal(ctx.storage, ctx.sender, &coin, remote, ctx.block.timestamp)?;
 
     // Hold the funds in escrow and store the request. Fees, reserves,
     // personal quotas, and rate limits are all applied if and when the
@@ -482,7 +450,9 @@ fn respond_to_withdrawal(
 ///
 /// All checks run against the state at approval time, not request time: the
 /// rate-limit window, the fee, the reserve, and the personal quota may all
-/// have changed while the request was pending.
+/// have changed while the request was pending. Validation is strictly
+/// separated from the state updates — [`validate_withdrawal`] either fails
+/// with no storage written, or returns the complete set of updates to apply.
 fn process_withdrawal(
     ctx: MutableCtx,
     id: u64,
@@ -496,72 +466,25 @@ fn process_withdrawal(
         ..
     } = request;
 
-    // Find the bridge contract corresponding to the (denom, remote) tuple.
-    let bridge = REVERSE_ROUTES.load(ctx.storage, (&coin.denom, remote))?;
+    let plan = validate_withdrawal(ctx.storage, user, &coin, remote, ctx.block.timestamp)?;
 
-    // Deduct the withdrawal fee.
-    let maybe_fee = WITHDRAWAL_FEES.may_load(ctx.storage, (&coin.denom, remote))?;
-
-    if let Some(fee) = maybe_fee {
-        coin.amount.checked_sub_assign(fee).map_err(|_| {
-            anyhow!(
-                "withdrawal amount not sufficient to cover fee: {} < {}",
-                coin.amount,
-                fee
-            )
-        })?;
+    // Validation passed — apply the state updates it computed.
+    if let Some(new_reserve) = plan.new_reserve {
+        RESERVES.save(ctx.storage, (plan.bridge, remote), &new_reserve)?;
     }
 
-    // Reduce the reserve only if the denom is remote.
-    if coin.denom.is_remote() {
-        RESERVES.may_update(ctx.storage, (bridge, remote), |maybe_reserve| {
-            let reserve = maybe_reserve.unwrap_or(Uint128::ZERO);
-            reserve.checked_sub(coin.amount).map_err(|_| {
-                anyhow!(
-                    "insufficient reserve! bridge: {}, remote: {:?}, reserve: {}, amount: {}",
-                    bridge,
-                    remote,
-                    reserve,
-                    coin.amount
-                )
-            })
-        })?;
+    match plan.personal_quota_update {
+        Some(Op::Insert(pq)) => PERSONAL_QUOTAS.save(ctx.storage, (user, &coin.denom), &pq)?,
+        Some(Op::Delete) => PERSONAL_QUOTAS.remove(ctx.storage, (user, &coin.denom)),
+        None => (),
     }
 
-    // Consume the requesting user's personal quota first, if any and still
-    // active. Whatever is left over falls through to the global outbound
-    // quota.
-    let key = (user, &coin.denom);
-    let mut remaining = coin.amount;
+    rate_limit::record(ctx.storage, &coin.denom, ctx.block.timestamp, plan.residue)?;
 
-    if let Some(pq) = active_personal_quota(ctx.storage, key, ctx.block.timestamp)? {
-        let consumed = pq.amount.min(remaining);
-        remaining = remaining.checked_sub(consumed)?;
-
-        let leftover = pq.amount.checked_sub(consumed)?;
-        if leftover.is_zero() {
-            PERSONAL_QUOTAS.remove(ctx.storage, key);
-        } else {
-            PERSONAL_QUOTAS.save(ctx.storage, key, &PersonalQuota {
-                amount: leftover,
-                expire_at: pq.expire_at,
-                granted_by: pq.granted_by,
-                granted_at: pq.granted_at,
-            })?;
-        }
-    }
-
-    // Check the trailing-24h rolling window against the cap and record the
-    // residue. `enforce` short-circuits when the denom is not rate-limited
-    // (no `SUPPLY_SNAPSHOTS` entry) or when the residue is zero (the
-    // withdraw was fully covered by personal quota).
-    rate_limit::enforce(
-        ctx.storage,
-        &coin.denom,
-        ctx.block.timestamp,
-        coin.amount,
-        remaining,
-    )?;
+    // From here on, `coin` is the post-fee amount actually bridged.
+    let bridge = plan.bridge;
+    let maybe_fee = plan.fee;
+    coin.amount = plan.net_amount;
 
     let (bank, owner) = ctx.querier.query_bank_and_owner()?;
 
@@ -608,6 +531,121 @@ fn process_withdrawal(
             amount: coin.amount,
             fee: maybe_fee.unwrap_or(Uint128::ZERO),
         })?)
+}
+
+/// The state updates a withdrawal entails, precomputed by
+/// [`validate_withdrawal`]. Everything here is derived read-only; applying
+/// it is infallible, so a withdrawal either fails validation with no
+/// storage written, or executes in full.
+struct WithdrawalPlan {
+    /// The bridge contract handling the (denom, remote) route.
+    bridge: Addr,
+    /// The withdrawal fee charged, if one is configured for the route.
+    fee: Option<Uint128>,
+    /// The amount bridged to the remote chain: the escrowed amount minus
+    /// the fee.
+    net_amount: Uint128,
+    /// The new reserve for (bridge, remote) after deducting the bridged
+    /// amount. `None` when the denom is local-origin, for which reserves
+    /// aren't tracked.
+    new_reserve: Option<Uint128>,
+    /// The update to the user's personal quota after consuming it:
+    /// `Op::Delete` when fully consumed, `Op::Insert` with the leftover
+    /// otherwise. `None` when the user has no active quota.
+    personal_quota_update: Option<Op<PersonalQuota>>,
+    /// The post-personal-quota residue counting against the trailing-24h
+    /// rolling window.
+    residue: Uint128,
+}
+
+/// Validate a withdrawal of `coin` by `user` against the current state:
+///
+/// - a route must exist for the (denom, remote) tuple;
+/// - the escrowed amount must cover the withdrawal fee;
+/// - the route's reserve must cover the bridged amount (remote denoms only);
+/// - the post-personal-quota residue must fit the rate-limit headroom.
+///
+/// Reads storage but never writes it. On success, returns the
+/// [`WithdrawalPlan`] with every update the withdrawal entails; the caller
+/// decides whether to apply it (approval) or discard it (the fail-fast
+/// validation when the request is created).
+fn validate_withdrawal(
+    storage: &dyn Storage,
+    user: Addr,
+    coin: &Coin,
+    remote: Remote,
+    now: Timestamp,
+) -> anyhow::Result<WithdrawalPlan> {
+    // Find the bridge contract corresponding to the (denom, remote) tuple.
+    let bridge = REVERSE_ROUTES.load(storage, (&coin.denom, remote))?;
+
+    // Deduct the withdrawal fee.
+    let fee = WITHDRAWAL_FEES.may_load(storage, (&coin.denom, remote))?;
+
+    let bridged = match fee {
+        Some(fee) => coin.amount.checked_sub(fee).map_err(|_| {
+            anyhow!(
+                "withdrawal amount not sufficient to cover fee: {} < {}",
+                coin.amount,
+                fee
+            )
+        })?,
+        None => coin.amount,
+    };
+
+    // The reserve must cover the bridged amount, but only remote denoms
+    // track a reserve.
+    let new_reserve = if coin.denom.is_remote() {
+        let reserve = RESERVES
+            .may_load(storage, (bridge, remote))?
+            .unwrap_or(Uint128::ZERO);
+
+        Some(reserve.checked_sub(bridged).map_err(|_| {
+            anyhow!(
+                "insufficient reserve! bridge: {}, remote: {:?}, reserve: {}, amount: {}",
+                bridge,
+                remote,
+                reserve,
+                bridged
+            )
+        })?)
+    } else {
+        None
+    };
+
+    // Consume the user's personal quota first, if any and still active.
+    // Whatever is left over falls through to the global outbound quota.
+    let mut residue = bridged;
+
+    let personal_quota = match active_personal_quota(storage, (user, &coin.denom), now)? {
+        Some(pq) => {
+            let consumed = pq.amount.min(residue);
+            residue = residue.checked_sub(consumed)?;
+
+            let leftover = pq.amount.checked_sub(consumed)?;
+            Some(if leftover.is_zero() {
+                Op::Delete
+            } else {
+                Op::Insert(PersonalQuota {
+                    amount: leftover,
+                    ..pq
+                })
+            })
+        },
+        None => None,
+    };
+
+    // Check the trailing-24h rolling window against the cap.
+    rate_limit::check(storage, &coin.denom, now, bridged, residue)?;
+
+    Ok(WithdrawalPlan {
+        bridge,
+        fee,
+        net_amount: bridged,
+        new_reserve,
+        personal_quota_update: personal_quota,
+        residue,
+    })
 }
 
 /// Load the user's personal quota, if one exists and is still active at

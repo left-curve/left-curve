@@ -3629,19 +3629,21 @@ async fn withdrawal_request_escrow_accounting() {
             .should_succeed_and_equal(Uint128::ZERO);
     }
     // ---- Freezing leaves the escrow inside the gateway ----
+    suite.balances().refresh_all();
+
+    // Created outside the block: this shadows the resolved request above,
+    // and the confiscation section below acts on this same frozen request.
+    let id = suite
+        .request_transfer_remote(
+            &mut accounts.user2,
+            contracts.gateway,
+            remote,
+            mock_arbitrum_recipient,
+            Coin::new(usdc::DENOM.clone(), WITHDRAW).unwrap(),
+        )
+        .await;
+
     {
-        suite.balances().refresh_all();
-
-        let id = suite
-            .request_transfer_remote(
-                &mut accounts.user2,
-                contracts.gateway,
-                remote,
-                mock_arbitrum_recipient,
-                Coin::new(usdc::DENOM.clone(), WITHDRAW).unwrap(),
-            )
-            .await;
-
         suite
             .respond_to_withdrawal(
                 &mut accounts.user3,

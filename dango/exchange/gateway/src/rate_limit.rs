@@ -147,22 +147,19 @@ pub fn check(
     Ok(())
 }
 
-/// Same check as [`check`], but on success also record the residue into
-/// the current hour bucket, consuming the quota. Used when a withdrawal is
-/// actually executed; `check` alone serves the fail-fast validation at
-/// request time.
-pub fn enforce(
+/// Record a residue that passed [`check`] into the current hour bucket,
+/// consuming the quota. Called when a withdrawal is actually executed;
+/// `check` alone serves the fail-fast validation at request time.
+///
+/// Records only when the residue actually counts against a tracked window:
+/// for a denom that isn't rate-limited, recording would leave stray volume
+/// entries that no cron tick ever prunes. A zero residue is a no-op.
+pub fn record(
     storage: &mut dyn Storage,
     denom: &Denom,
     now: Timestamp,
-    requested: Uint128,
     residue: Uint128,
-) -> anyhow::Result<()> {
-    check(storage, denom, now, requested, residue)?;
-
-    // Record only when the residue actually counts against a tracked
-    // window: for a denom that isn't rate-limited, recording would leave
-    // stray volume entries that no cron tick ever prunes.
+) -> StdResult<()> {
     if !residue.is_zero() && SUPPLY_SNAPSHOTS.has(storage, denom) {
         record_withdraw(storage, denom, now, residue)?;
     }
