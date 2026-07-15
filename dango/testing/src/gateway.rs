@@ -70,17 +70,19 @@ where
     }
 
     /// Execute a `TransferRemote` and, if the request goes through,
-    /// immediately approve the resulting withdrawal request as `responder`;
+    /// immediately approve the resulting withdrawal request as `guardian`;
     /// return the outcome of whichever transaction settled the withdrawal.
     ///
     /// This restores the pre-guardian atomic semantics — a failed withdrawal
     /// leaves no trace — letting tests assert errors and balances the same
     /// way they did when `TransferRemote` was a single step:
     ///
-    /// - a request rejected by a fail-fast check (missing route, fee, rate
-    ///   limit) returns the failed request outcome directly;
-    /// - a failed approval (e.g. the state changed while pending) returns
-    ///   the failed approval outcome, after rejecting the request so the
+    /// - a request rejected by a fail-fast check (missing route, fee,
+    ///   reserve, rate limit) returns the failed request outcome directly;
+    /// - an approval that fails validation refunds the escrow on-chain (the
+    ///   approval tx itself succeeds, emitting `withdrawal_approval_failed`);
+    /// - a hard approval failure (e.g. a bridge-message error) returns the
+    ///   failed approval outcome, after rejecting the request so the
     ///   escrowed funds return to the sender.
     pub async fn transfer_remote<C>(
         &mut self,

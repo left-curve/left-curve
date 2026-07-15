@@ -80,6 +80,23 @@ pub struct WithdrawalConfiscated {
     pub amount: Uint128,
 }
 
+/// Event indicating an approved withdrawal request could not be executed
+/// against the current state — the fee, reserve, or rate limit changed
+/// while the request was pending — and the escrowed funds were refunded
+/// to the user instead.
+#[dango_primitives::derive(Serde)]
+#[dango_primitives::event("withdrawal_approval_failed")]
+pub struct WithdrawalApprovalFailed {
+    pub id: u64,
+    /// The Dango account that requested the withdrawal and got the refund.
+    pub user: Addr,
+    pub denom: Denom,
+    /// The full escrowed amount refunded to the user.
+    pub amount: Uint128,
+    /// Why the withdrawal could not be executed.
+    pub reason: String,
+}
+
 /// Event indicating tokens have been sent to a remote chain (a withdrawal).
 /// Emitted when a withdrawal request is approved.
 #[dango_primitives::derive(Serde)]

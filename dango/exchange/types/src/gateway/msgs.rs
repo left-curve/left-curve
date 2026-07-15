@@ -206,7 +206,11 @@ pub enum ExecuteMsg {
     /// Respond to a withdrawal request:
     ///
     /// - `Approve`: process the withdrawal. This enforces the rate limits
-    ///   at the time of the response, not the time of the request.
+    ///   at the time of the response, not the time of the request. If the
+    ///   withdrawal can no longer be executed (the fee, reserve, or rate
+    ///   limit changed while the request was pending), the escrow is
+    ///   refunded to the user — emitting `withdrawal_approval_failed` —
+    ///   so an approval always settles the request.
     /// - `Reject`: refund the escrowed funds to the user.
     /// - `Freeze`: flag the request as suspicious for the owner to check.
     /// - `Confiscate`: send the escrowed funds to the owner.

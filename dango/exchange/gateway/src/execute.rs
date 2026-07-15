@@ -14,9 +14,10 @@ use {
         bank,
         gateway::{
             Addr32, Deposited, ExecuteMsg, InstantiateMsg, NAMESPACE, Origin, PersonalQuota,
-            RateLimit, Remote, SetPersonalQuotaRequest, Traceable, WithdrawalConfiscated,
-            WithdrawalFee, WithdrawalFrozen, WithdrawalRejected, WithdrawalRequest,
-            WithdrawalRequested, WithdrawalResponse, WithdrawalStatus, Withdrawn,
+            RateLimit, Remote, SetPersonalQuotaRequest, Traceable, WithdrawalApprovalFailed,
+            WithdrawalConfiscated, WithdrawalFee, WithdrawalFrozen, WithdrawalRejected,
+            WithdrawalRequest, WithdrawalRequested, WithdrawalResponse, WithdrawalStatus,
+            Withdrawn,
             bridge::{self, BridgeMsg},
         },
     },
@@ -381,7 +382,30 @@ fn respond_to_withdrawal(
         WithdrawalResponse::Approve => {
             queue.remove(ctx.storage, id);
 
-            process_withdrawal(ctx, id, request)
+            // Validation runs here, not inside `process_withdrawal`: if the
+            // withdrawal can no longer be executed (the fee, reserve, or
+            // rate limit changed while the request was pending), the escrow
+            // is refunded to the user instead of failing the transaction,
+            // so an approval always settles the request. Validation writes
+            // nothing, so the refund path carries no partial state.
+            match validate_withdrawal(
+                ctx.storage,
+                request.user,
+                &request.coin,
+                request.remote,
+                ctx.block.timestamp,
+            ) {
+                Ok(plan) => process_withdrawal(ctx, id, request, plan),
+                Err(err) => Ok(Response::new()
+                    .add_message(Message::transfer(request.user, request.coin.clone())?)
+                    .add_event(WithdrawalApprovalFailed {
+                        id,
+                        user: request.user,
+                        denom: request.coin.denom,
+                        amount: request.coin.amount,
+                        reason: err.to_string(),
+                    })?),
+            }
         },
         WithdrawalResponse::Reject => {
             queue.remove(ctx.storage, id);
@@ -444,19 +468,19 @@ fn respond_to_withdrawal(
     }
 }
 
-/// Execute an approved withdrawal request: deduct the fee, decrement the
-/// reserve, consume the user's personal quota, enforce the rate limits, and
+/// Execute an approved withdrawal request: apply the state updates computed
+/// by [`validate_withdrawal`] (reserve, personal quota, rolling window) and
 /// dispatch the transfer to the bridge contract.
 ///
-/// All checks run against the state at approval time, not request time: the
-/// rate-limit window, the fee, the reserve, and the personal quota may all
-/// have changed while the request was pending. Validation is strictly
-/// separated from the state updates — [`validate_withdrawal`] either fails
-/// with no storage written, or returns the complete set of updates to apply.
+/// The caller is responsible for running [`validate_withdrawal`] on the
+/// same block and passing the resulting plan in; keeping validation outside
+/// lets the approval handler refund the escrow when validation fails,
+/// rather than failing the transaction.
 fn process_withdrawal(
     ctx: MutableCtx,
     id: u64,
     request: WithdrawalRequest,
+    plan: WithdrawalPlan,
 ) -> anyhow::Result<Response> {
     let WithdrawalRequest {
         user,
@@ -465,8 +489,6 @@ fn process_withdrawal(
         mut coin,
         ..
     } = request;
-
-    let plan = validate_withdrawal(ctx.storage, user, &coin, remote, ctx.block.timestamp)?;
 
     // Validation passed — apply the state updates it computed.
     if let Some(new_reserve) = plan.new_reserve {
