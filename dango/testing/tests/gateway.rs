@@ -3478,6 +3478,227 @@ async fn respond_frozen_only_owner() {
         .should_succeed();
 }
 
+/// Escrow accounting across the request lifecycle: where the coins sit
+/// after each request/response step.
+#[tokio::test]
+async fn withdrawal_request_escrow_accounting() {
+    let (mut suite, mut accounts, _, contracts, valset) = setup_test(TestOption {
+        bridge_ops: |_| vec![],
+        ..TestOption::default()
+    });
+
+    suite.block_time = Duration::ZERO;
+
+    let mut suite = HyperlaneTestSuite::new(suite, valset, &contracts);
+
+    let user_addr = accounts.user2.address();
+    let owner_addr = accounts.owner.address();
+    let guardian_addr = accounts.user3.address();
+
+    let remote = Remote::Warp {
+        domain: mock_arbitrum::DOMAIN,
+        contract: mock_arbitrum::USDC_WARP,
+    };
+    let mock_arbitrum_recipient: Addr32 = Addr::mock(201).into();
+
+    // Escrowed per request: 5M to bridge plus the withdrawal fee.
+    const WITHDRAW: u128 = 5_000_000 + ARBITRUM_USDC_WITHDRAWAL_FEE;
+
+    // Fund user2 and set the guardian.
+    suite
+        .receive_warp_transfer(
+            &mut accounts.user1,
+            mock_arbitrum::DOMAIN,
+            mock_arbitrum::USDC_WARP,
+            &accounts.user2,
+            100_000_000,
+        )
+        .await
+        .should_succeed();
+
+    suite
+        .execute(
+            &mut accounts.owner,
+            contracts.gateway,
+            &gateway::ExecuteMsg::SetGuardian(guardian_addr),
+            Coins::default(),
+        )
+        .await
+        .should_succeed();
+
+    // ---- Placing a request moves the funds from the sender to the gateway ----
+    suite.balances().record(&user_addr);
+    suite.balances().record(&contracts.gateway);
+    suite.balances().record(&owner_addr);
+
+    let id = suite
+        .request_transfer_remote(
+            &mut accounts.user2,
+            contracts.gateway,
+            remote,
+            mock_arbitrum_recipient,
+            Coin::new(usdc::DENOM.clone(), WITHDRAW).unwrap(),
+        )
+        .await;
+
+    suite.balances().should_change(&user_addr, btree_map! {
+        usdc::DENOM.clone() => BalanceChange::Decreased(WITHDRAW),
+    });
+    suite
+        .balances()
+        .should_change(&contracts.gateway, btree_map! {
+            usdc::DENOM.clone() => BalanceChange::Increased(WITHDRAW),
+        });
+
+    // The gateway holds exactly the escrow.
+    suite
+        .query_balance(&contracts.gateway, usdc::DENOM.clone())
+        .should_succeed_and_equal(WITHDRAW.into());
+
+    // ---- Approval drains the escrow; nothing flows back to the user ----
+    {
+        suite.balances().refresh_all();
+
+        suite
+            .respond_to_withdrawal(
+                &mut accounts.user3,
+                contracts.gateway,
+                id,
+                WithdrawalResponse::Approve,
+            )
+            .await
+            .should_succeed();
+
+        // The bridged amount is burned and the fee goes to the owner; the user
+        // gets nothing back.
+        suite.balances().should_change(&user_addr, btree_map! {
+            usdc::DENOM.clone() => BalanceChange::Unchanged,
+        });
+        suite
+            .balances()
+            .should_change(&contracts.gateway, btree_map! {
+                usdc::DENOM.clone() => BalanceChange::Decreased(WITHDRAW),
+            });
+        suite.balances().should_change(&owner_addr, btree_map! {
+            usdc::DENOM.clone() => BalanceChange::Increased(ARBITRUM_USDC_WITHDRAWAL_FEE),
+        });
+
+        suite
+            .query_balance(&contracts.gateway, usdc::DENOM.clone())
+            .should_succeed_and_equal(Uint128::ZERO);
+    }
+
+    // ---- Rejection refunds the full escrow to the user ----
+    {
+        suite.balances().refresh_all();
+
+        let id = suite
+            .request_transfer_remote(
+                &mut accounts.user2,
+                contracts.gateway,
+                remote,
+                mock_arbitrum_recipient,
+                Coin::new(usdc::DENOM.clone(), WITHDRAW).unwrap(),
+            )
+            .await;
+
+        suite
+            .respond_to_withdrawal(
+                &mut accounts.user3,
+                contracts.gateway,
+                id,
+                WithdrawalResponse::Reject,
+            )
+            .await
+            .should_succeed();
+
+        // Across request + rejection the user is made whole — no fee is
+        // charged on a rejected withdrawal. (The gateway's balance can't be
+        // asserted via the tracker here: it holds zero USDC in both
+        // snapshots, so no delta entry exists; the absolute check below
+        // covers it.)
+        suite.balances().should_change(&user_addr, btree_map! {
+            usdc::DENOM.clone() => BalanceChange::Unchanged,
+        });
+        suite.balances().should_change(&owner_addr, btree_map! {
+            usdc::DENOM.clone() => BalanceChange::Unchanged,
+        });
+
+        suite
+            .query_balance(&contracts.gateway, usdc::DENOM.clone())
+            .should_succeed_and_equal(Uint128::ZERO);
+    }
+    // ---- Freezing leaves the escrow inside the gateway ----
+    {
+        suite.balances().refresh_all();
+
+        let id = suite
+            .request_transfer_remote(
+                &mut accounts.user2,
+                contracts.gateway,
+                remote,
+                mock_arbitrum_recipient,
+                Coin::new(usdc::DENOM.clone(), WITHDRAW).unwrap(),
+            )
+            .await;
+
+        suite
+            .respond_to_withdrawal(
+                &mut accounts.user3,
+                contracts.gateway,
+                id,
+                WithdrawalResponse::Freeze,
+            )
+            .await
+            .should_succeed();
+
+        // The escrow left the user on request, and the freeze keeps it in the
+        // gateway.
+        suite.balances().should_change(&user_addr, btree_map! {
+            usdc::DENOM.clone() => BalanceChange::Decreased(WITHDRAW),
+        });
+        suite
+            .balances()
+            .should_change(&contracts.gateway, btree_map! {
+                usdc::DENOM.clone() => BalanceChange::Increased(WITHDRAW),
+            });
+
+        suite
+            .query_balance(&contracts.gateway, usdc::DENOM.clone())
+            .should_succeed_and_equal(WITHDRAW.into());
+    }
+    // ---- Confiscation sends the escrow to the owner ----
+    {
+        suite.balances().refresh_all();
+
+        suite
+            .respond_to_withdrawal(
+                &mut accounts.owner,
+                contracts.gateway,
+                id,
+                WithdrawalResponse::Confiscate,
+            )
+            .await
+            .should_succeed();
+
+        suite.balances().should_change(&user_addr, btree_map! {
+            usdc::DENOM.clone() => BalanceChange::Unchanged,
+        });
+        suite
+            .balances()
+            .should_change(&contracts.gateway, btree_map! {
+                usdc::DENOM.clone() => BalanceChange::Decreased(WITHDRAW),
+            });
+        suite.balances().should_change(&owner_addr, btree_map! {
+            usdc::DENOM.clone() => BalanceChange::Increased(WITHDRAW),
+        });
+
+        suite
+            .query_balance(&contracts.gateway, usdc::DENOM.clone())
+            .should_succeed_and_equal(Uint128::ZERO);
+    }
+}
+
 // /// Full lifecycle of the withdrawal request flow: guardian configuration,
 // /// escrow on request, and the approve / reject responses.
 // #[tokio::test]
