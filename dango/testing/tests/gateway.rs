@@ -3794,6 +3794,238 @@ async fn withdrawal_confiscation_coin_accounting() {
         .should_fail_with_error("data not found");
 }
 
+/// Placing a withdrawal request stores it correctly: every field reflects
+/// the request, it starts in the pending state, and it shows up in the
+/// pending queue.
+#[tokio::test]
+async fn withdrawal_request_is_stored() {
+    let (mut suite, mut accounts, contracts) = setup_withdrawal_test().await;
+
+    let id = suite
+        .request_transfer_remote(
+            &mut accounts.user2,
+            contracts.gateway,
+            WITHDRAW_REMOTE,
+            withdraw_recipient(),
+            Coin::new(usdc::DENOM.clone(), WITHDRAW).unwrap(),
+        )
+        .await;
+
+    // The first request gets ID zero.
+    assert_eq!(id, 0);
+
+    // The stored record matches the request in full. `created_at` is the
+    // block timestamp, which doesn't move here since the setup pins the
+    // block time to zero.
+    let request = suite
+        .query_wasm_smart(contracts.gateway, gateway::QueryWithdrawalRequestRequest {
+            id,
+        })
+        .should_succeed();
+
+    assert_eq!(request, gateway::WithdrawalRequest {
+        user: accounts.user2.address(),
+        remote: WITHDRAW_REMOTE,
+        recipient: withdraw_recipient(),
+        coin: Coin::new(usdc::DENOM.clone(), WITHDRAW).unwrap(),
+        status: WithdrawalStatus::Pending,
+        created_at: suite.block.timestamp,
+    });
+
+    // It is listed in the pending queue.
+    let page = suite
+        .query_wasm_smart(contracts.gateway, gateway::QueryWithdrawalRequestsRequest {
+            start_after: None,
+            limit: None,
+        })
+        .should_succeed();
+
+    assert_eq!(page.len(), 1);
+    assert_eq!(page[0].id, id);
+    assert_eq!(page[0].request, request);
+}
+
+/// A withdrawal request can only be confiscated after it has been frozen:
+/// even the owner can't confiscate a pending request directly.
+#[tokio::test]
+async fn confiscation_requires_prior_freeze() {
+    let (mut suite, mut accounts, contracts) = setup_withdrawal_test().await;
+
+    let id = suite
+        .request_transfer_remote(
+            &mut accounts.user2,
+            contracts.gateway,
+            WITHDRAW_REMOTE,
+            withdraw_recipient(),
+            Coin::new(usdc::DENOM.clone(), WITHDRAW).unwrap(),
+        )
+        .await;
+
+    suite
+        .respond_to_withdrawal(
+            &mut accounts.owner,
+            contracts.gateway,
+            id,
+            WithdrawalResponse::Confiscate,
+        )
+        .await
+        .should_fail_with_error("only a frozen withdrawal request can be confiscated");
+
+    // The failed confiscation left the request untouched: still pending,
+    // with the funds still in the gateway.
+    suite
+        .query_wasm_smart(contracts.gateway, gateway::QueryWithdrawalRequestRequest {
+            id,
+        })
+        .should_succeed_and(|req| req.status == WithdrawalStatus::Pending);
+
+    suite
+        .query_balance(&contracts.gateway, usdc::DENOM.clone())
+        .should_succeed_and_equal(WITHDRAW.into());
+}
+
+/// The guardian can never confiscate a withdrawal request — pending
+/// requests included. (The frozen case is covered by
+/// `respond_frozen_only_owner`, where the guardian is locked out of frozen
+/// requests entirely.)
+#[tokio::test]
+async fn guardian_can_never_confiscate() {
+    let (mut suite, mut accounts, contracts) = setup_withdrawal_test().await;
+
+    let id = suite
+        .request_transfer_remote(
+            &mut accounts.user2,
+            contracts.gateway,
+            WITHDRAW_REMOTE,
+            withdraw_recipient(),
+            Coin::new(usdc::DENOM.clone(), WITHDRAW).unwrap(),
+        )
+        .await;
+
+    suite
+        .respond_to_withdrawal(
+            &mut accounts.user3,
+            contracts.gateway,
+            id,
+            WithdrawalResponse::Confiscate,
+        )
+        .await
+        .should_fail_with_error("only the owner can confiscate a withdrawal request");
+
+    // The failed confiscation left the request untouched: still pending,
+    // with the funds still in the gateway.
+    suite
+        .query_wasm_smart(contracts.gateway, gateway::QueryWithdrawalRequestRequest {
+            id,
+        })
+        .should_succeed_and(|req| req.status == WithdrawalStatus::Pending);
+
+    suite
+        .query_balance(&contracts.gateway, usdc::DENOM.clone())
+        .should_succeed_and_equal(WITHDRAW.into());
+}
+
+/// The owner can reject a frozen withdrawal request, refunding the full
+/// withheld amount to the user.
+#[tokio::test]
+async fn frozen_request_rejection_refunds_user() {
+    let (mut suite, mut accounts, contracts) = setup_withdrawal_test().await;
+
+    let user_addr = accounts.user2.address();
+
+    suite.balances().record(&user_addr);
+
+    let id = suite
+        .request_transfer_remote(
+            &mut accounts.user2,
+            contracts.gateway,
+            WITHDRAW_REMOTE,
+            withdraw_recipient(),
+            Coin::new(usdc::DENOM.clone(), WITHDRAW).unwrap(),
+        )
+        .await;
+
+    suite
+        .respond_to_withdrawal(
+            &mut accounts.user3,
+            contracts.gateway,
+            id,
+            WithdrawalResponse::Freeze,
+        )
+        .await
+        .should_succeed();
+
+    suite
+        .respond_to_withdrawal(
+            &mut accounts.owner,
+            contracts.gateway,
+            id,
+            WithdrawalResponse::Reject,
+        )
+        .await
+        .should_succeed();
+
+    // Across request + freeze + rejection the user is made whole, the
+    // gateway keeps nothing, and the request is deleted.
+    suite.balances().should_change(&user_addr, btree_map! {
+        usdc::DENOM.clone() => BalanceChange::Unchanged,
+    });
+
+    suite
+        .query_balance(&contracts.gateway, usdc::DENOM.clone())
+        .should_succeed_and_equal(Uint128::ZERO);
+
+    suite
+        .query_wasm_smart(contracts.gateway, gateway::QueryWithdrawalRequestRequest {
+            id,
+        })
+        .should_fail_with_error("data not found");
+}
+
+/// Withdrawal request IDs increment sequentially, and resolving a request
+/// doesn't free its ID for reuse — the counter only moves forward.
+#[tokio::test]
+async fn withdrawal_request_ids_increment() {
+    let (mut suite, mut accounts, contracts) = setup_withdrawal_test().await;
+
+    for expected_id in 0..2u64 {
+        let id = suite
+            .request_transfer_remote(
+                &mut accounts.user2,
+                contracts.gateway,
+                WITHDRAW_REMOTE,
+                withdraw_recipient(),
+                Coin::new(usdc::DENOM.clone(), WITHDRAW).unwrap(),
+            )
+            .await;
+
+        assert_eq!(id, expected_id);
+    }
+
+    // Resolve the first request; the next request still gets a fresh ID.
+    suite
+        .respond_to_withdrawal(
+            &mut accounts.user3,
+            contracts.gateway,
+            0,
+            WithdrawalResponse::Reject,
+        )
+        .await
+        .should_succeed();
+
+    let id = suite
+        .request_transfer_remote(
+            &mut accounts.user2,
+            contracts.gateway,
+            WITHDRAW_REMOTE,
+            withdraw_recipient(),
+            Coin::new(usdc::DENOM.clone(), WITHDRAW).unwrap(),
+        )
+        .await;
+
+    assert_eq!(id, 2);
+}
+
 // /// Full lifecycle of the withdrawal request flow: guardian configuration,
 // /// escrow on request, and the approve / reject responses.
 // #[tokio::test]
