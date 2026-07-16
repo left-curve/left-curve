@@ -53,6 +53,7 @@ const reviewedHardcodedMessageLiteralCandidates = [
   "tests/pro-trade-history.test.tsx:Ethereum:1",
   "tests/search-token.test.tsx:Ethereum:1",
   "tests/trading-view.test.tsx:TradingView:1",
+  "tests/use-search-bar.test.tsx:Transfer:1",
 ].sort();
 const reviewedUserIndexTruthinessChecks = [
   "../../store/src/hooks/useBoosters.ts:enabled: enabled && !!userIndex,",
