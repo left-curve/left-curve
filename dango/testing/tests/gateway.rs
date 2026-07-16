@@ -1,5 +1,5 @@
 use {
-    dango_genesis::Contracts,
+    dango_genesis::{Contracts, GatewayOption, GenesisOption},
     dango_hyperlane_types::{Addr32, isms},
     dango_math::{MathError, NumberConst, Udec128, Uint128},
     dango_primitives::{
@@ -7,14 +7,15 @@ use {
         ResultExt, SearchEvent, btree_map, btree_set, coins,
     },
     dango_testing::{
-        BalanceChange, DefaultHyperlaneTestSuite, HyperlaneTestSuite, MockValidatorSet,
+        BalanceChange, DefaultHyperlaneTestSuite, HyperlaneTestSuite, MockValidatorSet, Preset,
         TestAccounts, TestOption, TestSuite, mock_arbitrum, mock_ethereum, setup_test,
+        setup_test_naive_with_custom_genesis,
     },
     dango_types::{
         constants::{dango, usdc},
         gateway::{
-            self, Origin, RateLimit, Remote, SetPersonalQuotaRequest, WithdrawalResponse,
-            WithdrawalStatus,
+            self, Origin, RateLimit, Remote, SetPersonalQuotaRequest, WithdrawalFee,
+            WithdrawalResponse, WithdrawalStatus,
         },
     },
 };
@@ -3259,6 +3260,31 @@ async fn set_guardian_only_owner() {
         .should_succeed_and_equal(Some(accounts.user1.address()));
 }
 
+/// A guardian configured in the genesis state is saved at instantiation:
+/// the guardian query returns it without any `SetGuardian` call.
+#[tokio::test]
+async fn guardian_set_at_genesis() {
+    let guardian_addr = Addr::mock(255);
+
+    let (suite, _, _, contracts, _) = setup_test_naive_with_custom_genesis(
+        TestOption {
+            bridge_ops: |_| vec![],
+            ..TestOption::default()
+        },
+        GenesisOption {
+            gateway: GatewayOption {
+                guardian: Some(guardian_addr),
+                ..Preset::preset_test()
+            },
+            ..Preset::preset_test()
+        },
+    );
+
+    suite
+        .query_wasm_smart(contracts.gateway, gateway::QueryGuardianRequest {})
+        .should_succeed_and_equal(Some(guardian_addr));
+}
+
 /// Only the chain owner and the guardian can respond to a withdrawal
 /// request.
 #[tokio::test]
@@ -4545,6 +4571,650 @@ async fn withdrawal_not_exceeding_fee_fails_fast() {
             limit: None,
         })
         .should_succeed_and(|page| page.is_empty());
+}
+
+/// Freezing is not idempotent: a `Freeze` response to an already-frozen
+/// request fails — even from the owner, who is otherwise allowed to
+/// respond to frozen requests.
+#[tokio::test]
+async fn refreezing_frozen_request_fails() {
+    let (mut suite, mut accounts, contracts) = setup_withdrawal_test().await;
+
+    let id = suite
+        .request_transfer_remote(
+            &mut accounts.user2,
+            contracts.gateway,
+            WITHDRAW_REMOTE,
+            withdraw_recipient(),
+            Coin::new(usdc::DENOM.clone(), WITHDRAW).unwrap(),
+        )
+        .await;
+
+    suite
+        .respond_to_withdrawal(
+            &mut accounts.user3,
+            contracts.gateway,
+            id,
+            WithdrawalResponse::Freeze,
+        )
+        .await
+        .should_succeed();
+
+    suite
+        .respond_to_withdrawal(
+            &mut accounts.owner,
+            contracts.gateway,
+            id,
+            WithdrawalResponse::Freeze,
+        )
+        .await
+        .should_fail_with_error("withdrawal request is already frozen");
+
+    // The failed refreeze left the request in the frozen state, with the
+    // funds still escrowed.
+    suite
+        .query_wasm_smart(contracts.gateway, gateway::QueryWithdrawalRequestRequest {
+            id,
+        })
+        .should_succeed_and(|req| req.status == WithdrawalStatus::Frozen);
+
+    suite
+        .query_balance(&contracts.gateway, usdc::DENOM.clone())
+        .should_succeed_and_equal(WITHDRAW.into());
+}
+
+/// Responding to a request ID that doesn't exist fails — whether the ID
+/// was never assigned, or belonged to a request that has already reached
+/// a terminal response and was deleted.
+#[tokio::test]
+async fn respond_to_unknown_or_settled_request_fails() {
+    let (mut suite, mut accounts, contracts) = setup_withdrawal_test().await;
+
+    // No request with ID 999 was ever created.
+    suite
+        .respond_to_withdrawal(
+            &mut accounts.owner,
+            contracts.gateway,
+            999,
+            WithdrawalResponse::Approve,
+        )
+        .await
+        .should_fail_with_error("withdrawal request not found: 999");
+
+    // Open a request and settle it with a rejection. Responding to the
+    // settled ID fails the same way as a never-assigned one.
+    let id = suite
+        .request_transfer_remote(
+            &mut accounts.user2,
+            contracts.gateway,
+            WITHDRAW_REMOTE,
+            withdraw_recipient(),
+            Coin::new(usdc::DENOM.clone(), WITHDRAW).unwrap(),
+        )
+        .await;
+
+    suite
+        .respond_to_withdrawal(
+            &mut accounts.user3,
+            contracts.gateway,
+            id,
+            WithdrawalResponse::Reject,
+        )
+        .await
+        .should_succeed();
+
+    suite
+        .respond_to_withdrawal(
+            &mut accounts.owner,
+            contracts.gateway,
+            id,
+            WithdrawalResponse::Approve,
+        )
+        .await
+        .should_fail_with_error(format!("withdrawal request not found: {id}"));
+}
+
+/// Pending requests reserve nothing, so two requests can each pass the
+/// fail-fast reserve check while their combined bridged amounts exceed
+/// the route's reserve. The first approval drains the reserve; the second
+/// approval then refunds the user instead of bridging.
+#[tokio::test]
+async fn reserve_drained_while_pending_refunds_on_approval() {
+    let (mut suite, mut accounts, contracts) = setup_withdrawal_test().await;
+
+    let user_addr = accounts.user2.address();
+
+    /// Mirrors the ethereum USDC withdrawal fee configured in the test
+    /// genesis at `dango/testing/src/genesis.rs`; keep the two in sync.
+    const ETHEREUM_USDC_WITHDRAWAL_FEE: u128 = 1_000_000;
+
+    /// Escrowed per request: 6M to bridge plus the fee. Each fits the 10M
+    /// ethereum reserve on its own; together they exceed it.
+    const AMOUNT: u128 = 6_000_000 + ETHEREUM_USDC_WITHDRAWAL_FEE;
+
+    const ETHEREUM_USDC_REMOTE: Remote = Remote::Warp {
+        domain: mock_ethereum::DOMAIN,
+        contract: mock_ethereum::USDC_WARP,
+    };
+
+    // Fund the ethereum route's reserve with 10M — smaller than the user's
+    // balance, so both escrows are affordable while the combined bridged
+    // amounts overshoot the reserve.
+    suite
+        .receive_warp_transfer(
+            &mut accounts.user1,
+            mock_ethereum::DOMAIN,
+            mock_ethereum::USDC_WARP,
+            &accounts.user2,
+            10_000_000,
+        )
+        .await
+        .should_succeed();
+
+    suite.balances().record(&user_addr);
+
+    let first = suite
+        .request_transfer_remote(
+            &mut accounts.user2,
+            contracts.gateway,
+            ETHEREUM_USDC_REMOTE,
+            withdraw_recipient(),
+            Coin::new(usdc::DENOM.clone(), AMOUNT).unwrap(),
+        )
+        .await;
+
+    let second = suite
+        .request_transfer_remote(
+            &mut accounts.user2,
+            contracts.gateway,
+            ETHEREUM_USDC_REMOTE,
+            withdraw_recipient(),
+            Coin::new(usdc::DENOM.clone(), AMOUNT).unwrap(),
+        )
+        .await;
+
+    // The first approval bridges 6M, dropping the reserve to 4M.
+    suite
+        .respond_to_withdrawal(
+            &mut accounts.user3,
+            contracts.gateway,
+            first,
+            WithdrawalResponse::Approve,
+        )
+        .await
+        .should_succeed();
+
+    // The second approval succeeds as a transaction, but the reserve no
+    // longer covers the bridged amount, so the user is refunded instead.
+    let events = suite
+        .respond_to_withdrawal(
+            &mut accounts.user3,
+            contracts.gateway,
+            second,
+            WithdrawalResponse::Approve,
+        )
+        .await
+        .should_succeed()
+        .events;
+
+    let failed = events
+        .search_event::<CheckedContractEvent>()
+        .with_predicate(move |e| {
+            e.contract == contracts.gateway && e.ty == "withdrawal_approval_failed"
+        })
+        .take()
+        .one()
+        .event
+        .data
+        .deserialize_json::<gateway::WithdrawalApprovalFailed>()
+        .unwrap();
+
+    assert_eq!(failed.id, second);
+    assert_eq!(failed.user, user_addr);
+    assert_eq!(failed.amount, Uint128::new(AMOUNT));
+    assert!(failed.reason.contains("insufficient reserve"));
+
+    // The user paid for the first withdrawal only; the second escrow came
+    // back, and both requests are settled.
+    suite.balances().should_change(&user_addr, btree_map! {
+        usdc::DENOM.clone() => BalanceChange::Decreased(AMOUNT),
+    });
+
+    suite
+        .query_balance(&contracts.gateway, usdc::DENOM.clone())
+        .should_succeed_and_equal(Uint128::ZERO);
+
+    for id in [first, second] {
+        suite
+            .query_wasm_smart(contracts.gateway, gateway::QueryWithdrawalRequestRequest {
+                id,
+            })
+            .should_fail_with_error("data not found");
+    }
+}
+
+/// A fee raised while a request is pending is enforced at approval: if
+/// the escrowed amount no longer strictly exceeds the fee, the approval
+/// refunds the user instead of bridging.
+#[tokio::test]
+async fn fee_raised_while_pending_refunds_on_approval() {
+    let (mut suite, mut accounts, contracts) = setup_withdrawal_test().await;
+
+    let user_addr = accounts.user2.address();
+
+    suite.balances().record(&user_addr);
+
+    let id = suite
+        .request_transfer_remote(
+            &mut accounts.user2,
+            contracts.gateway,
+            WITHDRAW_REMOTE,
+            withdraw_recipient(),
+            Coin::new(usdc::DENOM.clone(), WITHDRAW).unwrap(),
+        )
+        .await;
+
+    // Raise the fee to exactly the escrowed amount, so nothing would be
+    // left to bridge.
+    suite
+        .execute(
+            &mut accounts.owner,
+            contracts.gateway,
+            &gateway::ExecuteMsg::SetWithdrawalFees(vec![WithdrawalFee {
+                denom: usdc::DENOM.clone(),
+                remote: WITHDRAW_REMOTE,
+                fee: Op::Insert(Uint128::new(WITHDRAW)),
+            }]),
+            Coins::default(),
+        )
+        .await
+        .should_succeed();
+
+    let events = suite
+        .respond_to_withdrawal(
+            &mut accounts.user3,
+            contracts.gateway,
+            id,
+            WithdrawalResponse::Approve,
+        )
+        .await
+        .should_succeed()
+        .events;
+
+    let failed = events
+        .search_event::<CheckedContractEvent>()
+        .with_predicate(move |e| {
+            e.contract == contracts.gateway && e.ty == "withdrawal_approval_failed"
+        })
+        .take()
+        .one()
+        .event
+        .data
+        .deserialize_json::<gateway::WithdrawalApprovalFailed>()
+        .unwrap();
+
+    assert_eq!(failed.id, id);
+    assert_eq!(failed.user, user_addr);
+    assert_eq!(failed.amount, Uint128::new(WITHDRAW));
+    assert!(failed.reason.contains("not sufficient to cover fee"));
+
+    // The escrow came back in full; the request is settled.
+    suite.balances().should_change(&user_addr, btree_map! {
+        usdc::DENOM.clone() => BalanceChange::Unchanged,
+    });
+
+    suite
+        .query_balance(&contracts.gateway, usdc::DENOM.clone())
+        .should_succeed_and_equal(Uint128::ZERO);
+
+    suite
+        .query_wasm_smart(contracts.gateway, gateway::QueryWithdrawalRequestRequest {
+            id,
+        })
+        .should_fail_with_error("data not found");
+}
+
+/// A route removed while a request is pending fails the approval-time
+/// validation: the user is refunded instead of bridging. Uses a
+/// local-origin route, which tracks no reserve and can therefore be
+/// removed with a request outstanding.
+#[tokio::test]
+async fn route_removed_while_pending_refunds_on_approval() {
+    let (mut suite, mut accounts, contracts) = setup_withdrawal_test().await;
+
+    let user_addr = accounts.user2.address();
+
+    let dango_remote = Remote::Warp {
+        domain: 123,
+        contract: Addr::mock(123).into(),
+    };
+
+    // Register a local-origin route. No validator set is needed: the
+    // request is refunded at approval, so no hyperlane message is ever
+    // relayed.
+    suite
+        .execute(
+            &mut accounts.owner,
+            contracts.gateway,
+            &gateway::ExecuteMsg::SetRoutes(btree_set! {
+                (
+                    Origin::Local(dango::DENOM.clone()),
+                    contracts.warp,
+                    dango_remote,
+                ),
+            }),
+            Coins::default(),
+        )
+        .await
+        .should_succeed();
+
+    suite.balances().record(&user_addr);
+
+    let id = suite
+        .request_transfer_remote(
+            &mut accounts.user2,
+            contracts.gateway,
+            dango_remote,
+            withdraw_recipient(),
+            coins! { dango::DENOM.clone() => 1_000 },
+        )
+        .await;
+
+    // Remove the route while the request is pending. Local-origin routes
+    // never track a reserve, so removal is allowed.
+    suite
+        .execute(
+            &mut accounts.owner,
+            contracts.gateway,
+            &gateway::ExecuteMsg::RemoveRoutes(btree_set! { (contracts.warp, dango_remote) }),
+            Coins::default(),
+        )
+        .await
+        .should_succeed();
+
+    // The approval finds no route and refunds the escrow.
+    let events = suite
+        .respond_to_withdrawal(
+            &mut accounts.user3,
+            contracts.gateway,
+            id,
+            WithdrawalResponse::Approve,
+        )
+        .await
+        .should_succeed()
+        .events;
+
+    let failed = events
+        .search_event::<CheckedContractEvent>()
+        .with_predicate(move |e| {
+            e.contract == contracts.gateway && e.ty == "withdrawal_approval_failed"
+        })
+        .take()
+        .one()
+        .event
+        .data
+        .deserialize_json::<gateway::WithdrawalApprovalFailed>()
+        .unwrap();
+
+    assert_eq!(failed.id, id);
+    assert_eq!(failed.user, user_addr);
+    assert_eq!(failed.denom, dango::DENOM.clone());
+    assert!(failed.reason.contains("data not found"));
+
+    suite.balances().should_change(&user_addr, btree_map! {
+        dango::DENOM.clone() => BalanceChange::Unchanged,
+    });
+
+    suite
+        .query_balance(&contracts.gateway, dango::DENOM.clone())
+        .should_succeed_and_equal(Uint128::ZERO);
+
+    suite
+        .query_wasm_smart(contracts.gateway, gateway::QueryWithdrawalRequestRequest {
+            id,
+        })
+        .should_fail_with_error("data not found");
+}
+
+/// A frozen request is re-validated when the owner approves it. If the
+/// withdrawal no longer fits the rate limit, the owner's approval refunds
+/// the user — settling the request out of the frozen queue.
+#[tokio::test]
+async fn frozen_request_approval_failure_refunds() {
+    let (mut suite, mut accounts, contracts) = setup_withdrawal_test().await;
+
+    let user_addr = accounts.user2.address();
+
+    // Escrowed per request: 8M to bridge plus the fee — two of them
+    // individually fit the 10M cap, together they exceed it.
+    const AMOUNT: u128 = 8_000_000 + ARBITRUM_USDC_WITHDRAWAL_FEE;
+
+    // 10% rate limit against the 100M supply → cap 10M, seeded immediately.
+    suite
+        .execute(
+            &mut accounts.owner,
+            contracts.gateway,
+            &gateway::ExecuteMsg::SetRateLimits(btree_map! {
+                usdc::DENOM.clone() => RateLimit::new_unchecked(Udec128::new_percent(10)),
+            }),
+            Coins::default(),
+        )
+        .await
+        .should_succeed();
+
+    suite.balances().record(&user_addr);
+
+    // Open a request and freeze it.
+    let frozen_id = suite
+        .request_transfer_remote(
+            &mut accounts.user2,
+            contracts.gateway,
+            WITHDRAW_REMOTE,
+            withdraw_recipient(),
+            Coin::new(usdc::DENOM.clone(), AMOUNT).unwrap(),
+        )
+        .await;
+
+    suite
+        .respond_to_withdrawal(
+            &mut accounts.user3,
+            contracts.gateway,
+            frozen_id,
+            WithdrawalResponse::Freeze,
+        )
+        .await
+        .should_succeed();
+
+    // A second request is approved while the first sits frozen, consuming
+    // 8M of the 10M window.
+    let second_id = suite
+        .request_transfer_remote(
+            &mut accounts.user2,
+            contracts.gateway,
+            WITHDRAW_REMOTE,
+            withdraw_recipient(),
+            Coin::new(usdc::DENOM.clone(), AMOUNT).unwrap(),
+        )
+        .await;
+
+    suite
+        .respond_to_withdrawal(
+            &mut accounts.user3,
+            contracts.gateway,
+            second_id,
+            WithdrawalResponse::Approve,
+        )
+        .await
+        .should_succeed();
+
+    // The owner approves the frozen request; it no longer fits the cap,
+    // so the user is refunded and the frozen queue is emptied.
+    let events = suite
+        .respond_to_withdrawal(
+            &mut accounts.owner,
+            contracts.gateway,
+            frozen_id,
+            WithdrawalResponse::Approve,
+        )
+        .await
+        .should_succeed()
+        .events;
+
+    let failed = events
+        .search_event::<CheckedContractEvent>()
+        .with_predicate(move |e| {
+            e.contract == contracts.gateway && e.ty == "withdrawal_approval_failed"
+        })
+        .take()
+        .one()
+        .event
+        .data
+        .deserialize_json::<gateway::WithdrawalApprovalFailed>()
+        .unwrap();
+
+    assert_eq!(failed.id, frozen_id);
+    assert_eq!(failed.user, user_addr);
+    assert_eq!(failed.amount, Uint128::new(AMOUNT));
+    assert!(failed.reason.contains("insufficient outbound quota"));
+
+    // The user paid for the approved withdrawal only.
+    suite.balances().should_change(&user_addr, btree_map! {
+        usdc::DENOM.clone() => BalanceChange::Decreased(AMOUNT),
+    });
+
+    suite
+        .query_balance(&contracts.gateway, usdc::DENOM.clone())
+        .should_succeed_and_equal(Uint128::ZERO);
+
+    // The refunded request left the frozen queue and is deleted.
+    suite
+        .query_wasm_smart(
+            contracts.gateway,
+            gateway::QueryFrozenWithdrawalRequestsRequest {
+                start_after: None,
+                limit: None,
+            },
+        )
+        .should_succeed_and(Vec::is_empty);
+
+    suite
+        .query_wasm_smart(contracts.gateway, gateway::QueryWithdrawalRequestRequest {
+            id: frozen_id,
+        })
+        .should_fail_with_error("data not found");
+}
+
+/// A personal quota is consumed at approval, not at request time: a quota
+/// that covers the withdrawal when the request is created but expires
+/// while it is pending no longer counts at approval, and the withdrawal
+/// falls back to the global window.
+#[tokio::test]
+async fn personal_quota_expired_between_request_and_approval() {
+    let (mut suite, mut accounts, contracts) = setup_withdrawal_test().await;
+
+    let user_addr = accounts.user2.address();
+
+    // Escrow 5M plus the fee — well over the 1M cap, but fully covered by
+    // the personal quota at request time.
+    const AMOUNT: u128 = 5_000_000 + ARBITRUM_USDC_WITHDRAWAL_FEE;
+
+    // 1% rate limit against the 100M supply → cap 1M, seeded immediately.
+    suite
+        .execute(
+            &mut accounts.owner,
+            contracts.gateway,
+            &gateway::ExecuteMsg::SetRateLimits(btree_map! {
+                usdc::DENOM.clone() => RateLimit::new_unchecked(Udec128::new_percent(1)),
+            }),
+            Coins::default(),
+        )
+        .await
+        .should_succeed();
+
+    // Grant a 10M personal quota that expires in one hour.
+    suite
+        .execute(
+            &mut accounts.owner,
+            contracts.gateway,
+            &gateway::ExecuteMsg::SetPersonalQuota {
+                user: user_addr,
+                denom: usdc::DENOM.clone(),
+                quota: Op::Insert(SetPersonalQuotaRequest {
+                    amount: Uint128::new(10_000_000),
+                    available_for: Some(Duration::from_hours(1)),
+                }),
+            },
+            Coins::default(),
+        )
+        .await
+        .should_succeed();
+
+    suite.balances().record(&user_addr);
+
+    // The quota covers the 5M in full, so the fail-fast validation passes
+    // despite the 1M cap.
+    let id = suite
+        .request_transfer_remote(
+            &mut accounts.user2,
+            contracts.gateway,
+            WITHDRAW_REMOTE,
+            withdraw_recipient(),
+            Coin::new(usdc::DENOM.clone(), AMOUNT).unwrap(),
+        )
+        .await;
+
+    // The quota expires while the request is pending.
+    advance_by(&mut suite, Duration::from_hours(1)).await;
+
+    // Approval re-validates with the quota expired: the full 5M counts
+    // against the 1M cap, so the user is refunded instead.
+    let events = suite
+        .respond_to_withdrawal(
+            &mut accounts.user3,
+            contracts.gateway,
+            id,
+            WithdrawalResponse::Approve,
+        )
+        .await
+        .should_succeed()
+        .events;
+
+    let failed = events
+        .search_event::<CheckedContractEvent>()
+        .with_predicate(move |e| {
+            e.contract == contracts.gateway && e.ty == "withdrawal_approval_failed"
+        })
+        .take()
+        .one()
+        .event
+        .data
+        .deserialize_json::<gateway::WithdrawalApprovalFailed>()
+        .unwrap();
+
+    assert_eq!(failed.id, id);
+    assert_eq!(failed.user, user_addr);
+    assert!(failed.reason.contains("insufficient outbound quota"));
+
+    suite.balances().should_change(&user_addr, btree_map! {
+        usdc::DENOM.clone() => BalanceChange::Unchanged,
+    });
+
+    // The expired entry is left in storage untouched — the failed
+    // consumption never scrubbed it.
+    let pq = suite
+        .query_wasm_smart(contracts.gateway, gateway::QueryPersonalQuotaRequest {
+            user: user_addr,
+            denom: usdc::DENOM.clone(),
+        })
+        .should_succeed()
+        .expect("expired entry is left in storage");
+    assert_eq!(pq.amount, Uint128::new(10_000_000));
+
+    suite
+        .query_wasm_smart(contracts.gateway, gateway::QueryWithdrawalRequestRequest {
+            id,
+        })
+        .should_fail_with_error("data not found");
 }
 
 /// Rotating the guardian takes effect immediately, including for requests
