@@ -153,6 +153,7 @@ where
                 .collect(),
             rate_limits: opt.gateway.rate_limits,
             withdrawal_fees: opt.gateway.withdrawal_fees,
+            guardian: opt.gateway.guardian,
         },
         "dango/gateway",
         "dango/gateway",
