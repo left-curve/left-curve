@@ -467,6 +467,16 @@ pub struct PairState {
     /// Block timestamp at which `index_price` was last updated. Used to compute
     /// the time delta for the EWMA smoothing step.
     pub last_index_time: Timestamp,
+
+    /// The last external oracle price observed in a regular market session.
+    /// Unlike `index_price`, this does not drift during closed sessions. It is
+    /// the reference for the order price band and the closed-session drift
+    /// bound, so neither can be walked away from the true price by the book.
+    pub oracle_price: UsdPrice,
+
+    /// The oracle's own observation timestamp for `oracle_price`. Recorded for
+    /// observability; `oracle_price` is only refreshed in a regular session.
+    pub last_oracle_time: Timestamp,
 }
 
 /// State of a specific user. Saved in contract storage.

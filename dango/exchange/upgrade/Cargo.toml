@@ -10,5 +10,9 @@ rust-version  = { workspace = true }
 
 [dependencies]
 dango-app        = { workspace = true }
+dango-order-book = { workspace = true }
+dango-perps      = { workspace = true }
 dango-primitives = { workspace = true }
+dango-storage    = { workspace = true }
+dango-types      = { workspace = true }
 tracing          = { workspace = true }

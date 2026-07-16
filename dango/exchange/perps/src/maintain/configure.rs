@@ -88,6 +88,8 @@ pub fn configure(
                 PairState {
                     index_price: price.humanized_price,
                     last_index_time: price.timestamp,
+                    oracle_price: price.humanized_price,
+                    last_oracle_time: price.timestamp,
                     ..Default::default()
                 }
             };

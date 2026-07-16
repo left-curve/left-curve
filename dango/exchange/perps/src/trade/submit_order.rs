@@ -385,6 +385,12 @@ pub(crate) fn compute_submit_order_outcome(
     let mut pair_state = pair_state.clone();
     let mut taker_state = taker_state.clone();
 
+    // `oracle_price` is the mark (`index_price`): used for fills, fees, and
+    // minimum-order-size. The order price band instead references the last
+    // external oracle price, which does not drift during closed sessions, so
+    // resting orders cannot walk the band away from the true price.
+    let reference_price = pair_state.oracle_price;
+
     // -------------- Step 0. Validate prices and slippage --------------------
 
     match &kind {
@@ -398,7 +404,7 @@ pub(crate) fn compute_submit_order_outcome(
             // `limit_price` is rejected here too.
             check_price_band(
                 *limit_price,
-                oracle_price,
+                reference_price,
                 pair_param.max_limit_price_deviation,
             )?;
         },
@@ -584,7 +590,7 @@ pub(crate) fn compute_submit_order_outcome(
         None, // no forced maker fee; respect per-user overrides and tier schedule
         &BTreeMap::new(),
         target_price,
-        oracle_price,
+        reference_price,
         pair_param.max_limit_price_deviation,
         fillable_size,
         next_order_id,
@@ -1786,6 +1792,7 @@ mod tests {
         PAIR_STATES
             .save(storage, &pair_id(), &PairState {
                 index_price: UsdPrice::new_percent(5_000_000), // $50,000
+                oracle_price: UsdPrice::new_percent(5_000_000), // $50,000
                 ..Default::default()
             })
             .unwrap();
@@ -4087,7 +4094,10 @@ mod tests {
             .save(&mut ctx.storage, &pair_id(), &test_pair_param())
             .unwrap();
         PAIR_STATES
-            .save(&mut ctx.storage, &pair_id(), &PairState::default())
+            .save(&mut ctx.storage, &pair_id(), &PairState {
+                oracle_price: UsdPrice::new_int(50_000),
+                ..Default::default()
+            })
             .unwrap();
         NEXT_ORDER_ID
             .save(&mut ctx.storage, &Uint64::new(1))
@@ -4194,7 +4204,10 @@ mod tests {
             .save(&mut ctx.storage, &pair_id(), &test_pair_param())
             .unwrap();
         PAIR_STATES
-            .save(&mut ctx.storage, &pair_id(), &PairState::default())
+            .save(&mut ctx.storage, &pair_id(), &PairState {
+                oracle_price: UsdPrice::new_int(50_000),
+                ..Default::default()
+            })
             .unwrap();
         NEXT_ORDER_ID
             .save(&mut ctx.storage, &Uint64::new(1))
@@ -4357,7 +4370,10 @@ mod tests {
             .save(&mut ctx.storage, &pair_id(), &test_pair_param())
             .unwrap();
         PAIR_STATES
-            .save(&mut ctx.storage, &pair_id(), &PairState::default())
+            .save(&mut ctx.storage, &pair_id(), &PairState {
+                oracle_price: UsdPrice::new_int(50_000),
+                ..Default::default()
+            })
             .unwrap();
         NEXT_ORDER_ID
             .save(&mut ctx.storage, &Uint64::new(1))
@@ -5020,7 +5036,12 @@ mod tests {
 
         let param = test_param();
         let pair_param = test_pair_param();
-        let pair_state = PAIR_STATES.load(&ctx.storage, &pair_id()).unwrap();
+        // Model an oracle that has moved to $30k; stale makers from when it was
+        // higher now fall outside the band around it.
+        let pair_state = PairState {
+            oracle_price: UsdPrice::new_int(30_000),
+            ..PAIR_STATES.load(&ctx.storage, &pair_id()).unwrap()
+        };
         let taker_state = UserState {
             margin: LARGE_COLLATERAL,
             ..Default::default()
@@ -5267,7 +5288,12 @@ mod tests {
 
         let param = test_param();
         let pair_param = test_pair_param();
-        let pair_state = PAIR_STATES.load(&ctx.storage, &pair_id()).unwrap();
+        // Model an oracle that has moved to $30k; stale makers from when it was
+        // higher now fall outside the band around it.
+        let pair_state = PairState {
+            oracle_price: UsdPrice::new_int(30_000),
+            ..PAIR_STATES.load(&ctx.storage, &pair_id()).unwrap()
+        };
         let taker_state = UserState {
             margin: LARGE_COLLATERAL,
             ..Default::default()
@@ -5791,7 +5817,10 @@ mod tests {
             &State::default(),
             &pair_id(),
             &test_pair_param(),
-            &PairState::default(),
+            &PairState {
+                oracle_price: UsdPrice::new_int(50_000),
+                ..Default::default()
+            },
             &ts,
             UsdPrice::new_int(50_000),
             Quantity::new_int(10),
@@ -5842,7 +5871,10 @@ mod tests {
             &State::default(),
             &pair_id(),
             &test_pair_param(),
-            &PairState::default(),
+            &PairState {
+                oracle_price: UsdPrice::new_int(50_000),
+                ..Default::default()
+            },
             &ts,
             UsdPrice::new_int(50_000),
             Quantity::new_int(-10),
@@ -5896,6 +5928,7 @@ mod tests {
         // Sell 10 (closes the long). TP/SL should be dropped.
         let pair_state = PairState {
             long_oi: Quantity::new_int(10),
+            oracle_price: UsdPrice::new_int(50_000),
             ..Default::default()
         };
 
@@ -5957,7 +5990,10 @@ mod tests {
             &State::default(),
             &pair_id(),
             &test_pair_param(),
-            &PairState::default(),
+            &PairState {
+                oracle_price: UsdPrice::new_int(50_000),
+                ..Default::default()
+            },
             &ts,
             UsdPrice::new_int(50_000),
             Quantity::new_int(10),
@@ -6006,7 +6042,10 @@ mod tests {
             &State::default(),
             &pair_id(),
             &test_pair_param(),
-            &PairState::default(),
+            &PairState {
+                oracle_price: UsdPrice::new_int(50_000),
+                ..Default::default()
+            },
             &ts,
             UsdPrice::new_int(50_000),
             Quantity::new_int(10),
@@ -6072,7 +6111,10 @@ mod tests {
             &State::default(),
             &pair_id(),
             &test_pair_param(),
-            &PairState::default(),
+            &PairState {
+                oracle_price: UsdPrice::new_int(50_000),
+                ..Default::default()
+            },
             &ts,
             UsdPrice::new_int(50_000),
             Quantity::new_int(10),
@@ -6150,7 +6192,10 @@ mod tests {
             &State::default(),
             &pair_id(),
             &test_pair_param(),
-            &PairState::default(),
+            &PairState {
+                oracle_price: UsdPrice::new_int(50_000),
+                ..Default::default()
+            },
             &taker_state(&ctx.storage),
             UsdPrice::new_int(50_000),
             Quantity::new_int(10),
@@ -6205,7 +6250,10 @@ mod tests {
             &State::default(),
             &pair_id(),
             &test_pair_param(),
-            &PairState::default(),
+            &PairState {
+                oracle_price: UsdPrice::new_int(50_000),
+                ..Default::default()
+            },
             &ts,
             UsdPrice::new_int(50_000),
             Quantity::new_int(10),
@@ -6274,6 +6322,7 @@ mod tests {
             &test_pair_param(),
             &PairState {
                 long_oi: Quantity::new_int(5),
+                oracle_price: UsdPrice::new_int(50_000),
                 ..Default::default()
             },
             &ts,
@@ -6353,6 +6402,7 @@ mod tests {
             &test_pair_param(),
             &PairState {
                 short_oi: Quantity::new_int(10),
+                oracle_price: UsdPrice::new_int(50_000),
                 ..Default::default()
             },
             &ts,
@@ -6444,6 +6494,7 @@ mod tests {
             &test_pair_param(),
             &PairState {
                 short_oi: Quantity::new_int(10),
+                oracle_price: UsdPrice::new_int(50_000),
                 ..Default::default()
             },
             &ts,
@@ -6507,7 +6558,10 @@ mod tests {
             &State::default(),
             &pair_id(),
             &test_pair_param(),
-            &PairState::default(),
+            &PairState {
+                oracle_price: UsdPrice::new_int(48_000),
+                ..Default::default()
+            },
             &ts,
             UsdPrice::new_int(48_000),
             Quantity::new_int(10),
