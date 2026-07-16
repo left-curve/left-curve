@@ -3901,7 +3901,7 @@ dependencies = [
 
 [[package]]
 name = "dango-cli"
-version = "0.27.1"
+version = "0.28.0"
 dependencies = [
  "anyhow",
  "clap",
