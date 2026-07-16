@@ -4026,6 +4026,237 @@ async fn withdrawal_request_ids_increment() {
     assert_eq!(id, 2);
 }
 
+/// A request exceeding the rate-limit cap is rejected outright by the
+/// fail-fast validation: no request is stored and no funds leave the user.
+#[tokio::test]
+async fn over_cap_request_fails_fast() {
+    let (mut suite, mut accounts, contracts) = setup_withdrawal_test().await;
+
+    let user_addr = accounts.user2.address();
+
+    // 10% rate limit against the 100M supply → cap 10M, seeded immediately.
+    suite
+        .execute(
+            &mut accounts.owner,
+            contracts.gateway,
+            &gateway::ExecuteMsg::SetRateLimits(btree_map! {
+                usdc::DENOM.clone() => RateLimit::new_unchecked(Udec128::new_percent(10)),
+            }),
+            Coins::default(),
+        )
+        .await
+        .should_succeed();
+
+    suite.balances().record(&user_addr);
+
+    // 11M is over the 10M cap; the request itself fails.
+    suite
+        .execute(
+            &mut accounts.user2,
+            contracts.gateway,
+            &gateway::ExecuteMsg::TransferRemote {
+                remote: WITHDRAW_REMOTE,
+                recipient: withdraw_recipient(),
+            },
+            Coin::new(
+                usdc::DENOM.clone(),
+                11_000_000 + ARBITRUM_USDC_WITHDRAWAL_FEE,
+            )
+            .unwrap(),
+        )
+        .await
+        .should_fail_with_error("insufficient outbound quota! denom: bridge/usdc, requested: 11000000, residue after personal quota: 11000000");
+
+    // Nothing was stored and nothing was escrowed.
+    suite.balances().should_change(&user_addr, btree_map! {
+        usdc::DENOM.clone() => BalanceChange::Unchanged,
+    });
+
+    suite
+        .query_balance(&contracts.gateway, usdc::DENOM.clone())
+        .should_succeed_and_equal(Uint128::ZERO);
+
+    suite
+        .query_wasm_smart(contracts.gateway, gateway::QueryWithdrawalRequestsRequest {
+            start_after: None,
+            limit: None,
+        })
+        .should_succeed_and(|page| page.is_empty());
+}
+
+/// The fail-fast validation is read-only: pending requests consume no
+/// quota, so two requests that individually fit the cap both pass it. The
+/// first approval consumes the quota; the second approval then finds no
+/// headroom left and refunds the user instead of bridging.
+#[tokio::test]
+async fn racing_approvals_refund_second_request() {
+    let (mut suite, mut accounts, contracts) = setup_withdrawal_test().await;
+
+    let user_addr = accounts.user2.address();
+
+    // Escrowed per racing request: 8M to bridge plus the fee — two of them
+    // individually fit the 10M cap, together they exceed it.
+    const AMOUNT: u128 = 8_000_000 + ARBITRUM_USDC_WITHDRAWAL_FEE;
+
+    // 10% rate limit against the 100M supply → cap 10M.
+    suite
+        .execute(
+            &mut accounts.owner,
+            contracts.gateway,
+            &gateway::ExecuteMsg::SetRateLimits(btree_map! {
+                usdc::DENOM.clone() => RateLimit::new_unchecked(Udec128::new_percent(10)),
+            }),
+            Coins::default(),
+        )
+        .await
+        .should_succeed();
+
+    suite.balances().record(&user_addr);
+
+    let first = suite
+        .request_transfer_remote(
+            &mut accounts.user2,
+            contracts.gateway,
+            WITHDRAW_REMOTE,
+            withdraw_recipient(),
+            Coin::new(usdc::DENOM.clone(), AMOUNT).unwrap(),
+        )
+        .await;
+
+    let second = suite
+        .request_transfer_remote(
+            &mut accounts.user2,
+            contracts.gateway,
+            WITHDRAW_REMOTE,
+            withdraw_recipient(),
+            Coin::new(usdc::DENOM.clone(), AMOUNT).unwrap(),
+        )
+        .await;
+
+    // The first approval bridges, consuming 8M of the 10M cap.
+    suite
+        .respond_to_withdrawal(
+            &mut accounts.user3,
+            contracts.gateway,
+            first,
+            WithdrawalResponse::Approve,
+        )
+        .await
+        .should_succeed();
+
+    // The second approval succeeds as a transaction, but the withdrawal no
+    // longer fits the cap, so the user is refunded instead.
+    let events = suite
+        .respond_to_withdrawal(
+            &mut accounts.user3,
+            contracts.gateway,
+            second,
+            WithdrawalResponse::Approve,
+        )
+        .await
+        .should_succeed()
+        .events;
+
+    let failed = events
+        .search_event::<CheckedContractEvent>()
+        .with_predicate(move |e| {
+            e.contract == contracts.gateway && e.ty == "withdrawal_approval_failed"
+        })
+        .take()
+        .one()
+        .event
+        .data
+        .deserialize_json::<gateway::WithdrawalApprovalFailed>()
+        .unwrap();
+
+    assert_eq!(failed.id, second);
+    assert_eq!(failed.user, user_addr);
+    assert_eq!(failed.denom, usdc::DENOM.clone());
+    assert_eq!(failed.amount, Uint128::new(AMOUNT));
+    assert!(failed.reason.contains("insufficient outbound quota"));
+
+    // The user paid for the first withdrawal only; the second escrow came
+    // back. The gateway keeps nothing, and both requests are settled.
+    suite.balances().should_change(&user_addr, btree_map! {
+        usdc::DENOM.clone() => BalanceChange::Decreased(AMOUNT),
+    });
+
+    suite
+        .query_balance(&contracts.gateway, usdc::DENOM.clone())
+        .should_succeed_and_equal(Uint128::ZERO);
+
+    // Both requests are deleted from storage — the refunded one is just as
+    // settled as the bridged one — and the pending queue is empty.
+    for id in [first, second] {
+        suite
+            .query_wasm_smart(contracts.gateway, gateway::QueryWithdrawalRequestRequest {
+                id,
+            })
+            .should_fail_with_error("data not found");
+    }
+
+    suite
+        .query_wasm_smart(contracts.gateway, gateway::QueryWithdrawalRequestsRequest {
+            start_after: None,
+            limit: None,
+        })
+        .should_succeed_and(|page| page.is_empty());
+}
+
+/// A request through a route whose reserve can't cover the bridged amount
+/// is rejected outright by the fail-fast validation: no request is stored
+/// and no funds leave the user.
+#[tokio::test]
+async fn insufficient_reserve_request_fails_fast() {
+    let (mut suite, mut accounts, contracts) = setup_withdrawal_test().await;
+
+    let user_addr = accounts.user2.address();
+
+    /// Mirrors the ethereum USDC withdrawal fee configured in the test
+    /// genesis at `dango/testing/src/genesis.rs`; keep the two in sync.
+    const ETHEREUM_USDC_WITHDRAWAL_FEE: u128 = 1_000_000;
+
+    suite.balances().record(&user_addr);
+
+    // The user holds USDC bridged in from arbitrum; the ethereum route was
+    // never funded, so its reserve is zero and the request fails.
+    suite
+        .execute(
+            &mut accounts.user2,
+            contracts.gateway,
+            &gateway::ExecuteMsg::TransferRemote {
+                remote: Remote::Warp {
+                    domain: mock_ethereum::DOMAIN,
+                    contract: mock_ethereum::USDC_WARP,
+                },
+                recipient: withdraw_recipient(),
+            },
+            Coin::new(
+                usdc::DENOM.clone(),
+                5_000_000 + ETHEREUM_USDC_WITHDRAWAL_FEE,
+            )
+            .unwrap(),
+        )
+        .await
+        .should_fail_with_error("insufficient reserve!");
+
+    // Nothing was stored and nothing was escrowed.
+    suite.balances().should_change(&user_addr, btree_map! {
+        usdc::DENOM.clone() => BalanceChange::Unchanged,
+    });
+
+    suite
+        .query_balance(&contracts.gateway, usdc::DENOM.clone())
+        .should_succeed_and_equal(Uint128::ZERO);
+
+    suite
+        .query_wasm_smart(contracts.gateway, gateway::QueryWithdrawalRequestsRequest {
+            start_after: None,
+            limit: None,
+        })
+        .should_succeed_and(|page| page.is_empty());
+}
+
 // /// Full lifecycle of the withdrawal request flow: guardian configuration,
 // /// escrow on request, and the approve / reject responses.
 // #[tokio::test]
