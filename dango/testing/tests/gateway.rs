@@ -3548,15 +3548,42 @@ async fn withdrawal_approval_coin_accounting() {
     suite.balances().record(&contracts.gateway);
     suite.balances().record(&owner_addr);
 
-    let id = suite
-        .request_transfer_remote(
+    // Execute the request directly (rather than through the helper) to get
+    // at the emitted `withdrawal_requested` event.
+    let events = suite
+        .execute(
             &mut accounts.user2,
             contracts.gateway,
-            WITHDRAW_REMOTE,
-            withdraw_recipient(),
+            &gateway::ExecuteMsg::TransferRemote {
+                remote: WITHDRAW_REMOTE,
+                recipient: withdraw_recipient(),
+            },
             Coin::new(usdc::DENOM.clone(), WITHDRAW).unwrap(),
         )
-        .await;
+        .await
+        .should_succeed()
+        .events;
+
+    let requested = events
+        .search_event::<CheckedContractEvent>()
+        .with_predicate(move |e| e.contract == contracts.gateway && e.ty == "withdrawal_requested")
+        .take()
+        .one()
+        .event
+        .data
+        .deserialize_json::<gateway::WithdrawalRequested>()
+        .unwrap();
+
+    assert_eq!(requested, gateway::WithdrawalRequested {
+        id: 0,
+        user: user_addr,
+        remote: WITHDRAW_REMOTE,
+        recipient: withdraw_recipient(),
+        denom: usdc::DENOM.clone(),
+        amount: Uint128::new(WITHDRAW),
+    });
+
+    let id = requested.id;
 
     suite.balances().should_change(&user_addr, btree_map! {
         usdc::DENOM.clone() => BalanceChange::Decreased(WITHDRAW),
@@ -3634,7 +3661,7 @@ async fn withdrawal_rejection_coin_accounting() {
         )
         .await;
 
-    suite
+    let events = suite
         .respond_to_withdrawal(
             &mut accounts.user3,
             contracts.gateway,
@@ -3642,7 +3669,26 @@ async fn withdrawal_rejection_coin_accounting() {
             WithdrawalResponse::Reject,
         )
         .await
-        .should_succeed();
+        .should_succeed()
+        .events;
+
+    let rejected = events
+        .search_event::<CheckedContractEvent>()
+        .with_predicate(move |e| e.contract == contracts.gateway && e.ty == "withdrawal_rejected")
+        .take()
+        .one()
+        .event
+        .data
+        .deserialize_json::<gateway::WithdrawalRejected>()
+        .unwrap();
+
+    assert_eq!(rejected, gateway::WithdrawalRejected {
+        id,
+        user: user_addr,
+        denom: usdc::DENOM.clone(),
+        amount: Uint128::new(WITHDRAW),
+        rejected_by: accounts.user3.address(),
+    });
 
     // Across request + rejection the user is made whole — no fee is
     // charged on a rejected withdrawal — and the gateway keeps nothing.
@@ -3691,7 +3737,7 @@ async fn withdrawal_freeze_coin_accounting() {
         )
         .await;
 
-    suite
+    let events = suite
         .respond_to_withdrawal(
             &mut accounts.user3,
             contracts.gateway,
@@ -3699,7 +3745,26 @@ async fn withdrawal_freeze_coin_accounting() {
             WithdrawalResponse::Freeze,
         )
         .await
-        .should_succeed();
+        .should_succeed()
+        .events;
+
+    let frozen = events
+        .search_event::<CheckedContractEvent>()
+        .with_predicate(move |e| e.contract == contracts.gateway && e.ty == "withdrawal_frozen")
+        .take()
+        .one()
+        .event
+        .data
+        .deserialize_json::<gateway::WithdrawalFrozen>()
+        .unwrap();
+
+    assert_eq!(frozen, gateway::WithdrawalFrozen {
+        id,
+        user: user_addr,
+        denom: usdc::DENOM.clone(),
+        amount: Uint128::new(WITHDRAW),
+        frozen_by: accounts.user3.address(),
+    });
 
     // The funds left the user on request, and the freeze keeps them in the
     // gateway.
@@ -3760,7 +3825,7 @@ async fn withdrawal_confiscation_coin_accounting() {
     suite.balances().record(&contracts.gateway);
     suite.balances().record(&owner_addr);
 
-    suite
+    let events = suite
         .respond_to_withdrawal(
             &mut accounts.owner,
             contracts.gateway,
@@ -3768,7 +3833,27 @@ async fn withdrawal_confiscation_coin_accounting() {
             WithdrawalResponse::Confiscate,
         )
         .await
-        .should_succeed();
+        .should_succeed()
+        .events;
+
+    let confiscated = events
+        .search_event::<CheckedContractEvent>()
+        .with_predicate(move |e| {
+            e.contract == contracts.gateway && e.ty == "withdrawal_confiscated"
+        })
+        .take()
+        .one()
+        .event
+        .data
+        .deserialize_json::<gateway::WithdrawalConfiscated>()
+        .unwrap();
+
+    assert_eq!(confiscated, gateway::WithdrawalConfiscated {
+        id,
+        user: user_addr,
+        denom: usdc::DENOM.clone(),
+        amount: Uint128::new(WITHDRAW),
+    });
 
     suite.balances().should_change(&user_addr, btree_map! {
         usdc::DENOM.clone() => BalanceChange::Unchanged,
@@ -4255,6 +4340,66 @@ async fn insufficient_reserve_request_fails_fast() {
             limit: None,
         })
         .should_succeed_and(|page| page.is_empty());
+}
+
+/// Rotating the guardian takes effect immediately, including for requests
+/// opened before the rotation: the old guardian loses its response rights,
+/// the new one gains them.
+#[tokio::test]
+async fn guardian_rotation() {
+    let (mut suite, mut accounts, contracts) = setup_withdrawal_test().await;
+
+    let new_guardian_addr = accounts.user1.address();
+
+    // Open a request while user3 is still the guardian.
+    let id = suite
+        .request_transfer_remote(
+            &mut accounts.user2,
+            contracts.gateway,
+            WITHDRAW_REMOTE,
+            withdraw_recipient(),
+            Coin::new(usdc::DENOM.clone(), WITHDRAW).unwrap(),
+        )
+        .await;
+
+    // Rotate the guardian to user1.
+    suite
+        .execute(
+            &mut accounts.owner,
+            contracts.gateway,
+            &gateway::ExecuteMsg::SetGuardian(new_guardian_addr),
+            Coins::default(),
+        )
+        .await
+        .should_succeed();
+
+    suite
+        .query_wasm_smart(contracts.gateway, gateway::QueryGuardianRequest {})
+        .should_succeed_and_equal(Some(new_guardian_addr));
+
+    // The old guardian can no longer respond — not even to a request that
+    // was opened on its watch.
+    for response in [
+        WithdrawalResponse::Approve,
+        WithdrawalResponse::Reject,
+        WithdrawalResponse::Freeze,
+    ] {
+        suite
+            .respond_to_withdrawal(&mut accounts.user3, contracts.gateway, id, response)
+            .await
+            .should_fail_with_error("you don't have the right, O you don't have the right");
+    }
+
+    // The new guardian can, including this pre-rotation request.
+    suite
+        .respond_to_withdrawal(
+            &mut accounts.user1,
+            contracts.gateway,
+            id,
+            WithdrawalResponse::Approve,
+        )
+        .await
+        .should_succeed();
 }
 
 // /// Full lifecycle of the withdrawal request flow: guardian configuration,
