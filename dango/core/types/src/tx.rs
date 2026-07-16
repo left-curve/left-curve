@@ -35,7 +35,7 @@ pub struct Tx {
 
 impl Tx {
     pub fn tx_hash(&self) -> StdResult<Hash256> {
-        Ok(self.to_json_vec()?.hash256())
+        Ok(self.to_json_vec()?.sha2_256())
     }
 }
 

@@ -69,16 +69,16 @@ impl StartCmd {
             // Below are parameters if we want to switch to `HybridVm`:
             // cfg.grug.wasm_cache_capacity,
             // [
-            //     codes.account_factory.to_bytes().hash256(),
-            //     codes.account_single.to_bytes().hash256(),
-            //     codes.bank.to_bytes().hash256(),
-            //     codes.gateway.to_bytes().hash256(),
-            //     codes.hyperlane.ism.to_bytes().hash256(),
-            //     codes.hyperlane.mailbox.to_bytes().hash256(),
-            //     codes.hyperlane.va.to_bytes().hash256(),
-            //     codes.oracle.to_bytes().hash256(),
-            //     codes.vesting.to_bytes().hash256(),
-            //     codes.warp.to_bytes().hash256(),
+            //     codes.account_factory.to_bytes().sha2_256(),
+            //     codes.account_single.to_bytes().sha2_256(),
+            //     codes.bank.to_bytes().sha2_256(),
+            //     codes.gateway.to_bytes().sha2_256(),
+            //     codes.hyperlane.ism.to_bytes().sha2_256(),
+            //     codes.hyperlane.mailbox.to_bytes().sha2_256(),
+            //     codes.hyperlane.va.to_bytes().sha2_256(),
+            //     codes.oracle.to_bytes().sha2_256(),
+            //     codes.vesting.to_bytes().sha2_256(),
+            //     codes.warp.to_bytes().sha2_256(),
             // ]
         );
 

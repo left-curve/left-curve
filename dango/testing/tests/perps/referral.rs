@@ -51,7 +51,7 @@ async fn referral_during_user_register() {
     let user = TestAccount::new_random().predict_address(
         contracts.account_factory,
         3,
-        codes.account.to_bytes().hash256(),
+        codes.account.to_bytes().sha2_256(),
         true,
     );
 

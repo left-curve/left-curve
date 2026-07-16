@@ -60,7 +60,7 @@ where
         .into_iter()
         .map(|code| {
             let binary: Binary = code.clone().into();
-            binary.hash256()
+            binary.sha2_256()
         })
         .collect()
     }
