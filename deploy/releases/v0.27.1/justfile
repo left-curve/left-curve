@@ -113,6 +113,7 @@ deploy-mainnet-hetzner1:
         -e dex_bot_tag={{ bots_image_tag }} \
         -e perps_bot_tag={{ bots_image_tag }} \
         -e perp_liquidator_tag={{ bots_image_tag }} \
+        -e withdrawal_approver_tag={{ bots_image_tag }} \
         -e cometbft_peers={{ hetzner3 }},{{ hetzner5 }},{{ hetzner6 }} \
         --limit {{ hetzner1 }} \
         2>&1 | tee logs/$(date -u +%Y%m%d%H%M%S)-deploy-mainnet-hetzner1.log
@@ -128,6 +129,7 @@ deploy-mainnet-hetzner3:
         -e dex_bot_tag={{ bots_image_tag }} \
         -e perps_bot_tag={{ bots_image_tag }} \
         -e perp_liquidator_tag={{ bots_image_tag }} \
+        -e withdrawal_approver_tag={{ bots_image_tag }} \
         -e cometbft_peers={{ hetzner1 }},{{ hetzner5 }},{{ hetzner6 }} \
         --limit {{ hetzner3 }} \
         2>&1 | tee logs/$(date -u +%Y%m%d%H%M%S)-deploy-mainnet-hetzner3.log
@@ -143,6 +145,7 @@ deploy-mainnet-hetzner5:
         -e dex_bot_tag={{ bots_image_tag }} \
         -e perps_bot_tag={{ bots_image_tag }} \
         -e perp_liquidator_tag={{ bots_image_tag }} \
+        -e withdrawal_approver_tag={{ bots_image_tag }} \
         -e cometbft_peers={{ hetzner1 }},{{ hetzner3 }},{{ hetzner6 }} \
         --limit {{ hetzner5 }} \
         2>&1 | tee logs/$(date -u +%Y%m%d%H%M%S)-deploy-mainnet-hetzner5.log
@@ -158,6 +161,7 @@ deploy-mainnet-hetzner6:
         -e dex_bot_tag={{ bots_image_tag }} \
         -e perps_bot_tag={{ bots_image_tag }} \
         -e perp_liquidator_tag={{ bots_image_tag }} \
+        -e withdrawal_approver_tag={{ bots_image_tag }} \
         -e cometbft_peers={{ hetzner1 }},{{ hetzner3 }},{{ hetzner5 }} \
         --limit {{ hetzner6 }} \
         2>&1 | tee logs/$(date -u +%Y%m%d%H%M%S)-deploy-mainnet-hetzner6.log

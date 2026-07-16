@@ -386,6 +386,20 @@ restart-perp-liquidator network:
       --limit perp-liquidator-{{network}} \
       2>&1 | tee "{{justfile_directory()}}/logs/$(date -u +%Y%m%d%H%M%S)-restart-perp-liquidator.log"
 
+# ---------------------------- Withdrawal approver -----------------------------
+
+# Redeploy only the withdrawal-approver container inside the current
+# deployment: re-render config/.env (key rotation), bump the tag, recreate.
+# The tag is mandatory: the guardian must always run a pinned image.
+# Usage: just deploy-withdrawal-approver testnet <bots-tag>
+deploy-withdrawal-approver network tag:
+  mkdir -p "{{justfile_directory()}}/logs" \
+    && uv run ansible-playbook redeploy-withdrawal-approver.yml \
+      -e dango_network={{network}} \
+      -e withdrawal_approver_tag={{tag}} \
+      --limit withdrawal-approver-{{network}} \
+      2>&1 | tee "{{justfile_directory()}}/logs/$(date -u +%Y%m%d%H%M%S)-deploy-withdrawal-approver.log"
+
 # ---------------------------------- Testnet -----------------------------------
 
 deploy-testnet dango_image_tag bots_image_tag:
@@ -394,9 +408,9 @@ deploy-testnet dango_image_tag bots_image_tag:
       -e '{"traefik_enabled": true, "cometbft_generate_keys": true, "perps_bot_enabled": true, "github_deployments_enabled": false, "expose_ports": false, "delete_postgres_database_at_merge": false, "delete_clickhouse_database_at_merge": false, "deploy_includes_postgres": false, "deploy_includes_clickhouse": false, "chain_id": "dango-testnet-1", "dango_network": "testnet", "system_wide_directories": true, "deploy_env": "production"}' \
       -e dango_image_tag={{dango_image_tag}} \
       -e faucet_bot_tag={{bots_image_tag}} \
-      -e dex_bot_tag={{bots_image_tag}} \
       -e perps_bot_tag={{bots_image_tag}} \
       -e perp_liquidator_tag={{bots_image_tag}} \
+      -e withdrawal_approver_tag={{bots_image_tag}} \
       --limit {{hetzner2}},{{hetzner4}} \
       2>&1 | tee "{{justfile_directory()}}/logs/$(date -u +%Y%m%d%H%M%S)-deploy-testnet.log"
 
@@ -436,6 +450,7 @@ pull-docker-images-testnet dango_image_tag bots_image_tag:
       -e faucet_bot_tag={{bots_image_tag}} \
       -e perps_bot_tag={{bots_image_tag}} \
       -e perp_liquidator_tag={{bots_image_tag}} \
+      -e withdrawal_approver_tag={{bots_image_tag}} \
       --limit {{hetzner2}},{{hetzner4}} \
       2>&1 | tee "{{justfile_directory()}}/logs/$(date -u +%Y%m%d%H%M%S)-pull-docker-images-testnet.log"
 
@@ -450,9 +465,9 @@ deploy-mainnet dango_image_tag bots_image_tag:
       -e '{"traefik_enabled": true, "cometbft_generate_keys": true, "github_deployments_enabled": false, "expose_ports": false, "delete_postgres_database_at_merge": false, "delete_clickhouse_database_at_merge": false, "deploy_includes_postgres": false, "deploy_includes_clickhouse": false, "chain_id": "dango-1", "dango_network": "mainnet", "system_wide_directories": true, "deploy_env": "production"}' \
       -e dango_image_tag={{dango_image_tag}} \
       -e faucet_bot_tag={{bots_image_tag}} \
-      -e dex_bot_tag={{bots_image_tag}} \
       -e perps_bot_tag={{bots_image_tag}} \
       -e perp_liquidator_tag={{bots_image_tag}} \
+      -e withdrawal_approver_tag={{bots_image_tag}} \
       --limit {{hetzner5}},{{hetzner6}},{{hetzner1}},{{hetzner3}} \
       2>&1 | tee "{{justfile_directory()}}/logs/$(date -u +%Y%m%d%H%M%S)-deploy-mainnet.log"
 
@@ -488,6 +503,7 @@ pull-docker-images-mainnet dango_image_tag bots_image_tag:
       -e faucet_bot_tag={{bots_image_tag}} \
       -e perps_bot_tag={{bots_image_tag}} \
       -e perp_liquidator_tag={{bots_image_tag}} \
+      -e withdrawal_approver_tag={{bots_image_tag}} \
       --limit {{hetzner5}},{{hetzner6}},{{hetzner1}},{{hetzner3}} \
       2>&1 | tee "{{justfile_directory()}}/logs/$(date -u +%Y%m%d%H%M%S)-pull-docker-images-mainnet.log"
 

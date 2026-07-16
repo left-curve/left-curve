@@ -89,6 +89,7 @@
 			}
 		]
 	},
+	"withdrawal_approver_private_key": "ENC[AES256_GCM,data:aFRV88S2BBR+8ltMmSGOOO9NPcSeOHVMMeFXpVNd80g6PkOchz2AFaQO03LrjSykGQzVjoxQ1A8jRNd2/Vwqyg==,iv:D4mmZsV3pcKjYw/JfM4+7n+PZAftgjYc0XpcF7CjmGc=,tag:RSjO32pRvXaPLVnxdVl1wA==,type:str]",
 	"sops": {
 		"age": [
 			{
@@ -120,8 +121,8 @@
 				"recipient": "age10xqeelr09uk292rrp48jw5fem7uepuf82ax6mpq6rjuv6m3aw9mqgjnfyh"
 			}
 		],
-		"lastmodified": "2026-07-06T10:09:55Z",
-		"mac": "ENC[AES256_GCM,data:IDayFmeZRkTb8ke8u+8WmuHi9MTmLFBtV2gxrULNc7ALFMDBLIaYKug5vRmVE3N/ljv4yUy/eb5jzqsJV+yGzBWiIXVl6Otg4dpfG4rGWycUoCLcCSzau75r+iMReeKUdGt65/bPh8MwD4nTrjmsnC1Iep+fL7DN6VB/2XV4Q8M=,iv:LH4ybCXySxtAvobi9Omxs2IbFM7t6PML/H4iZSx3aY8=,tag:fWotQrBGpSj2SmX2mUantw==,type:str]",
+		"lastmodified": "2026-07-16T15:09:00Z",
+		"mac": "ENC[AES256_GCM,data:FWFZG/6MKgAUt5qoAISj6DMSlYUbRbO7gB9CinUKNUP5+KyMsvhlsSliPOZ0BlbkIBt99XMHzHHy3YmDpdrDMgNBjWw8pFcQptzevxlGZH6z4Z8BRi0cFOOJoI4djVNq8TLFANvrMYM3L33P8bchxRQBaOeiLL7shg7+Ae4p8fg=,iv:Xr7AGHPqlbZD4WMLqd97jAsx3JVFgx9xh5lDQbACDo4=,tag:NOTRntf5mmYNc7IiD4xjuQ==,type:str]",
 		"unencrypted_suffix": "_unencrypted",
 		"version": "3.13.2"
 	}

@@ -93,7 +93,7 @@ The rest of the fleet is now on 3/4 validator quorum. Check Grafana: blocks stil
 
 Swap source out, target in. From here on, source is reached only by direct SSH; ansible no longer knows about it. The shell variables `$SOURCE_IP` and `$TARGET_IP` from your session refer to the actual IPs you'll be substituting in these files.
 
-1. Edit `inventory`: in every group that lists source, replace source's IP with target's IP. If target is already present in that group (e.g. `[full-app]`, since `NEW_SERVER_SETUP.md` adds the new host there during commissioning), just remove source's line. **Position matters in `[perp-liquidator-mainnet]`** — instance index is derived from list position, so insert target where source was.
+1. Edit `inventory`: in every group that lists source, replace source's IP with target's IP. If target is already present in that group (e.g. `[full-app]`, since `NEW_SERVER_SETUP.md` adds the new host there during commissioning), just remove source's line. **Position matters in `[perp-liquidator-mainnet]`** — instance index is derived from list position, so insert target where source was. **Don't skip `[withdrawal-approver-<network>]`** — it holds a single host, and a missed edit leaves the network with zero withdrawal guardians: no deploy step warns about it, user withdrawals just stop being approved. Also make sure source's stopped withdrawal-approver container is removed (step 11's wipe): it carries the guardian key and its `restart: always` policy revives it on a reboot of the source host.
 
 2. Create `host_vars/<target IP>.yml` (named after target's actual IP) with the mainnet flags (mirror `host_vars/<source IP>.yml`):
 

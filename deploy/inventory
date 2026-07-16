@@ -193,6 +193,18 @@ perp-liquidator-devnet
 perp-liquidator-testnet
 perp-liquidator-mainnet
 
+# The withdrawal-approver must be a single instance per network (sole
+# responder to gateway withdrawal requests). No devnet group on purpose.
+[withdrawal-approver-testnet]
+100.90.163.19  # hetzner2
+
+[withdrawal-approver-mainnet]
+100.126.8.2    # hetzner1
+
+[withdrawal-approver:children]
+withdrawal-approver-testnet
+withdrawal-approver-mainnet
+
 [hyperlane]
 100.72.62.100  # hetzner5
 100.126.8.2    # hetzner1
