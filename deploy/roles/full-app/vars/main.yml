@@ -7,13 +7,13 @@ faucet_bot_tag: "latest"
 perps_bot_tag: "latest"
 perp_liquidator_tag: "latest"
 withdrawal_approver_tag: "latest"
-# Master switch for the withdrawal-approver. Keep false until the guarded
-# withdrawals gateway (left-curve#2247) is live on-chain AND the bot image
-# exists on GHCR for the chosen tag: with either prerequisite missing, an
-# enabled bot crash-loops and the post-deploy health gate takes the whole
-# stack down with it. Flip to true here when both are live — recipes need
-# no per-recipe flag.
-withdrawal_approver_enabled: false
+# Master switch for the withdrawal-approver. Ships enabled because this
+# change merges LAST, once the guarded-withdrawals gateway (left-curve#2247)
+# is live on-chain AND the bot image exists on GHCR for the pinned tag: with
+# either prerequisite missing, an enabled bot crash-loops and the post-deploy
+# health gate takes the whole stack down with it. Flip to false here to pull
+# the bot from the next deploy — recipes need no per-recipe flag.
+withdrawal_approver_enabled: true
 # Hosts running the withdrawal-approver for this network: static inventory
 # groups, single instance per network, no devnet group on purpose.
 withdrawal_approver_hosts: "{{ groups['withdrawal-approver-' ~ dango_network] | default([]) }}"
