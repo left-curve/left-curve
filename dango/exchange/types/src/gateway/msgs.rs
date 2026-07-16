@@ -283,8 +283,8 @@ pub enum QueryMsg {
     /// Look up a withdrawal request by ID, whether pending or frozen. Only
     /// those two states are stored; a request that has reached a terminal
     /// response (approved, rejected, or confiscated) is deleted, so this
-    /// errors for it, as it does for an ID that never existed.
-    #[returns(WithdrawalRequest)]
+    /// returns `None` for it.
+    #[returns(Option<WithdrawalRequest>)]
     WithdrawalRequest { id: u64 },
 
     /// Enumerate pending withdrawal requests — the guardian's work queue.

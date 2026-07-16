@@ -167,15 +167,12 @@ fn query_withdrawal_guardian(ctx: ImmutableCtx) -> StdResult<Option<Addr>> {
     WITHDRAWAL_GUARDIAN.may_load(ctx.storage)
 }
 
-fn query_withdrawal_request(ctx: ImmutableCtx, id: u64) -> StdResult<WithdrawalRequest> {
+fn query_withdrawal_request(ctx: ImmutableCtx, id: u64) -> StdResult<Option<WithdrawalRequest>> {
     if let Some(request) = WITHDRAWAL_REQUESTS.may_load(ctx.storage, id)? {
-        return Ok(request);
+        return Ok(Some(request));
     }
 
-    // Fall back to the frozen queue. Errors with "data not found" if the
-    // request is absent there as well — it either never existed, or has
-    // reached a terminal response and was deleted.
-    FROZEN_WITHDRAWAL_REQUESTS.load(ctx.storage, id)
+    FROZEN_WITHDRAWAL_REQUESTS.may_load(ctx.storage, id)
 }
 
 fn query_withdrawal_requests(

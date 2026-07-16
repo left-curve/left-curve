@@ -3661,7 +3661,7 @@ async fn withdrawal_approval_coin_accounting() {
         .query_wasm_smart(contracts.gateway, gateway::QueryWithdrawalRequestRequest {
             id,
         })
-        .should_fail_with_error("data not found");
+        .should_succeed_and_equal(None);
 }
 
 /// Rejecting a withdrawal request refunds the full withheld amount to the
@@ -3739,7 +3739,7 @@ async fn withdrawal_rejection_coin_accounting() {
         .query_wasm_smart(contracts.gateway, gateway::QueryWithdrawalRequestRequest {
             id,
         })
-        .should_fail_with_error("data not found");
+        .should_succeed_and_equal(None);
 }
 
 /// Freezing a withdrawal request leaves the withheld coins inside the
@@ -3813,7 +3813,10 @@ async fn withdrawal_freeze_coin_accounting() {
         .query_wasm_smart(contracts.gateway, gateway::QueryWithdrawalRequestRequest {
             id,
         })
-        .should_succeed_and(|req| req.status == WithdrawalStatus::Frozen);
+        .should_succeed_and(|req| {
+            req.as_ref()
+                .is_some_and(|req| req.status == WithdrawalStatus::Frozen)
+        });
 }
 
 /// Confiscating a frozen withdrawal request sends the withheld coins to
@@ -3902,7 +3905,7 @@ async fn withdrawal_confiscation_coin_accounting() {
         .query_wasm_smart(contracts.gateway, gateway::QueryWithdrawalRequestRequest {
             id,
         })
-        .should_fail_with_error("data not found");
+        .should_succeed_and_equal(None);
 }
 
 /// Placing a withdrawal request stores it correctly: every field reflects
@@ -3932,7 +3935,8 @@ async fn withdrawal_request_is_stored() {
         .query_wasm_smart(contracts.gateway, gateway::QueryWithdrawalRequestRequest {
             id,
         })
-        .should_succeed();
+        .should_succeed()
+        .expect("the request should be stored");
 
     assert_eq!(request, gateway::WithdrawalRequest {
         user: accounts.user2.address(),
@@ -3988,7 +3992,10 @@ async fn confiscation_requires_prior_freeze() {
         .query_wasm_smart(contracts.gateway, gateway::QueryWithdrawalRequestRequest {
             id,
         })
-        .should_succeed_and(|req| req.status == WithdrawalStatus::Pending);
+        .should_succeed_and(|req| {
+            req.as_ref()
+                .is_some_and(|req| req.status == WithdrawalStatus::Pending)
+        });
 
     suite
         .query_balance(&contracts.gateway, usdc::DENOM.clone())
@@ -4029,7 +4036,10 @@ async fn guardian_can_never_confiscate() {
         .query_wasm_smart(contracts.gateway, gateway::QueryWithdrawalRequestRequest {
             id,
         })
-        .should_succeed_and(|req| req.status == WithdrawalStatus::Pending);
+        .should_succeed_and(|req| {
+            req.as_ref()
+                .is_some_and(|req| req.status == WithdrawalStatus::Pending)
+        });
 
     suite
         .query_balance(&contracts.gateway, usdc::DENOM.clone())
@@ -4090,7 +4100,7 @@ async fn frozen_request_rejection_refunds_user() {
         .query_wasm_smart(contracts.gateway, gateway::QueryWithdrawalRequestRequest {
             id,
         })
-        .should_fail_with_error("data not found");
+        .should_succeed_and_equal(None);
 }
 
 /// Withdrawal request IDs increment sequentially, and resolving a request
@@ -4444,7 +4454,7 @@ async fn racing_approvals_refund_second_request() {
             .query_wasm_smart(contracts.gateway, gateway::QueryWithdrawalRequestRequest {
                 id,
             })
-            .should_fail_with_error("data not found");
+            .should_succeed_and_equal(None);
     }
 
     suite
@@ -4616,7 +4626,10 @@ async fn refreezing_frozen_request_fails() {
         .query_wasm_smart(contracts.gateway, gateway::QueryWithdrawalRequestRequest {
             id,
         })
-        .should_succeed_and(|req| req.status == WithdrawalStatus::Frozen);
+        .should_succeed_and(|req| {
+            req.as_ref()
+                .is_some_and(|req| req.status == WithdrawalStatus::Frozen)
+        });
 
     suite
         .query_balance(&contracts.gateway, usdc::DENOM.clone())
@@ -4789,7 +4802,7 @@ async fn reserve_drained_while_pending_refunds_on_approval() {
             .query_wasm_smart(contracts.gateway, gateway::QueryWithdrawalRequestRequest {
                 id,
             })
-            .should_fail_with_error("data not found");
+            .should_succeed_and_equal(None);
     }
 }
 
@@ -4871,7 +4884,7 @@ async fn fee_raised_while_pending_refunds_on_approval() {
         .query_wasm_smart(contracts.gateway, gateway::QueryWithdrawalRequestRequest {
             id,
         })
-        .should_fail_with_error("data not found");
+        .should_succeed_and_equal(None);
 }
 
 /// A route removed while a request is pending fails the approval-time
@@ -4973,7 +4986,7 @@ async fn route_removed_while_pending_refunds_on_approval() {
         .query_wasm_smart(contracts.gateway, gateway::QueryWithdrawalRequestRequest {
             id,
         })
-        .should_fail_with_error("data not found");
+        .should_succeed_and_equal(None);
 }
 
 /// A frozen request is re-validated when the owner approves it. If the
@@ -5101,7 +5114,7 @@ async fn frozen_request_approval_failure_refunds() {
         .query_wasm_smart(contracts.gateway, gateway::QueryWithdrawalRequestRequest {
             id: frozen_id,
         })
-        .should_fail_with_error("data not found");
+        .should_succeed_and_equal(None);
 }
 
 /// A personal quota is consumed at approval, not at request time: a quota
@@ -5214,7 +5227,7 @@ async fn personal_quota_expired_between_request_and_approval() {
         .query_wasm_smart(contracts.gateway, gateway::QueryWithdrawalRequestRequest {
             id,
         })
-        .should_fail_with_error("data not found");
+        .should_succeed_and_equal(None);
 }
 
 /// Rotating the guardian takes effect immediately, including for requests
