@@ -4483,6 +4483,70 @@ async fn insufficient_reserve_request_fails_fast() {
         .should_succeed_and(|page| page.is_empty());
 }
 
+/// A request whose amount doesn't strictly exceed the withdrawal fee is
+/// rejected outright by the fail-fast validation — after deducting the
+/// fee there would be nothing left to bridge. No request is stored and
+/// no funds leave the user.
+#[tokio::test]
+async fn withdrawal_not_exceeding_fee_fails_fast() {
+    let (mut suite, mut accounts, contracts) = setup_withdrawal_test().await;
+
+    let user_addr = accounts.user2.address();
+
+    suite.balances().record(&user_addr);
+
+    // Exactly the fee: rejected, as nothing would be left to bridge.
+    suite
+        .execute(
+            &mut accounts.user2,
+            contracts.gateway,
+            &gateway::ExecuteMsg::TransferRemote {
+                remote: WITHDRAW_REMOTE,
+                recipient: withdraw_recipient(),
+            },
+            Coin::new(usdc::DENOM.clone(), ARBITRUM_USDC_WITHDRAWAL_FEE).unwrap(),
+        )
+        .await
+        .should_fail_with_error(format!(
+            "withdrawal amount not sufficient to cover fee: {} <= {}",
+            ARBITRUM_USDC_WITHDRAWAL_FEE, ARBITRUM_USDC_WITHDRAWAL_FEE
+        ));
+
+    // Less than the fee: rejected as well.
+    suite
+        .execute(
+            &mut accounts.user2,
+            contracts.gateway,
+            &gateway::ExecuteMsg::TransferRemote {
+                remote: WITHDRAW_REMOTE,
+                recipient: withdraw_recipient(),
+            },
+            Coin::new(usdc::DENOM.clone(), ARBITRUM_USDC_WITHDRAWAL_FEE - 1).unwrap(),
+        )
+        .await
+        .should_fail_with_error(format!(
+            "withdrawal amount not sufficient to cover fee: {} <= {}",
+            ARBITRUM_USDC_WITHDRAWAL_FEE - 1,
+            ARBITRUM_USDC_WITHDRAWAL_FEE
+        ));
+
+    // Nothing was stored and nothing was escrowed.
+    suite.balances().should_change(&user_addr, btree_map! {
+        usdc::DENOM.clone() => BalanceChange::Unchanged,
+    });
+
+    suite
+        .query_balance(&contracts.gateway, usdc::DENOM.clone())
+        .should_succeed_and_equal(Uint128::ZERO);
+
+    suite
+        .query_wasm_smart(contracts.gateway, gateway::QueryWithdrawalRequestsRequest {
+            start_after: None,
+            limit: None,
+        })
+        .should_succeed_and(|page| page.is_empty());
+}
+
 /// Rotating the guardian takes effect immediately, including for requests
 /// opened before the rotation: the old guardian loses its response rights,
 /// the new one gains them.

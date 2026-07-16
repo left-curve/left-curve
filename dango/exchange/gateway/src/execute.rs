@@ -583,7 +583,8 @@ struct WithdrawalPlan {
 /// Validate a withdrawal of `coin` by `user` against the current state:
 ///
 /// - a route must exist for the (denom, remote) tuple;
-/// - the escrowed amount must cover the withdrawal fee;
+/// - the escrowed amount must exceed the withdrawal fee, leaving a
+///   non-zero amount to bridge;
 /// - the route's reserve must cover the bridged amount (remote denoms only);
 /// - the post-personal-quota residue must fit the rate-limit headroom.
 ///
@@ -605,13 +606,19 @@ fn validate_withdrawal(
     let fee = WITHDRAWAL_FEES.may_load(storage, (&coin.denom, remote))?;
 
     let bridged = match fee {
-        Some(fee) => coin.amount.checked_sub(fee).map_err(|_| {
-            anyhow!(
-                "withdrawal amount not sufficient to cover fee: {} < {}",
+        Some(fee) => {
+            // Strictly greater: an amount equal to the fee would leave zero
+            // to bridge, and a zero-amount burn or bridge message fails
+            // downstream (the bank rejects zero-amount coins).
+            ensure!(
+                coin.amount > fee,
+                "withdrawal amount not sufficient to cover fee: {} <= {}",
                 coin.amount,
                 fee
-            )
-        })?,
+            );
+
+            coin.amount.checked_sub(fee)?
+        },
         None => coin.amount,
     };
 
