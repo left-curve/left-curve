@@ -830,8 +830,10 @@ Plus the vault market-making knobs (`vault_liquidity_weight`, `vault_half_spread
 | `long_oi` / `short_oi` | `Quantity` | Total long / short open interest |
 | `funding_per_unit` | `FundingPerUnit` | Cumulative funding accumulator |
 | `funding_rate` | `FundingRate` | Current per-day rate (positive = longs pay) |
-| `index_price` | `UsdPrice` | Reference price for margin, PnL, funding, liquidation |
+| `index_price` | `UsdPrice` | Mark for margin, PnL, funding, liquidation; bounded to ±`initial_margin_ratio` of `oracle_price` while the market is closed |
 | `last_index_time` | `Timestamp` | When `index_price` was last updated |
+| `oracle_price` | `UsdPrice` | Last regular-session oracle price; anchors the order price band and the off-hours index bound |
+| `last_oracle_time` | `Timestamp` | When `oracle_price` was last updated |
 
 For funding, see [Funding](3-funding.md).
 

@@ -4667,7 +4667,11 @@ name = "dango-upgrade"
 version = "0.0.0"
 dependencies = [
  "dango-app",
+ "dango-order-book",
+ "dango-perps",
  "dango-primitives",
+ "dango-storage",
+ "dango-types",
  "tracing",
 ]
 
