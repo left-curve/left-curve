@@ -363,7 +363,7 @@ impl Preset for GatewayOption {
             rate_limit_refresh_period: Duration::from_days(1),
             // No guardian in the test genesis; the owner responds to
             // withdrawal requests. Tests that exercise the guardian flow set
-            // one at runtime via `SetWithdrawalGuardian`.
+            // one at runtime via `SetGuardian`.
             guardian: None,
         }
     }
