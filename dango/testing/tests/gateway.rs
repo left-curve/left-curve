@@ -4111,6 +4111,147 @@ async fn withdrawal_request_ids_increment() {
     assert_eq!(id, 2);
 }
 
+/// The pending queue paginates: `limit` caps the page size, `start_after`
+/// resumes exclusively after the given ID, and paging past the end yields
+/// an empty page.
+#[tokio::test]
+async fn withdrawal_requests_pagination() {
+    let (mut suite, mut accounts, contracts) = setup_withdrawal_test().await;
+
+    // Open three requests; IDs are sequential from zero.
+    for expected_id in 0..3u64 {
+        let id = suite
+            .request_transfer_remote(
+                &mut accounts.user2,
+                contracts.gateway,
+                WITHDRAW_REMOTE,
+                withdraw_recipient(),
+                Coin::new(usdc::DENOM.clone(), WITHDRAW).unwrap(),
+            )
+            .await;
+
+        assert_eq!(id, expected_id);
+    }
+
+    // First page, limit 2: the two lowest IDs, in ascending order.
+    let page1 = suite
+        .query_wasm_smart(contracts.gateway, gateway::QueryWithdrawalRequestsRequest {
+            start_after: None,
+            limit: Some(2),
+        })
+        .should_succeed();
+
+    assert_eq!(page1.iter().map(|item| item.id).collect::<Vec<_>>(), vec![
+        0, 1
+    ]);
+
+    // Second page resumes after the last ID of page 1 — `start_after` is
+    // exclusive, so ID 1 doesn't repeat.
+    let page2 = suite
+        .query_wasm_smart(contracts.gateway, gateway::QueryWithdrawalRequestsRequest {
+            start_after: Some(page1.last().unwrap().id),
+            limit: Some(2),
+        })
+        .should_succeed();
+
+    assert_eq!(page2.iter().map(|item| item.id).collect::<Vec<_>>(), vec![
+        2
+    ]);
+
+    // Querying beyond the end yields an empty page.
+    suite
+        .query_wasm_smart(contracts.gateway, gateway::QueryWithdrawalRequestsRequest {
+            start_after: Some(2),
+            limit: Some(2),
+        })
+        .should_succeed_and(Vec::is_empty);
+}
+
+/// Freezing moves a request from the pending queue to the frozen queue:
+/// it disappears from `WithdrawalRequests` and shows up in
+/// `FrozenWithdrawalRequests`, while other pending requests stay put.
+#[tokio::test]
+async fn frozen_withdrawal_requests_enumeration() {
+    let (mut suite, mut accounts, contracts) = setup_withdrawal_test().await;
+
+    // Open two requests, so freezing one demonstrates the other is
+    // unaffected.
+    let mut ids = Vec::new();
+    for _ in 0..2 {
+        let id = suite
+            .request_transfer_remote(
+                &mut accounts.user2,
+                contracts.gateway,
+                WITHDRAW_REMOTE,
+                withdraw_recipient(),
+                Coin::new(usdc::DENOM.clone(), WITHDRAW).unwrap(),
+            )
+            .await;
+
+        ids.push(id);
+    }
+
+    // Both requests sit in the pending queue; the frozen queue is empty.
+    suite
+        .query_wasm_smart(contracts.gateway, gateway::QueryWithdrawalRequestsRequest {
+            start_after: None,
+            limit: None,
+        })
+        .should_succeed_and(|page| page.iter().map(|item| item.id).collect::<Vec<_>>() == ids);
+
+    suite
+        .query_wasm_smart(
+            contracts.gateway,
+            gateway::QueryFrozenWithdrawalRequestsRequest {
+                start_after: None,
+                limit: None,
+            },
+        )
+        .should_succeed_and(Vec::is_empty);
+
+    // Freeze the first request.
+    suite
+        .respond_to_withdrawal(
+            &mut accounts.user3,
+            contracts.gateway,
+            ids[0],
+            WithdrawalResponse::Freeze,
+        )
+        .await
+        .should_succeed();
+
+    // The frozen request left the pending queue; the other remains.
+    suite
+        .query_wasm_smart(contracts.gateway, gateway::QueryWithdrawalRequestsRequest {
+            start_after: None,
+            limit: None,
+        })
+        .should_succeed_and(|page| {
+            page.iter().map(|item| item.id).collect::<Vec<_>>() == vec![ids[1]]
+        });
+
+    // And it now shows up in the frozen queue, in the frozen state, with
+    // the rest of the record intact.
+    let frozen = suite
+        .query_wasm_smart(
+            contracts.gateway,
+            gateway::QueryFrozenWithdrawalRequestsRequest {
+                start_after: None,
+                limit: None,
+            },
+        )
+        .should_succeed();
+
+    assert_eq!(frozen.len(), 1);
+    assert_eq!(frozen[0].id, ids[0]);
+    assert_eq!(frozen[0].request.status, WithdrawalStatus::Frozen);
+    assert_eq!(frozen[0].request.user, accounts.user2.address());
+    assert_eq!(
+        frozen[0].request.coin,
+        Coin::new(usdc::DENOM.clone(), WITHDRAW).unwrap()
+    );
+}
+
 /// A request exceeding the rate-limit cap is rejected outright by the
 /// fail-fast validation: no request is stored and no funds leave the user.
 #[tokio::test]
