@@ -310,9 +310,12 @@ mod tests {
                 assert_eq!(remote.store_path, PathBuf::from("data/blocks"));
                 assert_eq!(remote.live_url, "http://node:8080");
                 // The TOML-integer path through `de_opt_usize`.
-                assert!(matches!(remote.fetcher, FetcherConfig::Sentinel {
-                    parallelism: Some(4)
-                }));
+                assert!(matches!(
+                    remote.fetcher,
+                    FetcherConfig::Sentinel {
+                        parallelism: Some(4)
+                    }
+                ));
             },
             other => panic!("expected a remote source, got {other:?}"),
         }
@@ -359,9 +362,12 @@ mod tests {
         match &overridden.block_source {
             BlockSourceConfig::Remote(remote) => {
                 assert_eq!(remote.live_url, "http://sentinel:9999");
-                assert!(matches!(remote.fetcher, FetcherConfig::Sentinel {
-                    parallelism: Some(6)
-                }));
+                assert!(matches!(
+                    remote.fetcher,
+                    FetcherConfig::Sentinel {
+                        parallelism: Some(6)
+                    }
+                ));
             },
             other => panic!("expected a remote source, got {other:?}"),
         }

@@ -239,12 +239,16 @@ fn set_personal_quota(
                 .map(|d| ctx.block.timestamp.checked_add(d))
                 .transpose()?;
 
-            PERSONAL_QUOTAS.save(ctx.storage, (user, &denom), &PersonalQuota {
-                amount,
-                expire_at,
-                granted_by: ctx.sender,
-                granted_at: ctx.block.timestamp,
-            })?;
+            PERSONAL_QUOTAS.save(
+                ctx.storage,
+                (user, &denom),
+                &PersonalQuota {
+                    amount,
+                    expire_at,
+                    granted_by: ctx.sender,
+                    granted_at: ctx.block.timestamp,
+                },
+            )?;
         },
         Op::Delete => {
             PERSONAL_QUOTAS.remove(ctx.storage, (user, &denom));
@@ -326,14 +330,18 @@ fn transfer_remote(ctx: MutableCtx, remote: Remote, recipient: Addr32) -> anyhow
     // guardian or the owner approves the request.
     let (id, _) = NEXT_WITHDRAWAL_REQUEST_ID.increment(ctx.storage)?;
 
-    WITHDRAWAL_REQUESTS.save(ctx.storage, id, &WithdrawalRequest {
-        user: ctx.sender,
-        remote,
-        recipient,
-        coin: coin.clone(),
-        status: WithdrawalStatus::Pending,
-        created_at: ctx.block.timestamp,
-    })?;
+    WITHDRAWAL_REQUESTS.save(
+        ctx.storage,
+        id,
+        &WithdrawalRequest {
+            user: ctx.sender,
+            remote,
+            recipient,
+            coin: coin.clone(),
+            status: WithdrawalStatus::Pending,
+            created_at: ctx.block.timestamp,
+        },
+    )?;
 
     Ok(Response::new().add_event(WithdrawalRequested {
         id,
@@ -430,10 +438,14 @@ fn respond_to_withdrawal(
 
             // Move the request out of the guardian's queue into the owner's.
             WITHDRAWAL_REQUESTS.remove(ctx.storage, id);
-            FROZEN_WITHDRAWAL_REQUESTS.save(ctx.storage, id, &WithdrawalRequest {
-                status: WithdrawalStatus::Frozen,
-                ..request.clone()
-            })?;
+            FROZEN_WITHDRAWAL_REQUESTS.save(
+                ctx.storage,
+                id,
+                &WithdrawalRequest {
+                    status: WithdrawalStatus::Frozen,
+                    ..request.clone()
+                },
+            )?;
 
             Ok(Response::new().add_event(WithdrawalFrozen {
                 id,

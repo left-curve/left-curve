@@ -15,9 +15,10 @@ const ETH_PYTH_ID: u32 = 2;
 
 async fn query_index_price(suite: &TestSuiteNaive, perps_addr: Addr) -> UsdPrice {
     let pair_state: Option<PairState> = suite
-        .query_wasm_smart(perps_addr, perps::QueryPairStateRequest {
-            pair_id: pair_id(),
-        })
+        .query_wasm_smart(
+            perps_addr,
+            perps::QueryPairStateRequest { pair_id: pair_id() },
+        )
         .should_succeed();
 
     pair_state.unwrap().index_price

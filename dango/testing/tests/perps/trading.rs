@@ -52,9 +52,12 @@ async fn trading_lifecycle() {
 
     // Verify trader's margin = $10,000.
     let state = suite
-        .query_wasm_smart(contracts.perps, perps::QueryUserStateRequest {
-            user: accounts.user1.address(),
-        })
+        .query_wasm_smart(
+            contracts.perps,
+            perps::QueryUserStateRequest {
+                user: accounts.user1.address(),
+            },
+        )
         .should_succeed()
         .unwrap();
 
@@ -97,9 +100,12 @@ async fn trading_lifecycle() {
 
     // Verify ask exists on the book.
     let orders: BTreeMap<OrderId, QueryOrdersByUserResponseItem> = suite
-        .query_wasm_smart(contracts.perps, perps::QueryOrdersByUserRequest {
-            user: accounts.user2.address(),
-        })
+        .query_wasm_smart(
+            contracts.perps,
+            perps::QueryOrdersByUserRequest {
+                user: accounts.user2.address(),
+            },
+        )
         .should_succeed();
 
     assert_eq!(orders.len(), 1, "maker should have 1 ask");
@@ -130,9 +136,12 @@ async fn trading_lifecycle() {
 
     // Verify position and margin.
     let state = suite
-        .query_wasm_smart(contracts.perps, perps::QueryUserStateRequest {
-            user: accounts.user1.address(),
-        })
+        .query_wasm_smart(
+            contracts.perps,
+            perps::QueryUserStateRequest {
+                user: accounts.user1.address(),
+            },
+        )
         .should_succeed()
         .unwrap();
     let pos = state
@@ -150,9 +159,12 @@ async fn trading_lifecycle() {
 
     // Maker's ask should be removed.
     let orders: BTreeMap<OrderId, QueryOrdersByUserResponseItem> = suite
-        .query_wasm_smart(contracts.perps, perps::QueryOrdersByUserRequest {
-            user: accounts.user2.address(),
-        })
+        .query_wasm_smart(
+            contracts.perps,
+            perps::QueryOrdersByUserRequest {
+                user: accounts.user2.address(),
+            },
+        )
         .should_succeed();
 
     assert!(
@@ -179,9 +191,12 @@ async fn trading_lifecycle() {
 
     // Verify margin = $9,980 - $7,000 = $2,980.
     let state = suite
-        .query_wasm_smart(contracts.perps, perps::QueryUserStateRequest {
-            user: accounts.user1.address(),
-        })
+        .query_wasm_smart(
+            contracts.perps,
+            perps::QueryUserStateRequest {
+                user: accounts.user1.address(),
+            },
+        )
         .should_succeed()
         .unwrap();
 
@@ -300,9 +315,12 @@ async fn limit_order_partial_fill_and_cancel() {
 
     // Verify position: 5 ETH long @ $2,000, margin = $9,990.
     let state = suite
-        .query_wasm_smart(contracts.perps, perps::QueryUserStateRequest {
-            user: accounts.user1.address(),
-        })
+        .query_wasm_smart(
+            contracts.perps,
+            perps::QueryUserStateRequest {
+                user: accounts.user1.address(),
+            },
+        )
         .should_succeed()
         .unwrap();
     let pos = state
@@ -330,9 +348,12 @@ async fn limit_order_partial_fill_and_cancel() {
 
     // Verify bid exists on the book.
     let orders: BTreeMap<OrderId, QueryOrdersByUserResponseItem> = suite
-        .query_wasm_smart(contracts.perps, perps::QueryOrdersByUserRequest {
-            user: accounts.user1.address(),
-        })
+        .query_wasm_smart(
+            contracts.perps,
+            perps::QueryOrdersByUserRequest {
+                user: accounts.user1.address(),
+            },
+        )
         .should_succeed();
 
     assert_eq!(orders.len(), 1, "trader should have 1 resting bid");
@@ -357,9 +378,12 @@ async fn limit_order_partial_fill_and_cancel() {
 
     // Verify reserved_margin = $0 and open_order_count = 0.
     let state = suite
-        .query_wasm_smart(contracts.perps, perps::QueryUserStateRequest {
-            user: accounts.user1.address(),
-        })
+        .query_wasm_smart(
+            contracts.perps,
+            perps::QueryUserStateRequest {
+                user: accounts.user1.address(),
+            },
+        )
         .should_succeed()
         .unwrap();
 
@@ -372,9 +396,12 @@ async fn limit_order_partial_fill_and_cancel() {
 
     // Verify bid removed from book.
     let orders: BTreeMap<OrderId, QueryOrdersByUserResponseItem> = suite
-        .query_wasm_smart(contracts.perps, perps::QueryOrdersByUserRequest {
-            user: accounts.user1.address(),
-        })
+        .query_wasm_smart(
+            contracts.perps,
+            perps::QueryOrdersByUserRequest {
+                user: accounts.user1.address(),
+            },
+        )
         .should_succeed();
 
     assert!(orders.is_empty(), "orders should be empty after cancel");
@@ -442,11 +469,14 @@ async fn liquidity_depth_tracking() {
 
     let query_depth = |suite: &TestSuiteNaive| -> LiquidityDepthResponse {
         suite
-            .query_wasm_smart(contracts.perps, perps::QueryLiquidityDepthRequest {
-                pair_id: pair.clone(),
-                bucket_size: UsdPrice::new_int(100),
-                limit: None,
-            })
+            .query_wasm_smart(
+                contracts.perps,
+                perps::QueryLiquidityDepthRequest {
+                    pair_id: pair.clone(),
+                    bucket_size: UsdPrice::new_int(100),
+                    limit: None,
+                },
+            )
             .should_succeed()
     };
 
@@ -914,9 +944,12 @@ async fn negative_maker_fee_rebate_lifecycle() {
 
     // Taker: $100,000 - $30 fee = $99,970.
     let taker_state: UserState = suite
-        .query_wasm_smart(contracts.perps, perps::QueryUserStateRequest {
-            user: accounts.user1.address(),
-        })
+        .query_wasm_smart(
+            contracts.perps,
+            perps::QueryUserStateRequest {
+                user: accounts.user1.address(),
+            },
+        )
         .should_succeed()
         .unwrap();
 
@@ -928,9 +961,12 @@ async fn negative_maker_fee_rebate_lifecycle() {
 
     // Maker: $100,000 + $10 rebate = $100,010.
     let maker_state: UserState = suite
-        .query_wasm_smart(contracts.perps, perps::QueryUserStateRequest {
-            user: accounts.user2.address(),
-        })
+        .query_wasm_smart(
+            contracts.perps,
+            perps::QueryUserStateRequest {
+                user: accounts.user2.address(),
+            },
+        )
         .should_succeed()
         .unwrap();
 
@@ -1056,9 +1092,12 @@ async fn ioc_limit_order_partial_fill() {
     // -------------------------------------------------------------------------
 
     let state: UserState = suite
-        .query_wasm_smart(contracts.perps, perps::QueryUserStateRequest {
-            user: accounts.user1.address(),
-        })
+        .query_wasm_smart(
+            contracts.perps,
+            perps::QueryUserStateRequest {
+                user: accounts.user1.address(),
+            },
+        )
         .should_succeed()
         .unwrap();
 
@@ -1085,9 +1124,12 @@ async fn ioc_limit_order_partial_fill() {
 
     // Verify no resting orders on book.
     let orders: BTreeMap<OrderId, QueryOrdersByUserResponseItem> = suite
-        .query_wasm_smart(contracts.perps, perps::QueryOrdersByUserRequest {
-            user: accounts.user1.address(),
-        })
+        .query_wasm_smart(
+            contracts.perps,
+            perps::QueryOrdersByUserRequest {
+                user: accounts.user1.address(),
+            },
+        )
         .should_succeed();
 
     assert!(orders.is_empty(), "IOC taker should have no resting orders");
@@ -1741,9 +1783,12 @@ async fn order_filled_reports_maker_remainder_on_partial_fill() {
 
     // The event's remainder must equal the order actually left on the book.
     let maker_orders = suite
-        .query_wasm_smart(contracts.perps, perps::QueryOrdersByUserRequest {
-            user: accounts.user1.address(),
-        })
+        .query_wasm_smart(
+            contracts.perps,
+            perps::QueryOrdersByUserRequest {
+                user: accounts.user1.address(),
+            },
+        )
         .should_succeed();
     assert_eq!(
         maker_orders.len(),
@@ -1905,9 +1950,12 @@ async fn order_filled_taker_remainder_matches_persisted_order() {
     // Durable cross-check: the resting bid on the book carries the same size,
     // and the maker's book is empty.
     let taker_orders = suite
-        .query_wasm_smart(contracts.perps, perps::QueryOrdersByUserRequest {
-            user: accounts.user3.address(),
-        })
+        .query_wasm_smart(
+            contracts.perps,
+            perps::QueryOrdersByUserRequest {
+                user: accounts.user3.address(),
+            },
+        )
         .should_succeed();
     assert_eq!(taker_orders.len(), 1);
     let resting = taker_orders.values().next().unwrap();
@@ -1915,9 +1963,12 @@ async fn order_filled_taker_remainder_matches_persisted_order() {
     assert_eq!(resting.limit_price, UsdPrice::new_int(2_000));
 
     let maker_orders = suite
-        .query_wasm_smart(contracts.perps, perps::QueryOrdersByUserRequest {
-            user: accounts.user1.address(),
-        })
+        .query_wasm_smart(
+            contracts.perps,
+            perps::QueryOrdersByUserRequest {
+                user: accounts.user1.address(),
+            },
+        )
         .should_succeed();
     assert!(
         maker_orders.is_empty(),
@@ -2024,9 +2075,12 @@ async fn sell_side_market_order_partial_fill() {
 
     // Verify taker has a 10 ETH short position from the 5 that filled.
     let state: UserState = suite
-        .query_wasm_smart(contracts.perps, perps::QueryUserStateRequest {
-            user: accounts.user1.address(),
-        })
+        .query_wasm_smart(
+            contracts.perps,
+            perps::QueryUserStateRequest {
+                user: accounts.user1.address(),
+            },
+        )
         .should_succeed()
         .unwrap();
 
@@ -2043,9 +2097,12 @@ async fn sell_side_market_order_partial_fill() {
 
     // Maker's bid should be fully consumed.
     let orders: BTreeMap<OrderId, QueryOrdersByUserResponseItem> = suite
-        .query_wasm_smart(contracts.perps, perps::QueryOrdersByUserRequest {
-            user: accounts.user2.address(),
-        })
+        .query_wasm_smart(
+            contracts.perps,
+            perps::QueryOrdersByUserRequest {
+                user: accounts.user2.address(),
+            },
+        )
         .should_succeed();
 
     assert!(
@@ -2144,9 +2201,12 @@ async fn buy_side_market_order_partial_fill() {
 
     // Verify taker has a 5 ETH long position from the partial fill.
     let state: UserState = suite
-        .query_wasm_smart(contracts.perps, perps::QueryUserStateRequest {
-            user: accounts.user1.address(),
-        })
+        .query_wasm_smart(
+            contracts.perps,
+            perps::QueryUserStateRequest {
+                user: accounts.user1.address(),
+            },
+        )
         .should_succeed()
         .unwrap();
 
@@ -2163,9 +2223,12 @@ async fn buy_side_market_order_partial_fill() {
 
     // Maker's ask should be fully consumed.
     let orders: BTreeMap<OrderId, QueryOrdersByUserResponseItem> = suite
-        .query_wasm_smart(contracts.perps, perps::QueryOrdersByUserRequest {
-            user: accounts.user2.address(),
-        })
+        .query_wasm_smart(
+            contracts.perps,
+            perps::QueryOrdersByUserRequest {
+                user: accounts.user2.address(),
+            },
+        )
         .should_succeed();
 
     assert!(

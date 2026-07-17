@@ -80,10 +80,13 @@ fn account_factory(querier: impl DangoQuerier) -> Addr {
 }
 
 pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> anyhow::Result<Response> {
-    STATE.save(ctx.storage, &State {
-        last_funding_time: ctx.block.timestamp,
-        ..Default::default()
-    })?;
+    STATE.save(
+        ctx.storage,
+        &State {
+            last_funding_time: ctx.block.timestamp,
+            ..Default::default()
+        },
+    )?;
 
     NEXT_ORDER_ID.save(ctx.storage, &OrderId::ONE)?;
     NEXT_FILL_ID.save(ctx.storage, &FillId::ONE)?;

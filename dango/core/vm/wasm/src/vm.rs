@@ -268,11 +268,11 @@ impl Instance for WasmInstance {
             let param1_ptr = write_to_memory(env, store, param1.as_ref())?;
             let param2_ptr = write_to_memory(env, store, param2.as_ref())?;
             let res_ptr: u32 = env
-                .call_function1(store, name, &[
-                    ctx_ptr.into(),
-                    param1_ptr.into(),
-                    param2_ptr.into(),
-                ])?
+                .call_function1(
+                    store,
+                    name,
+                    &[ctx_ptr.into(), param1_ptr.into(), param2_ptr.into()],
+                )?
                 .try_into()
                 .map_err(VmError::return_type)?;
             let data = read_then_wipe(env, store, res_ptr)?;

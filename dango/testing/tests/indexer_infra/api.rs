@@ -192,9 +192,10 @@ async fn perps_aliases_mirror_contract_queries() -> anyhow::Result<()> {
         .query_wasm_smart(contracts.perps, perps::QueryParamRequest {})
         .should_succeed();
     let pair_param: Option<perps::PairParam> = suite
-        .query_wasm_smart(contracts.perps, perps::QueryPairParamRequest {
-            pair_id: pair_id(),
-        })
+        .query_wasm_smart(
+            contracts.perps,
+            perps::QueryPairParamRequest { pair_id: pair_id() },
+        )
         .should_succeed();
 
     suite

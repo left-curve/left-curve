@@ -240,11 +240,14 @@ pub fn query_rate_limit_statuses(
 
             let used_in_last_24h = rolling_window_sum(ctx.storage, &denom, ctx.block.timestamp)?;
 
-            Ok((denom, RateLimitStatus {
-                supply_snapshot: supply,
-                cap,
-                used_in_last_24h,
-            }))
+            Ok((
+                denom,
+                RateLimitStatus {
+                    supply_snapshot: supply,
+                    cap,
+                    used_in_last_24h,
+                },
+            ))
         })
         .collect()
 }

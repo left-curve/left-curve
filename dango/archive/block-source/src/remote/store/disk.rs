@@ -64,10 +64,14 @@ impl RocksdbBlockStore {
         // The default CF carries only the tiny topology checkpoint, so it needs
         // no tuning; the blocks CF carries the large payloads and is tuned for
         // them — see `blocks_cf_options`.
-        let db = DB::open_cf_with_opts(&db_opts, path, [
-            (CF_DEFAULT, Options::default()),
-            (CF_BLOCKS, blocks_cf_options()),
-        ])?;
+        let db = DB::open_cf_with_opts(
+            &db_opts,
+            path,
+            [
+                (CF_DEFAULT, Options::default()),
+                (CF_BLOCKS, blocks_cf_options()),
+            ],
+        )?;
 
         let ranges = match db.get(TOPOLOGY_KEY)? {
             // A present checkpoint is the fast path. If it fails to decode
@@ -253,65 +257,92 @@ impl BlockStore for RocksdbBlockStore {
 /// property strings (stable RocksDB names); an unknown one just yields no value.
 #[cfg(feature = "metrics")]
 const ROCKSDB_GAUGES: &[(&str, &[(&str, &str)])] = &[
-    ("rocksdb_memtable_bytes", &[
-        ("rocksdb.cur-size-active-mem-table", "cur_size_active"),
-        ("rocksdb.cur-size-all-mem-tables", "cur_size_all"),
-        ("rocksdb.size-all-mem-tables", "size_all"),
-    ]),
-    ("rocksdb_sst_bytes", &[
-        ("rocksdb.live-sst-files-size", "live_sst_files_size"),
-        ("rocksdb.total-sst-files-size", "total_sst_files_size"),
-        ("rocksdb.estimate-live-data-size", "estimate_live_data_size"),
-    ]),
-    ("rocksdb_compaction_bytes", &[(
-        "rocksdb.estimate-pending-compaction-bytes",
-        "estimate_pending_compaction",
-    )]),
-    ("rocksdb_block_cache_bytes", &[
-        ("rocksdb.block-cache-capacity", "capacity"),
-        ("rocksdb.block-cache-usage", "usage"),
-        ("rocksdb.block-cache-pinned-usage", "pinned_usage"),
-    ]),
+    (
+        "rocksdb_memtable_bytes",
+        &[
+            ("rocksdb.cur-size-active-mem-table", "cur_size_active"),
+            ("rocksdb.cur-size-all-mem-tables", "cur_size_all"),
+            ("rocksdb.size-all-mem-tables", "size_all"),
+        ],
+    ),
+    (
+        "rocksdb_sst_bytes",
+        &[
+            ("rocksdb.live-sst-files-size", "live_sst_files_size"),
+            ("rocksdb.total-sst-files-size", "total_sst_files_size"),
+            ("rocksdb.estimate-live-data-size", "estimate_live_data_size"),
+        ],
+    ),
+    (
+        "rocksdb_compaction_bytes",
+        &[(
+            "rocksdb.estimate-pending-compaction-bytes",
+            "estimate_pending_compaction",
+        )],
+    ),
+    (
+        "rocksdb_block_cache_bytes",
+        &[
+            ("rocksdb.block-cache-capacity", "capacity"),
+            ("rocksdb.block-cache-usage", "usage"),
+            ("rocksdb.block-cache-pinned-usage", "pinned_usage"),
+        ],
+    ),
     // BlobDB payload files — the bulk of the on-disk bytes for this store.
-    ("rocksdb_blob_bytes", &[
-        ("rocksdb.total-blob-file-size", "total_blob_file_size"),
-        ("rocksdb.live-blob-file-size", "live_blob_file_size"),
-        (
-            "rocksdb.live-blob-file-garbage-size",
-            "live_blob_file_garbage_size",
-        ),
-    ]),
-    ("rocksdb_memtable_count", &[
-        ("rocksdb.num-entries-active-mem-table", "entries_active"),
-        ("rocksdb.num-entries-imm-mem-tables", "entries_imm"),
-        ("rocksdb.num-deletes-active-mem-table", "deletes_active"),
-        ("rocksdb.num-deletes-imm-mem-tables", "deletes_imm"),
-    ]),
-    ("rocksdb_compaction_count", &[
-        ("rocksdb.num-running-compactions", "running_compactions"),
-        ("rocksdb.num-running-flushes", "running_flushes"),
-    ]),
-    ("rocksdb_lsm_count", &[
-        ("rocksdb.num-live-versions", "live_versions"),
-        (
-            "rocksdb.current-super-version-number",
-            "super_version_number",
-        ),
-        ("rocksdb.num-blob-files", "num_blob_files"),
-    ]),
-    ("rocksdb_errors_count", &[(
-        "rocksdb.background-errors",
-        "background_errors",
-    )]),
-    ("rocksdb_flags", &[
-        ("rocksdb.compaction-pending", "compaction_pending"),
-        ("rocksdb.mem-table-flush-pending", "memtable_flush_pending"),
-        ("rocksdb.is-write-stopped", "is_write_stopped"),
-        (
-            "rocksdb.is-file-deletions-enabled",
-            "is_file_deletions_enabled",
-        ),
-    ]),
+    (
+        "rocksdb_blob_bytes",
+        &[
+            ("rocksdb.total-blob-file-size", "total_blob_file_size"),
+            ("rocksdb.live-blob-file-size", "live_blob_file_size"),
+            (
+                "rocksdb.live-blob-file-garbage-size",
+                "live_blob_file_garbage_size",
+            ),
+        ],
+    ),
+    (
+        "rocksdb_memtable_count",
+        &[
+            ("rocksdb.num-entries-active-mem-table", "entries_active"),
+            ("rocksdb.num-entries-imm-mem-tables", "entries_imm"),
+            ("rocksdb.num-deletes-active-mem-table", "deletes_active"),
+            ("rocksdb.num-deletes-imm-mem-tables", "deletes_imm"),
+        ],
+    ),
+    (
+        "rocksdb_compaction_count",
+        &[
+            ("rocksdb.num-running-compactions", "running_compactions"),
+            ("rocksdb.num-running-flushes", "running_flushes"),
+        ],
+    ),
+    (
+        "rocksdb_lsm_count",
+        &[
+            ("rocksdb.num-live-versions", "live_versions"),
+            (
+                "rocksdb.current-super-version-number",
+                "super_version_number",
+            ),
+            ("rocksdb.num-blob-files", "num_blob_files"),
+        ],
+    ),
+    (
+        "rocksdb_errors_count",
+        &[("rocksdb.background-errors", "background_errors")],
+    ),
+    (
+        "rocksdb_flags",
+        &[
+            ("rocksdb.compaction-pending", "compaction_pending"),
+            ("rocksdb.mem-table-flush-pending", "memtable_flush_pending"),
+            ("rocksdb.is-write-stopped", "is_write_stopped"),
+            (
+                "rocksdb.is-file-deletions-enabled",
+                "is_file_deletions_enabled",
+            ),
+        ],
+    ),
 ];
 
 /// Handle to the blocks CF — a cheap lookup; the CF always exists once opened.

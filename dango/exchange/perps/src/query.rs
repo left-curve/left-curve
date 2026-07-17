@@ -135,16 +135,19 @@ pub fn query_user_state_extended(
                 None
             };
 
-            Ok((pair_id.clone(), PositionExtended {
-                size: position.size,
-                entry_price: position.entry_price,
-                entry_funding_per_unit: position.entry_funding_per_unit,
-                conditional_order_above: position.conditional_order_above.clone(),
-                conditional_order_below: position.conditional_order_below.clone(),
-                unrealized_pnl,
-                unrealized_funding,
-                liquidation_price,
-            }))
+            Ok((
+                pair_id.clone(),
+                PositionExtended {
+                    size: position.size,
+                    entry_price: position.entry_price,
+                    entry_funding_per_unit: position.entry_funding_per_unit,
+                    conditional_order_above: position.conditional_order_above.clone(),
+                    conditional_order_below: position.conditional_order_below.clone(),
+                    unrealized_pnl,
+                    unrealized_funding,
+                    liquidation_price,
+                },
+            ))
         })
         .collect::<anyhow::Result<BTreeMap<_, _>>>()?;
 

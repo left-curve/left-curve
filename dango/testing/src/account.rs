@@ -153,9 +153,12 @@ impl TestAccount<Undefined<UserIndex>, Defined<Addr>> {
     ) -> TestAccount<Defined<UserIndex>, Defined<Addr>> {
         let account_factory = querier.query_account_factory().unwrap();
         let user_index = querier
-            .query_wasm_smart(account_factory, account_factory::QueryAccountRequest {
-                address: self.address.into_inner(),
-            })
+            .query_wasm_smart(
+                account_factory,
+                account_factory::QueryAccountRequest {
+                    address: self.address.into_inner(),
+                },
+            )
             .unwrap()
             .owner;
 

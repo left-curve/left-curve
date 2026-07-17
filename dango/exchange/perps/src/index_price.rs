@@ -195,16 +195,20 @@ mod tests {
     ) {
         let stored_price = may_invert_price(UsdPrice::new_int(price), true);
         let key: OrderKey = (pair_id.clone(), stored_price, Uint64::new(order_id));
-        BIDS.save(storage, key, &LimitOrder {
-            user: MAKER,
-            size: Quantity::new_int(size),
-            reduce_only: false,
-            reserved_margin: UsdValue::ZERO,
-            created_at: Timestamp::ZERO,
-            tp: None,
-            sl: None,
-            client_order_id: None,
-        })
+        BIDS.save(
+            storage,
+            key,
+            &LimitOrder {
+                user: MAKER,
+                size: Quantity::new_int(size),
+                reduce_only: false,
+                reserved_margin: UsdValue::ZERO,
+                created_at: Timestamp::ZERO,
+                tp: None,
+                sl: None,
+                client_order_id: None,
+            },
+        )
         .unwrap();
     }
 
@@ -220,16 +224,20 @@ mod tests {
             UsdPrice::new_int(price),
             Uint64::new(order_id),
         );
-        ASKS.save(storage, key, &LimitOrder {
-            user: MAKER,
-            size: Quantity::new_int(size),
-            reduce_only: false,
-            reserved_margin: UsdValue::ZERO,
-            created_at: Timestamp::ZERO,
-            tp: None,
-            sl: None,
-            client_order_id: None,
-        })
+        ASKS.save(
+            storage,
+            key,
+            &LimitOrder {
+                user: MAKER,
+                size: Quantity::new_int(size),
+                reduce_only: false,
+                reserved_margin: UsdValue::ZERO,
+                created_at: Timestamp::ZERO,
+                tp: None,
+                sl: None,
+                client_order_id: None,
+            },
+        )
         .unwrap();
     }
 

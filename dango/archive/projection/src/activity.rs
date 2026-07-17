@@ -512,11 +512,10 @@ mod tests {
         assert_eq!(chunked(Vec::<u8>::new()).count(), 0);
 
         let batches: Vec<Vec<usize>> = chunked((0..INSERT_CHUNK * 2 + 1).collect()).collect();
-        assert_eq!(batches.iter().map(Vec::len).collect::<Vec<_>>(), vec![
-            INSERT_CHUNK,
-            INSERT_CHUNK,
-            1
-        ],);
+        assert_eq!(
+            batches.iter().map(Vec::len).collect::<Vec<_>>(),
+            vec![INSERT_CHUNK, INSERT_CHUNK, 1],
+        );
         // Order is preserved across the chunk boundary.
         assert_eq!(batches[1][0], INSERT_CHUNK);
         assert_eq!(batches[2][0], INSERT_CHUNK * 2);

@@ -71,7 +71,7 @@ lint-without-features:
 
 # Perform formatting
 fmt:
-  cargo +nightly fmt --all
+  cargo fmt --all
 
 # Build schema
 build-graphql-schema:

@@ -898,12 +898,14 @@ fn standing_query_frame(
     projection: Projection,
 ) -> String {
     match (projection, &frame.response) {
-        (Projection::UnwrapWasmSmart, QueryResponse::WasmSmart(inner)) => {
-            data_frame(channel, id, &AliasQueryFrame {
+        (Projection::UnwrapWasmSmart, QueryResponse::WasmSmart(inner)) => data_frame(
+            channel,
+            id,
+            &AliasQueryFrame {
                 block_height: frame.block_height,
                 response: inner,
-            })
-        },
+            },
+        ),
         // A non-`wasm_smart` response is unreachable for desugared alias
         // queries; fall back to the verbatim envelope rather than dropping
         // the frame.
@@ -1141,9 +1143,10 @@ mod tests {
 
         assert_eq!(id, 3);
         assert_eq!(subscription.channel(), "blockInfo");
-        assert!(matches!(subscription, Subscription::BlockInfo {
-            since: Some(42)
-        }));
+        assert!(matches!(
+            subscription,
+            Subscription::BlockInfo { since: Some(42) }
+        ));
 
         // `block`, without `since` (live-only).
         let message: ClientMessage = serde_json::from_str(
@@ -1281,10 +1284,13 @@ mod tests {
         )
         .unwrap();
 
-        assert!(matches!(message, ClientMessage::Query {
-            id: 6,
-            query: Query::Balance(_)
-        }));
+        assert!(matches!(
+            message,
+            ClientMessage::Query {
+                id: 6,
+                query: Query::Balance(_)
+            }
+        ));
     }
 
     #[test]
@@ -1318,10 +1324,10 @@ mod tests {
             panic!("expected a subscribe message");
         };
 
-        assert!(matches!(subscription, Subscription::Query {
-            interval: 10,
-            ..
-        }));
+        assert!(matches!(
+            subscription,
+            Subscription::Query { interval: 10, .. }
+        ));
     }
 
     #[test]
