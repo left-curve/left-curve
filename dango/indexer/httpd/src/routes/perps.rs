@@ -176,10 +176,10 @@ pub async fn pair_params(
 ) -> Result<HttpResponse, Error> {
     let PairsPageQuery { start_after, limit } = query.into_inner();
 
-    let response = query_perps(&app_ctx, &perps::QueryMsg::PairParams {
-        start_after,
-        limit,
-    })
+    let response = query_perps(
+        &app_ctx,
+        &perps::QueryMsg::PairParams { start_after, limit },
+    )
     .await?;
 
     Ok(HttpResponse::Ok().json(response))
@@ -261,10 +261,10 @@ pub async fn pair_states(
 ) -> Result<HttpResponse, Error> {
     let PairsPageQuery { start_after, limit } = query.into_inner();
 
-    let response = query_perps(&app_ctx, &perps::QueryMsg::PairStates {
-        start_after,
-        limit,
-    })
+    let response = query_perps(
+        &app_ctx,
+        &perps::QueryMsg::PairStates { start_after, limit },
+    )
     .await?;
 
     Ok(HttpResponse::Ok().json(response))
@@ -398,10 +398,13 @@ pub async fn order_by_client_order_id(
         client_order_id,
     } = query.into_inner();
 
-    let response = query_perps(&app_ctx, &perps::QueryMsg::OrderByClientOrderId {
-        user,
-        client_order_id,
-    })
+    let response = query_perps(
+        &app_ctx,
+        &perps::QueryMsg::OrderByClientOrderId {
+            user,
+            client_order_id,
+        },
+    )
     .await?;
 
     json_or_not_found(

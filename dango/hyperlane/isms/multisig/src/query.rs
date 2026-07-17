@@ -189,10 +189,14 @@ mod tests {
         let mut message = Message::decode(&raw_message).unwrap();
 
         VALIDATOR_SETS
-            .save(&mut ctx.storage, message.origin_domain, &ValidatorSet {
-                threshold: 1,
-                validators,
-            })
+            .save(
+                &mut ctx.storage,
+                message.origin_domain,
+                &ValidatorSet {
+                    threshold: 1,
+                    validators,
+                },
+            )
             .unwrap();
 
         verify(ctx.as_immutable(), &raw_message, &raw_metadata).should_succeed();
@@ -277,10 +281,14 @@ mod tests {
 
         // Save the _only the first three_ validators with a threshold of 2.
         VALIDATOR_SETS
-            .save(&mut ctx.storage, message.origin_domain, &ValidatorSet {
-                threshold: 2,
-                validators: validator_set[..3].iter().copied().collect(),
-            })
+            .save(
+                &mut ctx.storage,
+                message.origin_domain,
+                &ValidatorSet {
+                    threshold: 2,
+                    validators: validator_set[..3].iter().copied().collect(),
+                },
+            )
             .unwrap();
 
         // ----------------------- 3. Verify signatures ------------------------
@@ -439,10 +447,14 @@ mod tests {
 
         // Save with threshold = 2 so a single signer shouldn't suffice.
         VALIDATOR_SETS
-            .save(&mut ctx.storage, message.origin_domain, &ValidatorSet {
-                threshold: 2,
-                validators: validator_set.iter().copied().collect(),
-            })
+            .save(
+                &mut ctx.storage,
+                message.origin_domain,
+                &ValidatorSet {
+                    threshold: 2,
+                    validators: validator_set.iter().copied().collect(),
+                },
+            )
             .unwrap();
 
         // -------------------- 3. Malleability must fail ----------------------

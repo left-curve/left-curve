@@ -40,10 +40,11 @@ const TOKEN: &str = "insert_lazer_token_here";
 async fn test_lazer_stream() {
     let client = PythClient::new(NonEmpty::new_unchecked(LAZER_ENDPOINTS_TEST), TOKEN).unwrap();
 
-    test_stream(client, vec![BTC_USD_ID, ETH_USD_ID], vec![
-        SOL_USD_ID,
-        HYPE_USD_ID,
-    ])
+    test_stream(
+        client,
+        vec![BTC_USD_ID, ETH_USD_ID],
+        vec![SOL_USD_ID, HYPE_USD_ID],
+    )
     .await;
 }
 

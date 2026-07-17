@@ -186,10 +186,13 @@ async fn seed_prices(
     };
 
     if let Some(btc_price) = btc_price {
-        entries.insert(btc_pair_id(), OracleTestEntry {
-            pyth_id: 3,
-            humanized_price: UsdPrice::new_int(btc_price),
-        });
+        entries.insert(
+            btc_pair_id(),
+            OracleTestEntry {
+                pyth_id: 3,
+                humanized_price: UsdPrice::new_int(btc_price),
+            },
+        );
     }
 
     suite.seed_oracle_prices(&mut accounts.owner, entries).await;

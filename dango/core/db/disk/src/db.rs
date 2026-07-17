@@ -147,12 +147,16 @@ impl<T> DiskDb<T> {
         let cf_opts = new_state_cf_options();
         let wasm_cf_opts = new_wasm_cf_options(cf_opts.clone());
         let storage_cf_opts = new_storage_cf_options(cf_opts.clone());
-        let db = DB::open_cf_with_opts(&opts, data_dir, [
-            (CF_NAME_DEFAULT, Options::default()),
-            (CF_NAME_STATE_STORAGE, storage_cf_opts),
-            (CF_NAME_STATE_COMMITMENT, cf_opts),
-            (CF_NAME_WASM_STORAGE, wasm_cf_opts),
-        ])?;
+        let db = DB::open_cf_with_opts(
+            &opts,
+            data_dir,
+            [
+                (CF_NAME_DEFAULT, Options::default()),
+                (CF_NAME_STATE_STORAGE, storage_cf_opts),
+                (CF_NAME_STATE_COMMITMENT, cf_opts),
+                (CF_NAME_WASM_STORAGE, wasm_cf_opts),
+            ],
+        )?;
 
         // If `priority_range` is specified, load the data in that range into memory.
         let priority_data = priority_range.map(|(min, max)| {
@@ -837,11 +841,14 @@ impl Storage for StateStorage {
 
             #[cfg(feature = "metrics")]
             {
-                let iter = iter.with_metrics(DISK_DB_LABEL, [
-                    ("operation", "next"),
-                    ("comment", self.comment),
-                    ("source", PRIORITY_DATA_LABEL),
-                ]);
+                let iter = iter.with_metrics(
+                    DISK_DB_LABEL,
+                    [
+                        ("operation", "next"),
+                        ("comment", self.comment),
+                        ("source", PRIORITY_DATA_LABEL),
+                    ],
+                );
 
                 metrics::histogram!(
                     DISK_DB_LABEL,
@@ -981,11 +988,14 @@ fn create_wasm_iter<'a>(
         });
 
     #[cfg(feature = "metrics")]
-    let iter = iter.with_metrics(DISK_DB_LABEL, [
-        ("operation", "next"),
-        ("comment", comment),
-        ("source", WASM_STORAGE_LABEL),
-    ]);
+    let iter = iter.with_metrics(
+        DISK_DB_LABEL,
+        [
+            ("operation", "next"),
+            ("comment", comment),
+            ("source", WASM_STORAGE_LABEL),
+        ],
+    );
 
     #[cfg(feature = "metrics")]
     {
@@ -1024,11 +1034,14 @@ fn create_state_iter<'a>(
         });
 
     #[cfg(feature = "metrics")]
-    let iter = iter.with_metrics(DISK_DB_LABEL, [
-        ("operation", "next"),
-        ("comment", comment),
-        ("source", STATE_STORAGE_LABEL),
-    ]);
+    let iter = iter.with_metrics(
+        DISK_DB_LABEL,
+        [
+            ("operation", "next"),
+            ("comment", comment),
+            ("source", STATE_STORAGE_LABEL),
+        ],
+    );
 
     #[cfg(feature = "metrics")]
     {
@@ -1928,10 +1941,10 @@ mod tests_simple {
 
         let buffer = Shared::new(Buffer::new_unnamed(MockStorage::new(), None));
 
-        let mut provider = StorageProvider::new(Box::new(buffer.clone()), &[
-            CONTRACT_NAMESPACE,
-            &Addr::mock(0),
-        ]);
+        let mut provider = StorageProvider::new(
+            Box::new(buffer.clone()),
+            &[CONTRACT_NAMESPACE, &Addr::mock(0)],
+        );
 
         MAP.save(&mut provider, "foo", &1).unwrap();
 
@@ -1984,10 +1997,10 @@ mod tests_simple {
     #[test]
     fn storage_provider_prefix_length_is_correct() {
         assert_eq!(
-            StorageProvider::new(Box::new(MockStorage::new()), &[
-                CONTRACT_NAMESPACE,
-                &Addr::mock(0),
-            ])
+            StorageProvider::new(
+                Box::new(MockStorage::new()),
+                &[CONTRACT_NAMESPACE, &Addr::mock(0),]
+            )
             .namespace()
             .len(),
             WASM_PREFIX_LEN,
@@ -2141,10 +2154,12 @@ mod test_deadlock {
         std::time::Duration,
     };
 
-    const PERSONS: IndexedMap<String, String, PersonIndexes> =
-        IndexedMap::new("person", PersonIndexes {
+    const PERSONS: IndexedMap<String, String, PersonIndexes> = IndexedMap::new(
+        "person",
+        PersonIndexes {
             race: MultiIndex::new(|_name, race| race.clone(), "person", "person__race"),
-        });
+        },
+    );
 
     struct PersonIndexes<'a> {
         pub race: MultiIndex<'a, String, String, String>,
@@ -2278,15 +2293,18 @@ mod test_deadlock {
                 })
                 .collect::<Vec<_>>();
 
-            assert_eq!(names, [
-                "Aela the Huntress",
-                "Astrid",
-                "Balimund",
-                "Brynjolf",
-                "Farengar Secret-Fire",
-                "Kodlak Whitemane",
-                "Ulfric Stormcloak",
-            ]);
+            assert_eq!(
+                names,
+                [
+                    "Aela the Huntress",
+                    "Astrid",
+                    "Balimund",
+                    "Brynjolf",
+                    "Farengar Secret-Fire",
+                    "Kodlak Whitemane",
+                    "Ulfric Stormcloak",
+                ]
+            );
         }
     }
 }

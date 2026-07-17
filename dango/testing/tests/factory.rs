@@ -29,13 +29,16 @@ use {
 #[tokio::test]
 async fn onboarding_without_deposit() {
     let (suite, mut accounts, codes, contracts, validator_sets) =
-        setup_test_naive_with_custom_genesis(Default::default(), GenesisOption {
-            account: AccountOption {
-                minimum_deposit: coins! { usdc::DENOM.clone() => 10_000_000 },
+        setup_test_naive_with_custom_genesis(
+            Default::default(),
+            GenesisOption {
+                account: AccountOption {
+                    minimum_deposit: coins! { usdc::DENOM.clone() => 10_000_000 },
+                    ..Preset::preset_test()
+                },
                 ..Preset::preset_test()
             },
-            ..Preset::preset_test()
-        });
+        );
     let mut suite = HyperlaneTestSuite::new(suite, validator_sets, &contracts);
 
     // Make an empty block to advance block height from 0 to 1.
@@ -157,14 +160,16 @@ async fn onboarding_without_deposit() {
 /// activate) an inactive account.
 #[tokio::test]
 async fn inactive_account_rejects_transfer_from_non_gateway() {
-    let (mut suite, mut accounts, codes, contracts, _) =
-        setup_test_naive_with_custom_genesis(Default::default(), GenesisOption {
+    let (mut suite, mut accounts, codes, contracts, _) = setup_test_naive_with_custom_genesis(
+        Default::default(),
+        GenesisOption {
             account: AccountOption {
                 minimum_deposit: coins! { usdc::DENOM.clone() => 10_000_000 },
                 ..Preset::preset_test()
             },
             ..Preset::preset_test()
-        });
+        },
+    );
 
     let chain_id = suite.chain_id.clone();
 
@@ -230,13 +235,16 @@ async fn inactive_account_rejects_transfer_from_non_gateway() {
 #[tokio::test]
 async fn gateway_deposit_activates_account() {
     let (suite, mut accounts, codes, contracts, validator_sets) =
-        setup_test_naive_with_custom_genesis(Default::default(), GenesisOption {
-            account: AccountOption {
-                minimum_deposit: coins! { usdc::DENOM.clone() => 10_000_000 },
+        setup_test_naive_with_custom_genesis(
+            Default::default(),
+            GenesisOption {
+                account: AccountOption {
+                    minimum_deposit: coins! { usdc::DENOM.clone() => 10_000_000 },
+                    ..Preset::preset_test()
+                },
                 ..Preset::preset_test()
             },
-            ..Preset::preset_test()
-        });
+        );
     let mut suite = HyperlaneTestSuite::new(suite, validator_sets, &contracts);
 
     // Make an empty block so that subsequent transactions are processed at a
@@ -305,13 +313,16 @@ async fn gateway_deposit_activates_account() {
 #[tokio::test]
 async fn gateway_transfer_to_inactive_account_is_accepted() {
     let (suite, mut accounts, codes, contracts, validator_sets) =
-        setup_test_naive_with_custom_genesis(Default::default(), GenesisOption {
-            account: AccountOption {
-                minimum_deposit: coins! { usdc::DENOM.clone() => 10_000_000 },
+        setup_test_naive_with_custom_genesis(
+            Default::default(),
+            GenesisOption {
+                account: AccountOption {
+                    minimum_deposit: coins! { usdc::DENOM.clone() => 10_000_000 },
+                    ..Preset::preset_test()
+                },
                 ..Preset::preset_test()
             },
-            ..Preset::preset_test()
-        });
+        );
     let mut suite = HyperlaneTestSuite::new(suite, validator_sets, &contracts);
 
     suite.make_empty_block().await;
@@ -384,13 +395,16 @@ async fn gateway_transfer_to_inactive_account_is_accepted() {
 #[tokio::test]
 async fn gateway_deposits_accumulate_to_activate() {
     let (suite, mut accounts, codes, contracts, validator_sets) =
-        setup_test_naive_with_custom_genesis(Default::default(), GenesisOption {
-            account: AccountOption {
-                minimum_deposit: coins! { usdc::DENOM.clone() => 10_000_000 },
+        setup_test_naive_with_custom_genesis(
+            Default::default(),
+            GenesisOption {
+                account: AccountOption {
+                    minimum_deposit: coins! { usdc::DENOM.clone() => 10_000_000 },
+                    ..Preset::preset_test()
+                },
                 ..Preset::preset_test()
             },
-            ..Preset::preset_test()
-        });
+        );
     let mut suite = HyperlaneTestSuite::new(suite, validator_sets, &contracts);
 
     suite.make_empty_block().await;

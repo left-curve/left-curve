@@ -80,12 +80,18 @@ async fn do_backtrace_test() {
     let (suite, _, wasm_tester, rust_tester) = setup_test().await;
 
     let res = suite
-        .query_wasm_smart(wasm_tester, QueryBacktraceRequest {
-            query: Query::wasm_smart(rust_tester, &QueryMsg::FailingQuery {
-                msg: "boom".to_string(),
-            })
-            .unwrap(),
-        })
+        .query_wasm_smart(
+            wasm_tester,
+            QueryBacktraceRequest {
+                query: Query::wasm_smart(
+                    rust_tester,
+                    &QueryMsg::FailingQuery {
+                        msg: "boom".to_string(),
+                    },
+                )
+                .unwrap(),
+            },
+        )
         .should_succeed();
 
     if let BacktraceQueryResponse::Err(err) = res {
@@ -99,9 +105,12 @@ async fn do_backtrace_test() {
     }
 
     let backtrace = suite
-        .query_wasm_smart(wasm_tester, QueryFailingQueryRequest {
-            msg: "boom wasm".to_string(),
-        })
+        .query_wasm_smart(
+            wasm_tester,
+            QueryFailingQueryRequest {
+                msg: "boom wasm".to_string(),
+            },
+        )
         .unwrap_err()
         .into_generic_backtraced_error()
         .backtrace
@@ -111,9 +120,12 @@ async fn do_backtrace_test() {
     assert!(!backtrace.contains("dango_tester::query::failing_query"));
 
     let backtrace = suite
-        .query_wasm_smart(rust_tester, QueryFailingQueryRequest {
-            msg: "boom rust".to_string(),
-        })
+        .query_wasm_smart(
+            rust_tester,
+            QueryFailingQueryRequest {
+                msg: "boom rust".to_string(),
+            },
+        )
         .unwrap_err()
         .into_generic_backtraced_error()
         .backtrace

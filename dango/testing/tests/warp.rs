@@ -117,14 +117,20 @@ async fn sending_remote() {
         });
 
     // Sender should have been deducted balance.
-    suite.balances().should_change(&accounts.user1, btree_map! {
-        usdc::DENOM.clone() => BalanceChange::Decreased(SEND_AMOUNT),
-    });
+    suite.balances().should_change(
+        &accounts.user1,
+        btree_map! {
+            usdc::DENOM.clone() => BalanceChange::Decreased(SEND_AMOUNT),
+        },
+    );
 
     // The chain owner should have received the fee.
-    suite.balances().should_change(&accounts.owner, btree_map! {
-        usdc::DENOM.clone() => BalanceChange::Increased(ETHEREUM_USDC_WITHDRAWAL_FEE),
-    });
+    suite.balances().should_change(
+        &accounts.owner,
+        btree_map! {
+            usdc::DENOM.clone() => BalanceChange::Increased(ETHEREUM_USDC_WITHDRAWAL_FEE),
+        },
+    );
 
     // Gateway contract should not hold any of the synth token (should be burned).
     suite

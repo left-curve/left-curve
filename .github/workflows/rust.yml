@@ -178,7 +178,7 @@ jobs:
 
       - name: Install toolchain
         if: env.BACKEND_CHANGED == 'true'
-        run: rustup toolchain install nightly --component rustfmt
+        run: rustup component add rustfmt
 
       # This ends up being 8GB and takes 60sec to pull, which is too slow just for formatting.
       # - uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
@@ -193,7 +193,7 @@ jobs:
 
       - name: Run rustfmt checks
         if: env.BACKEND_CHANGED == 'true'
-        run: rustup run nightly cargo fmt --check --all
+        run: cargo fmt --check --all
 
   check-no-features:
     needs: [backend-test, changes]

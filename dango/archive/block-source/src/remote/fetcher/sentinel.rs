@@ -353,11 +353,13 @@ mod tests {
         // so the loop must keep advancing via the committed frontier. With a
         // 10-block gap and `range_size` 20 every batch is a single stride, so a
         // short run resumes immediately (no misaligned follow-up stride).
-        let fetcher =
-            SentinelBlockFetcher::new(MockRangeClient { max_per_call: 3 }, SentinelFetcherConfig {
+        let fetcher = SentinelBlockFetcher::new(
+            MockRangeClient { max_per_call: 3 },
+            SentinelFetcherConfig {
                 range_size: 20,
                 ..SentinelFetcherConfig::default()
-            });
+            },
+        );
 
         let mut stream = fetcher.spawn(1, 10);
         assert_eq!(collect(&mut stream, 10).await, (1..=10).collect::<Vec<_>>());
@@ -367,12 +369,14 @@ mod tests {
     #[tokio::test]
     async fn serial_mode_is_the_degenerate_batch() {
         // `parallelism: 1` = one stride per batch: the pre-parallelism loop.
-        let fetcher =
-            SentinelBlockFetcher::new(MockRangeClient { max_per_call: 3 }, SentinelFetcherConfig {
+        let fetcher = SentinelBlockFetcher::new(
+            MockRangeClient { max_per_call: 3 },
+            SentinelFetcherConfig {
                 range_size: 20,
                 parallelism: 1,
                 ..SentinelFetcherConfig::default()
-            });
+            },
+        );
 
         let mut stream = fetcher.spawn(1, 10);
         assert_eq!(collect(&mut stream, 10).await, (1..=10).collect::<Vec<_>>());
@@ -386,13 +390,15 @@ mod tests {
         // fixed start no longer aligns with the committed frontier and the
         // walk must discard the batch tail and re-issue — never skipping or
         // reordering a height. Zero backoff keeps the test instant.
-        let fetcher =
-            SentinelBlockFetcher::new(MockRangeClient { max_per_call: 3 }, SentinelFetcherConfig {
+        let fetcher = SentinelBlockFetcher::new(
+            MockRangeClient { max_per_call: 3 },
+            SentinelFetcherConfig {
                 range_size: 5,
                 parallelism: 3,
                 retry_backoff: Duration::ZERO,
                 ..SentinelFetcherConfig::default()
-            });
+            },
+        );
 
         let mut stream = fetcher.spawn(1, 30);
         assert_eq!(collect(&mut stream, 30).await, (1..=30).collect::<Vec<_>>());

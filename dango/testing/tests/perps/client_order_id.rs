@@ -62,9 +62,12 @@ async fn submit_cancel_resubmit_by_client_order_id() {
 
     // Sanity: exactly one resting order, carrying `cid`.
     let orders: BTreeMap<OrderId, QueryOrdersByUserResponseItem> = suite
-        .query_wasm_smart(contracts.perps, perps::QueryOrdersByUserRequest {
-            user: accounts.user1.address(),
-        })
+        .query_wasm_smart(
+            contracts.perps,
+            perps::QueryOrdersByUserRequest {
+                user: accounts.user1.address(),
+            },
+        )
         .should_succeed();
     assert_eq!(orders.len(), 1);
 
@@ -84,9 +87,12 @@ async fn submit_cancel_resubmit_by_client_order_id() {
 
     // The order is gone.
     let orders: BTreeMap<OrderId, QueryOrdersByUserResponseItem> = suite
-        .query_wasm_smart(contracts.perps, perps::QueryOrdersByUserRequest {
-            user: accounts.user1.address(),
-        })
+        .query_wasm_smart(
+            contracts.perps,
+            perps::QueryOrdersByUserRequest {
+                user: accounts.user1.address(),
+            },
+        )
         .should_succeed();
     assert!(orders.is_empty(), "order should be removed after cancel");
 
@@ -115,9 +121,12 @@ async fn submit_cancel_resubmit_by_client_order_id() {
         .should_succeed();
 
     let orders: BTreeMap<OrderId, QueryOrdersByUserResponseItem> = suite
-        .query_wasm_smart(contracts.perps, perps::QueryOrdersByUserRequest {
-            user: accounts.user1.address(),
-        })
+        .query_wasm_smart(
+            contracts.perps,
+            perps::QueryOrdersByUserRequest {
+                user: accounts.user1.address(),
+            },
+        )
         .should_succeed();
     assert_eq!(
         orders.len(),
@@ -179,19 +188,25 @@ async fn query_order_by_client_order_id() {
 
     // Cross-check the system-assigned order IDs against the by-user query.
     let orders: BTreeMap<OrderId, QueryOrdersByUserResponseItem> = suite
-        .query_wasm_smart(contracts.perps, perps::QueryOrdersByUserRequest {
-            user: accounts.user1.address(),
-        })
+        .query_wasm_smart(
+            contracts.perps,
+            perps::QueryOrdersByUserRequest {
+                user: accounts.user1.address(),
+            },
+        )
         .should_succeed();
     assert_eq!(orders.len(), 2);
 
     // The bid is found, with the correct system order ID and the un-inverted
     // limit price.
     let bid: QueryOrderByClientOrderIdResponse = suite
-        .query_wasm_smart(contracts.perps, perps::QueryOrderByClientOrderIdRequest {
-            user: accounts.user1.address(),
-            client_order_id: bid_cid,
-        })
+        .query_wasm_smart(
+            contracts.perps,
+            perps::QueryOrderByClientOrderIdRequest {
+                user: accounts.user1.address(),
+                client_order_id: bid_cid,
+            },
+        )
         .should_succeed()
         .expect("the bid should be found by its client order ID");
     let bid_item = orders
@@ -205,10 +220,13 @@ async fn query_order_by_client_order_id() {
 
     // The ask is found too — covers the `ASKS` branch of the lookup.
     let ask: QueryOrderByClientOrderIdResponse = suite
-        .query_wasm_smart(contracts.perps, perps::QueryOrderByClientOrderIdRequest {
-            user: accounts.user1.address(),
-            client_order_id: ask_cid,
-        })
+        .query_wasm_smart(
+            contracts.perps,
+            perps::QueryOrderByClientOrderIdRequest {
+                user: accounts.user1.address(),
+                client_order_id: ask_cid,
+            },
+        )
         .should_succeed()
         .expect("the ask should be found by its client order ID");
     assert_eq!(
@@ -223,19 +241,25 @@ async fn query_order_by_client_order_id() {
 
     // A client order ID the user never used: `None`.
     suite
-        .query_wasm_smart(contracts.perps, perps::QueryOrderByClientOrderIdRequest {
-            user: accounts.user1.address(),
-            client_order_id: Uint64::new(99),
-        })
+        .query_wasm_smart(
+            contracts.perps,
+            perps::QueryOrderByClientOrderIdRequest {
+                user: accounts.user1.address(),
+                client_order_id: Uint64::new(99),
+            },
+        )
         .should_succeed_and(Option::is_none);
 
     // The index is scoped per sender: another user querying the same client
     // order ID gets `None`.
     suite
-        .query_wasm_smart(contracts.perps, perps::QueryOrderByClientOrderIdRequest {
-            user: accounts.user2.address(),
-            client_order_id: bid_cid,
-        })
+        .query_wasm_smart(
+            contracts.perps,
+            perps::QueryOrderByClientOrderIdRequest {
+                user: accounts.user2.address(),
+                client_order_id: bid_cid,
+            },
+        )
         .should_succeed_and(Option::is_none);
 
     // After canceling the bid, the lookup returns `None`.
@@ -252,10 +276,13 @@ async fn query_order_by_client_order_id() {
         .should_succeed();
 
     suite
-        .query_wasm_smart(contracts.perps, perps::QueryOrderByClientOrderIdRequest {
-            user: accounts.user1.address(),
-            client_order_id: bid_cid,
-        })
+        .query_wasm_smart(
+            contracts.perps,
+            perps::QueryOrderByClientOrderIdRequest {
+                user: accounts.user1.address(),
+                client_order_id: bid_cid,
+            },
+        )
         .should_succeed_and(Option::is_none);
 }
 

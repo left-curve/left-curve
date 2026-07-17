@@ -91,10 +91,13 @@ async fn immutable_state() {
     // This tests how the VM handles state mutability while serving the `Query`
     // ABCI request.
     suite
-        .query_wasm_smart(tester, dango_tester::QueryForceWriteRequest {
-            key: "larry".to_string(),
-            value: "engineer".to_string(),
-        })
+        .query_wasm_smart(
+            tester,
+            dango_tester::QueryForceWriteRequest {
+                key: "larry".to_string(),
+                value: "engineer".to_string(),
+            },
+        )
         .should_fail_with_error(VmError::immutable_state());
 
     // Execute the tester contract.
@@ -331,12 +334,15 @@ async fn recovering_secp256k1_pubkey() {
         let msg_hash = sha2_256(MSG);
         let (sig, recovery_id) = sk.sign_prehash_recoverable(&msg_hash);
 
-        (vk, QueryRecoverSecp256k1Request {
-            sig: sig.to_vec().into(),
-            msg_hash: msg_hash.to_vec().into(),
-            recovery_id: recovery_id.to_byte(),
-            compressed: true,
-        })
+        (
+            vk,
+            QueryRecoverSecp256k1Request {
+                sig: sig.to_vec().into(),
+                msg_hash: msg_hash.to_vec().into(),
+                recovery_id: recovery_id.to_byte(),
+                compressed: true,
+            },
+        )
     };
 
     // Ok

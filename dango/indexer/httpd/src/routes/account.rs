@@ -102,9 +102,11 @@ pub async fn account(
     let address = path.into_inner();
     let factory = factory_address(&app_ctx).await?;
 
-    let response = query_wasm_smart(&app_ctx, factory, &account_factory::QueryMsg::Account {
-        address,
-    })
+    let response = query_wasm_smart(
+        &app_ctx,
+        factory,
+        &account_factory::QueryMsg::Account { address },
+    )
     .await?;
 
     Ok(HttpResponse::Ok().json(response))
@@ -141,13 +143,14 @@ pub async fn user(
     let factory = factory_address(&app_ctx).await?;
 
     // First resolve which user owns the account...
-    let account_info: account_factory::Account =
-        query_wasm_smart(&app_ctx, factory, &account_factory::QueryMsg::Account {
-            address,
-        })
-        .await?
-        .deserialize_json()
-        .map_err(ErrorInternalServerError)?;
+    let account_info: account_factory::Account = query_wasm_smart(
+        &app_ctx,
+        factory,
+        &account_factory::QueryMsg::Account { address },
+    )
+    .await?
+    .deserialize_json()
+    .map_err(ErrorInternalServerError)?;
 
     // ...then return that user, verbatim.
     let response = query_wasm_smart(
@@ -223,9 +226,11 @@ pub async fn session_seen_nonces(
     let address = path.into_inner();
     let SessionSeenNoncesQuery { session_key } = query.into_inner();
 
-    let response = query_wasm_smart(&app_ctx, address, &AccountQueryMsg::SessionSeenNonces {
-        session_key,
-    })
+    let response = query_wasm_smart(
+        &app_ctx,
+        address,
+        &AccountQueryMsg::SessionSeenNonces { session_key },
+    )
     .await?;
 
     Ok(HttpResponse::Ok().json(response))
@@ -350,22 +355,25 @@ mod tests {
 
         // Both queries went to the factory: first the account lookup, then
         // the user lookup with the owner index from the first response.
-        assert_eq!(app.wasm_smart_requests(), vec![
-            (
-                factory_addr(),
-                account_factory::QueryMsg::Account {
-                    address: user_addr(),
-                }
-                .to_json_value()
-                .unwrap(),
-            ),
-            (
-                factory_addr(),
-                account_factory::QueryMsg::User(account_factory::UserIndexOrName::Index(7))
+        assert_eq!(
+            app.wasm_smart_requests(),
+            vec![
+                (
+                    factory_addr(),
+                    account_factory::QueryMsg::Account {
+                        address: user_addr(),
+                    }
                     .to_json_value()
                     .unwrap(),
-            ),
-        ]);
+                ),
+                (
+                    factory_addr(),
+                    account_factory::QueryMsg::User(account_factory::UserIndexOrName::Index(7))
+                        .to_json_value()
+                        .unwrap(),
+                ),
+            ]
+        );
     }
 
     #[actix_web::test]
@@ -435,11 +443,14 @@ mod tests {
         assert_eq!(status, StatusCode::OK);
         assert_eq!(body, coins.to_json_value().unwrap());
 
-        assert_eq!(app.last_balances_request(), QueryBalancesRequest {
-            address: user_addr(),
-            start_after: Some(usdc::DENOM.clone()),
-            limit: Some(5),
-        });
+        assert_eq!(
+            app.last_balances_request(),
+            QueryBalancesRequest {
+                address: user_addr(),
+                start_after: Some(usdc::DENOM.clone()),
+                limit: Some(5),
+            }
+        );
     }
 
     #[actix_web::test]

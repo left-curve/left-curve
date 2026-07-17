@@ -755,9 +755,12 @@ async fn ws_perps_alias_subscriptions_stream_unwrapped_responses() -> anyhow::Re
         .query_wasm_smart(contracts.perps, perps::QueryParamRequest {})
         .should_succeed();
     let pair_param: Option<perps::PairParam> = suite
-        .query_wasm_smart(contracts.perps, perps::QueryPairParamRequest {
-            pair_id: pair.clone(),
-        })
+        .query_wasm_smart(
+            contracts.perps,
+            perps::QueryPairParamRequest {
+                pair_id: pair.clone(),
+            },
+        )
         .should_succeed();
 
     suite

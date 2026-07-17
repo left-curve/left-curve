@@ -59,9 +59,12 @@ async fn rate_limit() {
         }
 
         // Check balances.
-        suite.balances().should_change(receiver, btree_map! {
-            usdc::DENOM.clone() => BalanceChange::Increased(300_000_000),
-        });
+        suite.balances().should_change(
+            receiver,
+            btree_map! {
+                usdc::DENOM.clone() => BalanceChange::Increased(300_000_000),
+            },
+        );
     }
 
     suite
@@ -146,9 +149,12 @@ async fn rate_limit() {
             .query_supply(usdc::DENOM.clone())
             .should_succeed_and_equal(370_000_000.into());
 
-        suite.balances().should_change(receiver, btree_map! {
-            usdc::DENOM.clone() => BalanceChange::Increased(369_990_000),
-        });
+        suite.balances().should_change(
+            receiver,
+            btree_map! {
+                usdc::DENOM.clone() => BalanceChange::Increased(369_990_000),
+            },
+        );
     }
 
     // Quota was not bumped by the inbound transfer — sending even 1 token
@@ -190,10 +196,13 @@ async fn rate_limit() {
         ),
     ] {
         suite
-            .query_wasm_smart(contracts.gateway, gateway::QueryReserveRequest {
-                bridge: contracts.warp,
-                remote,
-            })
+            .query_wasm_smart(
+                contracts.gateway,
+                gateway::QueryReserveRequest {
+                    bridge: contracts.warp,
+                    remote,
+                },
+            )
             .should_succeed_and_equal(amount.into());
     }
 
@@ -522,13 +531,19 @@ async fn native_denom() {
     }
 
     // check the balances.
-    suite.balances().should_change(&accounts.user1, btree_map! {
-        dango::DENOM.clone() => BalanceChange::Decreased(100),
-    });
+    suite.balances().should_change(
+        &accounts.user1,
+        btree_map! {
+            dango::DENOM.clone() => BalanceChange::Decreased(100),
+        },
+    );
 
-    suite.balances().should_change(&accounts.user2, btree_map! {
-        dango::DENOM.clone() => BalanceChange::Increased(100),
-    });
+    suite.balances().should_change(
+        &accounts.user2,
+        btree_map! {
+            dango::DENOM.clone() => BalanceChange::Increased(100),
+        },
+    );
 }
 
 #[tokio::test]
@@ -576,13 +591,16 @@ async fn deposit_and_withdraw_events() {
             })
             .collect::<Vec<_>>();
 
-        assert_eq!(deposits, vec![gateway::Deposited {
-            user: accounts.user2.address(),
-            bridge: contracts.warp,
-            remote,
-            denom: usdc::DENOM.clone(),
-            amount: Uint128::new(100_000_000),
-        }]);
+        assert_eq!(
+            deposits,
+            vec![gateway::Deposited {
+                user: accounts.user2.address(),
+                bridge: contracts.warp,
+                remote,
+                denom: usdc::DENOM.clone(),
+                amount: Uint128::new(100_000_000),
+            }]
+        );
     }
 
     // Sending a remote transfer should emit a `withdrawn` event from the
@@ -619,16 +637,19 @@ async fn deposit_and_withdraw_events() {
             })
             .collect::<Vec<_>>();
 
-        assert_eq!(withdrawals, vec![gateway::Withdrawn {
-            id: 0,
-            user: accounts.user2.address(),
-            bridge: contracts.warp,
-            remote,
-            recipient: mock_arbitrum_recipient,
-            denom: usdc::DENOM.clone(),
-            amount: Uint128::new(50_000_000),
-            fee: Uint128::new(ARBITRUM_USDC_WITHDRAWAL_FEE),
-        }]);
+        assert_eq!(
+            withdrawals,
+            vec![gateway::Withdrawn {
+                id: 0,
+                user: accounts.user2.address(),
+                bridge: contracts.warp,
+                remote,
+                recipient: mock_arbitrum_recipient,
+                denom: usdc::DENOM.clone(),
+                amount: Uint128::new(50_000_000),
+                fee: Uint128::new(ARBITRUM_USDC_WITHDRAWAL_FEE),
+            }]
+        );
     }
 }
 
@@ -1125,10 +1146,13 @@ async fn personal_quota() {
         .should_succeed();
 
     let pq = suite
-        .query_wasm_smart(contracts.gateway, gateway::QueryPersonalQuotaRequest {
-            user: receiver_addr,
-            denom: usdc::DENOM.clone(),
-        })
+        .query_wasm_smart(
+            contracts.gateway,
+            gateway::QueryPersonalQuotaRequest {
+                user: receiver_addr,
+                denom: usdc::DENOM.clone(),
+            },
+        )
         .should_succeed()
         .expect("entry present");
     assert_eq!(pq.amount, Uint128::new(50_000_000));
@@ -1160,10 +1184,13 @@ async fn personal_quota() {
         .should_succeed();
 
     let pq = suite
-        .query_wasm_smart(contracts.gateway, gateway::QueryPersonalQuotaRequest {
-            user: receiver_addr,
-            denom: usdc::DENOM.clone(),
-        })
+        .query_wasm_smart(
+            contracts.gateway,
+            gateway::QueryPersonalQuotaRequest {
+                user: receiver_addr,
+                denom: usdc::DENOM.clone(),
+            },
+        )
         .should_succeed()
         .expect("entry present");
     assert_eq!(pq.amount, Uint128::new(10_000_000));
@@ -1196,10 +1223,13 @@ async fn personal_quota() {
 
     // Fully consumed personal quotas are removed from storage.
     suite
-        .query_wasm_smart(contracts.gateway, gateway::QueryPersonalQuotaRequest {
-            user: receiver_addr,
-            denom: usdc::DENOM.clone(),
-        })
+        .query_wasm_smart(
+            contracts.gateway,
+            gateway::QueryPersonalQuotaRequest {
+                user: receiver_addr,
+                denom: usdc::DENOM.clone(),
+            },
+        )
         .should_succeed_and_equal(None);
 
     // Global is now depleted. The error mentions the remainder after any
@@ -1261,10 +1291,13 @@ async fn personal_quota() {
     // The expired entry is left in storage; the handler doesn't scrub it. The
     // caller can still query it to reason about `expire_at`.
     let stored = suite
-        .query_wasm_smart(contracts.gateway, gateway::QueryPersonalQuotaRequest {
-            user: receiver_addr,
-            denom: usdc::DENOM.clone(),
-        })
+        .query_wasm_smart(
+            contracts.gateway,
+            gateway::QueryPersonalQuotaRequest {
+                user: receiver_addr,
+                denom: usdc::DENOM.clone(),
+            },
+        )
         .should_succeed();
     assert_eq!(
         stored.as_ref().map(|q| q.amount),
@@ -1274,10 +1307,13 @@ async fn personal_quota() {
 
     // ---- Pagination query ----
     let mut page = suite
-        .query_wasm_smart(contracts.gateway, gateway::QueryPersonalQuotasRequest {
-            start_after: None,
-            limit: None,
-        })
+        .query_wasm_smart(
+            contracts.gateway,
+            gateway::QueryPersonalQuotasRequest {
+                start_after: None,
+                limit: None,
+            },
+        )
         .should_succeed();
     assert_eq!(page.len(), 1);
     let entry = page.pop().unwrap();
@@ -1351,10 +1387,13 @@ async fn personal_quota_revoke_via_op_delete() {
         .should_succeed();
 
     let pq = suite
-        .query_wasm_smart(contracts.gateway, gateway::QueryPersonalQuotaRequest {
-            user: receiver_addr,
-            denom: usdc::DENOM.clone(),
-        })
+        .query_wasm_smart(
+            contracts.gateway,
+            gateway::QueryPersonalQuotaRequest {
+                user: receiver_addr,
+                denom: usdc::DENOM.clone(),
+            },
+        )
         .should_succeed()
         .expect("entry present");
     assert_eq!(pq.amount, Uint128::new(50_000_000));
@@ -1378,10 +1417,13 @@ async fn personal_quota_revoke_via_op_delete() {
 
     // Entry is gone — not just zeroed.
     suite
-        .query_wasm_smart(contracts.gateway, gateway::QueryPersonalQuotaRequest {
-            user: receiver_addr,
-            denom: usdc::DENOM.clone(),
-        })
+        .query_wasm_smart(
+            contracts.gateway,
+            gateway::QueryPersonalQuotaRequest {
+                user: receiver_addr,
+                denom: usdc::DENOM.clone(),
+            },
+        )
         .should_succeed_and_equal(None);
 
     // Try to withdraw 20M — above the 10M global quota. Pre-revocation the
@@ -1491,10 +1533,13 @@ async fn zero_rate_limit_revokes_personal_quotas() {
 
     // Confirm the quota is in place.
     suite
-        .query_wasm_smart(contracts.gateway, gateway::QueryPersonalQuotaRequest {
-            user: receiver.address(),
-            denom: usdc::DENOM.clone(),
-        })
+        .query_wasm_smart(
+            contracts.gateway,
+            gateway::QueryPersonalQuotaRequest {
+                user: receiver.address(),
+                denom: usdc::DENOM.clone(),
+            },
+        )
         .should_succeed_and(|q| q.is_some());
 
     // Owner sets the USDC rate limit to 0 — a hard freeze.
@@ -1512,10 +1557,13 @@ async fn zero_rate_limit_revokes_personal_quotas() {
 
     // The personal quota must have been wiped by the freeze.
     suite
-        .query_wasm_smart(contracts.gateway, gateway::QueryPersonalQuotaRequest {
-            user: receiver.address(),
-            denom: usdc::DENOM.clone(),
-        })
+        .query_wasm_smart(
+            contracts.gateway,
+            gateway::QueryPersonalQuotaRequest {
+                user: receiver.address(),
+                denom: usdc::DENOM.clone(),
+            },
+        )
         .should_succeed_and_equal(None);
 
     // A 1-unit withdraw fails — no personal quota left and the global cap is 0.
@@ -1610,10 +1658,13 @@ async fn personal_quota_on_un_rate_limited_denom() {
         .should_succeed();
 
     let pq = suite
-        .query_wasm_smart(contracts.gateway, gateway::QueryPersonalQuotaRequest {
-            user: receiver_addr,
-            denom: usdc::DENOM.clone(),
-        })
+        .query_wasm_smart(
+            contracts.gateway,
+            gateway::QueryPersonalQuotaRequest {
+                user: receiver_addr,
+                denom: usdc::DENOM.clone(),
+            },
+        )
         .should_succeed()
         .expect("entry present");
     assert_eq!(pq.amount, Uint128::new(20_000_000));
@@ -1644,10 +1695,13 @@ async fn personal_quota_on_un_rate_limited_denom() {
 
     // Personal quota is now fully consumed and removed from storage.
     suite
-        .query_wasm_smart(contracts.gateway, gateway::QueryPersonalQuotaRequest {
-            user: receiver_addr,
-            denom: usdc::DENOM.clone(),
-        })
+        .query_wasm_smart(
+            contracts.gateway,
+            gateway::QueryPersonalQuotaRequest {
+                user: receiver_addr,
+                denom: usdc::DENOM.clone(),
+            },
+        )
         .should_succeed_and_equal(None);
 
     // Without any personal or global restriction, a further transfer just
@@ -1759,10 +1813,13 @@ async fn personal_quota_mid_consumption_overwrite() {
         .should_succeed();
 
     let pq = suite
-        .query_wasm_smart(contracts.gateway, gateway::QueryPersonalQuotaRequest {
-            user: receiver_addr,
-            denom: usdc::DENOM.clone(),
-        })
+        .query_wasm_smart(
+            contracts.gateway,
+            gateway::QueryPersonalQuotaRequest {
+                user: receiver_addr,
+                denom: usdc::DENOM.clone(),
+            },
+        )
         .should_succeed()
         .expect("entry present");
     assert_eq!(pq.amount, Uint128::new(60_000_000));
@@ -1790,10 +1847,13 @@ async fn personal_quota_mid_consumption_overwrite() {
         .should_succeed();
 
     let stored = suite
-        .query_wasm_smart(contracts.gateway, gateway::QueryPersonalQuotaRequest {
-            user: receiver_addr,
-            denom: usdc::DENOM.clone(),
-        })
+        .query_wasm_smart(
+            contracts.gateway,
+            gateway::QueryPersonalQuotaRequest {
+                user: receiver_addr,
+                denom: usdc::DENOM.clone(),
+            },
+        )
         .should_succeed()
         .expect("entry present after overwrite");
 
@@ -1852,20 +1912,26 @@ async fn personal_quotas_pagination() {
 
     // First page, limit 2.
     let page1 = suite
-        .query_wasm_smart(contracts.gateway, gateway::QueryPersonalQuotasRequest {
-            start_after: None,
-            limit: Some(2),
-        })
+        .query_wasm_smart(
+            contracts.gateway,
+            gateway::QueryPersonalQuotasRequest {
+                start_after: None,
+                limit: Some(2),
+            },
+        )
         .should_succeed();
     assert_eq!(page1.len(), 2);
 
     // Second page picks up after the last entry of page 1.
     let last = page1.last().expect("page 1 non-empty");
     let page2 = suite
-        .query_wasm_smart(contracts.gateway, gateway::QueryPersonalQuotasRequest {
-            start_after: Some((last.user, last.denom.clone())),
-            limit: Some(2),
-        })
+        .query_wasm_smart(
+            contracts.gateway,
+            gateway::QueryPersonalQuotasRequest {
+                start_after: Some((last.user, last.denom.clone())),
+                limit: Some(2),
+            },
+        )
         .should_succeed();
     assert_eq!(page2.len(), 2);
 
@@ -1908,10 +1974,13 @@ async fn personal_quotas_pagination() {
     // Querying beyond the end yields an empty page.
     let last_p2 = page2.last().unwrap();
     let page3 = suite
-        .query_wasm_smart(contracts.gateway, gateway::QueryPersonalQuotasRequest {
-            start_after: Some((last_p2.user, last_p2.denom.clone())),
-            limit: Some(2),
-        })
+        .query_wasm_smart(
+            contracts.gateway,
+            gateway::QueryPersonalQuotasRequest {
+                start_after: Some((last_p2.user, last_p2.denom.clone())),
+                limit: Some(2),
+            },
+        )
         .should_succeed();
     assert!(page3.is_empty());
 }
@@ -1993,10 +2062,13 @@ async fn personal_quota_expire_at_boundary() {
 
     // The active path consumed 1 token from the personal quota.
     let pq = suite
-        .query_wasm_smart(contracts.gateway, gateway::QueryPersonalQuotaRequest {
-            user: receiver_addr,
-            denom: usdc::DENOM.clone(),
-        })
+        .query_wasm_smart(
+            contracts.gateway,
+            gateway::QueryPersonalQuotaRequest {
+                user: receiver_addr,
+                denom: usdc::DENOM.clone(),
+            },
+        )
         .should_succeed()
         .expect("entry still present");
     assert_eq!(pq.amount, Uint128::new(9_999_999));
@@ -2043,10 +2115,13 @@ async fn personal_quota_expire_at_boundary() {
         .should_succeed();
 
     let pq = suite
-        .query_wasm_smart(contracts.gateway, gateway::QueryPersonalQuotaRequest {
-            user: receiver_addr,
-            denom: usdc::DENOM.clone(),
-        })
+        .query_wasm_smart(
+            contracts.gateway,
+            gateway::QueryPersonalQuotaRequest {
+                user: receiver_addr,
+                denom: usdc::DENOM.clone(),
+            },
+        )
         .should_succeed()
         .expect("expired entry is left in storage untouched");
     assert_eq!(pq.amount, Uint128::new(10_000_000));
@@ -2106,10 +2181,13 @@ async fn personal_quota_regrant_after_expiry() {
         .should_succeed();
 
     let pq_before = suite
-        .query_wasm_smart(contracts.gateway, gateway::QueryPersonalQuotaRequest {
-            user: receiver_addr,
-            denom: usdc::DENOM.clone(),
-        })
+        .query_wasm_smart(
+            contracts.gateway,
+            gateway::QueryPersonalQuotaRequest {
+                user: receiver_addr,
+                denom: usdc::DENOM.clone(),
+            },
+        )
         .should_succeed()
         .expect("entry present");
     let granted_at_before = pq_before.granted_at;
@@ -2138,10 +2216,13 @@ async fn personal_quota_regrant_after_expiry() {
         .should_succeed();
 
     let pq_after = suite
-        .query_wasm_smart(contracts.gateway, gateway::QueryPersonalQuotaRequest {
-            user: receiver_addr,
-            denom: usdc::DENOM.clone(),
-        })
+        .query_wasm_smart(
+            contracts.gateway,
+            gateway::QueryPersonalQuotaRequest {
+                user: receiver_addr,
+                denom: usdc::DENOM.clone(),
+            },
+        )
         .should_succeed()
         .expect("entry present");
 
@@ -2178,10 +2259,13 @@ async fn personal_quota_regrant_after_expiry() {
         .should_succeed();
 
     let pq_consumed = suite
-        .query_wasm_smart(contracts.gateway, gateway::QueryPersonalQuotaRequest {
-            user: receiver_addr,
-            denom: usdc::DENOM.clone(),
-        })
+        .query_wasm_smart(
+            contracts.gateway,
+            gateway::QueryPersonalQuotaRequest {
+                user: receiver_addr,
+                denom: usdc::DENOM.clone(),
+            },
+        )
         .should_succeed()
         .expect("entry present");
     assert_eq!(pq_consumed.amount, Uint128::new(19_000_000));
@@ -2253,10 +2337,13 @@ async fn personal_quota_cron_tick_does_not_scrub_expired_entry() {
         .should_succeed();
 
     let pq_before_cron = suite
-        .query_wasm_smart(contracts.gateway, gateway::QueryPersonalQuotaRequest {
-            user: receiver_addr,
-            denom: usdc::DENOM.clone(),
-        })
+        .query_wasm_smart(
+            contracts.gateway,
+            gateway::QueryPersonalQuotaRequest {
+                user: receiver_addr,
+                denom: usdc::DENOM.clone(),
+            },
+        )
         .should_succeed()
         .expect("entry present");
 
@@ -2265,10 +2352,13 @@ async fn personal_quota_cron_tick_does_not_scrub_expired_entry() {
     advance_to_next_day(&mut suite).await;
 
     let pq_after_cron = suite
-        .query_wasm_smart(contracts.gateway, gateway::QueryPersonalQuotaRequest {
-            user: receiver_addr,
-            denom: usdc::DENOM.clone(),
-        })
+        .query_wasm_smart(
+            contracts.gateway,
+            gateway::QueryPersonalQuotaRequest {
+                user: receiver_addr,
+                denom: usdc::DENOM.clone(),
+            },
+        )
         .should_succeed()
         .expect("expired entry is preserved across cron");
 
@@ -2435,9 +2525,12 @@ async fn cap_is_snapshotted_at_cron_tick() {
         .should_succeed();
 
     let initial = suite
-        .query_wasm_smart(contracts.gateway, gateway::QueryRateLimitStatusRequest {
-            denom: usdc_denom.clone(),
-        })
+        .query_wasm_smart(
+            contracts.gateway,
+            gateway::QueryRateLimitStatusRequest {
+                denom: usdc_denom.clone(),
+            },
+        )
         .should_succeed()
         .expect("rate-limited");
     assert_eq!(initial.cap, Uint128::new(10_000_000));
@@ -2456,9 +2549,12 @@ async fn cap_is_snapshotted_at_cron_tick() {
         .should_succeed();
 
     let mid = suite
-        .query_wasm_smart(contracts.gateway, gateway::QueryRateLimitStatusRequest {
-            denom: usdc_denom.clone(),
-        })
+        .query_wasm_smart(
+            contracts.gateway,
+            gateway::QueryRateLimitStatusRequest {
+                denom: usdc_denom.clone(),
+            },
+        )
         .should_succeed()
         .expect("rate-limited");
     assert_eq!(mid.cap, Uint128::new(10_000_000));
@@ -2468,9 +2564,10 @@ async fn cap_is_snapshotted_at_cron_tick() {
     advance_to_next_day(&mut suite).await;
 
     let after_cron = suite
-        .query_wasm_smart(contracts.gateway, gateway::QueryRateLimitStatusRequest {
-            denom: usdc_denom,
-        })
+        .query_wasm_smart(
+            contracts.gateway,
+            gateway::QueryRateLimitStatusRequest { denom: usdc_denom },
+        )
         .should_succeed()
         .expect("rate-limited");
     assert_eq!(after_cron.cap, Uint128::new(20_000_000));
@@ -2562,9 +2659,10 @@ async fn personal_quota_does_not_consume_rolling_window() {
 
     // The trailing-window sum is still zero.
     let q = suite
-        .query_wasm_smart(contracts.gateway, gateway::QueryRateLimitStatusRequest {
-            denom: usdc_denom,
-        })
+        .query_wasm_smart(
+            contracts.gateway,
+            gateway::QueryRateLimitStatusRequest { denom: usdc_denom },
+        )
         .should_succeed()
         .expect("rate-limited");
     assert_eq!(q.used_in_last_24h, Uint128::ZERO);
@@ -2631,9 +2729,12 @@ async fn denom_removal_clears_withdraw_volumes() {
         .should_succeed();
 
     let after_drain = suite
-        .query_wasm_smart(contracts.gateway, gateway::QueryRateLimitStatusRequest {
-            denom: usdc_denom.clone(),
-        })
+        .query_wasm_smart(
+            contracts.gateway,
+            gateway::QueryRateLimitStatusRequest {
+                denom: usdc_denom.clone(),
+            },
+        )
         .should_succeed()
         .expect("rate-limited");
     assert_eq!(after_drain.used_in_last_24h, Uint128::new(5_000_000));
@@ -2651,9 +2752,12 @@ async fn denom_removal_clears_withdraw_volumes() {
         .should_succeed();
 
     let unlimited = suite
-        .query_wasm_smart(contracts.gateway, gateway::QueryRateLimitStatusRequest {
-            denom: usdc_denom.clone(),
-        })
+        .query_wasm_smart(
+            contracts.gateway,
+            gateway::QueryRateLimitStatusRequest {
+                denom: usdc_denom.clone(),
+            },
+        )
         .should_succeed();
     assert!(unlimited.is_none());
 
@@ -2671,9 +2775,10 @@ async fn denom_removal_clears_withdraw_volumes() {
         .should_succeed();
 
     let reseeded = suite
-        .query_wasm_smart(contracts.gateway, gateway::QueryRateLimitStatusRequest {
-            denom: usdc_denom,
-        })
+        .query_wasm_smart(
+            contracts.gateway,
+            gateway::QueryRateLimitStatusRequest { denom: usdc_denom },
+        )
         .should_succeed()
         .expect("rate-limited");
     assert_eq!(reseeded.cap, Uint128::new(19_000_000));
@@ -2701,9 +2806,12 @@ async fn query_rate_limit_status() {
 
     // Un-rate-limited denom returns None.
     let none = suite
-        .query_wasm_smart(contracts.gateway, gateway::QueryRateLimitStatusRequest {
-            denom: usdc_denom.clone(),
-        })
+        .query_wasm_smart(
+            contracts.gateway,
+            gateway::QueryRateLimitStatusRequest {
+                denom: usdc_denom.clone(),
+            },
+        )
         .should_succeed();
     assert!(none.is_none());
 
@@ -2748,9 +2856,12 @@ async fn query_rate_limit_status() {
 
     // Single-denom query.
     let single = suite
-        .query_wasm_smart(contracts.gateway, gateway::QueryRateLimitStatusRequest {
-            denom: usdc_denom.clone(),
-        })
+        .query_wasm_smart(
+            contracts.gateway,
+            gateway::QueryRateLimitStatusRequest {
+                denom: usdc_denom.clone(),
+            },
+        )
         .should_succeed()
         .expect("rate-limited");
     assert_eq!(single.supply_snapshot, Uint128::new(100_000_000));
@@ -2759,10 +2870,13 @@ async fn query_rate_limit_status() {
 
     // Paginated enumeration returns the same data.
     let page = suite
-        .query_wasm_smart(contracts.gateway, gateway::QueryRateLimitStatusesRequest {
-            start_after: None,
-            limit: None,
-        })
+        .query_wasm_smart(
+            contracts.gateway,
+            gateway::QueryRateLimitStatusesRequest {
+                start_after: None,
+                limit: None,
+            },
+        )
         .should_succeed();
     assert_eq!(page.len(), 1);
     let status = page.get(&usdc_denom).expect("usdc rate-limited");
@@ -2774,9 +2888,10 @@ async fn query_rate_limit_status() {
     advance_to_next_day(&mut suite).await;
 
     let aged = suite
-        .query_wasm_smart(contracts.gateway, gateway::QueryRateLimitStatusRequest {
-            denom: usdc_denom,
-        })
+        .query_wasm_smart(
+            contracts.gateway,
+            gateway::QueryRateLimitStatusRequest { denom: usdc_denom },
+        )
         .should_succeed()
         .expect("rate-limited");
     assert_eq!(aged.used_in_last_24h, Uint128::ZERO);
@@ -2853,10 +2968,13 @@ async fn remove_routes() {
         .should_succeed();
 
     suite
-        .query_wasm_smart(contracts.gateway, gateway::QueryRouteRequest {
-            bridge: contracts.warp,
-            remote: eth_eth,
-        })
+        .query_wasm_smart(
+            contracts.gateway,
+            gateway::QueryRouteRequest {
+                bridge: contracts.warp,
+                remote: eth_eth,
+            },
+        )
         .should_succeed_and_equal(None);
 
     // Fund the arbitrum USDC route with 100M, plus the ethereum USDC route
@@ -2916,10 +3034,13 @@ async fn remove_routes() {
         .should_succeed();
 
     suite
-        .query_wasm_smart(contracts.gateway, gateway::QueryReserveRequest {
-            bridge: contracts.warp,
-            remote: arb_usdc,
-        })
+        .query_wasm_smart(
+            contracts.gateway,
+            gateway::QueryReserveRequest {
+                bridge: contracts.warp,
+                remote: arb_usdc,
+            },
+        )
         .should_succeed_and_equal(Uint128::ZERO);
 
     // With the reserve drained to zero, the removal should now succeed.
@@ -2935,41 +3056,56 @@ async fn remove_routes() {
 
     // The route and its reverse mapping should be gone.
     suite
-        .query_wasm_smart(contracts.gateway, gateway::QueryRouteRequest {
-            bridge: contracts.warp,
-            remote: arb_usdc,
-        })
+        .query_wasm_smart(
+            contracts.gateway,
+            gateway::QueryRouteRequest {
+                bridge: contracts.warp,
+                remote: arb_usdc,
+            },
+        )
         .should_succeed_and_equal(None);
 
     suite
-        .query_wasm_smart(contracts.gateway, gateway::QueryReverseRouteRequest {
-            denom: usdc::DENOM.clone(),
-            remote: arb_usdc,
-        })
+        .query_wasm_smart(
+            contracts.gateway,
+            gateway::QueryReverseRouteRequest {
+                denom: usdc::DENOM.clone(),
+                remote: arb_usdc,
+            },
+        )
         .should_succeed_and_equal(None);
 
     // The zero-valued reserve entry should have been deleted as well.
     suite
-        .query_wasm_smart(contracts.gateway, gateway::QueryReserveRequest {
-            bridge: contracts.warp,
-            remote: arb_usdc,
-        })
+        .query_wasm_smart(
+            contracts.gateway,
+            gateway::QueryReserveRequest {
+                bridge: contracts.warp,
+                remote: arb_usdc,
+            },
+        )
         .should_fail_with_error("data not found");
 
     // The sibling ethereum USDC route — same alloyed denom, different remote
     // — should be unaffected.
     suite
-        .query_wasm_smart(contracts.gateway, gateway::QueryRouteRequest {
-            bridge: contracts.warp,
-            remote: eth_usdc,
-        })
+        .query_wasm_smart(
+            contracts.gateway,
+            gateway::QueryRouteRequest {
+                bridge: contracts.warp,
+                remote: eth_usdc,
+            },
+        )
         .should_succeed_and_equal(Some(usdc::DENOM.clone()));
 
     suite
-        .query_wasm_smart(contracts.gateway, gateway::QueryReverseRouteRequest {
-            denom: usdc::DENOM.clone(),
-            remote: eth_usdc,
-        })
+        .query_wasm_smart(
+            contracts.gateway,
+            gateway::QueryReverseRouteRequest {
+                denom: usdc::DENOM.clone(),
+                remote: eth_usdc,
+            },
+        )
         .should_succeed_and_equal(Some(contracts.warp));
 
     // Inbound transfers through the removed route should fail.
@@ -3039,10 +3175,13 @@ async fn remove_routes() {
         .should_succeed();
 
     suite
-        .query_wasm_smart(contracts.gateway, gateway::QueryReserveRequest {
-            bridge: contracts.warp,
-            remote: arb_usdc,
-        })
+        .query_wasm_smart(
+            contracts.gateway,
+            gateway::QueryReserveRequest {
+                bridge: contracts.warp,
+                remote: arb_usdc,
+            },
+        )
         .should_succeed_and_equal(Uint128::new(70_000));
 }
 
@@ -3127,17 +3266,23 @@ async fn remove_native_route() {
 
     // The route and its reverse mapping should be gone.
     suite
-        .query_wasm_smart(contracts.gateway, gateway::QueryRouteRequest {
-            bridge: contracts.warp,
-            remote: dango_remote,
-        })
+        .query_wasm_smart(
+            contracts.gateway,
+            gateway::QueryRouteRequest {
+                bridge: contracts.warp,
+                remote: dango_remote,
+            },
+        )
         .should_succeed_and_equal(None);
 
     suite
-        .query_wasm_smart(contracts.gateway, gateway::QueryReverseRouteRequest {
-            denom: dango::DENOM.clone(),
-            remote: dango_remote,
-        })
+        .query_wasm_smart(
+            contracts.gateway,
+            gateway::QueryReverseRouteRequest {
+                denom: dango::DENOM.clone(),
+                remote: dango_remote,
+            },
+        )
         .should_succeed_and_equal(None);
 
     // Receiving the tokens back now fails at the route lookup. (Contrast
@@ -3180,9 +3325,12 @@ async fn remove_native_route() {
         .await
         .should_succeed();
 
-    suite.balances().should_change(&accounts.user2, btree_map! {
-        dango::DENOM.clone() => BalanceChange::Increased(100),
-    });
+    suite.balances().should_change(
+        &accounts.user2,
+        btree_map! {
+            dango::DENOM.clone() => BalanceChange::Increased(100),
+        },
+    );
 }
 
 /// Only the chain owner can set or update the withdrawal guardian.
@@ -3600,25 +3748,32 @@ async fn withdrawal_approval_coin_accounting() {
         .deserialize_json::<gateway::WithdrawalRequested>()
         .unwrap();
 
-    assert_eq!(requested, gateway::WithdrawalRequested {
-        id: 0,
-        user: user_addr,
-        remote: WITHDRAW_REMOTE,
-        recipient: withdraw_recipient(),
-        denom: usdc::DENOM.clone(),
-        amount: Uint128::new(WITHDRAW),
-    });
+    assert_eq!(
+        requested,
+        gateway::WithdrawalRequested {
+            id: 0,
+            user: user_addr,
+            remote: WITHDRAW_REMOTE,
+            recipient: withdraw_recipient(),
+            denom: usdc::DENOM.clone(),
+            amount: Uint128::new(WITHDRAW),
+        }
+    );
 
     let id = requested.id;
 
-    suite.balances().should_change(&user_addr, btree_map! {
-        usdc::DENOM.clone() => BalanceChange::Decreased(WITHDRAW),
-    });
-    suite
-        .balances()
-        .should_change(&contracts.gateway, btree_map! {
+    suite.balances().should_change(
+        &user_addr,
+        btree_map! {
+            usdc::DENOM.clone() => BalanceChange::Decreased(WITHDRAW),
+        },
+    );
+    suite.balances().should_change(
+        &contracts.gateway,
+        btree_map! {
             usdc::DENOM.clone() => BalanceChange::Increased(WITHDRAW),
-        });
+        },
+    );
 
     // The gateway holds exactly the withdrawn amount.
     suite
@@ -3640,17 +3795,24 @@ async fn withdrawal_approval_coin_accounting() {
 
     // The bridged amount is burned and the fee goes to the owner; the user
     // gets nothing back.
-    suite.balances().should_change(&user_addr, btree_map! {
-        usdc::DENOM.clone() => BalanceChange::Unchanged,
-    });
-    suite
-        .balances()
-        .should_change(&contracts.gateway, btree_map! {
+    suite.balances().should_change(
+        &user_addr,
+        btree_map! {
+            usdc::DENOM.clone() => BalanceChange::Unchanged,
+        },
+    );
+    suite.balances().should_change(
+        &contracts.gateway,
+        btree_map! {
             usdc::DENOM.clone() => BalanceChange::Decreased(WITHDRAW),
-        });
-    suite.balances().should_change(&owner_addr, btree_map! {
-        usdc::DENOM.clone() => BalanceChange::Increased(ARBITRUM_USDC_WITHDRAWAL_FEE),
-    });
+        },
+    );
+    suite.balances().should_change(
+        &owner_addr,
+        btree_map! {
+            usdc::DENOM.clone() => BalanceChange::Increased(ARBITRUM_USDC_WITHDRAWAL_FEE),
+        },
+    );
 
     suite
         .query_balance(&contracts.gateway, usdc::DENOM.clone())
@@ -3658,9 +3820,10 @@ async fn withdrawal_approval_coin_accounting() {
 
     // The approved request is deleted from storage.
     suite
-        .query_wasm_smart(contracts.gateway, gateway::QueryWithdrawalRequestRequest {
-            id,
-        })
+        .query_wasm_smart(
+            contracts.gateway,
+            gateway::QueryWithdrawalRequestRequest { id },
+        )
         .should_succeed_and_equal(None);
 }
 
@@ -3708,27 +3871,37 @@ async fn withdrawal_rejection_coin_accounting() {
         .deserialize_json::<gateway::WithdrawalRejected>()
         .unwrap();
 
-    assert_eq!(rejected, gateway::WithdrawalRejected {
-        id,
-        user: user_addr,
-        denom: usdc::DENOM.clone(),
-        amount: Uint128::new(WITHDRAW),
-        rejected_by: accounts.user3.address(),
-    });
+    assert_eq!(
+        rejected,
+        gateway::WithdrawalRejected {
+            id,
+            user: user_addr,
+            denom: usdc::DENOM.clone(),
+            amount: Uint128::new(WITHDRAW),
+            rejected_by: accounts.user3.address(),
+        }
+    );
 
     // Across request + rejection the user is made whole — no fee is
     // charged on a rejected withdrawal — and the gateway keeps nothing.
-    suite.balances().should_change(&user_addr, btree_map! {
-        usdc::DENOM.clone() => BalanceChange::Unchanged,
-    });
-    suite
-        .balances()
-        .should_change(&contracts.gateway, btree_map! {
+    suite.balances().should_change(
+        &user_addr,
+        btree_map! {
             usdc::DENOM.clone() => BalanceChange::Unchanged,
-        });
-    suite.balances().should_change(&owner_addr, btree_map! {
-        usdc::DENOM.clone() => BalanceChange::Unchanged,
-    });
+        },
+    );
+    suite.balances().should_change(
+        &contracts.gateway,
+        btree_map! {
+            usdc::DENOM.clone() => BalanceChange::Unchanged,
+        },
+    );
+    suite.balances().should_change(
+        &owner_addr,
+        btree_map! {
+            usdc::DENOM.clone() => BalanceChange::Unchanged,
+        },
+    );
 
     suite
         .query_balance(&contracts.gateway, usdc::DENOM.clone())
@@ -3736,9 +3909,10 @@ async fn withdrawal_rejection_coin_accounting() {
 
     // The rejected request is deleted from storage.
     suite
-        .query_wasm_smart(contracts.gateway, gateway::QueryWithdrawalRequestRequest {
-            id,
-        })
+        .query_wasm_smart(
+            contracts.gateway,
+            gateway::QueryWithdrawalRequestRequest { id },
+        )
         .should_succeed_and_equal(None);
 }
 
@@ -3784,24 +3958,31 @@ async fn withdrawal_freeze_coin_accounting() {
         .deserialize_json::<gateway::WithdrawalFrozen>()
         .unwrap();
 
-    assert_eq!(frozen, gateway::WithdrawalFrozen {
-        id,
-        user: user_addr,
-        denom: usdc::DENOM.clone(),
-        amount: Uint128::new(WITHDRAW),
-        frozen_by: accounts.user3.address(),
-    });
+    assert_eq!(
+        frozen,
+        gateway::WithdrawalFrozen {
+            id,
+            user: user_addr,
+            denom: usdc::DENOM.clone(),
+            amount: Uint128::new(WITHDRAW),
+            frozen_by: accounts.user3.address(),
+        }
+    );
 
     // The funds left the user on request, and the freeze keeps them in the
     // gateway.
-    suite.balances().should_change(&user_addr, btree_map! {
-        usdc::DENOM.clone() => BalanceChange::Decreased(WITHDRAW),
-    });
-    suite
-        .balances()
-        .should_change(&contracts.gateway, btree_map! {
+    suite.balances().should_change(
+        &user_addr,
+        btree_map! {
+            usdc::DENOM.clone() => BalanceChange::Decreased(WITHDRAW),
+        },
+    );
+    suite.balances().should_change(
+        &contracts.gateway,
+        btree_map! {
             usdc::DENOM.clone() => BalanceChange::Increased(WITHDRAW),
-        });
+        },
+    );
 
     suite
         .query_balance(&contracts.gateway, usdc::DENOM.clone())
@@ -3810,9 +3991,10 @@ async fn withdrawal_freeze_coin_accounting() {
     // Unlike the terminal responses, freezing keeps the request in storage
     // — now in the frozen state — awaiting the owner's decision.
     suite
-        .query_wasm_smart(contracts.gateway, gateway::QueryWithdrawalRequestRequest {
-            id,
-        })
+        .query_wasm_smart(
+            contracts.gateway,
+            gateway::QueryWithdrawalRequestRequest { id },
+        )
         .should_succeed_and(|req| {
             req.as_ref()
                 .is_some_and(|req| req.status == WithdrawalStatus::Frozen)
@@ -3877,24 +4059,34 @@ async fn withdrawal_confiscation_coin_accounting() {
         .deserialize_json::<gateway::WithdrawalConfiscated>()
         .unwrap();
 
-    assert_eq!(confiscated, gateway::WithdrawalConfiscated {
-        id,
-        user: user_addr,
-        denom: usdc::DENOM.clone(),
-        amount: Uint128::new(WITHDRAW),
-    });
+    assert_eq!(
+        confiscated,
+        gateway::WithdrawalConfiscated {
+            id,
+            user: user_addr,
+            denom: usdc::DENOM.clone(),
+            amount: Uint128::new(WITHDRAW),
+        }
+    );
 
-    suite.balances().should_change(&user_addr, btree_map! {
-        usdc::DENOM.clone() => BalanceChange::Unchanged,
-    });
-    suite
-        .balances()
-        .should_change(&contracts.gateway, btree_map! {
+    suite.balances().should_change(
+        &user_addr,
+        btree_map! {
+            usdc::DENOM.clone() => BalanceChange::Unchanged,
+        },
+    );
+    suite.balances().should_change(
+        &contracts.gateway,
+        btree_map! {
             usdc::DENOM.clone() => BalanceChange::Decreased(WITHDRAW),
-        });
-    suite.balances().should_change(&owner_addr, btree_map! {
-        usdc::DENOM.clone() => BalanceChange::Increased(WITHDRAW),
-    });
+        },
+    );
+    suite.balances().should_change(
+        &owner_addr,
+        btree_map! {
+            usdc::DENOM.clone() => BalanceChange::Increased(WITHDRAW),
+        },
+    );
 
     suite
         .query_balance(&contracts.gateway, usdc::DENOM.clone())
@@ -3902,9 +4094,10 @@ async fn withdrawal_confiscation_coin_accounting() {
 
     // The confiscated request is deleted from storage.
     suite
-        .query_wasm_smart(contracts.gateway, gateway::QueryWithdrawalRequestRequest {
-            id,
-        })
+        .query_wasm_smart(
+            contracts.gateway,
+            gateway::QueryWithdrawalRequestRequest { id },
+        )
         .should_succeed_and_equal(None);
 }
 
@@ -3932,27 +4125,34 @@ async fn withdrawal_request_is_stored() {
     // block timestamp, which doesn't move here since the setup pins the
     // block time to zero.
     let request = suite
-        .query_wasm_smart(contracts.gateway, gateway::QueryWithdrawalRequestRequest {
-            id,
-        })
+        .query_wasm_smart(
+            contracts.gateway,
+            gateway::QueryWithdrawalRequestRequest { id },
+        )
         .should_succeed()
         .expect("the request should be stored");
 
-    assert_eq!(request, gateway::WithdrawalRequest {
-        user: accounts.user2.address(),
-        remote: WITHDRAW_REMOTE,
-        recipient: withdraw_recipient(),
-        coin: Coin::new(usdc::DENOM.clone(), WITHDRAW).unwrap(),
-        status: WithdrawalStatus::Pending,
-        created_at: suite.block.timestamp,
-    });
+    assert_eq!(
+        request,
+        gateway::WithdrawalRequest {
+            user: accounts.user2.address(),
+            remote: WITHDRAW_REMOTE,
+            recipient: withdraw_recipient(),
+            coin: Coin::new(usdc::DENOM.clone(), WITHDRAW).unwrap(),
+            status: WithdrawalStatus::Pending,
+            created_at: suite.block.timestamp,
+        }
+    );
 
     // It is listed in the pending queue.
     let page = suite
-        .query_wasm_smart(contracts.gateway, gateway::QueryWithdrawalRequestsRequest {
-            start_after: None,
-            limit: None,
-        })
+        .query_wasm_smart(
+            contracts.gateway,
+            gateway::QueryWithdrawalRequestsRequest {
+                start_after: None,
+                limit: None,
+            },
+        )
         .should_succeed();
 
     assert_eq!(page.len(), 1);
@@ -3989,9 +4189,10 @@ async fn confiscation_requires_prior_freeze() {
     // The failed confiscation left the request untouched: still pending,
     // with the funds still in the gateway.
     suite
-        .query_wasm_smart(contracts.gateway, gateway::QueryWithdrawalRequestRequest {
-            id,
-        })
+        .query_wasm_smart(
+            contracts.gateway,
+            gateway::QueryWithdrawalRequestRequest { id },
+        )
         .should_succeed_and(|req| {
             req.as_ref()
                 .is_some_and(|req| req.status == WithdrawalStatus::Pending)
@@ -4033,9 +4234,10 @@ async fn guardian_can_never_confiscate() {
     // The failed confiscation left the request untouched: still pending,
     // with the funds still in the gateway.
     suite
-        .query_wasm_smart(contracts.gateway, gateway::QueryWithdrawalRequestRequest {
-            id,
-        })
+        .query_wasm_smart(
+            contracts.gateway,
+            gateway::QueryWithdrawalRequestRequest { id },
+        )
         .should_succeed_and(|req| {
             req.as_ref()
                 .is_some_and(|req| req.status == WithdrawalStatus::Pending)
@@ -4088,18 +4290,22 @@ async fn frozen_request_rejection_refunds_user() {
 
     // Across request + freeze + rejection the user is made whole, the
     // gateway keeps nothing, and the request is deleted.
-    suite.balances().should_change(&user_addr, btree_map! {
-        usdc::DENOM.clone() => BalanceChange::Unchanged,
-    });
+    suite.balances().should_change(
+        &user_addr,
+        btree_map! {
+            usdc::DENOM.clone() => BalanceChange::Unchanged,
+        },
+    );
 
     suite
         .query_balance(&contracts.gateway, usdc::DENOM.clone())
         .should_succeed_and_equal(Uint128::ZERO);
 
     suite
-        .query_wasm_smart(contracts.gateway, gateway::QueryWithdrawalRequestRequest {
-            id,
-        })
+        .query_wasm_smart(
+            contracts.gateway,
+            gateway::QueryWithdrawalRequestRequest { id },
+        )
         .should_succeed_and_equal(None);
 }
 
@@ -4171,35 +4377,46 @@ async fn withdrawal_requests_pagination() {
 
     // First page, limit 2: the two lowest IDs, in ascending order.
     let page1 = suite
-        .query_wasm_smart(contracts.gateway, gateway::QueryWithdrawalRequestsRequest {
-            start_after: None,
-            limit: Some(2),
-        })
+        .query_wasm_smart(
+            contracts.gateway,
+            gateway::QueryWithdrawalRequestsRequest {
+                start_after: None,
+                limit: Some(2),
+            },
+        )
         .should_succeed();
 
-    assert_eq!(page1.iter().map(|item| item.id).collect::<Vec<_>>(), vec![
-        0, 1
-    ]);
+    assert_eq!(
+        page1.iter().map(|item| item.id).collect::<Vec<_>>(),
+        vec![0, 1]
+    );
 
     // Second page resumes after the last ID of page 1 — `start_after` is
     // exclusive, so ID 1 doesn't repeat.
     let page2 = suite
-        .query_wasm_smart(contracts.gateway, gateway::QueryWithdrawalRequestsRequest {
-            start_after: Some(page1.last().unwrap().id),
-            limit: Some(2),
-        })
+        .query_wasm_smart(
+            contracts.gateway,
+            gateway::QueryWithdrawalRequestsRequest {
+                start_after: Some(page1.last().unwrap().id),
+                limit: Some(2),
+            },
+        )
         .should_succeed();
 
-    assert_eq!(page2.iter().map(|item| item.id).collect::<Vec<_>>(), vec![
-        2
-    ]);
+    assert_eq!(
+        page2.iter().map(|item| item.id).collect::<Vec<_>>(),
+        vec![2]
+    );
 
     // Querying beyond the end yields an empty page.
     suite
-        .query_wasm_smart(contracts.gateway, gateway::QueryWithdrawalRequestsRequest {
-            start_after: Some(2),
-            limit: Some(2),
-        })
+        .query_wasm_smart(
+            contracts.gateway,
+            gateway::QueryWithdrawalRequestsRequest {
+                start_after: Some(2),
+                limit: Some(2),
+            },
+        )
         .should_succeed_and(Vec::is_empty);
 }
 
@@ -4229,10 +4446,13 @@ async fn frozen_withdrawal_requests_enumeration() {
 
     // Both requests sit in the pending queue; the frozen queue is empty.
     suite
-        .query_wasm_smart(contracts.gateway, gateway::QueryWithdrawalRequestsRequest {
-            start_after: None,
-            limit: None,
-        })
+        .query_wasm_smart(
+            contracts.gateway,
+            gateway::QueryWithdrawalRequestsRequest {
+                start_after: None,
+                limit: None,
+            },
+        )
         .should_succeed_and(|page| page.iter().map(|item| item.id).collect::<Vec<_>>() == ids);
 
     suite
@@ -4258,10 +4478,13 @@ async fn frozen_withdrawal_requests_enumeration() {
 
     // The frozen request left the pending queue; the other remains.
     suite
-        .query_wasm_smart(contracts.gateway, gateway::QueryWithdrawalRequestsRequest {
-            start_after: None,
-            limit: None,
-        })
+        .query_wasm_smart(
+            contracts.gateway,
+            gateway::QueryWithdrawalRequestsRequest {
+                start_after: None,
+                limit: None,
+            },
+        )
         .should_succeed_and(|page| {
             page.iter().map(|item| item.id).collect::<Vec<_>>() == vec![ids[1]]
         });
@@ -4330,19 +4553,25 @@ async fn over_cap_request_fails_fast() {
         .should_fail_with_error("insufficient outbound quota! denom: bridge/usdc, requested: 11000000, residue after personal quota: 11000000");
 
     // Nothing was stored and nothing was escrowed.
-    suite.balances().should_change(&user_addr, btree_map! {
-        usdc::DENOM.clone() => BalanceChange::Unchanged,
-    });
+    suite.balances().should_change(
+        &user_addr,
+        btree_map! {
+            usdc::DENOM.clone() => BalanceChange::Unchanged,
+        },
+    );
 
     suite
         .query_balance(&contracts.gateway, usdc::DENOM.clone())
         .should_succeed_and_equal(Uint128::ZERO);
 
     suite
-        .query_wasm_smart(contracts.gateway, gateway::QueryWithdrawalRequestsRequest {
-            start_after: None,
-            limit: None,
-        })
+        .query_wasm_smart(
+            contracts.gateway,
+            gateway::QueryWithdrawalRequestsRequest {
+                start_after: None,
+                limit: None,
+            },
+        )
         .should_succeed_and(|page| page.is_empty());
 }
 
@@ -4439,9 +4668,12 @@ async fn racing_approvals_refund_second_request() {
 
     // The user paid for the first withdrawal only; the second escrow came
     // back. The gateway keeps nothing, and both requests are settled.
-    suite.balances().should_change(&user_addr, btree_map! {
-        usdc::DENOM.clone() => BalanceChange::Decreased(AMOUNT),
-    });
+    suite.balances().should_change(
+        &user_addr,
+        btree_map! {
+            usdc::DENOM.clone() => BalanceChange::Decreased(AMOUNT),
+        },
+    );
 
     suite
         .query_balance(&contracts.gateway, usdc::DENOM.clone())
@@ -4451,17 +4683,21 @@ async fn racing_approvals_refund_second_request() {
     // settled as the bridged one — and the pending queue is empty.
     for id in [first, second] {
         suite
-            .query_wasm_smart(contracts.gateway, gateway::QueryWithdrawalRequestRequest {
-                id,
-            })
+            .query_wasm_smart(
+                contracts.gateway,
+                gateway::QueryWithdrawalRequestRequest { id },
+            )
             .should_succeed_and_equal(None);
     }
 
     suite
-        .query_wasm_smart(contracts.gateway, gateway::QueryWithdrawalRequestsRequest {
-            start_after: None,
-            limit: None,
-        })
+        .query_wasm_smart(
+            contracts.gateway,
+            gateway::QueryWithdrawalRequestsRequest {
+                start_after: None,
+                limit: None,
+            },
+        )
         .should_succeed_and(|page| page.is_empty());
 }
 
@@ -4503,19 +4739,25 @@ async fn insufficient_reserve_request_fails_fast() {
         .should_fail_with_error("insufficient reserve!");
 
     // Nothing was stored and nothing was escrowed.
-    suite.balances().should_change(&user_addr, btree_map! {
-        usdc::DENOM.clone() => BalanceChange::Unchanged,
-    });
+    suite.balances().should_change(
+        &user_addr,
+        btree_map! {
+            usdc::DENOM.clone() => BalanceChange::Unchanged,
+        },
+    );
 
     suite
         .query_balance(&contracts.gateway, usdc::DENOM.clone())
         .should_succeed_and_equal(Uint128::ZERO);
 
     suite
-        .query_wasm_smart(contracts.gateway, gateway::QueryWithdrawalRequestsRequest {
-            start_after: None,
-            limit: None,
-        })
+        .query_wasm_smart(
+            contracts.gateway,
+            gateway::QueryWithdrawalRequestsRequest {
+                start_after: None,
+                limit: None,
+            },
+        )
         .should_succeed_and(|page| page.is_empty());
 }
 
@@ -4567,19 +4809,25 @@ async fn withdrawal_not_exceeding_fee_fails_fast() {
         ));
 
     // Nothing was stored and nothing was escrowed.
-    suite.balances().should_change(&user_addr, btree_map! {
-        usdc::DENOM.clone() => BalanceChange::Unchanged,
-    });
+    suite.balances().should_change(
+        &user_addr,
+        btree_map! {
+            usdc::DENOM.clone() => BalanceChange::Unchanged,
+        },
+    );
 
     suite
         .query_balance(&contracts.gateway, usdc::DENOM.clone())
         .should_succeed_and_equal(Uint128::ZERO);
 
     suite
-        .query_wasm_smart(contracts.gateway, gateway::QueryWithdrawalRequestsRequest {
-            start_after: None,
-            limit: None,
-        })
+        .query_wasm_smart(
+            contracts.gateway,
+            gateway::QueryWithdrawalRequestsRequest {
+                start_after: None,
+                limit: None,
+            },
+        )
         .should_succeed_and(|page| page.is_empty());
 }
 
@@ -4623,9 +4871,10 @@ async fn refreezing_frozen_request_fails() {
     // The failed refreeze left the request in the frozen state, with the
     // funds still escrowed.
     suite
-        .query_wasm_smart(contracts.gateway, gateway::QueryWithdrawalRequestRequest {
-            id,
-        })
+        .query_wasm_smart(
+            contracts.gateway,
+            gateway::QueryWithdrawalRequestRequest { id },
+        )
         .should_succeed_and(|req| {
             req.as_ref()
                 .is_some_and(|req| req.status == WithdrawalStatus::Frozen)
@@ -4789,9 +5038,12 @@ async fn reserve_drained_while_pending_refunds_on_approval() {
 
     // The user paid for the first withdrawal only; the second escrow came
     // back, and both requests are settled.
-    suite.balances().should_change(&user_addr, btree_map! {
-        usdc::DENOM.clone() => BalanceChange::Decreased(AMOUNT),
-    });
+    suite.balances().should_change(
+        &user_addr,
+        btree_map! {
+            usdc::DENOM.clone() => BalanceChange::Decreased(AMOUNT),
+        },
+    );
 
     suite
         .query_balance(&contracts.gateway, usdc::DENOM.clone())
@@ -4799,9 +5051,10 @@ async fn reserve_drained_while_pending_refunds_on_approval() {
 
     for id in [first, second] {
         suite
-            .query_wasm_smart(contracts.gateway, gateway::QueryWithdrawalRequestRequest {
-                id,
-            })
+            .query_wasm_smart(
+                contracts.gateway,
+                gateway::QueryWithdrawalRequestRequest { id },
+            )
             .should_succeed_and_equal(None);
     }
 }
@@ -4872,18 +5125,22 @@ async fn fee_raised_while_pending_refunds_on_approval() {
     assert!(failed.reason.contains("not sufficient to cover fee"));
 
     // The escrow came back in full; the request is settled.
-    suite.balances().should_change(&user_addr, btree_map! {
-        usdc::DENOM.clone() => BalanceChange::Unchanged,
-    });
+    suite.balances().should_change(
+        &user_addr,
+        btree_map! {
+            usdc::DENOM.clone() => BalanceChange::Unchanged,
+        },
+    );
 
     suite
         .query_balance(&contracts.gateway, usdc::DENOM.clone())
         .should_succeed_and_equal(Uint128::ZERO);
 
     suite
-        .query_wasm_smart(contracts.gateway, gateway::QueryWithdrawalRequestRequest {
-            id,
-        })
+        .query_wasm_smart(
+            contracts.gateway,
+            gateway::QueryWithdrawalRequestRequest { id },
+        )
         .should_succeed_and_equal(None);
 }
 
@@ -4974,18 +5231,22 @@ async fn route_removed_while_pending_refunds_on_approval() {
     assert_eq!(failed.denom, dango::DENOM.clone());
     assert!(failed.reason.contains("data not found"));
 
-    suite.balances().should_change(&user_addr, btree_map! {
-        dango::DENOM.clone() => BalanceChange::Unchanged,
-    });
+    suite.balances().should_change(
+        &user_addr,
+        btree_map! {
+            dango::DENOM.clone() => BalanceChange::Unchanged,
+        },
+    );
 
     suite
         .query_balance(&contracts.gateway, dango::DENOM.clone())
         .should_succeed_and_equal(Uint128::ZERO);
 
     suite
-        .query_wasm_smart(contracts.gateway, gateway::QueryWithdrawalRequestRequest {
-            id,
-        })
+        .query_wasm_smart(
+            contracts.gateway,
+            gateway::QueryWithdrawalRequestRequest { id },
+        )
         .should_succeed_and_equal(None);
 }
 
@@ -5091,9 +5352,12 @@ async fn frozen_request_approval_failure_refunds() {
     assert!(failed.reason.contains("insufficient outbound quota"));
 
     // The user paid for the approved withdrawal only.
-    suite.balances().should_change(&user_addr, btree_map! {
-        usdc::DENOM.clone() => BalanceChange::Decreased(AMOUNT),
-    });
+    suite.balances().should_change(
+        &user_addr,
+        btree_map! {
+            usdc::DENOM.clone() => BalanceChange::Decreased(AMOUNT),
+        },
+    );
 
     suite
         .query_balance(&contracts.gateway, usdc::DENOM.clone())
@@ -5111,9 +5375,10 @@ async fn frozen_request_approval_failure_refunds() {
         .should_succeed_and(Vec::is_empty);
 
     suite
-        .query_wasm_smart(contracts.gateway, gateway::QueryWithdrawalRequestRequest {
-            id: frozen_id,
-        })
+        .query_wasm_smart(
+            contracts.gateway,
+            gateway::QueryWithdrawalRequestRequest { id: frozen_id },
+        )
         .should_succeed_and_equal(None);
 }
 
@@ -5208,25 +5473,32 @@ async fn personal_quota_expired_between_request_and_approval() {
     assert_eq!(failed.user, user_addr);
     assert!(failed.reason.contains("insufficient outbound quota"));
 
-    suite.balances().should_change(&user_addr, btree_map! {
-        usdc::DENOM.clone() => BalanceChange::Unchanged,
-    });
+    suite.balances().should_change(
+        &user_addr,
+        btree_map! {
+            usdc::DENOM.clone() => BalanceChange::Unchanged,
+        },
+    );
 
     // The expired entry is left in storage untouched — the failed
     // consumption never scrubbed it.
     let pq = suite
-        .query_wasm_smart(contracts.gateway, gateway::QueryPersonalQuotaRequest {
-            user: user_addr,
-            denom: usdc::DENOM.clone(),
-        })
+        .query_wasm_smart(
+            contracts.gateway,
+            gateway::QueryPersonalQuotaRequest {
+                user: user_addr,
+                denom: usdc::DENOM.clone(),
+            },
+        )
         .should_succeed()
         .expect("expired entry is left in storage");
     assert_eq!(pq.amount, Uint128::new(10_000_000));
 
     suite
-        .query_wasm_smart(contracts.gateway, gateway::QueryWithdrawalRequestRequest {
-            id,
-        })
+        .query_wasm_smart(
+            contracts.gateway,
+            gateway::QueryWithdrawalRequestRequest { id },
+        )
         .should_succeed_and_equal(None);
 }
 
