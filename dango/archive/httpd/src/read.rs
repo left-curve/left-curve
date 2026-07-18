@@ -15,9 +15,9 @@
 
 use {
     crate::error::ApiError,
+    dango_archive_types::{Page, PageInfo},
     sea_orm::Value,
     serde::{Serialize, de::DeserializeOwned},
-    utoipa::ToSchema,
 };
 
 /// Page size when a feed is queried without an explicit `first`.
@@ -97,24 +97,6 @@ impl Binder {
 }
 
 // ---- page assembly ----
-
-/// A page of a feed's results: the items plus the cursor of the last one.
-#[derive(Serialize, ToSchema)]
-#[serde(rename_all = "camelCase")]
-pub struct Page<N> {
-    pub items: Vec<N>,
-    pub page_info: PageInfo,
-}
-
-/// Forward-pagination metadata. `hasNextPage` comes from the surplus
-/// `limit + 1`-th row; `endCursor` is the cursor of the last returned item (the
-/// `after` for the next page), `null` when the page is empty.
-#[derive(Serialize, ToSchema)]
-#[serde(rename_all = "camelCase")]
-pub struct PageInfo {
-    pub has_next_page: bool,
-    pub end_cursor: Option<String>,
-}
 
 /// Turn up to `limit + 1` rows (newest-first) into a [`Page`]: the surplus row,
 /// if any, sets `hasNextPage` and is dropped; the last kept row's keyset becomes

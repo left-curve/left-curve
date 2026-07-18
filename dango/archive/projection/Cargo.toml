@@ -24,7 +24,7 @@ borsh                      = { workspace = true }
 clickhouse                 = { workspace = true }
 dango-archive-block-source = { workspace = true }
 dango-archive-httpd        = { workspace = true }
-dango-archive-types        = { workspace = true }
+dango-archive-types        = { workspace = true, features = ["utoipa"] }
 dango-primitives           = { workspace = true, features = ["chrono"] }
 futures                    = { workspace = true }
 metrics                    = { workspace = true, optional = true }

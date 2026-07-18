@@ -22,7 +22,7 @@ actix-cors                 = { workspace = true }
 actix-web                  = { workspace = true }
 anyhow                     = { workspace = true }
 dango-archive-block-source = { workspace = true }
-dango-archive-types        = { workspace = true }
+dango-archive-types        = { workspace = true, features = ["utoipa"] }
 futures                    = { workspace = true }
 hex                        = { workspace = true }
 metrics                    = { workspace = true, optional = true }

@@ -27,7 +27,9 @@
 //! so the SQL shape can never regress unnoticed.
 
 use {
-    super::types::{AddressRole, Event, EventRow, Transaction, UnitKind, event_from_row},
+    super::types::{
+        AddressRole, Event, EventRow, Transaction, UnitKind, event_from_row, transaction_from_model,
+    },
     crate::{
         activity::{entity::transactions, event_type::EventType},
         metrics::timed_query,
@@ -96,7 +98,7 @@ pub(crate) async fn transactions_by_hash(
     )
     .await?;
     txn.commit().await?;
-    rows.into_iter().map(Transaction::try_from).collect()
+    rows.into_iter().map(transaction_from_model).collect()
 }
 
 /// Query 1 — transactions (and cronjobs) **involving** an address: by default
@@ -213,7 +215,7 @@ pub(crate) async fn transactions_involving(
             kind: m.kind,
             idx: m.idx,
         },
-        Transaction::try_from,
+        transaction_from_model,
     )
 }
 

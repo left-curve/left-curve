@@ -3846,6 +3846,9 @@ version = "0.0.0"
 dependencies = [
  "anyhow",
  "dango-primitives",
+ "serde",
+ "serde_json",
+ "utoipa",
 ]
 
 [[package]]
