@@ -19,6 +19,7 @@ alloy                       = { workspace = true }
 anyhow                      = { workspace = true }
 async-trait                 = { workspace = true }
 bip32                       = { workspace = true }
+dango-archive-types         = { workspace = true }
 dango-auth                  = { workspace = true }
 dango-backtrace             = { workspace = true }
 dango-eth-utils             = { workspace = true }
@@ -29,7 +30,7 @@ futures                     = { workspace = true }
 graphql_client              = { workspace = true }
 k256                        = { workspace = true }
 pbkdf2                      = { workspace = true }
-reqwest                     = { workspace = true, features = ["json"] }
+reqwest                     = { workspace = true, features = ["json", "query"] }
 serde                       = { workspace = true }
 serde_json                  = { workspace = true }
 sha2                        = { workspace = true }

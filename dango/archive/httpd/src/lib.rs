@@ -35,7 +35,11 @@ mod server;
 pub use {
     crate::metrics::init_metrics,
     config::HttpdConfig,
+    // Re-exported from the shared types crate (they moved there so clients can
+    // deserialize the same envelope the handlers serialize); the projections
+    // keep importing them from here.
+    dango_archive_types::{Page, PageInfo},
     error::ApiError,
-    read::{Binder, Page, PageInfo, decode_after, page_limit, paginate},
+    read::{Binder, decode_after, page_limit, paginate},
     server::{Configurator, serve},
 };

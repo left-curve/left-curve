@@ -3846,6 +3846,9 @@ version = "0.0.0"
 dependencies = [
  "anyhow",
  "dango-primitives",
+ "serde",
+ "serde_json",
+ "utoipa",
 ]
 
 [[package]]
@@ -4486,6 +4489,7 @@ dependencies = [
  "bip32",
  "csv",
  "dango-account-factory",
+ "dango-archive-types",
  "dango-auth",
  "dango-backtrace",
  "dango-eth-utils",
