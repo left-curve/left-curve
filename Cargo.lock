@@ -4489,6 +4489,7 @@ dependencies = [
  "bip32",
  "csv",
  "dango-account-factory",
+ "dango-archive-types",
  "dango-auth",
  "dango-backtrace",
  "dango-eth-utils",

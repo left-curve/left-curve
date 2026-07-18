@@ -414,6 +414,13 @@ impl Env {
     /// contiguously, so once a block's tx is visible every block below it has
     /// been ingested too. Returns the list of matching units. Tolerates the read
     /// API's startup window (a not-yet-bound server reads as "not indexed").
+    /// Base URL of the in-process REST read API — for driving it with an
+    /// external client (e.g. the SDK's `ArchiveClient`) instead of the raw
+    /// helpers below.
+    pub fn read_url(&self) -> &str {
+        &self.read_url
+    }
+
     pub async fn wait_for_tx_indexed(
         &self,
         hash: &str,
