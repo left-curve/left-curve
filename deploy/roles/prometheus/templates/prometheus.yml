@@ -360,10 +360,12 @@ scrape_configs:
           dango_network: 'system'
 # Archive hosts (from the [archive] group): their host-level postgres holds
 # the projection tables, so it is labeled with the host's real network — the
-# archive dashboard filters pg_database_size by dango_network.
+# archive dashboard filters pg_database_size by dango_network. The network is
+# derived from archive_instances (like the 'archive' job below): since #2222
+# these hosts run no dango node and their dango_networks is empty.
 {% for host in groups['archive'] | default([]) %}
 {%   set hn = hostvars[host].hostname | default(host) %}
-{%   set net = (hostvars[host].dango_networks | default(['system'])) | first %}
+{%   set net = hostvars[host].archive_instances | default([]) | map(attribute='name') | first | default('system') %}
       - targets: ['{{ hn }}:9187']
         labels:
           service: 'postgres'
