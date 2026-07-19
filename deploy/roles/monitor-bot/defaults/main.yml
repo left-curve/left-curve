@@ -19,3 +19,28 @@ monitor_bot_http_ports:
 # detected too. Only set this if Cloudflare's bot management starts blocking
 # the bot's requests and a WAF exception is not an option.
 monitor_bot_host_overrides: []
+# Contract addresses per network, injected into the bot's config — the bot
+# deliberately takes them from config instead of resolving them from the
+# chain at runtime, and refuses to start without them. A network absent from
+# this map fails the config template loudly at deploy time instead of
+# shipping a config the bot rejects at startup.
+monitor_bot_addresses:
+  mainnet:
+    perps: "0x90bc84df68d1aa59a857e04ed529e9a26edbea4f"
+    gateway: "0xc51e2cbe9636a90c86463ac3eb18fbee92b700d1"
+# EVM chains for the bridge-collateral checks (warp-contract USDC balance vs
+# the gateway reserve, and sudden-outflow detection), keyed by network. The
+# chain key must match the hyperlane vault's `relayer.<key>_rpc_url` entry:
+# the secret RPC URLs are injected through env.j2 from that vault, never
+# written into the world-readable config.json. Networks absent from this map
+# simply run without the bridge-collateral group.
+monitor_bot_bridge_chains:
+  mainnet:
+    ethereum:
+      domain: 1
+      warp_address: "0xd05909852aE07118857f9D071781671D12c0f36c"
+      usdc_address: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"
+    arbitrum:
+      domain: 42161
+      warp_address: "0x9d0ea335355dA17eE89E50DF43AB823416Cf73d4"
+      usdc_address: "0xaf88d065e77c8cc2239327c5edb3a432268e5831"
