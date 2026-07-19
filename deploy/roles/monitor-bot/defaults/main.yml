@@ -1,0 +1,21 @@
+---
+monitor_bot_dir: "{{ deploy_home }}/monitor-bot"
+monitor_bot_image: "ghcr.io/left-curve/bots/monitor"
+monitor_bot_tag: "latest"
+monitor_bot_networks: []
+# Host ports for the bot's HTTP /health, /status, /metrics server, bound to
+# the wireguard IP (Prometheus on ovh3 resolves scrape hostnames to wireguard
+# IPs) and the tailscale IP (laptop debugging). Follows the bot port blocks
+# 9300s (points-bot), 9310 (perp-liquidator), 9320 (batch-block-backup).
+monitor_bot_http_ports:
+  devnet: 9330
+  testnet: 9331
+  mainnet: 9332
+# Optional "hostname:ip" entries rendered into the container's extra_hosts —
+# the archive role's trick of resolving an api-*.dango.zone hostname to a
+# node's wireguard IP so traffic hits that node's traefik directly, bypassing
+# Cloudflare. Off by default on purpose: the monitor should watch the same
+# public path users take, so that Cloudflare/load-balancer outages are
+# detected too. Only set this if Cloudflare's bot management starts blocking
+# the bot's requests and a WAF exception is not an option.
+monitor_bot_host_overrides: []
