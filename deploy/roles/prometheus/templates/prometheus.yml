@@ -502,6 +502,17 @@ scrape_configs:
           network: 'mainnet'
           dango_network: 'mainnet'
 
+  # The monitor bot runs on ovh3 itself (see [monitor-bot] in the inventory);
+  # the target still goes through the wireguard hostname like every other one.
+  - job_name: 'monitor-bot'
+    static_configs:
+      - targets: ['ovh3:9332']
+        labels:
+          service: 'monitor-bot'
+          environment: 'production'
+          network: 'mainnet'
+          dango_network: 'mainnet'
+
   - job_name: 'points-bot'
     static_configs:
       - targets: ['ovh2:9300']

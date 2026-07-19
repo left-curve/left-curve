@@ -400,6 +400,27 @@ deploy-withdrawal-approver network tag:
       --limit withdrawal-approver-{{network}} \
       2>&1 | tee "{{justfile_directory()}}/logs/$(date -u +%Y%m%d%H%M%S)-deploy-withdrawal-approver.log"
 
+# ------------------------------- Monitor Bot ----------------------------------
+
+# Deploy the monitor bot for a network. All instances run on ovh3 (the
+# monitoring host), separated from the nodes they watch. The Discord webhook
+# it alerts through comes from `monitor_bot_discord_webhook` in the vault.
+# Usage: just deploy-monitor-bot mainnet
+#        just deploy-monitor-bot mainnet v0.28.0
+deploy-monitor-bot network tag="latest":
+  mkdir -p "{{justfile_directory()}}/logs" \
+    && uv run ansible-playbook monitor-bot.yml \
+      -e '{"monitor_bot_networks": ["{{network}}"], "monitor_bot_tag": "{{tag}}"}' \
+      --limit monitor-bot-{{network}} \
+      2>&1 | tee "{{justfile_directory()}}/logs/$(date -u +%Y%m%d%H%M%S)-deploy-monitor-bot.log"
+
+stop-monitor-bot network:
+  mkdir -p "{{justfile_directory()}}/logs" \
+    && uv run ansible-playbook stop-monitor-bot.yml \
+      -e '{"monitor_bot_networks": ["{{network}}"]}' \
+      --limit monitor-bot-{{network}} \
+      2>&1 | tee "{{justfile_directory()}}/logs/$(date -u +%Y%m%d%H%M%S)-stop-monitor-bot.log"
+
 # ---------------------------------- Testnet -----------------------------------
 
 deploy-testnet dango_image_tag bots_image_tag:

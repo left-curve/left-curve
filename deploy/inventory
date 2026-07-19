@@ -205,6 +205,21 @@ perp-liquidator-mainnet
 withdrawal-approver-testnet
 withdrawal-approver-mainnet
 
+# The monitor bot runs on ovh3 (the monitoring host), deliberately separated
+# from the nodes it watches. Only mainnet is deployed for now; the testnet
+# group is pre-declared so a future rollout is a single
+# `just deploy-monitor-bot testnet`. No devnet group on purpose: devnet has no
+# archive instance, which the bot's fill_price check requires.
+[monitor-bot-testnet]
+100.122.37.57  # ovh3
+
+[monitor-bot-mainnet]
+100.122.37.57  # ovh3
+
+[monitor-bot:children]
+monitor-bot-testnet
+monitor-bot-mainnet
+
 [hyperlane]
 100.72.62.100  # hetzner5
 100.126.8.2    # hetzner1
