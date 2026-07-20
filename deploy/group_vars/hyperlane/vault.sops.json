@@ -17,7 +17,7 @@
 			"ethereum_signer_key": "ENC[AES256_GCM,data:9h4zGOu2Fehe8b2wieWcoxHfmmB7vJ6E/F5BwVNUUYoomjSNhiUKkTKAWUJ25c2nleeruW6vE74/ys3+Ag6Iv4JE,iv:CC3mK6/wcQP9hP9F4UY4Zg30CIakDoY0jdvG+ErGFzw=,tag:oX+dXaCK32RIJlvVEnzXxg==,type:str]",
 			"ethereum_signer_seed_phrase": "ENC[AES256_GCM,data:EOh+JCRHEbFkh1pIs8U611jWu1SJerkX63Zvl1hZwpaiguYLaCTUvPcoquUCBHPQiSID/D+FNRjrJRbCk5iDnniVKvV4/L8gRg==,iv:H4WLUxdO7xPZSqOsLvBkKTI8qjacSfyczYtIiwIGhhc=,tag:vyxL9SsdEmxO5FUfAFz7pg==,type:str]",
 			"ethereum_signer_address": "ENC[AES256_GCM,data:po40woI0AK6z85Le8t2W7mBKL8MNeVJ/r6p+MlYaByQhvY1BqByoreJu,iv:eP/2j6H2/MQDABjhR3C0cMPY3vkW156/K0mc6Bhq/LU=,tag:g/RBn16Oiu6v8XNB5X7rrA==,type:str]",
-			"ethereum_rpc_url": "ENC[AES256_GCM,data:oOuAj9VOFU1wQOVJ6xT2fRfpKdouO72IiKYKusopyPHHD30r2CdONHn4lEWb9ifS0mfkFmbqoLiYKznmCpEtk6tMzw2QKC0ucGXe10AkfepClntwMbZIhne0SCdQAKexEl2Q0ScQmuvRGBKoDZNzgZLs4z8ZOGUgIOqMqX5kHbcxQZqk6gHvAGuXv/XT0guDkNnEGR1p0CB09PUmePaH36izD+ksTlt/taNv7x2IUsVI+7Qn4bqWWkvGfK5oitE04fCW,iv:1JdiUykp5Wg7oZI/tjvX0q8+7ZyriOCmgfYFDubLjOQ=,tag:Xn3pQqtFvqxllnGdIVXafQ==,type:str]",
+			"ethereum_rpc_url": "ENC[AES256_GCM,data:kin69nR93eSDIY9LeEOylm8lDsuSPval1GVSWC5odlWrymgqm3kOl9LEiOHgSDf79sRcfi3/tuUVQYxJ1dYpkzczscIjuaMOS/h0WfJjO8FWtm/0DhsDL6zak2PXINi7eHdKK0ASSF8YbIRXUNQkUR4ZwjfA+8SGvmGtvhEA87+hcr96XWdcLNPe99qbiHKEioLwUSdFVzQuQlzK+xKTQ4xrC2KAuQNomPG81RzGx9k7xGy2ymtlqijo5PIYH0Hy6jEMMZDDDH/0CinAh8eE4EXUwA==,iv:5wPhWMfatskxD3sSh6iNPrLoi7HQEEKFmgRToqZjAzM=,tag:9ry0ik8nZTW0B12N2Cyn3Q==,type:str]",
 			"arbitrum_signer_key": "ENC[AES256_GCM,data:AUtvGpGAPy+8eci1NNG2zSsccrDfv72e9e3pQjZNq/5pKJJMz07EJKICY62PJtBDcw2WsUFdlWcwIelO2WG3krWr,iv:0Ucv4kOd+UQkn4Vwd0oTwEhGJaCigPVKhemrKb2YaQg=,tag:vbR4N0ndkNtHUJLwkt8/NA==,type:str]",
 			"arbitrum_signer_seed_phrase": "ENC[AES256_GCM,data:FbnqHQeAQPWB4QvzkPO9BWeyd7Kgf2cDjMATIxDl46sFKK2ph1Iwljw5u+1K6iSIN0HaL3S3XoHBOtPZVoxBlXX9f6K9or2Vdw==,iv:QZH5nYdTOWqGhJXrRRjlKQxKR9sHiTmKcTyhlzr/w+g=,tag:wiR6hBEa/H+NRZGOmDx1Ag==,type:str]",
 			"arbitrum_signer_address": "ENC[AES256_GCM,data:tljy4Gq8wWRzg3Dz32b+MJFsINgeOHMNwo6GvXa3B+84vJzWI2GWK0BV,iv:a8sVm/V7WfhPJrgRMDoJge6XBse35uqHOzjINr57LMI=,tag:C16S/3Jmg6exgnBxnqA5Rg==,type:str]",
@@ -117,9 +117,9 @@
 				"recipient": "age10xqeelr09uk292rrp48jw5fem7uepuf82ax6mpq6rjuv6m3aw9mqgjnfyh"
 			}
 		],
-		"lastmodified": "2026-07-20T16:37:46Z",
-		"mac": "ENC[AES256_GCM,data:zsQtaxPrGPhwQgVSSfrEbO6I+Nci8G//SJgrmvVUTFQ0AFCus94LmOLAk5XKGfKiOpASWFeq/uNX1XH7Bem+6CBZT/mu3NRdCikvvhg8eWlmndfSE8YeZMdg7F8TCMfoLWb/EhMxSjQuquQom0tNDwPSmEx2UUrMAzlmrtlzKYc=,iv:48htLDMemb7Lt5hPV3FbbKtt2wsFfuxjS3h6pZc0c/w=,tag:2xNVSyabQCWHV19BUBIqOw==,type:str]",
+		"lastmodified": "2026-07-20T20:19:15Z",
+		"mac": "ENC[AES256_GCM,data:WoUVpipaQruf3TwSdlOKhGKl2x4f2pO9bgRDwh2GJMefQYmMzEVWYKVerLwGHzLGbjT0clrrqpqaqTpyYVOVjAwMI3TJwQu1urYLUPEtgLodAkMlqWfPVEEkxGWfzRqkGwobK+Mik5pCGUUTBGNaUR68cE5JIqppFgc/z5nqurg=,iv:pfHajaYs4iFvXZ7JDisz8TNDbfVIxbMgdD/TVgnUhAw=,tag:/WO9pSE/v8c7n5HGaaB8gw==,type:str]",
 		"unencrypted_suffix": "_unencrypted",
-		"version": "3.13.1"
+		"version": "3.13.2"
 	}
 }
