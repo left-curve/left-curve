@@ -269,6 +269,11 @@
       "events": "Events",
       "txHash": "Tx hash",
       "sender": "Sender",
+      "role": "Role",
+      "roles": {
+        "sender": "Sender",
+        "participant": "Participant"
+      },
       "time": "Time",
       "block": "Block",
       "index": "Index",

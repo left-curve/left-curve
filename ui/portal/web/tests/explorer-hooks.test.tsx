@@ -5,6 +5,7 @@ import { useExplorerAccount } from "../../../store/src/hooks/explorer/useExplore
 import { useExplorerBlock } from "../../../store/src/hooks/explorer/useExplorerBlock";
 import { useExplorerContract } from "../../../store/src/hooks/explorer/useExplorerContract";
 import { useExplorerTransaction } from "../../../store/src/hooks/explorer/useExplorerTransaction";
+import { useExplorerTransactionsByAddress } from "../../../store/src/hooks/explorer/useExplorerTransactionsByAddress";
 import { useExplorerTransactionsBySender } from "../../../store/src/hooks/explorer/useExplorerTransactionsBySender";
 import { useExplorerUser } from "../../../store/src/hooks/explorer/useExplorerUser";
 import { useExplorerUserTransactions } from "../../../store/src/hooks/explorer/useExplorerUserTransactions";
@@ -655,6 +656,143 @@ describe("explorer hooks", () => {
     expect(fetchMock.mock.calls.some(([url]) => (url as URL).searchParams.has("before"))).toBe(
       false,
     );
+    expect(
+      fetchMock.mock.calls.every(([url]) => (url as URL).searchParams.get("role") === "sender"),
+    ).toBe(true);
+  });
+
+  it("queries archive transactions involving an address and infers sender and participant roles", async () => {
+    publicClient.chain = { id: "dango-1" };
+    const address = "0x6164647265737300000000000000000000000000";
+    const otherSender = "0x6f74686572000000000000000000000000000000";
+    const page = {
+      items: [
+        {
+          blockHeight: 12,
+          idx: 0,
+          kind: "transaction",
+          hash: "sender-transaction",
+          sender: address,
+          success: true,
+          timestamp: "2026-06-08T12:00:02Z",
+          tx: { sender: address, gas_limit: 2, msgs: [] },
+          outcome: { transaction: { gas_limit: 2, gas_used: 1, result: { ok: null }, events: [] } },
+        },
+        {
+          blockHeight: 11,
+          idx: 0,
+          kind: "transaction",
+          hash: "participant-transaction",
+          sender: otherSender,
+          success: true,
+          timestamp: "2026-06-08T12:00:01Z",
+          tx: { sender: otherSender, gas_limit: 2, msgs: [] },
+          outcome: { transaction: { gas_limit: 2, gas_used: 1, result: { ok: null }, events: [] } },
+        },
+        {
+          blockHeight: 10,
+          idx: 1,
+          kind: "cron",
+          hash: null,
+          sender: null,
+          success: true,
+          timestamp: "2026-06-08T12:00:00Z",
+          tx: null,
+          outcome: { cron: { gas_used: 1, result: { ok: null }, events: [] } },
+        },
+      ],
+      pageInfo: { hasNextPage: true, endCursor: "page-end" },
+    };
+    const nextPage = {
+      items: [
+        {
+          blockHeight: 9,
+          idx: 0,
+          kind: "transaction",
+          hash: "next-page-transaction",
+          sender: otherSender,
+          success: true,
+          timestamp: "2026-06-08T11:59:59Z",
+          tx: { sender: otherSender, gas_limit: 2, msgs: [] },
+          outcome: { transaction: { gas_limit: 2, gas_used: 1, result: { ok: null }, events: [] } },
+        },
+      ],
+      pageInfo: { hasNextPage: false, endCursor: "next-page-end" },
+    };
+    const fetchMock = vi.fn((input: URL) =>
+      Promise.resolve(
+        jsonResponse(input.searchParams.get("after") === "page-end" ? nextPage : page),
+      ),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const { result } = renderHook(() => useExplorerTransactionsByAddress(address), {
+      wrapper: createQueryClientWrapper(),
+    });
+
+    await waitFor(() => expect(result.current.data?.nodes).toHaveLength(3));
+
+    expect(result.current.data?.nodes.map((transaction) => transaction.involvement)).toEqual([
+      ["sender"],
+      ["participant"],
+      ["participant"],
+    ]);
+    expect(result.current.data?.nodes[2]).toMatchObject({
+      hash: "",
+      sender: "",
+      transactionType: "CRON",
+    });
+
+    const [requestUrl] = fetchMock.mock.calls[0] as unknown as [URL];
+    expect(requestUrl.pathname).toBe(`/transactions/involving/${address}`);
+    expect(requestUrl.searchParams.get("first")).toBe("10");
+    expect(requestUrl.searchParams.has("role")).toBe(false);
+    expect(requestUrl.searchParams.has("kind")).toBe(false);
+    expect(publicClient.searchTxs).not.toHaveBeenCalled();
+
+    act(() => result.current.pagination.goNext());
+
+    await waitFor(() => expect(result.current.data?.nodes[0]?.hash).toBe("next-page-transaction"));
+    expect((fetchMock.mock.calls[1]?.[0] as URL).searchParams.get("after")).toBe("page-end");
+    expect(
+      fetchMock.mock.calls.every(
+        ([url]) => !(url as URL).searchParams.has("role") && !(url as URL).searchParams.has("kind"),
+      ),
+    ).toBe(true);
+  });
+
+  it("labels non-archive address history as sender-only", async () => {
+    const address = "0x6164647265737300000000000000000000000000";
+    publicClient.searchTxs.mockResolvedValue({
+      nodes: [
+        {
+          blockHeight: 1,
+          createdAt: "2026-06-08T12:00:00Z",
+          hash: "public-transaction",
+          sender: address,
+          transactionIdx: 0,
+          transactionType: "TX",
+        },
+      ],
+      edge: [],
+      pageInfo: { hasNextPage: false, hasPreviousPage: false },
+    });
+
+    const { result } = renderHook(() => useExplorerTransactionsByAddress(address), {
+      wrapper: createQueryClientWrapper(),
+    });
+
+    await waitFor(() => expect(result.current.data?.nodes).toHaveLength(1));
+
+    expect(result.current.data?.nodes[0]?.involvement).toEqual(["sender"]);
+    expect(publicClient.searchTxs).toHaveBeenCalledWith({
+      after: undefined,
+      before: undefined,
+      first: 10,
+      last: undefined,
+      senderAddress: address,
+      sortBy: "BLOCK_HEIGHT_DESC",
+    });
   });
 
   it("does not query sender transactions when disabled", () => {
@@ -1248,27 +1386,32 @@ describe("explorer hooks", () => {
   });
 
   it("sorts and paginates user transactions across all account addresses", async () => {
+    const firstAddress = "0x6669727374000000000000000000000000000000";
     const newestTxs = Array.from({ length: 11 }, (_, index) => ({
+      blockHeight: index + 10,
       hash: `new-${index}`,
       createdAt: new Date(Date.UTC(2026, 0, 1, 0, index)).toISOString(),
+      sender: firstAddress,
+      transactionIdx: 0,
+      transactionType: "TX",
     }));
     const oldestTx = {
+      blockHeight: 1,
       hash: "oldest",
       createdAt: new Date(Date.UTC(2025, 0, 1)).toISOString(),
+      sender: "0x7365636f6e640000000000000000000000000000",
+      transactionIdx: 0,
+      transactionType: "TX",
     };
     publicClient.searchTxs.mockImplementation(({ senderAddress }: { senderAddress: string }) =>
       Promise.resolve({
-        nodes:
-          senderAddress === "0x6669727374000000000000000000000000000000" ? newestTxs : [oldestTx],
+        nodes: senderAddress === firstAddress ? newestTxs : [oldestTx],
       }),
     );
 
     const { result } = renderHook(
       () =>
-        useExplorerUserTransactions([
-          "0x6669727374000000000000000000000000000000",
-          "0x7365636f6e640000000000000000000000000000",
-        ]),
+        useExplorerUserTransactions([firstAddress, "0x7365636f6e640000000000000000000000000000"]),
       { wrapper: createQueryClientWrapper() },
     );
 
@@ -1306,6 +1449,72 @@ describe("explorer hooks", () => {
     expect(result.current.pagination.hasPreviousPage).toBe(true);
   });
 
+  it("deduplicates archive user activity by unit position and merges roles across addresses", async () => {
+    publicClient.chain = { id: "dango-testnet-1" };
+    const firstAddress = "0x6669727374000000000000000000000000000000";
+    const secondAddress = "0x7365636f6e640000000000000000000000000000";
+    const repeatedHash = "ABCD";
+    const sharedTransaction = {
+      blockHeight: 5,
+      idx: 0,
+      kind: "transaction",
+      hash: repeatedHash,
+      sender: firstAddress,
+      success: true,
+      timestamp: "2026-01-03T00:00:00.000Z",
+      tx: { sender: firstAddress, gas_limit: 1, msgs: [] },
+      outcome: { transaction: { gas_limit: 1, gas_used: 1, result: { ok: null }, events: [] } },
+    };
+    const repeatedSubmission = {
+      ...sharedTransaction,
+      blockHeight: 4,
+      timestamp: "2026-01-02T00:00:00.000Z",
+    };
+    const cron = {
+      blockHeight: 3,
+      idx: 0,
+      kind: "cron",
+      hash: null,
+      sender: null,
+      success: true,
+      timestamp: "2026-01-01T00:00:00.000Z",
+      tx: null,
+      outcome: { cron: { result: { ok: null }, events: [] } },
+    };
+    const fetchMock = vi.fn((input: URL) => {
+      const items = input.pathname.endsWith(firstAddress)
+        ? [sharedTransaction, repeatedSubmission]
+        : [sharedTransaction, cron];
+      return Promise.resolve(
+        jsonResponse({ items, pageInfo: { hasNextPage: false, endCursor: null } }),
+      );
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const { result } = renderHook(
+      () => useExplorerUserTransactions([firstAddress, secondAddress]),
+      { wrapper: createQueryClientWrapper() },
+    );
+
+    await waitFor(() => expect(result.current.allTransactions).toHaveLength(3));
+
+    expect(result.current.allTransactions.map((transaction) => transaction.hash)).toEqual([
+      repeatedHash,
+      repeatedHash,
+      "",
+    ]);
+    expect(result.current.allTransactions.map((transaction) => transaction.involvement)).toEqual([
+      ["sender", "participant"],
+      ["sender"],
+      ["participant"],
+    ]);
+    expect(
+      fetchMock.mock.calls.every(
+        ([url]) => !(url as URL).searchParams.has("role") && !(url as URL).searchParams.has("kind"),
+      ),
+    ).toBe(true);
+  });
+
   it("preserves zero-valued backend fields while aggregating user transactions", async () => {
     const firstAddress = "0x6669727374000000000000000000000000000000";
     const secondAddress = "0x7365636f6e640000000000000000000000000000";
@@ -1324,8 +1533,12 @@ describe("explorer hooks", () => {
       transactionType: "TX",
     };
     const laterTx = {
+      blockHeight: 1,
       hash: "0x6c617465722d7478000000000000000000000000000000000000000000000000",
       createdAt: "2026-01-02T00:00:00.000Z",
+      sender: secondAddress,
+      transactionIdx: 1,
+      transactionType: "TX",
     };
     publicClient.searchTxs.mockImplementation(({ senderAddress }: { senderAddress: string }) =>
       Promise.resolve({
@@ -1342,8 +1555,11 @@ describe("explorer hooks", () => {
 
     await waitFor(() => expect(result.current.allTransactions).toHaveLength(2));
 
-    expect(result.current.allTransactions).toEqual([laterTx, genesisTx]);
-    expect(result.current.data).toEqual([laterTx, genesisTx]);
+    expect(result.current.allTransactions).toEqual([
+      { ...laterTx, involvement: ["sender"] },
+      { ...genesisTx, involvement: ["sender"] },
+    ]);
+    expect(result.current.data).toEqual(result.current.allTransactions);
   });
 
   it("keeps user transaction history available when one account query fails", async () => {
@@ -1352,8 +1568,12 @@ describe("explorer hooks", () => {
         return Promise.resolve({
           nodes: [
             {
+              blockHeight: 1,
               hash: "first-account-tx",
               createdAt: "2026-01-01T00:00:00.000Z",
+              sender: "0x6669727374000000000000000000000000000000",
+              transactionIdx: 0,
+              transactionType: "TX",
             },
           ],
         });
@@ -1385,8 +1605,13 @@ describe("explorer hooks", () => {
     });
     expect(result.current.data).toEqual([
       {
+        blockHeight: 1,
         hash: "first-account-tx",
         createdAt: "2026-01-01T00:00:00.000Z",
+        involvement: ["sender"],
+        sender: "0x6669727374000000000000000000000000000000",
+        transactionIdx: 0,
+        transactionType: "TX",
       },
     ]);
     expect(result.current.pagination.hasNextPage).toBe(false);
