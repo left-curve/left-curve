@@ -29,6 +29,7 @@ type ArchiveApi = {
 type ArchiveSearchTxsParameters = {
   hash?: string;
   senderAddress?: string;
+  involvedAddress?: string;
   first?: number;
   after?: string;
   sortBy?: string;
@@ -125,12 +126,14 @@ async function searchTxs(
     return toGraphqlResult((items ?? []).map(normalizeTransaction));
   }
 
-  if (parameters.senderAddress) {
+  const address = parameters.involvedAddress ?? parameters.senderAddress;
+
+  if (address) {
     const page = await archiveFetch<ArchivePage<ArchiveTransaction>>(
       archiveUrl,
-      `/transactions/involving/${encodeURIComponent(parameters.senderAddress)}`,
+      `/transactions/involving/${encodeURIComponent(address)}`,
       {
-        role: "sender",
+        role: parameters.involvedAddress ? undefined : "sender",
         first: String(parameters.first ?? 10),
         after: parameters.after,
       },
