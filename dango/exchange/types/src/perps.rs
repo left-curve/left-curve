@@ -110,7 +110,6 @@ impl RateSchedule {
 
 /// Global parameters that concerns the counterparty vault and all trading pairs.
 #[dango_primitives::derive(Serde, Borsh)]
-#[derive(Default)]
 pub struct Param {
     /// Maximum number of unlock requests a single user may have.
     ///
@@ -220,6 +219,43 @@ pub struct Param {
     /// Bounds: `>= 1`. Governance-tunable via `Configure`; no hard
     /// upper bound is enforced.
     pub max_action_batch_size: usize,
+
+    /// Whether traders may open new risk.
+    ///
+    /// When false, order placement (including conditional orders), deposits
+    /// from a spot account into margin, and deposits from margin into the
+    /// counterparty vault are all rejected. Everything that reduces risk or
+    /// returns funds to the user — withdrawals, cancellations, vault
+    /// withdrawals, liquidations — remains available.
+    ///
+    /// Set to false by the wind-down chain upgrade.
+    pub trading_enabled: bool,
+}
+
+impl Default for Param {
+    /// Trading is enabled by default. Only the wind-down upgrade turns it
+    /// off, so a freshly constructed `Param` must never accidentally halt a
+    /// live exchange.
+    fn default() -> Self {
+        Self {
+            max_unlocks: usize::default(),
+            max_open_orders: usize::default(),
+            maker_fee_rates: RateSchedule::default(),
+            taker_fee_rates: RateSchedule::default(),
+            protocol_fee_rate: Dimensionless::default(),
+            liquidation_fee_rate: Dimensionless::default(),
+            liquidation_buffer_ratio: Dimensionless::default(),
+            funding_period: Duration::default(),
+            vault_total_weight: Dimensionless::default(),
+            vault_cooldown_period: Duration::default(),
+            referral_active: bool::default(),
+            min_referrer_volume: UsdValue::default(),
+            referrer_commission_rates: RateSchedule::default(),
+            vault_deposit_cap: None,
+            max_action_batch_size: usize::default(),
+            trading_enabled: true,
+        }
+    }
 }
 
 /// Global state that concerns the counterparty vault and all trading pairs.
