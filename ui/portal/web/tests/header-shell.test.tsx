@@ -49,6 +49,10 @@ vi.mock("../src/components/foundation/AccountMenu", () => ({
   AccountMenu: () => <div data-testid="account-menu" />,
 }));
 
+vi.mock("../src/components/foundation/AnnouncementBanner", () => ({
+  AnnouncementBannerRender: () => <div data-testid="announcement-banner-render" />,
+}));
+
 vi.mock("../src/components/foundation/SearchMenu", () => ({
   SearchMenu: () => <div data-testid="search-menu" />,
 }));
@@ -135,7 +139,8 @@ describe("Header shell", () => {
     expect(screen.getByRole("alert")).toHaveTextContent("geoblock banner");
     expect(screen.getByTestId("testnet-banner")).toBeInTheDocument();
     expect(screen.getByTestId("search-menu")).toBeInTheDocument();
-    expect(document.querySelector("#quest-banner")).toBeNull();
+    expect(document.querySelector("#announcement-banner")).not.toBeNull();
+    expect(screen.getByTestId("announcement-banner-render")).toBeInTheDocument();
     expect(document.querySelector("#trade-buttons")).not.toBeNull();
     expect(screen.getByRole("link", { name: "dango logo" })).toHaveAttribute("href", "/");
   });

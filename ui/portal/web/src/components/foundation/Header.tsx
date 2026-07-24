@@ -18,6 +18,7 @@ import { SearchMenu } from "./SearchMenu";
 import { TxIndicator } from "./TxIndicator";
 
 import { m } from "@left-curve/foundation/paraglide/messages.js";
+import { AnnouncementBannerRender } from "./AnnouncementBanner";
 import { GeoblockBanner } from "./GeoblockBanner";
 import { useGeoblock } from "./hooks/useGeoblock";
 import { TestnetBanner } from "./TestnetBanner";
@@ -85,6 +86,7 @@ export const Header: React.FC<HeaderProps> = ({ isScrolled }) => {
         location.pathname === "/" ? "lg:fixed h-fit" : "lg:sticky flex flex-col items-center",
       )}
     >
+      <div id="announcement-banner" className="hidden w-full lg:block" />
       {isLg && isProSwap && isGeoblocked ? <GeoblockBanner /> : null}
       {isLg ? <TestnetBanner /> : null}
 
@@ -201,6 +203,7 @@ export const Header: React.FC<HeaderProps> = ({ isScrolled }) => {
         </div>
       </div>
       <AccountMenu />
+      <AnnouncementBannerRender />
     </header>
   );
 };
