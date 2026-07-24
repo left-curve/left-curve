@@ -60,33 +60,19 @@ mod legacy_perps {
     #[derive(Default)]
     pub struct Param {
         pub max_unlocks: usize,
-
         pub max_open_orders: usize,
-
         pub maker_fee_rates: RateSchedule,
-
         pub taker_fee_rates: RateSchedule,
-
         pub protocol_fee_rate: Dimensionless,
-
         pub liquidation_fee_rate: Dimensionless,
-
         pub liquidation_buffer_ratio: Dimensionless,
-
         pub funding_period: Duration,
-
         pub vault_total_weight: Dimensionless,
-
         pub vault_cooldown_period: Duration,
-
         pub referral_active: bool,
-
         pub min_referrer_volume: UsdValue,
-
         pub referrer_commission_rates: RateSchedule,
-
         pub vault_deposit_cap: Option<UsdValue>,
-
         pub max_action_batch_size: usize,
     }
 }
