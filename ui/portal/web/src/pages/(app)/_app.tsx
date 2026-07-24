@@ -124,7 +124,6 @@ function LayoutApp() {
         alt="bg-image"
         className="pointer-events-none drag-none select-none h-[20vh] lg:h-[20vh] w-full fixed lg:absolute bottom-0 lg:top-0 left-0 z-40 lg:z-0 rotate-180 lg:rotate-0 object-cover object-bottom"
       />
-      <div id="announcement-banner-mobile" className="w-full lg:hidden" />
       {!isLg && isProSwap && isGeoblocked ? <GeoblockBanner /> : null}
       {!isLg ? <TestnetBanner /> : null}
       <Header isScrolled={effectiveIsScrolled} />

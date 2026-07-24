@@ -639,6 +639,7 @@
     "description": "We are currently undergoing maintenance. We apologize for any inconvenience this may cause and appreciate your patience."
   },
   "announcement": {
+    "title": "Dango is shutting down",
     "windingDown": "Dango exchange is going to be wound down. We encourage you to close your positions and withdraw funds at your earliest convenience. For a detailed winding down timeline:",
     "readMore": "Read more"
   },
