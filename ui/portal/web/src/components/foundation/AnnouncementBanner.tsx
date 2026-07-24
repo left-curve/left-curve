@@ -24,7 +24,7 @@ export function AnnouncementBanner({ onDismiss }: AnnouncementBannerProps) {
           target="_blank"
           rel="noopener noreferrer"
         >
-          {ANNOUNCEMENT_URL}
+          {m["announcement.readMore"]()}
         </a>
         .
       </p>

@@ -31,11 +31,14 @@ describe("AnnouncementBanner", () => {
     render(<AnnouncementBanner onDismiss={vi.fn()} />);
 
     expect(screen.getByRole("alert")).toHaveTextContent(m["announcement.windingDown"]());
-    expect(screen.getByRole("link", { name: announcementUrl })).toHaveAttribute(
+    expect(screen.getByRole("link", { name: m["announcement.readMore"]() })).toHaveAttribute(
       "href",
       announcementUrl,
     );
-    expect(screen.getByRole("link", { name: announcementUrl })).toHaveAttribute("target", "_blank");
+    expect(screen.getByRole("link", { name: m["announcement.readMore"]() })).toHaveAttribute(
+      "target",
+      "_blank",
+    );
   });
 
   it("dismisses the notice from its accessible close control", () => {
