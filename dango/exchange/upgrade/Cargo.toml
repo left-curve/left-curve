@@ -9,6 +9,19 @@ repository    = { workspace = true }
 rust-version  = { workspace = true }
 
 [dependencies]
+anyhow           = { workspace = true }
 dango-app        = { workspace = true }
+dango-bank       = { workspace = true }
+dango-math       = { workspace = true }
+dango-order-book = { workspace = true }
+dango-perps      = { workspace = true }
 dango-primitives = { workspace = true }
+dango-storage    = { workspace = true }
+dango-types      = { workspace = true }
 tracing          = { workspace = true }
+
+[dev-dependencies]
+anyhow     = { workspace = true }
+reqwest    = { workspace = true }
+serde_json = { workspace = true }
+tokio      = { workspace = true }

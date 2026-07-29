@@ -793,6 +793,7 @@ The response objects of the perps [read shortcuts](#32-typed-read-shortcuts) mir
 | `funding_period` | `Duration` | Interval between funding collections |
 | `vault_cooldown_period` | `Duration` | Vault-withdrawal cooldown |
 | `vault_deposit_cap` | `UsdValue \| null` | Max total vault margin (`null` = uncapped) |
+| `trading_enabled` | `bool` | When `false`, order placement, margin deposits, and vault deposits are rejected; withdrawals, cancellations, and liquidations still work |
 | `referral_active` | `bool` | Whether referral commissions are active |
 
 Plus `max_unlocks`, `liquidation_buffer_ratio`, `vault_total_weight`, `min_referrer_volume`, and `referrer_commission_rates` — see the source.

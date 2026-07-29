@@ -12,7 +12,7 @@ use {
         query::query_volume,
         referral::{FeeCommissionsOutcome, apply_fee_commissions},
         state::{FEE_RATE_OVERRIDES, PAIR_PARAMS, PAIR_STATES, PARAM, STATE, USER_STATES},
-        trade::resize_reduce_only_orders,
+        trade::{ensure_trading_enabled, resize_reduce_only_orders},
     },
     anyhow::{bail, ensure},
     dango_math::{MathResult, Number, NumberConst},
@@ -42,6 +42,8 @@ pub fn submit_order(
     tp: Option<ChildOrder>,
     sl: Option<ChildOrder>,
 ) -> anyhow::Result<Response> {
+    ensure_trading_enabled(&PARAM.load(ctx.storage)?)?;
+
     let mut events = EventBuilder::new();
 
     _submit_order(

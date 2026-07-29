@@ -465,6 +465,7 @@ mod tests {
             referrer_commission_rates: RateSchedule::default(),
             vault_deposit_cap: None,
             max_action_batch_size: 5,
+            trading_enabled: true,
         }
     }
 
