@@ -33,12 +33,12 @@ use {
 /// Virtual shares added to total supply in share price calculations.
 /// Prevents the first-depositor attack (ERC-4626 inflation attack) by
 /// ensuring the share price cannot be trivially inflated.
-pub const VIRTUAL_SHARES: Uint128 = Uint128::new(1_000_000);
+const VIRTUAL_SHARES: Uint128 = Uint128::new(1_000_000);
 
 /// Virtual assets added to vault equity in share price calculations.
 /// Works in tandem with `VIRTUAL_SHARES` to set the initial share price
 /// and prevent share inflation attacks.
-pub const VIRTUAL_ASSETS: UsdValue = UsdValue::new_int(1);
+const VIRTUAL_ASSETS: UsdValue = UsdValue::new_int(1);
 
 /// Lookback window for volume-tiered fee rate resolution.
 const VOLUME_LOOKBACK: Duration = Duration::from_days(14);
