@@ -161,6 +161,8 @@ fn wind_down(
 
     let position_count = close_all_positions(&mut user_states, &mut pair_states)?;
 
+    zero_open_interest(&mut pair_states)?;
+
     let (vault_distributed, vault_residue, unlocks_released) =
         release_vault(&mut user_states, &mut state, perps_address)?;
 
@@ -361,6 +363,39 @@ fn close_all_positions(
     }
 
     Ok(position_count)
+}
+
+/// Force every pair's open interest to zero.
+///
+/// With all positions closed, no pair can have any open interest left. Closing
+/// each position decrements the counters by that position's size, so they land
+/// on zero only if they agreed with the positions to begin with. A chain that
+/// has accumulated drift between the two — from historical bugs, say — would
+/// otherwise be left reporting open interest against no positions at all, so
+/// set the counters outright rather than relying on them having been correct.
+///
+/// Any residue is logged, since it means the pre-upgrade state was internally
+/// inconsistent and that is worth knowing. It carries no value: open interest
+/// only feeds position caps and the funding rate, neither of which survives the
+/// wind-down, and margins and refunds are computed without it.
+fn zero_open_interest(
+    pair_states: &mut BTreeMap<PairId, dango_types::perps::PairState>,
+) -> anyhow::Result<()> {
+    for (pair_id, pair_state) in pair_states.iter_mut() {
+        if pair_state.long_oi.is_non_zero() || pair_state.short_oi.is_non_zero() {
+            tracing::warn!(
+                %pair_id,
+                long_oi = %pair_state.long_oi,
+                short_oi = %pair_state.short_oi,
+                "pair's open interest disagreed with its positions; forcing it to zero"
+            );
+        }
+
+        pair_state.long_oi = Quantity::ZERO;
+        pair_state.short_oi = Quantity::ZERO;
+    }
+
+    Ok(())
 }
 
 /// Pay out the counterparty vault and release unlocks still in cooldown.
@@ -742,6 +777,52 @@ mod tests {
         fixture.run().unwrap();
 
         assert_eq!(fixture.balance_of(ALICE), Uint128::new(950 * ONE_USDC));
+    }
+
+    /// A chain whose stored open interest has drifted away from its actual
+    /// positions must still wind down cleanly. Closing the positions cannot
+    /// bring such counters to zero on its own — it subtracts the true sizes,
+    /// not the recorded ones — so the wind-down has to zero them outright.
+    ///
+    /// The drift must not reach the money: refunds come from margins, which
+    /// open interest plays no part in.
+    #[test]
+    fn zeroes_open_interest_that_disagrees_with_positions() {
+        let fixture = Fixture::new()
+            .with_state(State::default())
+            .with_pair(110, 0)
+            .with_user(
+                ALICE,
+                UserState {
+                    margin: UsdValue::new_int(1_000),
+                    positions: [(pair_id(), position(10, 100))].into(),
+                    ..Default::default()
+                },
+            )
+            .with_balance(1_100);
+
+        // Corrupt the counters: overstate the longs and drive the shorts
+        // negative, as observed on a long-lived chain.
+        {
+            let mut perps = fixture.perps();
+            let mut pair_state = PAIR_STATES.load(&perps, &pair_id()).unwrap();
+            pair_state.long_oi = Quantity::new_int(95);
+            pair_state.short_oi = Quantity::new_int(-3_355);
+            PAIR_STATES
+                .save(&mut perps, &pair_id(), &pair_state)
+                .unwrap();
+        }
+
+        fixture.run().unwrap();
+
+        let pair_state = PAIR_STATES.load(&fixture.perps(), &pair_id()).unwrap();
+
+        assert!(pair_state.long_oi.is_zero());
+        assert!(pair_state.short_oi.is_zero());
+
+        // Alice is still paid her margin plus the $100 gained on the long,
+        // untouched by the bogus counters.
+        assert_eq!(fixture.balance_of(ALICE), Uint128::new(1_100 * ONE_USDC));
     }
 
     // ----------------------------- vault release -----------------------------
